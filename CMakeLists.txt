@@ -1,6 +1,6 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 3.0)
 
-project (PBRSandbox)
+project (PBRSandbox VERSION 1.0.0)
 
 include_directories("3rdparty/glfw/include")
 include_directories("3rdparty/glm")
