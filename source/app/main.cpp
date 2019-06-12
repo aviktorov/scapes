@@ -7,8 +7,9 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
-#include <GLM/vec4.hpp>
+#include <GLM/glm.hpp>
 
+#include <array>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -19,16 +20,52 @@
 
 /*
  */
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	VkDebugUtilsMessageTypeFlagsEXT messageType,
-	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-	void* pUserData)
-{
-	std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
-	return VK_FALSE;
-}
+struct Vertex {
+	glm::vec2 position;
+	glm::vec3 color;
 
+	static VkVertexInputBindingDescription getVertexInputBindingDescription()
+	{
+		VkVertexInputBindingDescription bindingDescription;
+		bindingDescription.binding = 0;
+		bindingDescription.stride = sizeof(Vertex);
+		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+		return bindingDescription;
+	}
+
+	static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+	{
+		std::array<VkVertexInputAttributeDescription, 2> attributes = {};
+
+		attributes[0].binding = 0;
+		attributes[0].location = 0;
+		attributes[0].format = VK_FORMAT_R32G32_SFLOAT;
+		attributes[0].offset = offsetof(Vertex, position);
+
+		attributes[1].binding = 0;
+		attributes[1].location = 1;
+		attributes[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+		attributes[1].offset = offsetof(Vertex, color);
+
+		return attributes;
+	}
+};
+
+const std::vector<Vertex> vertices = {
+	{ {-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f} },
+	{ {0.5f, -0.5f}, {0.0f, 1.0f, 0.0f} },
+	{ {0.5f, 0.5f}, {0.0f, 0.0f, 1.0f} },
+	{ {-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f} }
+};
+
+const std::vector<uint16_t> indices = {
+	0, 1, 2,
+	2, 3, 0,
+};
+
+/*
+ */
 static std::vector<char> readFile(const std::string &filename)
 {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -62,11 +99,272 @@ struct QueueFamilyIndices {
 struct RendererContext
 {
 	VkDevice device {VK_NULL_HANDLE};
+	VkPhysicalDevice physicalDevice {VK_NULL_HANDLE};
+	VkCommandPool commandPool {VK_NULL_HANDLE};
 	VkFormat format;
 	VkExtent2D extent;
 	std::vector<VkImageView> imageViews;
-	QueueFamilyIndices queueFamilyIndices;
+	VkQueue graphicsQueue {VK_NULL_HANDLE};
+	VkQueue presentQueue {VK_NULL_HANDLE};
 };
+
+/*
+ */
+class RenderData
+{
+public:
+	RenderData(const RendererContext &context)
+		: context(context) { }
+
+	void init(const std::string &vertexShaderFile, const std::string &fragmentShaderFile);
+	void shutdown();
+
+	inline VkShaderModule GetVertexShader() const { return vertexShader; }
+	inline VkShaderModule GetFragmentShader() const { return fragmentShader; }
+	inline VkBuffer GetVertexBuffer() const { return vertexBuffer; }
+	inline VkBuffer GetIndexBuffer() const { return indexBuffer; }
+
+private:
+	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const;
+
+	VkShaderModule createShader(const std::string &path) const;
+	void createVertexBuffer();
+	void createIndexBuffer();
+	void createBuffer(
+		VkDeviceSize size,
+		VkBufferUsageFlags usage,
+		VkMemoryPropertyFlags memoryProperties,
+		VkBuffer &buffer,
+		VkDeviceMemory &memory
+	) const;
+
+	void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) const;
+
+private:
+	RendererContext context;
+
+	VkShaderModule vertexShader {VK_NULL_HANDLE};
+	VkShaderModule fragmentShader {VK_NULL_HANDLE};
+
+	VkBuffer vertexBuffer {VK_NULL_HANDLE};
+	VkDeviceMemory vertexBufferMemory {VK_NULL_HANDLE};
+
+	VkBuffer indexBuffer {VK_NULL_HANDLE};
+	VkDeviceMemory indexBufferMemory {VK_NULL_HANDLE};
+};
+
+/*
+ */
+void RenderData::init(const std::string &vertexShaderFile, const std::string &fragmentShaderFile)
+{
+	vertexShader = createShader(vertexShaderFile);
+	fragmentShader = createShader(fragmentShaderFile);
+
+	createVertexBuffer();
+	createIndexBuffer();
+}
+
+void RenderData::shutdown()
+{
+	vkDestroyBuffer(context.device, vertexBuffer, nullptr);
+	vertexBuffer = VK_NULL_HANDLE;
+
+	vkFreeMemory(context.device, vertexBufferMemory, nullptr);
+	vertexBufferMemory = VK_NULL_HANDLE;
+
+	vkDestroyBuffer(context.device, indexBuffer, nullptr);
+	indexBuffer = VK_NULL_HANDLE;
+
+	vkFreeMemory(context.device, indexBufferMemory, nullptr);
+	indexBufferMemory = VK_NULL_HANDLE;
+
+	vkDestroyShaderModule(context.device, vertexShader, nullptr);
+	vertexShader = VK_NULL_HANDLE;
+
+	vkDestroyShaderModule(context.device, fragmentShader, nullptr);
+	fragmentShader = VK_NULL_HANDLE;
+}
+
+/*
+ */
+uint32_t RenderData::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
+{
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(context.physicalDevice, &memProperties);
+
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+	{
+		uint32_t memoryTypeProperties = memProperties.memoryTypes[i].propertyFlags;
+		if ((typeFilter & (1 << i)) && (memoryTypeProperties & properties) == properties)
+			return i;
+	}
+
+	throw std::runtime_error("Can't find suitable memory type");
+}
+
+void RenderData::createBuffer(
+	VkDeviceSize size,
+	VkBufferUsageFlags usage,
+	VkMemoryPropertyFlags memoryProperties,
+	VkBuffer &buffer,
+	VkDeviceMemory &memory
+) const
+{
+	// Create buffer
+	VkBufferCreateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = size;
+	bufferInfo.usage = usage;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	if (vkCreateBuffer(context.device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+		throw std::runtime_error("Can't create vertex buffer");
+
+	// Allocate memory for the buffer
+	VkMemoryRequirements memoryRequirements = {};
+	vkGetBufferMemoryRequirements(context.device, buffer, &memoryRequirements);
+
+	VkMemoryAllocateInfo memoryAllocateInfo = {};
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(memoryRequirements.memoryTypeBits, memoryProperties);
+
+	if (vkAllocateMemory(context.device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+		throw std::runtime_error("Can't allocate vertex buffer memory");
+
+	if (vkBindBufferMemory(context.device, buffer, memory, 0) != VK_SUCCESS)
+		throw std::runtime_error("Can't bind vertex buffer memory");
+}
+
+void RenderData::copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size) const
+{
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = context.commandPool;
+	allocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(context.device, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	VkBufferCopy copyRegion = {};
+	copyRegion.size = size;
+	vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(context.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(context.graphicsQueue);
+
+	vkFreeCommandBuffers(context.device, context.commandPool, 1, &commandBuffer);
+}
+
+/*
+ */
+VkShaderModule RenderData::createShader(const std::string &path) const
+{
+	std::vector<char> code = readFile(path);
+
+	VkShaderModuleCreateInfo shaderInfo = {};
+	shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	shaderInfo.codeSize = code.size();
+	shaderInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
+
+	VkShaderModule shader;
+	if (vkCreateShaderModule(context.device, &shaderInfo, nullptr, &shader) != VK_SUCCESS)
+		throw std::runtime_error("Can't create shader module");
+
+	return shader;
+}
+
+/*
+ */
+void RenderData::createVertexBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
+
+	VkBuffer stagingBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
+
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		vertexBuffer,
+		vertexBufferMemory
+	);
+
+	// Create staging buffer
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer,
+		stagingBufferMemory
+	);
+
+	// Fill staging buffer
+	void *data = nullptr;
+	vkMapMemory(context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
+	vkUnmapMemory(context.device, stagingBufferMemory);
+
+	// Transfer to GPU local memory
+	copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+	// Destroy staging buffer
+	vkDestroyBuffer(context.device, stagingBuffer, nullptr);
+	vkFreeMemory(context.device, stagingBufferMemory, nullptr);
+}
+
+void RenderData::createIndexBuffer()
+{
+	VkDeviceSize bufferSize = sizeof(uint16_t) * indices.size();
+
+	VkBuffer stagingBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
+
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		indexBuffer,
+		indexBufferMemory
+	);
+
+	// Create staging buffer
+	createBuffer(
+		bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		stagingBuffer,
+		stagingBufferMemory
+	);
+
+	// Fill staging buffer
+	void *data = nullptr;
+	vkMapMemory(context.device, stagingBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
+	vkUnmapMemory(context.device, stagingBufferMemory);
+
+	// Transfer to GPU local memory
+	copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+	// Destroy staging buffer
+	vkDestroyBuffer(context.device, stagingBuffer, nullptr);
+	vkFreeMemory(context.device, stagingBufferMemory, nullptr);
+}
 
 /*
  */
@@ -74,7 +372,7 @@ class Renderer
 {
 public:
 	Renderer(const RendererContext &context)
-		: context(context) { }
+		: context(context), data(context) { }
 
 	void init(const std::string &vertexShaderFile, const std::string &fragmentShaderFile);
 	VkCommandBuffer render(uint32_t imageIndex);
@@ -84,49 +382,48 @@ private:
 	VkShaderModule createShader(const std::string &path) const;
 
 private:
+	RenderData data;
 	RendererContext context;
 
 	VkRenderPass renderPass {VK_NULL_HANDLE};
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 	VkPipeline pipeline {VK_NULL_HANDLE};
-	VkCommandPool commandPool {VK_NULL_HANDLE};
 
 	std::vector<VkFramebuffer> frameBuffers;
 	std::vector<VkCommandBuffer> commandBuffers;
-
-	VkShaderModule vertexShader {VK_NULL_HANDLE};
-	VkShaderModule fragmentShader {VK_NULL_HANDLE};
 };
 
 /*
  */
 void Renderer::init(const std::string &vertexShaderFile, const std::string &fragmentShaderFile)
 {
-	vertexShader = createShader(vertexShaderFile);
-	fragmentShader = createShader(fragmentShaderFile);
+	data.init(vertexShaderFile, fragmentShaderFile);
 
 	// Create shader stages
 	VkPipelineShaderStageCreateInfo vertexShaderStageInfo = {};
 	vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vertexShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertexShaderStageInfo.module = vertexShader;
+	vertexShaderStageInfo.module = data.GetVertexShader();
 	vertexShaderStageInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo fragmentShaderStageInfo = {};
 	fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	fragmentShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragmentShaderStageInfo.module = fragmentShader;
+	fragmentShaderStageInfo.module = data.GetFragmentShader();
 	fragmentShaderStageInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderStageInfo, fragmentShaderStageInfo };
 
 	// Create vertex input
+	VkVertexInputBindingDescription bindingDescription = Vertex::getVertexInputBindingDescription();
+	std::array<VkVertexInputAttributeDescription, 2> attributes = Vertex::getAttributeDescriptions();
+
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+	vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
 
 	// Create input assembly
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
@@ -307,21 +604,12 @@ void Renderer::init(const std::string &vertexShaderFile, const std::string &frag
 			throw std::runtime_error("Can't create framebuffer");
 	}
 
-	// Create command pool
-	VkCommandPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = context.queueFamilyIndices.graphicsFamily.second;
-	poolInfo.flags = 0; // Optional
-
-	if (vkCreateCommandPool(context.device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
-		throw std::runtime_error("Can't create command pool");
-
 	// Create command buffers
 	commandBuffers.resize(context.imageViews.size());
 
 	VkCommandBufferAllocateInfo allocateInfo = {};
 	allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocateInfo.commandPool = commandPool;
+	allocateInfo.commandPool = context.commandPool;
 	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocateInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
 
@@ -351,7 +639,14 @@ void Renderer::init(const std::string &vertexShaderFile, const std::string &frag
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+
+		VkBuffer vertexBuffers[] = { data.GetVertexBuffer() };
+		VkBuffer indexBuffer = data.GetIndexBuffer();
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[i]);
 
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
@@ -361,8 +656,7 @@ void Renderer::init(const std::string &vertexShaderFile, const std::string &frag
 
 void Renderer::shutdown()
 {
-	vkDestroyCommandPool(context.device, commandPool, nullptr);
-	commandPool = VK_NULL_HANDLE;
+	data.shutdown();
 
 	for (auto framebuffer : frameBuffers)
 		vkDestroyFramebuffer(context.device, framebuffer, nullptr);
@@ -377,12 +671,6 @@ void Renderer::shutdown()
 
 	vkDestroyRenderPass(context.device, renderPass, nullptr);
 	renderPass = VK_NULL_HANDLE;
-
-	vkDestroyShaderModule(context.device, vertexShader, nullptr);
-	vertexShader = VK_NULL_HANDLE;
-
-	vkDestroyShaderModule(context.device, fragmentShader, nullptr);
-	fragmentShader = VK_NULL_HANDLE;
 }
 
 /*
@@ -390,24 +678,6 @@ void Renderer::shutdown()
 VkCommandBuffer Renderer::render(uint32_t imageIndex)
 {
 	return commandBuffers[imageIndex];
-}
-
-/*
- */
-VkShaderModule Renderer::createShader(const std::string &path) const
-{
-	std::vector<char> code = readFile(path);
-
-	VkShaderModuleCreateInfo shaderInfo = {};
-	shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	shaderInfo.codeSize = code.size();
-	shaderInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
-
-	VkShaderModule shader;
-	if (vkCreateShaderModule(context.device, &shaderInfo, nullptr, &shader) != VK_SUCCESS)
-		throw std::runtime_error("Can't create shader module");
-
-	return shader;
 }
 
 /*
@@ -428,6 +698,17 @@ struct SwapChainSettings
 	VkExtent2D extent;
 };
 
+/*
+ */
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+	VkDebugUtilsMessageTypeFlagsEXT messageType,
+	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+	void* pUserData)
+{
+	std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
+	return VK_FALSE;
+}
 
 /*
  */
@@ -479,6 +760,8 @@ private:
 
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
+
+	VkCommandPool commandPool {VK_NULL_HANDLE};
 
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -610,10 +893,13 @@ void Application::initRenderer()
 {
 	RendererContext context = {};
 	context.device = device;
+	context.physicalDevice = physicalDevice;
+	context.commandPool = commandPool;
 	context.format = swapChainImageFormat;
 	context.extent = swapChainExtent;
 	context.imageViews = swapChainImageViews;
-	context.queueFamilyIndices = fetchQueueFamilyIndices(physicalDevice);
+	context.graphicsQueue = graphicsQueue;
+	context.presentQueue = presentQueue;
 
 	renderer = new Renderer(context);
 	renderer->init(
@@ -1130,6 +1416,15 @@ void Application::initVulkan()
 		if (result != VK_SUCCESS)
 			throw std::runtime_error("Can't create in flight frame fence");
 	}
+
+	// Create command pool
+	VkCommandPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = indices.graphicsFamily.second;
+	poolInfo.flags = 0; // Optional
+
+	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
+		throw std::runtime_error("Can't create command pool");
 }
 
 void Application::initVulkanExtensions()
@@ -1145,6 +1440,9 @@ void Application::initVulkanExtensions()
 
 void Application::shutdownVulkan()
 {
+	vkDestroyCommandPool(device, commandPool, nullptr);
+	commandPool = VK_NULL_HANDLE;
+
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
