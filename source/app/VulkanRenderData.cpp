@@ -280,6 +280,7 @@ void RenderData::createImage(const std::string &path)
 	VulkanUtils::transitionImageLayout(
 		context,
 		textureImage,
+		format,
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
 	);
@@ -297,6 +298,7 @@ void RenderData::createImage(const std::string &path)
 	VulkanUtils::transitionImageLayout(
 		context,
 		textureImage,
+		format,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 	);
@@ -306,6 +308,6 @@ void RenderData::createImage(const std::string &path)
 	vkFreeMemory(context.device, stagingBufferMemory, nullptr);
 
 	// Create image view & sampler
-	textureImageView = VulkanUtils::createImage2DView(context, textureImage, format);
+	textureImageView = VulkanUtils::createImage2DView(context, textureImage, format, VK_IMAGE_ASPECT_COLOR_BIT);
 	textureImageSampler = VulkanUtils::createSampler(context);
 }

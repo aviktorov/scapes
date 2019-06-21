@@ -14,9 +14,11 @@ struct RendererContext
 	VkPhysicalDevice physicalDevice {VK_NULL_HANDLE};
 	VkCommandPool commandPool {VK_NULL_HANDLE};
 	VkDescriptorPool descriptorPool;
-	VkFormat format;
+	VkFormat colorFormat;
+	VkFormat depthFormat;
 	VkExtent2D extent;
 	std::vector<VkImageView> swapChainImageViews;
+	VkImageView depthImageView;
 	VkQueue graphicsQueue {VK_NULL_HANDLE};
 	VkQueue presentQueue {VK_NULL_HANDLE};
 };

@@ -41,7 +41,8 @@ public:
 	static VkImageView createImage2DView(
 		const RendererContext &context,
 		VkImage image,
-		VkFormat format
+		VkFormat format,
+		VkImageAspectFlags aspectFlags
 	);
 
 	static VkSampler createSampler(
@@ -66,12 +67,13 @@ public:
 	static void transitionImageLayout(
 		const RendererContext &context,
 		VkImage image,
+		VkFormat format,
 		VkImageLayout oldLayout,
 		VkImageLayout newLayout
 	);
 
 private:
-
+	static bool hasStencilComponent(VkFormat format);
 	static VkCommandBuffer beginSingleTimeCommands(const RendererContext &context);
 	static void endSingleTimeCommands(const RendererContext &context, VkCommandBuffer commandBuffer);
 };

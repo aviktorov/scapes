@@ -13,6 +13,10 @@
 #include <set>
 #include <array>
 
+static std::string vertex_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/vert.spv";
+static std::string fragment_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/frag.spv";
+static std::string texture_path = "D:/Development/Projects/pbr-sandbox/textures/texture.jpg";
+
 /*
  */
 static std::vector<const char*> requiredPhysicalDeviceExtensions = {
@@ -135,18 +139,16 @@ void Application::initRenderer()
 	context.physicalDevice = physicalDevice;
 	context.commandPool = commandPool;
 	context.descriptorPool = descriptorPool;
-	context.format = swapChainImageFormat;
+	context.colorFormat = swapChainImageFormat;
+	context.depthFormat = depthFormat;
 	context.extent = swapChainExtent;
 	context.swapChainImageViews = swapChainImageViews;
+	context.depthImageView = depthImageView;
 	context.graphicsQueue = graphicsQueue;
 	context.presentQueue = presentQueue;
 
 	renderer = new Renderer(context);
-	renderer->init(
-		"D:/Development/Projects/pbr-sandbox/shaders/vert.spv",
-		"D:/Development/Projects/pbr-sandbox/shaders/frag.spv",
-		"D:/Development/Projects/pbr-sandbox/textures/texture.jpg"
-	);
+	renderer->init(vertex_shader_path, fragment_shader_path, texture_path);
 }
 
 void Application::shutdownRenderer()
@@ -423,6 +425,36 @@ SwapChainSettings Application::selectOptimalSwapChainSettings(const SwapChainSup
 	return settings;
 }
 
+VkFormat Application::selectOptimalSupportedFormat(
+	const std::vector<VkFormat> &candidates,
+	VkImageTiling tiling,
+	VkFormatFeatureFlags features
+) const
+{
+	for (VkFormat format : candidates)
+	{
+		VkFormatProperties properties;
+		vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &properties);
+
+		if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features)
+			return format;
+		
+		if (tiling == VK_IMAGE_TILING_OPTIMAL && (properties.optimalTilingFeatures & features) == features)
+			return format;
+	}
+
+	throw std::runtime_error("Can't select optimal supported format");
+}
+
+VkFormat Application::selectOptimalDepthFormat() const
+{
+	return selectOptimalSupportedFormat(
+		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+	);
+}
+
 /*
  */
 void Application::initVulkan()
@@ -638,7 +670,6 @@ void Application::initVulkan()
 	if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
 		throw std::runtime_error("Can't create descriptor pool");
 
-
 	// Create sync objects
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -668,12 +699,51 @@ void Application::initVulkan()
 
 	RendererContext context = {};
 	context.device = device;
+	context.physicalDevice = physicalDevice;
+	context.commandPool = commandPool;
+	context.graphicsQueue = graphicsQueue;
+	context.presentQueue = presentQueue;
 
 	// Create swap chain image views
 	swapChainImageViews.resize(swapChainImageCount);
 	for (size_t i = 0; i < swapChainImageViews.size(); i++)
-		swapChainImageViews[i] = VulkanUtils::createImage2DView(context, swapChainImages[i], swapChainImageFormat);
+		swapChainImageViews[i] = VulkanUtils::createImage2DView(
+			context,
+			swapChainImages[i],
+			swapChainImageFormat,
+			VK_IMAGE_ASPECT_COLOR_BIT
+		);
 
+	// Create depth buffer
+	depthFormat = selectOptimalDepthFormat();
+
+	VulkanUtils::createImage2D(
+		context,
+		swapChainExtent.width,
+		swapChainExtent.height,
+		depthFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		depthImage,
+		depthImageMemory
+	);
+
+	// Create depth buffer image view
+	depthImageView = VulkanUtils::createImage2DView(
+		context,
+		depthImage,
+		depthFormat,
+		VK_IMAGE_ASPECT_DEPTH_BIT
+	);
+
+	VulkanUtils::transitionImageLayout(
+		context,
+		depthImage,
+		depthFormat,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+	);
 }
 
 void Application::initVulkanExtensions()
@@ -705,6 +775,15 @@ void Application::shutdownVulkan()
 	renderFinishedSemaphores.clear();
 	imageAvailableSemaphores.clear();
 	inFlightFences.clear();
+
+	vkDestroyImageView(device, depthImageView, nullptr);
+	depthImageView = nullptr;
+
+	vkDestroyImage(device, depthImage, nullptr);
+	depthImage = nullptr;
+
+	vkFreeMemory(device, depthImageMemory, nullptr);
+	depthImageMemory = nullptr;
 
 	for (auto imageView : swapChainImageViews)
 		vkDestroyImageView(device, imageView, nullptr);

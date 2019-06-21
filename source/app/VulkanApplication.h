@@ -59,6 +59,13 @@ private:
 	QueueFamilyIndices fetchQueueFamilyIndices(VkPhysicalDevice device) const;
 
 	SwapChainSettings selectOptimalSwapChainSettings(const SwapChainSupportDetails &details) const;
+	VkFormat selectOptimalSupportedFormat(
+		const std::vector<VkFormat> &candidates,
+		VkImageTiling tiling,
+		VkFormatFeatureFlags features
+	) const;
+
+	VkFormat selectOptimalDepthFormat() const;
 
 	void initVulkanExtensions();
 
@@ -75,6 +82,7 @@ private:
 	GLFWwindow *window {nullptr};
 	Renderer *renderer {nullptr};
 
+	//
 	VkInstance instance {VK_NULL_HANDLE};
 	VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
 	VkPhysicalDevice physicalDevice {VK_NULL_HANDLE};
@@ -83,20 +91,26 @@ private:
 	VkQueue presentQueue {VK_NULL_HANDLE};
 	VkSurfaceKHR surface {VK_NULL_HANDLE};
 
+	//
 	VkSwapchainKHR swapChain {VK_NULL_HANDLE};
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;
 
+	VkFormat swapChainImageFormat;
+	VkExtent2D swapChainExtent;
+
+	//
 	VkImage depthImage;
 	VkImageView depthImageView;
 	VkDeviceMemory depthImageMemory;
 
-	VkFormat swapChainImageFormat;
-	VkExtent2D swapChainExtent;
+	VkFormat depthFormat;
 
+	//
 	VkDescriptorPool descriptorPool;
 	VkCommandPool commandPool {VK_NULL_HANDLE};
 
+	//
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
