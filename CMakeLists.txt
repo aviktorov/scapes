@@ -10,7 +10,12 @@ include_directories("3rdparty/assimp/contrib/stb_image")
 add_subdirectory("3rdparty/glfw")
 add_subdirectory("3rdparty/assimp")
 
-add_executable(PBRSandbox source/app/main.cpp)
+file(GLOB PBR_SANDBOX_SOURCES
+	source/app/*.h
+	source/app/*.cpp
+)
+
+add_executable(PBRSandbox ${PBR_SANDBOX_SOURCES})
 
 find_package(Vulkan REQUIRED)
 if (Vulkan_FOUND)
