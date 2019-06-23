@@ -21,8 +21,10 @@ public:
 	void init(
 		const std::string &vertexShaderFile,
 		const std::string &fragmentShaderFile,
-		const std::string &textureFile
+		const std::string &textureFile,
+		const std::string &modelFile
 	);
+
 	VkCommandBuffer render(uint32_t imageIndex);
 	void shutdown();
 

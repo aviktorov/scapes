@@ -34,6 +34,12 @@ struct Vertex
 	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions();
 };
 
+struct RenderModel
+{
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
+};
+
 /*
  */
 class RenderData
@@ -45,7 +51,8 @@ public:
 	void init(
 		const std::string &vertexShaderFile,
 		const std::string &fragmentShaderFile,
-		const std::string &textureFile
+		const std::string &textureFile,
+		const std::string &modelFile
 	);
 	void shutdown();
 
@@ -55,16 +62,18 @@ public:
 	inline VkBuffer getIndexBuffer() const { return indexBuffer; }
 	inline VkImageView getTextureImageView() const { return textureImageView; }
 	inline VkSampler getTextureImageSampler() const { return textureImageSampler; }
-	uint32_t getNumIndices() const;
+	inline uint32_t getNumIndices() const { return static_cast<uint32_t>(model.indices.size()); }
 
 private:
 	VkShaderModule createShader(const std::string &path) const;
+	RenderModel createModel(const std::string &path) const;
 	void createVertexBuffer();
 	void createIndexBuffer();
 	void createImage(const std::string &path);
 
 private:
 	RendererContext context;
+	RenderModel model;
 
 	VkShaderModule vertexShader {VK_NULL_HANDLE};
 	VkShaderModule fragmentShader {VK_NULL_HANDLE};

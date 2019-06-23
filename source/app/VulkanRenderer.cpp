@@ -5,9 +5,14 @@
 
 /*
  */
-void Renderer::init(const std::string &vertexShaderFile, const std::string &fragmentShaderFile, const std::string &textureFile)
+void Renderer::init(
+	const std::string &vertexShaderFile,
+	const std::string &fragmentShaderFile,
+	const std::string &textureFile,
+	const std::string &modelFile
+)
 {
-	data.init(vertexShaderFile, fragmentShaderFile, textureFile);
+	data.init(vertexShaderFile, fragmentShaderFile, textureFile, modelFile);
 
 	// Create uniform buffers
 	VkDeviceSize uboSize = sizeof(UniformBufferObject);
@@ -380,7 +385,7 @@ void Renderer::init(const std::string &vertexShaderFile, const std::string &frag
 		VkBuffer indexBuffer = data.getIndexBuffer();
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 		vkCmdDrawIndexed(commandBuffers[i], data.getNumIndices(), 1, 0, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[i]);

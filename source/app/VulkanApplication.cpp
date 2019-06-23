@@ -15,7 +15,8 @@
 
 static std::string vertex_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/vert.spv";
 static std::string fragment_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/frag.spv";
-static std::string texture_path = "D:/Development/Projects/pbr-sandbox/textures/texture.jpg";
+static std::string texture_path = "D:/Development/Projects/pbr-sandbox/textures/chalet.jpg";
+static std::string model_path = "D:/Development/Projects/pbr-sandbox/models/chalet.obj";
 
 /*
  */
@@ -148,7 +149,7 @@ void Application::initRenderer()
 	context.presentQueue = presentQueue;
 
 	renderer = new Renderer(context);
-	renderer->init(vertex_shader_path, fragment_shader_path, texture_path);
+	renderer->init(vertex_shader_path, fragment_shader_path, texture_path, model_path);
 }
 
 void Application::shutdownRenderer()
