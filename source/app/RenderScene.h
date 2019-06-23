@@ -11,10 +11,10 @@
 
 /*
  */
-class RenderData
+class RenderScene
 {
 public:
-	RenderData(const RendererContext &context)
+	RenderScene(const VulkanRendererContext &context)
 		: context(context), mesh(context) { }
 
 	void init(
@@ -36,7 +36,7 @@ private:
 	void createImage(const std::string &path);
 
 private:
-	RendererContext context;
+	VulkanRendererContext context;
 	VulkanMesh mesh;
 
 	VkShaderModule vertexShader {VK_NULL_HANDLE};

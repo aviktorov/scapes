@@ -2,10 +2,6 @@
 #include <stdexcept>
 
 #include "VulkanApplication.h"
-#include "VulkanRenderer.h"
-#include "VulkanRendererContext.h"
-#include "VulkanRenderData.h"
-#include "VulkanUtils.h"
 
 #include <GLFW/glfw3.h>
 

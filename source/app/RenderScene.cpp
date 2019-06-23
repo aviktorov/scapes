@@ -1,4 +1,4 @@
-#include "VulkanRenderData.h"
+#include "RenderScene.h"
 #include "VulkanUtils.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -29,7 +29,7 @@ static std::vector<char> readFile(const std::string &filename)
 
 /*
  */
-void RenderData::init(
+void RenderScene::init(
 	const std::string &vertexShaderFile,
 	const std::string &fragmentShaderFile,
 	const std::string &textureFile,
@@ -44,7 +44,7 @@ void RenderData::init(
 	createImage(textureFile);
 }
 
-void RenderData::shutdown()
+void RenderScene::shutdown()
 {
 	vkDestroySampler(context.device, textureImageSampler, nullptr);
 	textureImageSampler = nullptr;
@@ -69,7 +69,7 @@ void RenderData::shutdown()
 
 /*
  */
-VkShaderModule RenderData::createShader(const std::string &path) const
+VkShaderModule RenderScene::createShader(const std::string &path) const
 {
 	std::vector<char> code = readFile(path);
 
@@ -85,7 +85,7 @@ VkShaderModule RenderData::createShader(const std::string &path) const
 	return shader;
 }
 
-void RenderData::createImage(const std::string &path)
+void RenderScene::createImage(const std::string &path)
 {
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);

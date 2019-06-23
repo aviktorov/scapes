@@ -4,7 +4,7 @@
 /*
  */
 uint32_t VulkanUtils::findMemoryType(
-	const RendererContext &context,
+	const VulkanRendererContext &context,
 	uint32_t typeFilter,
 	VkMemoryPropertyFlags properties
 )
@@ -23,7 +23,7 @@ uint32_t VulkanUtils::findMemoryType(
 }
 
 void VulkanUtils::createBuffer(
-	const RendererContext &context,
+	const VulkanRendererContext &context,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
 	VkMemoryPropertyFlags memoryProperties,
@@ -58,7 +58,7 @@ void VulkanUtils::createBuffer(
 }
 
 void VulkanUtils::createImage2D(
-	const RendererContext &context,
+	const VulkanRendererContext &context,
 	uint32_t width,
 	uint32_t height,
 	VkFormat format,
@@ -105,7 +105,7 @@ void VulkanUtils::createImage2D(
 		throw std::runtime_error("Can't bind image memory");
 }
 
-VkImageView VulkanUtils::createImage2DView(const RendererContext &context, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+VkImageView VulkanUtils::createImage2DView(const VulkanRendererContext &context, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
 {
 	VkImageViewCreateInfo viewInfo = {};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -125,7 +125,7 @@ VkImageView VulkanUtils::createImage2DView(const RendererContext &context, VkIma
 	return imageView;
 }
 
-VkSampler VulkanUtils::createSampler(const RendererContext &context)
+VkSampler VulkanUtils::createSampler(const VulkanRendererContext &context)
 {
 	VkSamplerCreateInfo samplerInfo = {};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -153,7 +153,7 @@ VkSampler VulkanUtils::createSampler(const RendererContext &context)
 }
 
 void VulkanUtils::copyBuffer(
-	const RendererContext &context,
+	const VulkanRendererContext &context,
 	VkBuffer src,
 	VkBuffer dst,
 	VkDeviceSize size
@@ -170,7 +170,7 @@ void VulkanUtils::copyBuffer(
 
 
 void VulkanUtils::copyBufferToImage(
-	const RendererContext &context,
+	const VulkanRendererContext &context,
 	VkBuffer src,
 	VkImage dst,
 	uint32_t width,
@@ -200,7 +200,7 @@ void VulkanUtils::copyBufferToImage(
 }
 
 void VulkanUtils::transitionImageLayout(
-	const RendererContext &context,
+	const VulkanRendererContext &context,
 	VkImage image,
 	VkFormat format,
 	VkImageLayout oldLayout,
@@ -281,7 +281,7 @@ bool VulkanUtils::hasStencilComponent(VkFormat format)
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const RendererContext &context)
+VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const VulkanRendererContext &context)
 {
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -301,7 +301,7 @@ VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const RendererContext &cont
 	return commandBuffer;
 }
 
-void VulkanUtils::endSingleTimeCommands(const RendererContext &context, VkCommandBuffer commandBuffer)
+void VulkanUtils::endSingleTimeCommands(const VulkanRendererContext &context, VkCommandBuffer commandBuffer)
 {
 	vkEndCommandBuffer(commandBuffer);
 

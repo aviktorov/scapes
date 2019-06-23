@@ -8,7 +8,7 @@
 
 /*
  */
-struct RendererContext
+struct VulkanRendererContext
 {
 	VkDevice device {VK_NULL_HANDLE};
 	VkPhysicalDevice physicalDevice {VK_NULL_HANDLE};

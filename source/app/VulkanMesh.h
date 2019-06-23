@@ -20,7 +20,7 @@
 class VulkanMesh
 {
 public:
-	VulkanMesh(const RendererContext &context)
+	VulkanMesh(const VulkanRendererContext &context)
 		: context(context) { }
 
 	~VulkanMesh();
@@ -43,7 +43,7 @@ private:
 	void createIndexBuffer();
 
 private:
-	RendererContext context;
+	VulkanRendererContext context;
 
 	struct Vertex
 	{

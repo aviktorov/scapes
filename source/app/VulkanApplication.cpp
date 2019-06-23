@@ -1,7 +1,6 @@
 #include "VulkanApplication.h"
 #include "VulkanRenderer.h"
 #include "VulkanRendererContext.h"
-#include "VulkanRenderData.h"
 #include "VulkanUtils.h"
 
 #include <GLFW/glfw3.h>
@@ -135,7 +134,7 @@ void Application::shutdownWindow()
  */
 void Application::initRenderer()
 {
-	RendererContext context = {};
+	VulkanRendererContext context = {};
 	context.device = device;
 	context.physicalDevice = physicalDevice;
 	context.commandPool = commandPool;
@@ -698,7 +697,7 @@ void Application::initVulkan()
 			throw std::runtime_error("Can't create in flight frame fence");
 	}
 
-	RendererContext context = {};
+	VulkanRendererContext context = {};
 	context.device = device;
 	context.physicalDevice = physicalDevice;
 	context.commandPool = commandPool;

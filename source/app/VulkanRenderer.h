@@ -8,14 +8,14 @@
 #include <vector>
 
 #include "VulkanRendererContext.h"
-#include "VulkanRenderData.h"
+#include "RenderScene.h"
 
 /*
  */
 class Renderer
 {
 public:
-	Renderer(const RendererContext &context)
+	Renderer(const VulkanRendererContext &context)
 		: context(context), data(context) { }
 
 	void init(
@@ -32,8 +32,8 @@ private:
 	VkShaderModule createShader(const std::string &path) const;
 
 private:
-	RenderData data;
-	RendererContext context;
+	RenderScene data;
+	VulkanRendererContext context;
 
 	VkRenderPass renderPass {VK_NULL_HANDLE};
 	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};

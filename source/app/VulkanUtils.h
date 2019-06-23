@@ -4,7 +4,7 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
 
-struct RendererContext;
+struct VulkanRendererContext;
 
 /*
  */
@@ -12,13 +12,13 @@ class VulkanUtils
 {
 public:
 	static uint32_t findMemoryType(
-		const RendererContext &context,
+		const VulkanRendererContext &context,
 		uint32_t typeFilter,
 		VkMemoryPropertyFlags properties
 	);
 
 	static void createBuffer(
-		const RendererContext &context,
+		const VulkanRendererContext &context,
 		VkDeviceSize size,
 		VkBufferUsageFlags usage,
 		VkMemoryPropertyFlags memoryProperties,
@@ -27,7 +27,7 @@ public:
 	);
 
 	static void createImage2D(
-		const RendererContext &context,
+		const VulkanRendererContext &context,
 		uint32_t width,
 		uint32_t height,
 		VkFormat format,
@@ -39,25 +39,25 @@ public:
 	);
 
 	static VkImageView createImage2DView(
-		const RendererContext &context,
+		const VulkanRendererContext &context,
 		VkImage image,
 		VkFormat format,
 		VkImageAspectFlags aspectFlags
 	);
 
 	static VkSampler createSampler(
-		const RendererContext &context
+		const VulkanRendererContext &context
 	);
 
 	static void copyBuffer(
-		const RendererContext &context,
+		const VulkanRendererContext &context,
 		VkBuffer src,
 		VkBuffer dst,
 		VkDeviceSize size
 	);
 
 	static void copyBufferToImage(
-		const RendererContext &context,
+		const VulkanRendererContext &context,
 		VkBuffer src,
 		VkImage dst,
 		uint32_t width,
@@ -65,7 +65,7 @@ public:
 	);
 
 	static void transitionImageLayout(
-		const RendererContext &context,
+		const VulkanRendererContext &context,
 		VkImage image,
 		VkFormat format,
 		VkImageLayout oldLayout,
@@ -74,6 +74,6 @@ public:
 
 private:
 	static bool hasStencilComponent(VkFormat format);
-	static VkCommandBuffer beginSingleTimeCommands(const RendererContext &context);
-	static void endSingleTimeCommands(const RendererContext &context, VkCommandBuffer commandBuffer);
+	static VkCommandBuffer beginSingleTimeCommands(const VulkanRendererContext &context);
+	static void endSingleTimeCommands(const VulkanRendererContext &context, VkCommandBuffer commandBuffer);
 };
