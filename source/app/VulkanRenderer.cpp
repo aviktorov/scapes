@@ -1,7 +1,22 @@
+#include "VulkanMesh.h"
 #include "VulkanRenderer.h"
 #include "VulkanUtils.h"
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <GLM/glm.hpp>
+#include <GLM/gtc/matrix_transform.hpp>
+
 #include <chrono>
+
+/*
+ */
+struct SharedRendererState
+{
+	glm::mat4 model;
+	glm::mat4 view;
+	glm::mat4 proj;
+};
 
 /*
  */
@@ -15,7 +30,7 @@ void Renderer::init(
 	data.init(vertexShaderFile, fragmentShaderFile, textureFile, modelFile);
 
 	// Create uniform buffers
-	VkDeviceSize uboSize = sizeof(UniformBufferObject);
+	VkDeviceSize uboSize = sizeof(SharedRendererState);
 
 	uint32_t imageCount = static_cast<uint32_t>(context.swapChainImageViews.size());
 	uniformBuffers.resize(imageCount);
@@ -49,8 +64,8 @@ void Renderer::init(
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderStageInfo, fragmentShaderStageInfo };
 
 	// Create vertex input
-	VkVertexInputBindingDescription bindingDescription = Vertex::getVertexInputBindingDescription();
-	auto attributes = Vertex::getAttributeDescriptions();
+	VkVertexInputBindingDescription bindingDescription = VulkanMesh::getVertexInputBindingDescription();
+	auto attributes = VulkanMesh::getAttributeDescriptions();
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -198,7 +213,7 @@ void Renderer::init(
 		VkDescriptorBufferInfo descriptorBufferInfo = {};
 		descriptorBufferInfo.buffer = uniformBuffers[i];
 		descriptorBufferInfo.offset = 0;
-		descriptorBufferInfo.range = sizeof(UniformBufferObject);
+		descriptorBufferInfo.range = sizeof(SharedRendererState);
 
 		VkDescriptorImageInfo descriptorImageInfo = {};
 		descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -381,13 +396,15 @@ void Renderer::init(
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
 
-		VkBuffer vertexBuffers[] = { data.getVertexBuffer() };
-		VkBuffer indexBuffer = data.getIndexBuffer();
+		const VulkanMesh &mesh = data.getMesh();
+
+		VkBuffer vertexBuffers[] = { mesh.getVertexBuffer() };
+		VkBuffer indexBuffer = mesh.getIndexBuffer();
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(commandBuffers[i], data.getNumIndices(), 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffers[i], mesh.getNumIndices(), 1, 0, 0, 0);
 		vkCmdEndRenderPass(commandBuffers[i]);
 
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
@@ -439,7 +456,7 @@ VkCommandBuffer Renderer::render(uint32_t imageIndex)
 	VkBuffer uniformBuffer = uniformBuffers[imageIndex];
 	VkDeviceMemory uniformBufferMemory = uniformBuffersMemory[imageIndex];
 
-	UniformBufferObject ubo = {};
+	SharedRendererState ubo = {};
 	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), context.extent.width / (float) context.extent.height, 0.1f, 10.0f);

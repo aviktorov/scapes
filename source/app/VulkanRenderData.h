@@ -4,41 +4,10 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <GLM/glm.hpp>
-#include <GLM/gtc/matrix_transform.hpp>
-
-#include <array>
+#include <string>
 
 #include "VulkanRendererContext.h"
-
-/*
- */
-struct UniformBufferObject
-{
-	glm::mat4 model;
-	glm::mat4 view;
-	glm::mat4 proj;
-};
-
-/*
- */
-struct Vertex
-{
-	glm::vec3 position;
-	glm::vec3 color;
-	glm::vec2 uv;
-
-	static VkVertexInputBindingDescription getVertexInputBindingDescription();
-	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions();
-};
-
-struct RenderModel
-{
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
-};
+#include "VulkanMesh.h"
 
 /*
  */
@@ -46,7 +15,7 @@ class RenderData
 {
 public:
 	RenderData(const RendererContext &context)
-		: context(context) { }
+		: context(context), mesh(context) { }
 
 	void init(
 		const std::string &vertexShaderFile,
@@ -58,31 +27,20 @@ public:
 
 	inline VkShaderModule getVertexShader() const { return vertexShader; }
 	inline VkShaderModule getFragmentShader() const { return fragmentShader; }
-	inline VkBuffer getVertexBuffer() const { return vertexBuffer; }
-	inline VkBuffer getIndexBuffer() const { return indexBuffer; }
 	inline VkImageView getTextureImageView() const { return textureImageView; }
 	inline VkSampler getTextureImageSampler() const { return textureImageSampler; }
-	inline uint32_t getNumIndices() const { return static_cast<uint32_t>(model.indices.size()); }
+	inline const VulkanMesh &getMesh() const { return mesh; }
 
 private:
 	VkShaderModule createShader(const std::string &path) const;
-	RenderModel createModel(const std::string &path) const;
-	void createVertexBuffer();
-	void createIndexBuffer();
 	void createImage(const std::string &path);
 
 private:
 	RendererContext context;
-	RenderModel model;
+	VulkanMesh mesh;
 
 	VkShaderModule vertexShader {VK_NULL_HANDLE};
 	VkShaderModule fragmentShader {VK_NULL_HANDLE};
-
-	VkBuffer vertexBuffer {VK_NULL_HANDLE};
-	VkDeviceMemory vertexBufferMemory {VK_NULL_HANDLE};
-
-	VkBuffer indexBuffer {VK_NULL_HANDLE};
-	VkDeviceMemory indexBufferMemory {VK_NULL_HANDLE};
 
 	VkImage textureImage;
 	VkDeviceMemory textureImageMemory;
