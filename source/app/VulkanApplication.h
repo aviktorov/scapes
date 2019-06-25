@@ -100,14 +100,14 @@ private:
 	VkExtent2D swapChainExtent;
 
 	//
-	VkImage depthImage;
-	VkImageView depthImageView;
-	VkDeviceMemory depthImageMemory;
+	VkImage depthImage {VK_NULL_HANDLE};
+	VkImageView depthImageView {VK_NULL_HANDLE};
+	VkDeviceMemory depthImageMemory {VK_NULL_HANDLE};
 
 	VkFormat depthFormat;
 
 	//
-	VkDescriptorPool descriptorPool;
+	VkDescriptorPool descriptorPool {VK_NULL_HANDLE};
 	VkCommandPool commandPool {VK_NULL_HANDLE};
 
 	//
