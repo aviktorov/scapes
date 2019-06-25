@@ -40,9 +40,8 @@ private:
 	VkShaderModule vertexShader {VK_NULL_HANDLE};
 	VkShaderModule fragmentShader {VK_NULL_HANDLE};
 
-	VkImage textureImage;
-	VkDeviceMemory textureImageMemory;
-
-	VkImageView textureImageView;
-	VkSampler textureImageSampler;
+	VkImage textureImage {VK_NULL_HANDLE};
+	VkDeviceMemory textureImageMemory {VK_NULL_HANDLE};
+	VkImageView textureImageView {VK_NULL_HANDLE};
+	VkSampler textureImageSampler {VK_NULL_HANDLE};
 };
