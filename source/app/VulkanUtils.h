@@ -28,6 +28,7 @@ public:
 		const VulkanRendererContext &context,
 		uint32_t width,
 		uint32_t height,
+		uint32_t mipLevels,
 		VkFormat format,
 		VkImageTiling tiling,
 		VkImageUsageFlags usage,
@@ -39,12 +40,14 @@ public:
 	static VkImageView createImage2DView(
 		const VulkanRendererContext &context,
 		VkImage image,
+		uint32_t mipLevels,
 		VkFormat format,
 		VkImageAspectFlags aspectFlags
 	);
 
 	static VkSampler createSampler(
-		const VulkanRendererContext &context
+		const VulkanRendererContext &context,
+		uint32_t mipLevels
 	);
 
 	static void copyBuffer(
@@ -65,9 +68,20 @@ public:
 	static void transitionImageLayout(
 		const VulkanRendererContext &context,
 		VkImage image,
+		uint32_t mipLevels,
 		VkFormat format,
 		VkImageLayout oldLayout,
 		VkImageLayout newLayout
+	);
+
+	static void generateImage2DMipmaps(
+		const VulkanRendererContext &context,
+		VkImage image,
+		uint32_t width,
+		uint32_t height,
+		uint32_t mipLevels,
+		VkFormat format,
+		VkFilter filter
 	);
 
 private:

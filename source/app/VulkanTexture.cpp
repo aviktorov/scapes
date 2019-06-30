@@ -4,6 +4,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <algorithm>
 #include <iostream>
 
 /*
@@ -26,6 +27,8 @@ bool VulkanTexture::loadFromFile(const std::string &path)
 		std::cerr << "VulkanTexture::loadFromFile(): " << stbi_failure_reason() << std::endl;
 		return false;
 	}
+
+	mipLevels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
 
 	size_t imageSize = width * height * 4;
 	if (pixels != nullptr)
@@ -78,9 +81,10 @@ void VulkanTexture::uploadToGPU()
 		context,
 		width,
 		height,
+		mipLevels,
 		format,
 		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		image,
 		imageMemory
@@ -90,6 +94,7 @@ void VulkanTexture::uploadToGPU()
 	VulkanUtils::transitionImageLayout(
 		context,
 		image,
+		mipLevels,
 		format,
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
@@ -104,10 +109,22 @@ void VulkanTexture::uploadToGPU()
 		height
 	);
 
+	// Generate mipmaps on GPU with linear filtering
+	VulkanUtils::generateImage2DMipmaps(
+		context,
+		image,
+		width,
+		height,
+		mipLevels,
+		format,
+		VK_FILTER_LINEAR
+	);
+
 	// Prepare the image for shader access
 	VulkanUtils::transitionImageLayout(
 		context,
 		image,
+		mipLevels,
 		format,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
@@ -118,8 +135,8 @@ void VulkanTexture::uploadToGPU()
 	vkFreeMemory(context.device, stagingBufferMemory, nullptr);
 
 	// Create image view & sampler
-	imageView = VulkanUtils::createImage2DView(context, image, format, VK_IMAGE_ASPECT_COLOR_BIT);
-	imageSampler = VulkanUtils::createSampler(context);
+	imageView = VulkanUtils::createImage2DView(context, image, mipLevels, format, VK_IMAGE_ASPECT_COLOR_BIT);
+	imageSampler = VulkanUtils::createSampler(context, mipLevels);
 }
 
 void VulkanTexture::clearGPUData()

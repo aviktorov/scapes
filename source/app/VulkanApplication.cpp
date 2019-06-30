@@ -292,9 +292,6 @@ bool Application::checkPhysicalDevice(VkPhysicalDevice device, VkSurfaceKHR surf
 	if (!deviceFeatures.geometryShader)
 		return false;
 
-	if (!deviceFeatures.samplerAnisotropy)
-		return false;
-
 	return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 }
 
@@ -710,6 +707,7 @@ void Application::initVulkan()
 		swapChainImageViews[i] = VulkanUtils::createImage2DView(
 			context,
 			swapChainImages[i],
+			1,
 			swapChainImageFormat,
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
@@ -721,6 +719,7 @@ void Application::initVulkan()
 		context,
 		swapChainExtent.width,
 		swapChainExtent.height,
+		1,
 		depthFormat,
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -733,6 +732,7 @@ void Application::initVulkan()
 	depthImageView = VulkanUtils::createImage2DView(
 		context,
 		depthImage,
+		1,
 		depthFormat,
 		VK_IMAGE_ASPECT_DEPTH_BIT
 	);
@@ -740,6 +740,7 @@ void Application::initVulkan()
 	VulkanUtils::transitionImageLayout(
 		context,
 		depthImage,
+		1,
 		depthFormat,
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL

@@ -453,15 +453,23 @@ VkCommandBuffer Renderer::render(uint32_t imageIndex)
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
 
+	const float rotationSpeed = 0.1f;
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
 	VkBuffer uniformBuffer = uniformBuffers[imageIndex];
 	VkDeviceMemory uniformBufferMemory = uniformBuffersMemory[imageIndex];
 
+	const glm::vec3 &up = {0.0f, 0.0f, 1.0f};
+	const glm::vec3 &zero = {0.0f, 0.0f, 0.0f};
+
+	const float aspect = context.extent.width / (float) context.extent.height;
+	const float zNear = 0.1f;
+	const float zFar = 10.0f;
+
 	SharedRendererState ubo = {};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), context.extent.width / (float) context.extent.height, 0.1f, 10.0f);
+	ubo.model = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);
+	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), zero, up);
+	ubo.proj = glm::perspective(glm::radians(45.0f), aspect, zNear, zFar);
 	ubo.proj[1][1] *= -1;
 
 	void *data;

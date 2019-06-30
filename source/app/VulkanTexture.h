@@ -33,6 +33,7 @@ private:
 	int width {0};
 	int height {0};
 	int channels {0};
+	int mipLevels {0};
 
 	VkFormat format {VK_FORMAT_R8G8B8A8_UNORM};
 
