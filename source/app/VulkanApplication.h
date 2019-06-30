@@ -116,11 +116,8 @@ private:
 	std::vector<VkFence> inFlightFences;
 	size_t currentFrame {0};
 
-	enum
-	{
-		WIDTH = 640,
-		HEIGHT = 480,
-	};
+	uint32_t windowWidth {0};
+	uint32_t windowHeight {0};
 
 	enum
 	{
