@@ -104,9 +104,10 @@ bool VulkanMesh::loadFromFile(const std::string &path)
 			indices[index++] = meshFaces[i].mIndices[faceIndex];
 
 	// Upload CPU data to GPU
+	clearGPUData();
 	uploadToGPU();
 
-	// TODO: clear CPU data?
+	// TODO: should we clear CPU data after uploading it to the GPU?
 
 	return true;
 }
