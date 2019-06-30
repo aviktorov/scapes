@@ -210,6 +210,8 @@ void Renderer::init(
 
 	for (size_t i = 0; i < imageCount; i++)
 	{
+		const VulkanTexture &texture = data.getTexture();
+
 		VkDescriptorBufferInfo descriptorBufferInfo = {};
 		descriptorBufferInfo.buffer = uniformBuffers[i];
 		descriptorBufferInfo.offset = 0;
@@ -217,8 +219,8 @@ void Renderer::init(
 
 		VkDescriptorImageInfo descriptorImageInfo = {};
 		descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		descriptorImageInfo.imageView = data.getTextureImageView();
-		descriptorImageInfo.sampler = data.getTextureImageSampler();
+		descriptorImageInfo.imageView = texture.getImageView();
+		descriptorImageInfo.sampler = texture.getSampler();
 
 		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
 
