@@ -27,9 +27,6 @@ static std::vector<const char *> requiredValidationLayers = {
 	"VK_LAYER_KHRONOS_validation",
 };
 
-static PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugMessenger {VK_NULL_HANDLE};
-static PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugMessenger {VK_NULL_HANDLE};
-
 /*
  */
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -61,7 +58,8 @@ void Application::render()
 {
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 	vkResetFences(device, 1, &inFlightFences[currentFrame]);
-	uint32_t imageIndex;
+
+	uint32_t imageIndex = 0;
 	vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
 	VkCommandBuffer commandBuffer = renderer->render(imageIndex);
@@ -467,6 +465,9 @@ VkFormat Application::selectOptimalDepthFormat() const
  */
 void Application::initVulkan()
 {
+	if (volkInitialize() != VK_SUCCESS)
+		throw std::runtime_error("Can't initialize Vulkan helper library");
+
 	// Check required extensions & layers
 	std::vector<const char *> extensions;
 	if (!checkRequiredExtensions(extensions))
@@ -506,10 +507,10 @@ void Application::initVulkan()
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Failed to create Vulkan instance");
 
-	initVulkanExtensions();
+	volkLoadInstance(instance);
 
 	// Create Vulkan debug messenger
-	result = vkCreateDebugMessenger(instance, &debugMessengerInfo, nullptr, &debugMessenger);
+	result = vkCreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessenger);
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Can't create Vulkan debug messenger");
 
@@ -584,6 +585,8 @@ void Application::initVulkan()
 	result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device);
 	if (result != VK_SUCCESS)
 		throw std::runtime_error("Can't create logical device");
+
+	volkLoadDevice(device);
 
 	// Get logical device queues
 	vkGetDeviceQueue(device, indices.graphicsFamily.second, 0, &graphicsQueue);
@@ -758,17 +761,6 @@ void Application::initVulkan()
 	);
 }
 
-void Application::initVulkanExtensions()
-{
-	vkCreateDebugMessenger = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	if (!vkCreateDebugMessenger)
-		throw std::runtime_error("Can't find vkCreateDebugUtilsMessengerEXT function");
-
-	vkDestroyDebugMessenger = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (!vkDestroyDebugMessenger)
-		throw std::runtime_error("Can't find vkDestroyDebugUtilsMessengerEXT function");
-}
-
 void Application::shutdownVulkan()
 {
 	vkDestroyCommandPool(device, commandPool, nullptr);
@@ -812,7 +804,7 @@ void Application::shutdownVulkan()
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	surface = VK_NULL_HANDLE;
 
-	vkDestroyDebugMessenger(instance, debugMessenger, nullptr);
+	vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 	debugMessenger = VK_NULL_HANDLE;
 
 	vkDestroyInstance(instance, nullptr);
