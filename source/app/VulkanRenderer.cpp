@@ -2,6 +2,8 @@
 #include "VulkanRenderer.h"
 #include "VulkanUtils.h"
 
+#include "RenderScene.h"
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLM/glm.hpp>
@@ -20,19 +22,12 @@ struct SharedRendererState
 
 /*
  */
-void Renderer::init(
-	const std::string &vertexShaderFile,
-	const std::string &fragmentShaderFile,
-	const std::string &textureFile,
-	const std::string &modelFile
-)
+void Renderer::init(const RenderScene *scene)
 {
-	data.init(vertexShaderFile, fragmentShaderFile, textureFile, modelFile);
-
 	// Create uniform buffers
 	VkDeviceSize uboSize = sizeof(SharedRendererState);
 
-	uint32_t imageCount = static_cast<uint32_t>(context.swapChainImageViews.size());
+	uint32_t imageCount = static_cast<uint32_t>(swapChainContext.swapChainImageViews.size());
 	uniformBuffers.resize(imageCount);
 	uniformBuffersMemory.resize(imageCount);
 
@@ -52,13 +47,13 @@ void Renderer::init(
 	VkPipelineShaderStageCreateInfo vertexShaderStageInfo = {};
 	vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vertexShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertexShaderStageInfo.module = data.getVertexShader();
+	vertexShaderStageInfo.module = scene->getVertexShader();
 	vertexShaderStageInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo fragmentShaderStageInfo = {};
 	fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	fragmentShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragmentShaderStageInfo.module = data.getFragmentShader();
+	fragmentShaderStageInfo.module = scene->getFragmentShader();
 	fragmentShaderStageInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderStageInfo, fragmentShaderStageInfo };
@@ -84,14 +79,14 @@ void Renderer::init(
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(context.extent.width);
-	viewport.height = static_cast<float>(context.extent.height);
+	viewport.width = static_cast<float>(swapChainContext.extent.width);
+	viewport.height = static_cast<float>(swapChainContext.extent.height);
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = {0, 0};
-	scissor.extent = context.extent;
+	scissor.extent = swapChainContext.extent;
 
 	VkPipelineViewportStateCreateInfo viewportStateInfo = {};
 	viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -200,7 +195,7 @@ void Renderer::init(
 
 	VkDescriptorSetAllocateInfo descriptorSetAllocInfo = {};
 	descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descriptorSetAllocInfo.descriptorPool = context.descriptorPool;
+	descriptorSetAllocInfo.descriptorPool = swapChainContext.descriptorPool;
 	descriptorSetAllocInfo.descriptorSetCount = imageCount;
 	descriptorSetAllocInfo.pSetLayouts = layouts.data();
 
@@ -210,7 +205,7 @@ void Renderer::init(
 
 	for (size_t i = 0; i < imageCount; i++)
 	{
-		const VulkanTexture &texture = data.getTexture();
+		const VulkanTexture &texture = scene->getTexture();
 
 		VkDescriptorBufferInfo descriptorBufferInfo = {};
 		descriptorBufferInfo.buffer = uniformBuffers[i];
@@ -262,7 +257,7 @@ void Renderer::init(
 
 	// Create render pass
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = context.colorFormat;
+	colorAttachment.format = swapChainContext.colorFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -276,7 +271,7 @@ void Renderer::init(
 	colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription depthAttachment = {};
-	depthAttachment.format = context.depthFormat;
+	depthAttachment.format = swapChainContext.depthFormat;
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -342,8 +337,8 @@ void Renderer::init(
 	frameBuffers.resize(imageCount);
 	for (size_t i = 0; i < imageCount; i++) {
 		std::array<VkImageView, 2> attachments = {
-			context.swapChainImageViews[i],
-			context.depthImageView,
+			swapChainContext.swapChainImageViews[i],
+			swapChainContext.depthImageView,
 		};
 
 		VkFramebufferCreateInfo framebufferInfo = {};
@@ -351,8 +346,8 @@ void Renderer::init(
 		framebufferInfo.renderPass = renderPass;
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = context.extent.width;
-		framebufferInfo.height = context.extent.height;
+		framebufferInfo.width = swapChainContext.extent.width;
+		framebufferInfo.height = swapChainContext.extent.height;
 		framebufferInfo.layers = 1;
 
 		if (vkCreateFramebuffer(context.device, &framebufferInfo, nullptr, &frameBuffers[i]) != VK_SUCCESS)
@@ -386,7 +381,7 @@ void Renderer::init(
 		renderPassInfo.renderPass = renderPass;
 		renderPassInfo.framebuffer = frameBuffers[i];
 		renderPassInfo.renderArea.offset = {0, 0};
-		renderPassInfo.renderArea.extent = context.extent;
+		renderPassInfo.renderArea.extent = swapChainContext.extent;
 
 		std::array<VkClearValue, 2> clearValues = {};
 		clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -398,7 +393,7 @@ void Renderer::init(
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
 
-		const VulkanMesh &mesh = data.getMesh();
+		const VulkanMesh &mesh = scene->getMesh();
 
 		VkBuffer vertexBuffers[] = { mesh.getVertexBuffer() };
 		VkBuffer indexBuffer = mesh.getIndexBuffer();
@@ -416,8 +411,6 @@ void Renderer::init(
 
 void Renderer::shutdown()
 {
-	data.shutdown();
-
 	for (auto uniformBuffer : uniformBuffers)
 		vkDestroyBuffer(context.device, uniformBuffer, nullptr);
 	
@@ -462,7 +455,7 @@ VkCommandBuffer Renderer::render(uint32_t imageIndex)
 	const glm::vec3 &up = {0.0f, 0.0f, 1.0f};
 	const glm::vec3 &zero = {0.0f, 0.0f, 0.0f};
 
-	const float aspect = context.extent.width / (float) context.extent.height;
+	const float aspect = swapChainContext.extent.width / (float) swapChainContext.extent.height;
 	const float zNear = 0.1f;
 	const float zFar = 10.0f;
 

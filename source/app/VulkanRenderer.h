@@ -5,22 +5,18 @@
 #include <vector>
 
 #include "VulkanRendererContext.h"
-#include "RenderScene.h"
+
+class RenderScene;
 
 /*
  */
 class Renderer
 {
 public:
-	Renderer(const VulkanRendererContext &context)
-		: context(context), data(context) { }
+	Renderer(const VulkanRendererContext &context, const VulkanSwapChainContext &swapChainContext)
+		: context(context), swapChainContext(swapChainContext) { }
 
-	void init(
-		const std::string &vertexShaderFile,
-		const std::string &fragmentShaderFile,
-		const std::string &textureFile,
-		const std::string &modelFile
-	);
+	void init(const RenderScene *scene);
 
 	VkCommandBuffer render(uint32_t imageIndex);
 	void shutdown();
@@ -29,8 +25,8 @@ private:
 	VkShaderModule createShader(const std::string &path) const;
 
 private:
-	RenderScene data;
 	VulkanRendererContext context;
+	VulkanSwapChainContext swapChainContext;
 
 	VkRenderPass renderPass {VK_NULL_HANDLE};
 	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};

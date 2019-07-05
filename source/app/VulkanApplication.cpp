@@ -1,7 +1,8 @@
 #include "VulkanApplication.h"
 #include "VulkanRenderer.h"
-#include "VulkanRendererContext.h"
 #include "VulkanUtils.h"
+
+#include "RenderScene.h"
 
 #include <GLFW/glfw3.h>
 
@@ -9,6 +10,7 @@
 #include <GLFW/glfw3native.h>
 
 #include <iostream>
+#include <functional>
 #include <set>
 #include <array>
 
@@ -45,9 +47,13 @@ void Application::run()
 {
 	initWindow();
 	initVulkan();
+	initVulkanSwapChain();
+	initRenderScene();
 	initRenderer();
 	mainloop();
 	shutdownRenderer();
+	shutdownRenderScene();
+	shutdownVulkanSwapChain();
 	shutdownVulkan();
 	shutdownWindow();
 }
@@ -57,10 +63,24 @@ void Application::run()
 void Application::render()
 {
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
-	vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
 	uint32_t imageIndex = 0;
-	vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(
+		device,
+		swapChain,
+		std::numeric_limits<uint64_t>::max(),
+		imageAvailableSemaphores[currentFrame],
+		VK_NULL_HANDLE,
+		&imageIndex
+	);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		recreateVulkanSwapChain();
+		return;
+	}
+	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		throw std::runtime_error("Can't aquire swap chain image");
 
 	VkCommandBuffer commandBuffer = renderer->render(imageIndex);
 
@@ -79,6 +99,7 @@ void Application::render()
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
+	vkResetFences(device, 1, &inFlightFences[currentFrame]);
 	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
 		throw std::runtime_error("Can't submit command buffer");
 
@@ -92,7 +113,15 @@ void Application::render()
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = nullptr; // Optional
 
-	vkQueuePresentKHR(presentQueue, &presentInfo);
+	result = vkQueuePresentKHR(presentQueue, &presentInfo);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized)
+	{
+		framebufferResized = false;
+		recreateVulkanSwapChain();
+	}
+	else if (result != VK_SUCCESS)
+		throw std::runtime_error("Can't aquire swap chain image");
+
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
@@ -105,8 +134,8 @@ void Application::mainloop()
 
 	while (!glfwWindowShouldClose(window))
 	{
-		glfwPollEvents();
 		render();
+		glfwPollEvents();
 	}
 
 	vkDeviceWaitIdle(device);
@@ -116,21 +145,11 @@ void Application::mainloop()
  */
 void Application::initWindow()
 {
-	GLFWmonitor *monitor = glfwGetPrimaryMonitor();
-	const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-
-	glfwWindowHint(GLFW_RED_BITS, mode->redBits);
-	glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
-	glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
-	glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
-
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	window = glfwCreateWindow(1024, 768, "Vulkan", nullptr, nullptr);
 
-	window = glfwCreateWindow(mode->width, mode->height, "Vulkan", monitor, nullptr);
-
-	windowWidth = mode->width;
-	windowHeight = mode->height;
+	glfwSetWindowUserPointer(window, this);
+	glfwSetFramebufferSizeCallback(window, &Application::onFramebufferResize);
 }
 
 void Application::shutdownWindow()
@@ -139,25 +158,43 @@ void Application::shutdownWindow()
 	window = nullptr;
 }
 
+void Application::onFramebufferResize(GLFWwindow *window, int width, int height)
+{
+	Application *app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
+	assert(app != nullptr);
+	app->framebufferResized = true;
+}
+
+/*
+ */
+void Application::initRenderScene()
+{
+	scene = new RenderScene(context);
+	scene->init(vertex_shader_path, fragment_shader_path, texture_path, model_path);
+}
+
+void Application::shutdownRenderScene()
+{
+	scene->shutdown();
+
+	delete scene;
+	scene = nullptr;
+}
+
 /*
  */
 void Application::initRenderer()
 {
-	VulkanRendererContext context = {};
-	context.device = device;
-	context.physicalDevice = physicalDevice;
-	context.commandPool = commandPool;
-	context.descriptorPool = descriptorPool;
-	context.colorFormat = swapChainImageFormat;
-	context.depthFormat = depthFormat;
-	context.extent = swapChainExtent;
-	context.swapChainImageViews = swapChainImageViews;
-	context.depthImageView = depthImageView;
-	context.graphicsQueue = graphicsQueue;
-	context.presentQueue = presentQueue;
+	VulkanSwapChainContext swapChainContext = {};
+	swapChainContext.descriptorPool = descriptorPool;
+	swapChainContext.colorFormat = swapChainImageFormat;
+	swapChainContext.depthFormat = depthFormat;
+	swapChainContext.extent = swapChainExtent;
+	swapChainContext.swapChainImageViews = swapChainImageViews;
+	swapChainContext.depthImageView = depthImageView;
 
-	renderer = new Renderer(context);
-	renderer->init(vertex_shader_path, fragment_shader_path, texture_path, model_path);
+	renderer = new Renderer(context, swapChainContext);
+	renderer->init(scene);
 }
 
 void Application::shutdownRenderer()
@@ -314,10 +351,10 @@ QueueFamilyIndices Application::fetchQueueFamilyIndices(VkPhysicalDevice device)
 	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-	int i = 0;
 	QueueFamilyIndices indices = {};
 
-	for (const auto &queueFamily : queueFamilies) {
+	for (int i = 0; i < queueFamilies.size(); i++) {
+		const auto &queueFamily = queueFamilies[i];
 		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 			indices.graphicsFamily = std::make_pair(true, i);
 
@@ -326,11 +363,8 @@ QueueFamilyIndices Application::fetchQueueFamilyIndices(VkPhysicalDevice device)
 		if (queueFamily.queueCount > 0 && presentSupport)
 			indices.presentFamily = std::make_pair(true, i);
 
-		if (indices.isComplete()) {
+		if (indices.isComplete())
 			break;
-		}
-
-		i++;
 	}
 
 	return indices;
@@ -415,9 +449,16 @@ SwapChainSettings Application::selectOptimalSwapChainSettings(const SwapChainSup
 	// Otherwise, manually set extent to match the min/max extent bounds
 	else
 	{
+		int width, height;
+		glfwGetFramebufferSize(window, &width, &height);
+
 		const VkSurfaceCapabilitiesKHR &capabilities = details.capabilities;
 
-		settings.extent = { windowWidth, windowHeight };
+		settings.extent = {
+			static_cast<uint32_t>(width),
+			static_cast<uint32_t>(height)
+		};
+
 		settings.extent.width = std::max(
 			capabilities.minImageExtent.width,
 			std::min(settings.extent.width, capabilities.maxImageExtent.width)
@@ -534,6 +575,7 @@ void Application::initVulkan()
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+	// TODO: pick the best physical device
 	for (const auto& device : devices)
 	{
 		if (checkPhysicalDevice(device, surface))
@@ -545,8 +587,6 @@ void Application::initVulkan()
 
 	if (physicalDevice == VK_NULL_HANDLE)
 		throw std::runtime_error("Failed to find a suitable GPU");
-
-	// TODO: scores
 
 	// Create logical device
 	QueueFamilyIndices indices = fetchQueueFamilyIndices(physicalDevice);
@@ -597,7 +637,84 @@ void Application::initVulkan()
 	if (presentQueue == VK_NULL_HANDLE)
 		throw std::runtime_error("Can't get present queue from logical device");
 
+	// Create command pool
+	VkCommandPoolCreateInfo commandPoolInfo = {};
+	commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolInfo.queueFamilyIndex = indices.graphicsFamily.second;
+	commandPoolInfo.flags = 0; // Optional
+
+	if (vkCreateCommandPool(device, &commandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
+		throw std::runtime_error("Can't create command pool");
+
+	// Create sync objects
+	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		VkSemaphoreCreateInfo semaphoreInfo = {};
+		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		result = vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]);
+		if (result != VK_SUCCESS)
+			throw std::runtime_error("Can't create 'image available' semaphore");
+		
+		result = vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]);
+		if (result != VK_SUCCESS)
+			throw std::runtime_error("Can't create 'render finished' semaphore");
+
+		VkFenceCreateInfo fenceInfo = {};
+		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+		result = vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]);
+		if (result != VK_SUCCESS)
+			throw std::runtime_error("Can't create in flight frame fence");
+	}
+
+	context.device = device;
+	context.physicalDevice = physicalDevice;
+	context.commandPool = commandPool;
+	context.graphicsQueue = graphicsQueue;
+	context.presentQueue = presentQueue;
+}
+
+void Application::shutdownVulkan()
+{
+	vkDestroyCommandPool(device, commandPool, nullptr);
+	commandPool = VK_NULL_HANDLE;
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
+		vkDestroyFence(device, inFlightFences[i], nullptr);
+	}
+
+	renderFinishedSemaphores.clear();
+	imageAvailableSemaphores.clear();
+	inFlightFences.clear();
+
+	vkDestroyDevice(device, nullptr);
+	device = VK_NULL_HANDLE;
+
+	vkDestroySurfaceKHR(instance, surface, nullptr);
+	surface = VK_NULL_HANDLE;
+
+	vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+	debugMessenger = VK_NULL_HANDLE;
+
+	vkDestroyInstance(instance, nullptr);
+	instance = VK_NULL_HANDLE;
+}
+
+/*
+ */
+void Application::initVulkanSwapChain()
+{
 	// Create swap chain
+	QueueFamilyIndices indices = fetchQueueFamilyIndices(physicalDevice);
 	SwapChainSupportDetails details = fetchSwapChainSupportDetails(physicalDevice, surface);
 	SwapChainSettings settings = selectOptimalSwapChainSettings(details);
 
@@ -641,8 +758,7 @@ void Application::initVulkan()
 	swapChainInfo.clipped = VK_TRUE;
 	swapChainInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	result = vkCreateSwapchainKHR(device, &swapChainInfo, nullptr, &swapChain);
-	if (result != VK_SUCCESS)
+	if (vkCreateSwapchainKHR(device, &swapChainInfo, nullptr, &swapChain) != VK_SUCCESS)
 		throw std::runtime_error("Can't create swapchain");
 
 	uint32_t swapChainImageCount = 0;
@@ -654,66 +770,6 @@ void Application::initVulkan()
 
 	swapChainImageFormat = settings.format.format;
 	swapChainExtent = settings.extent;
-
-	// Create command pool
-	VkCommandPoolCreateInfo commandPoolInfo = {};
-	commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	commandPoolInfo.queueFamilyIndex = indices.graphicsFamily.second;
-	commandPoolInfo.flags = 0; // Optional
-
-	if (vkCreateCommandPool(device, &commandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
-		throw std::runtime_error("Can't create command pool");
-
-	// Create descriptor pools
-	std::array<VkDescriptorPoolSize, 2> descriptorPoolSizes = {};
-	descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorPoolSizes[0].descriptorCount = swapChainImageCount;
-	descriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	descriptorPoolSizes[1].descriptorCount = swapChainImageCount;
-
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
-	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
-	descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
-	descriptorPoolInfo.maxSets = swapChainImageCount;
-	descriptorPoolInfo.flags = 0; // Optional
-
-	if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
-		throw std::runtime_error("Can't create descriptor pool");
-
-	// Create sync objects
-	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-	{
-		VkSemaphoreCreateInfo semaphoreInfo = {};
-		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-		result = vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]);
-		if (result != VK_SUCCESS)
-			throw std::runtime_error("Can't create 'image available' semaphore");
-		
-		result = vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]);
-		if (result != VK_SUCCESS)
-			throw std::runtime_error("Can't create 'render finished' semaphore");
-
-		VkFenceCreateInfo fenceInfo = {};
-		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-		result = vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]);
-		if (result != VK_SUCCESS)
-			throw std::runtime_error("Can't create in flight frame fence");
-	}
-
-	VulkanRendererContext context = {};
-	context.device = device;
-	context.physicalDevice = physicalDevice;
-	context.commandPool = commandPool;
-	context.graphicsQueue = graphicsQueue;
-	context.presentQueue = presentQueue;
 
 	// Create swap chain image views
 	swapChainImageViews.resize(swapChainImageCount);
@@ -759,35 +815,38 @@ void Application::initVulkan()
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
 	);
+
+	// Create descriptor pools
+	std::array<VkDescriptorPoolSize, 2> descriptorPoolSizes = {};
+	descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorPoolSizes[0].descriptorCount = swapChainImageCount;
+	descriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorPoolSizes[1].descriptorCount = swapChainImageCount;
+
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
+	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
+	descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
+	descriptorPoolInfo.maxSets = swapChainImageCount;
+	descriptorPoolInfo.flags = 0; // Optional
+
+	if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+		throw std::runtime_error("Can't create descriptor pool");
 }
 
-void Application::shutdownVulkan()
+void Application::shutdownVulkanSwapChain()
 {
-	vkDestroyCommandPool(device, commandPool, nullptr);
-	commandPool = VK_NULL_HANDLE;
-
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 	descriptorPool = VK_NULL_HANDLE;
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-	{
-		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
-		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
-		vkDestroyFence(device, inFlightFences[i], nullptr);
-	}
-
-	renderFinishedSemaphores.clear();
-	imageAvailableSemaphores.clear();
-	inFlightFences.clear();
-
 	vkDestroyImageView(device, depthImageView, nullptr);
-	depthImageView = nullptr;
+	depthImageView = VK_NULL_HANDLE;
 
 	vkDestroyImage(device, depthImage, nullptr);
-	depthImage = nullptr;
+	depthImage = VK_NULL_HANDLE;
 
 	vkFreeMemory(device, depthImageMemory, nullptr);
-	depthImageMemory = nullptr;
+	depthImageMemory = VK_NULL_HANDLE;
 
 	for (auto imageView : swapChainImageViews)
 		vkDestroyImageView(device, imageView, nullptr);
@@ -797,16 +856,21 @@ void Application::shutdownVulkan()
 
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
 	swapChain = VK_NULL_HANDLE;
+}
 
-	vkDestroyDevice(device, nullptr);
-	device = VK_NULL_HANDLE;
+void Application::recreateVulkanSwapChain()
+{
+	int width = 0, height = 0;
+	while (width == 0 || height == 0)
+	{
+		glfwGetFramebufferSize(window, &width, &height);
+		glfwWaitEvents();
+	}
+	vkDeviceWaitIdle(device);
 
-	vkDestroySurfaceKHR(instance, surface, nullptr);
-	surface = VK_NULL_HANDLE;
+	shutdownRenderer();
+	shutdownVulkanSwapChain();
 
-	vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-	debugMessenger = VK_NULL_HANDLE;
-
-	vkDestroyInstance(instance, nullptr);
-	instance = VK_NULL_HANDLE;
+	initVulkanSwapChain();
+	initRenderer();
 }

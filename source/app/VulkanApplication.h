@@ -3,8 +3,11 @@
 #include <volk.h>
 #include <vector>
 
+#include "VulkanRendererContext.h"
+
 struct GLFWwindow;
 class Renderer;
+class RenderScene;
 
 /*
  */
@@ -13,9 +16,7 @@ struct QueueFamilyIndices
 	std::pair<bool, uint32_t> graphicsFamily { std::make_pair(false, 0) };
 	std::pair<bool, uint32_t> presentFamily { std::make_pair(false, 0) };
 
-	bool isComplete() {
-		return graphicsFamily.first && presentFamily.first;
-	}
+	inline bool isComplete() { return graphicsFamily.first && presentFamily.first; }
 };
 
 /*
@@ -64,10 +65,15 @@ private:
 
 	VkFormat selectOptimalDepthFormat() const;
 
-	void initVulkanExtensions();
-
 	void initVulkan();
 	void shutdownVulkan();
+
+	void initVulkanSwapChain();
+	void shutdownVulkanSwapChain();
+	void recreateVulkanSwapChain();
+
+	void initRenderScene();
+	void shutdownRenderScene();
 
 	void initRenderer();
 	void shutdownRenderer();
@@ -75,18 +81,26 @@ private:
 	void render();
 	void mainloop();
 
+	static void onFramebufferResize(GLFWwindow *window, int width, int height);
+
 private:
 	GLFWwindow *window {nullptr};
 	Renderer *renderer {nullptr};
+	RenderScene *scene {nullptr};
 
 	//
 	VkInstance instance {VK_NULL_HANDLE};
-	VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
 	VkPhysicalDevice physicalDevice {VK_NULL_HANDLE};
 	VkDevice device {VK_NULL_HANDLE};
+	VkSurfaceKHR surface {VK_NULL_HANDLE};
+
 	VkQueue graphicsQueue {VK_NULL_HANDLE};
 	VkQueue presentQueue {VK_NULL_HANDLE};
-	VkSurfaceKHR surface {VK_NULL_HANDLE};
+
+	VkCommandPool commandPool {VK_NULL_HANDLE};
+	VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
+
+	VulkanRendererContext context = {};
 
 	//
 	VkSwapchainKHR swapChain {VK_NULL_HANDLE};
@@ -96,16 +110,13 @@ private:
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
 
-	//
 	VkImage depthImage {VK_NULL_HANDLE};
 	VkImageView depthImageView {VK_NULL_HANDLE};
 	VkDeviceMemory depthImageMemory {VK_NULL_HANDLE};
 
 	VkFormat depthFormat;
 
-	//
 	VkDescriptorPool descriptorPool {VK_NULL_HANDLE};
-	VkCommandPool commandPool {VK_NULL_HANDLE};
 
 	//
 	std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -113,9 +124,7 @@ private:
 	std::vector<VkFence> inFlightFences;
 	size_t currentFrame {0};
 
-	uint32_t windowWidth {0};
-	uint32_t windowHeight {0};
-
+	bool framebufferResized {false};
 	enum
 	{
 		MAX_FRAMES_IN_FLIGHT = 2,
