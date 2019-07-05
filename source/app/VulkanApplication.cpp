@@ -9,10 +9,9 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
-#include <iostream>
-#include <functional>
-#include <set>
 #include <array>
+#include <iostream>
+#include <set>
 
 static std::string vertex_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/vert.spv";
 static std::string fragment_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/frag.spv";
@@ -192,6 +191,7 @@ void Application::initRenderer()
 	swapChainContext.extent = swapChainExtent;
 	swapChainContext.swapChainImageViews = swapChainImageViews;
 	swapChainContext.depthImageView = depthImageView;
+	swapChainContext.colorImageView = colorImageView;
 
 	renderer = new Renderer(context, swapChainContext);
 	renderer->init(scene);
@@ -678,6 +678,7 @@ void Application::initVulkan()
 	context.commandPool = commandPool;
 	context.graphicsQueue = graphicsQueue;
 	context.presentQueue = presentQueue;
+	context.msaaSamples = VulkanUtils::getMaxUsableSampleCount(context);
 }
 
 void Application::shutdownVulkan()
@@ -782,7 +783,39 @@ void Application::initVulkanSwapChain()
 			VK_IMAGE_ASPECT_COLOR_BIT
 		);
 
-	// Create depth buffer
+	// Create color buffer & image view
+	VulkanUtils::createImage2D(
+		context,
+		swapChainExtent.width,
+		swapChainExtent.height,
+		1,
+		context.msaaSamples,
+		swapChainImageFormat,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		colorImage,
+		colorImageMemory
+	);
+
+	colorImageView = VulkanUtils::createImage2DView(
+		context,
+		colorImage,
+		1,
+		swapChainImageFormat,
+		VK_IMAGE_ASPECT_COLOR_BIT
+	);
+
+	VulkanUtils::transitionImageLayout(
+		context,
+		colorImage,
+		1,
+		swapChainImageFormat,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	);
+
+	// Create depth buffer & image view
 	depthFormat = selectOptimalDepthFormat();
 
 	VulkanUtils::createImage2D(
@@ -790,6 +823,7 @@ void Application::initVulkanSwapChain()
 		swapChainExtent.width,
 		swapChainExtent.height,
 		1,
+		context.msaaSamples,
 		depthFormat,
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -798,7 +832,6 @@ void Application::initVulkanSwapChain()
 		depthImageMemory
 	);
 
-	// Create depth buffer image view
 	depthImageView = VulkanUtils::createImage2DView(
 		context,
 		depthImage,
@@ -838,6 +871,15 @@ void Application::shutdownVulkanSwapChain()
 {
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 	descriptorPool = VK_NULL_HANDLE;
+
+	vkDestroyImageView(device, colorImageView, nullptr);
+	colorImageView = VK_NULL_HANDLE;
+
+	vkDestroyImage(device, colorImage, nullptr);
+	colorImage = VK_NULL_HANDLE;
+
+	vkFreeMemory(device, colorImageMemory, nullptr);
+	colorImageMemory = VK_NULL_HANDLE;
 
 	vkDestroyImageView(device, depthImageView, nullptr);
 	depthImageView = VK_NULL_HANDLE;

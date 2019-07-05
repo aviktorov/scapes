@@ -29,6 +29,7 @@ public:
 		uint32_t width,
 		uint32_t height,
 		uint32_t mipLevels,
+		VkSampleCountFlagBits numSamples,
 		VkFormat format,
 		VkImageTiling tiling,
 		VkImageUsageFlags usage,
@@ -82,6 +83,10 @@ public:
 		uint32_t mipLevels,
 		VkFormat format,
 		VkFilter filter
+	);
+
+	static VkSampleCountFlagBits getMaxUsableSampleCount(
+		const VulkanRendererContext &context
 	);
 
 private:

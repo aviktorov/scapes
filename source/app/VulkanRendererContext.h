@@ -12,6 +12,7 @@ struct VulkanRendererContext
 	VkCommandPool commandPool {VK_NULL_HANDLE};
 	VkQueue graphicsQueue {VK_NULL_HANDLE};
 	VkQueue presentQueue {VK_NULL_HANDLE};
+	VkSampleCountFlagBits msaaSamples {VK_SAMPLE_COUNT_1_BIT};
 };
 
 struct VulkanSwapChainContext
@@ -22,4 +23,5 @@ struct VulkanSwapChainContext
 	VkExtent2D extent;
 	std::vector<VkImageView> swapChainImageViews;
 	VkImageView depthImageView {VK_NULL_HANDLE};
+	VkImageView colorImageView {VK_NULL_HANDLE};
 };
