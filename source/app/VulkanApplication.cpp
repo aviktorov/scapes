@@ -356,12 +356,12 @@ QueueFamilyIndices Application::fetchQueueFamilyIndices(VkPhysicalDevice device)
 	for (int i = 0; i < queueFamilies.size(); i++) {
 		const auto &queueFamily = queueFamilies[i];
 		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-			indices.graphicsFamily = std::make_pair(true, i);
+			indices.graphicsFamily = std::make_optional(i);
 
 		VkBool32 presentSupport = false;
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 		if (queueFamily.queueCount > 0 && presentSupport)
-			indices.presentFamily = std::make_pair(true, i);
+			indices.presentFamily = std::make_optional(i);
 
 		if (indices.isComplete())
 			break;
@@ -595,7 +595,7 @@ void Application::initVulkan()
 
 	std::vector<VkDeviceQueueCreateInfo> queuesInfo;
 	VkDeviceQueueCreateInfo queueCreateInfo = {};
-	std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.second, indices.presentFamily.second};
+	std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
 	for (uint32_t queueFamilyIndex : uniqueQueueFamilies)
 	{
@@ -629,18 +629,18 @@ void Application::initVulkan()
 	volkLoadDevice(device);
 
 	// Get logical device queues
-	vkGetDeviceQueue(device, indices.graphicsFamily.second, 0, &graphicsQueue);
+	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 	if (graphicsQueue == VK_NULL_HANDLE)
 		throw std::runtime_error("Can't get graphics queue from logical device");
 
-	vkGetDeviceQueue(device, indices.presentFamily.second, 0, &presentQueue);
+	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 	if (presentQueue == VK_NULL_HANDLE)
 		throw std::runtime_error("Can't get present queue from logical device");
 
 	// Create command pool
 	VkCommandPoolCreateInfo commandPoolInfo = {};
 	commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	commandPoolInfo.queueFamilyIndex = indices.graphicsFamily.second;
+	commandPoolInfo.queueFamilyIndex = indices.graphicsFamily.value();
 	commandPoolInfo.flags = 0; // Optional
 
 	if (vkCreateCommandPool(device, &commandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
@@ -739,9 +739,9 @@ void Application::initVulkanSwapChain()
 	swapChainInfo.imageArrayLayers = 1;
 	swapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	if (indices.graphicsFamily.second != indices.presentFamily.second)
+	if (indices.graphicsFamily.value() != indices.presentFamily.value())
 	{
-		uint32_t queueFamilies[] = { indices.graphicsFamily.second , indices.presentFamily.second };
+		uint32_t queueFamilies[] = { indices.graphicsFamily.value() , indices.presentFamily.value() };
 		swapChainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		swapChainInfo.queueFamilyIndexCount = 2;
 		swapChainInfo.pQueueFamilyIndices = queueFamilies;

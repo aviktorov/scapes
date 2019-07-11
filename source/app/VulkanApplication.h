@@ -2,6 +2,7 @@
 
 #include <volk.h>
 #include <vector>
+#include <optional>
 
 #include "VulkanRendererContext.h"
 
@@ -13,10 +14,10 @@ class RenderScene;
  */
 struct QueueFamilyIndices
 {
-	std::pair<bool, uint32_t> graphicsFamily { std::make_pair(false, 0) };
-	std::pair<bool, uint32_t> presentFamily { std::make_pair(false, 0) };
+	std::optional<uint32_t> graphicsFamily { std::nullopt };
+	std::optional<uint32_t> presentFamily {std::nullopt};
 
-	inline bool isComplete() { return graphicsFamily.first && presentFamily.first; }
+	inline bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
 };
 
 /*
