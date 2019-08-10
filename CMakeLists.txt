@@ -24,7 +24,7 @@ file(GLOB PBR_SANDBOX_SOURCES
 
 find_package(Vulkan REQUIRED)
 if (Vulkan_FOUND)
-	message(STATUS "Found Vulkan, Including and Linking now")
+	message(STATUS "Found Vulkan, including now")
 	include_directories(${Vulkan_INCLUDE_DIRS})
 endif()
 
