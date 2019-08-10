@@ -22,9 +22,6 @@ public:
 	void shutdown();
 
 private:
-	VkShaderModule createShader(const std::string &path) const;
-
-private:
 	VulkanRendererContext context;
 	VulkanSwapChainContext swapChainContext;
 

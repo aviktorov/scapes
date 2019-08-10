@@ -164,6 +164,24 @@ VkSampler VulkanUtils::createSampler(
 	return sampler;
 }
 
+VkShaderModule VulkanUtils::createShaderModule(
+	const VulkanRendererContext &context,
+	const uint32_t *code,
+	size_t codeSize
+)
+{
+	VkShaderModuleCreateInfo shaderInfo = {};
+	shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	shaderInfo.codeSize = codeSize;
+	shaderInfo.pCode = code;
+
+	VkShaderModule shader;
+	if (vkCreateShaderModule(context.device, &shaderInfo, nullptr, &shader) != VK_SUCCESS)
+		throw std::runtime_error("Can't create shader module");
+
+	return shader;
+}
+
 void VulkanUtils::copyBuffer(
 	const VulkanRendererContext &context,
 	VkBuffer src,

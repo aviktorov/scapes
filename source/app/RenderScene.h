@@ -6,6 +6,7 @@
 #include "VulkanRendererContext.h"
 #include "VulkanMesh.h"
 #include "VulkanTexture.h"
+#include "VulkanShader.h"
 
 /*
  */
@@ -13,7 +14,7 @@ class RenderScene
 {
 public:
 	RenderScene(const VulkanRendererContext &context)
-		: context(context), mesh(context), texture(context) { }
+		: context(context), mesh(context), texture(context), vertexShader(context), fragmentShader(context) { }
 
 	void init(
 		const std::string &vertexShaderFile,
@@ -23,19 +24,16 @@ public:
 	);
 	void shutdown();
 
-	inline VkShaderModule getVertexShader() const { return vertexShader; }
-	inline VkShaderModule getFragmentShader() const { return fragmentShader; }
 	inline const VulkanTexture &getTexture() const { return texture; }
 	inline const VulkanMesh &getMesh() const { return mesh; }
-
-private:
-	VkShaderModule createShader(const std::string &path) const;
+	inline const VulkanShader &getVertexShader() const { return vertexShader; }
+	inline const VulkanShader &getFragmentShader() const { return fragmentShader; }
 
 private:
 	VulkanRendererContext context;
+
 	VulkanMesh mesh;
 	VulkanTexture texture;
-
-	VkShaderModule vertexShader {VK_NULL_HANDLE};
-	VkShaderModule fragmentShader {VK_NULL_HANDLE};
+	VulkanShader vertexShader;
+	VulkanShader fragmentShader;
 };

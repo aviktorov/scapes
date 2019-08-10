@@ -44,16 +44,19 @@ void Renderer::init(const RenderScene *scene)
 	}
 
 	// Create shader stages
+	const VulkanShader &vertexShader = scene->getVertexShader();
+	const VulkanShader &fragmentShader = scene->getFragmentShader();
+
 	VkPipelineShaderStageCreateInfo vertexShaderStageInfo = {};
 	vertexShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vertexShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertexShaderStageInfo.module = scene->getVertexShader();
+	vertexShaderStageInfo.module = vertexShader.getShaderModule();
 	vertexShaderStageInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo fragmentShaderStageInfo = {};
 	fragmentShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	fragmentShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragmentShaderStageInfo.module = scene->getFragmentShader();
+	fragmentShaderStageInfo.module = fragmentShader.getShaderModule();
 	fragmentShaderStageInfo.pName = "main";
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertexShaderStageInfo, fragmentShaderStageInfo };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <volk.h>
 
 struct VulkanRendererContext;
@@ -49,6 +50,12 @@ public:
 	static VkSampler createSampler(
 		const VulkanRendererContext &context,
 		uint32_t mipLevels
+	);
+
+	static VkShaderModule createShaderModule(
+		const VulkanRendererContext &context,
+		const uint32_t *code,
+		size_t codeSize
 	);
 
 	static void copyBuffer(
