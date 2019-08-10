@@ -54,8 +54,8 @@ public:
 
 	static VkShaderModule createShaderModule(
 		const VulkanRendererContext &context,
-		const uint32_t *code,
-		size_t codeSize
+		const uint32_t *bytecode,
+		size_t bytecodeSize
 	);
 
 	static void copyBuffer(

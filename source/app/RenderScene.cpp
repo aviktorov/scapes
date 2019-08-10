@@ -9,8 +9,8 @@ void RenderScene::init(
 	const std::string &modelFile
 )
 {
-	vertexShader.loadFromFile(vertexShaderFile);
-	fragmentShader.loadFromFile(fragmentShaderFile);
+	vertexShader.compileFromFile(vertexShaderFile, VulkanShaderKind::Vertex);
+	fragmentShader.compileFromFile(fragmentShaderFile, VulkanShaderKind::Fragment);
 	mesh.loadFromFile(modelFile);
 	texture.loadFromFile(textureFile);
 }

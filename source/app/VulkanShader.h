@@ -5,6 +5,16 @@
 
 #include "VulkanRendererContext.h"
 
+enum class VulkanShaderKind
+{
+	Vertex = 0,
+	Fragment,
+	Compute,
+	Geometry,
+	TessellationControl,
+	TessellationEvaulation,
+};
+
 /*
  */
 class VulkanShader
@@ -15,7 +25,7 @@ public:
 
 	~VulkanShader();
 
-	bool loadFromFile(const std::string &path);
+	bool compileFromFile(const std::string &path, VulkanShaderKind kind);
 	void clear();
 
 	inline VkShaderModule getShaderModule() const { return shaderModule; }

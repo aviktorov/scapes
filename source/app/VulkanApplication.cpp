@@ -13,8 +13,8 @@
 #include <iostream>
 #include <set>
 
-static std::string vertex_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/vert.spv";
-static std::string fragment_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/frag.spv";
+static std::string vertex_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/shader.vert";
+static std::string fragment_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/shader.frag";
 static std::string texture_path = "D:/Development/Projects/pbr-sandbox/textures/chalet.jpg";
 static std::string model_path = "D:/Development/Projects/pbr-sandbox/models/chalet.obj";
 
