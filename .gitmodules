@@ -2,10 +2,6 @@
 	path = 3rdparty/glm
 	url = https://github.com/g-truc/glm
 	branch = master
-[submodule "3rdparty/assimp"]
-	path = 3rdparty/assimp
-	url = https://github.com/assimp/assimp
-	branch = master
 [submodule "3rdparty/volk"]
 	path = 3rdparty/volk
 	url = https://github.com/zeux/volk
