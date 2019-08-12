@@ -26,6 +26,8 @@ endif()
 file(GLOB PBR_SANDBOX_SOURCES
 	source/app/*.h
 	source/app/*.cpp
+	source/engine/*.h
+	source/engine/*.cpp
 	3rdparty/volk/volk.c
 )
 
