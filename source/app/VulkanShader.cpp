@@ -7,6 +7,8 @@
 #include <iostream>
 #include <vector>
 
+/*
+ */
 static shaderc_shader_kind vulkan_to_shaderc_kind(VulkanShaderKind kind)
 {
 	switch(kind)
