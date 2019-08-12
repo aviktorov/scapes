@@ -1,8 +1,13 @@
 PBR Sandbox:
+    Stream 3:
+        ☐ Find a good model with PBR textures
+        ☐ Add normals to vertex layout
+        ☐ Create a simple light right in the shader
+        ☐ Implement PBR BRDF (Burley 12 for diffuse, GGX for specular)
     Stream 2:
-        ☐ Replace git submodules to CMake 'find x' scripts
-        ☐ Put all prebuilt 3rdparty libraries & headers to 3rdparty folder
-        ☐ Move shaderc to 3rdparty and shaderc specific env variable to FindShaderC cmake module
+        ✔ Replace git submodules to CMake 'find x' scripts @done (8/13/2019, 1:10:05 AM)
+        ✔ Put all prebuilt 3rdparty libraries & headers to 3rdparty folder @done (8/13/2019, 1:10:06 AM)
+        ✔ Move shaderc to 3rdparty and shaderc specific env variable to FindShaderC cmake module @done (8/13/2019, 1:38:10 AM)
     Stream 1:
         ✔ Find a good shader language frontend with SPIR-V support @done (8/10/2019, 5:33:46 PM)
         ✔ Integrate SPIR-V shader language frontend it into the engine @done (8/10/2019, 6:40:41 PM)
