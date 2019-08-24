@@ -58,6 +58,23 @@ public:
 		size_t bytecodeSize
 	);
 
+	static void VulkanUtils::bindUniformBuffer(
+		const VulkanRendererContext &context,
+		VkDescriptorSet descriptorSet,
+		int binding,
+		VkBuffer buffer,
+		VkDeviceSize offset,
+		VkDeviceSize size
+	);
+
+	static void bindCombinedImageSampler(
+		const VulkanRendererContext &context,
+		VkDescriptorSet descriptorSet,
+		int binding,
+		VkImageView imageView,
+		VkSampler sampler
+	);
+
 	static void copyBuffer(
 		const VulkanRendererContext &context,
 		VkBuffer src,

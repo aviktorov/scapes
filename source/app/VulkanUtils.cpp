@@ -182,6 +182,61 @@ VkShaderModule VulkanUtils::createShaderModule(
 	return shader;
 }
 
+void VulkanUtils::bindUniformBuffer(
+	const VulkanRendererContext &context,
+	VkDescriptorSet descriptorSet,
+	int binding,
+	VkBuffer buffer,
+	VkDeviceSize offset,
+	VkDeviceSize size
+)
+{
+	VkDescriptorBufferInfo descriptorBufferInfo = {};
+	descriptorBufferInfo.buffer = buffer;
+	descriptorBufferInfo.offset = offset;
+	descriptorBufferInfo.range = size;
+
+	VkWriteDescriptorSet descriptorWrite = {};
+	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite.dstSet = descriptorSet;
+	descriptorWrite.dstBinding = binding;
+	descriptorWrite.dstArrayElement = 0;
+	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorWrite.descriptorCount = 1;
+	descriptorWrite.pBufferInfo = &descriptorBufferInfo;
+
+	// TODO: not optimal, probably should be refactored to a Binder class,
+	// i.e. it's better to collect all descriptor writes before the call
+	vkUpdateDescriptorSets(context.device, 1, &descriptorWrite, 0, nullptr);
+}
+
+void VulkanUtils::bindCombinedImageSampler(
+	const VulkanRendererContext &context,
+	VkDescriptorSet descriptorSet,
+	int binding,
+	VkImageView imageView,
+	VkSampler sampler
+)
+{
+	VkDescriptorImageInfo descriptorImageInfo = {};
+	descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	descriptorImageInfo.imageView = imageView;
+	descriptorImageInfo.sampler = sampler;
+
+	VkWriteDescriptorSet descriptorWrite = {};
+	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite.dstSet = descriptorSet;
+	descriptorWrite.dstBinding = binding;
+	descriptorWrite.dstArrayElement = 0;
+	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorWrite.descriptorCount = 1;
+	descriptorWrite.pImageInfo = &descriptorImageInfo;
+
+	// TODO: not optimal, probably should be refactored to a Binder class,
+	// i.e. it's better to collect all descriptor writes before the call
+	vkUpdateDescriptorSets(context.device, 1, &descriptorWrite, 0, nullptr);
+}
+
 void VulkanUtils::copyBuffer(
 	const VulkanRendererContext &context,
 	VkBuffer src,

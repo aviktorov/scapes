@@ -13,10 +13,16 @@
 #include <iostream>
 #include <set>
 
-static std::string vertex_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/shader.vert";
-static std::string fragment_shader_path = "D:/Development/Projects/pbr-sandbox/shaders/shader.frag";
-static std::string texture_path = "D:/Development/Projects/pbr-sandbox/textures/chalet.jpg";
-static std::string model_path = "D:/Development/Projects/pbr-sandbox/models/chalet.obj";
+static std::string vertexShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/shader.vert";
+static std::string fragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/shader.frag";
+static std::string albedoTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_albedo.jpg";
+static std::string normalTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_normal.jpg";
+static std::string aoTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_AO.jpg";
+static std::string shadingTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_metalRoughness.jpg";
+static std::string modelPath = "D:/Development/Projects/pbr-sandbox/models/DamagedHelmet.blend";
+
+static int maxCombinedImageSamplers = 32;
+static int maxUniformBuffers = 32;
 
 /*
  */
@@ -169,7 +175,15 @@ void Application::onFramebufferResize(GLFWwindow *window, int width, int height)
 void Application::initRenderScene()
 {
 	scene = new RenderScene(context);
-	scene->init(vertex_shader_path, fragment_shader_path, texture_path, model_path);
+	scene->init(
+		vertexShaderPath,
+		fragmentShaderPath,
+		albedoTexturePath,
+		normalTexturePath,
+		aoTexturePath,
+		shadingTexturePath,
+		modelPath
+	);
 }
 
 void Application::shutdownRenderScene()
@@ -852,15 +866,15 @@ void Application::initVulkanSwapChain()
 	// Create descriptor pools
 	std::array<VkDescriptorPoolSize, 2> descriptorPoolSizes = {};
 	descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorPoolSizes[0].descriptorCount = swapChainImageCount;
+	descriptorPoolSizes[0].descriptorCount = maxUniformBuffers;
 	descriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	descriptorPoolSizes[1].descriptorCount = swapChainImageCount;
+	descriptorPoolSizes[1].descriptorCount = maxCombinedImageSamplers;
 
 	VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
 	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
 	descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
-	descriptorPoolInfo.maxSets = swapChainImageCount;
+	descriptorPoolInfo.maxSets = maxCombinedImageSamplers + maxUniformBuffers;
 	descriptorPoolInfo.flags = 0; // Optional
 
 	if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
