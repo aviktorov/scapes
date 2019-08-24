@@ -1,9 +1,25 @@
 PBR Sandbox:
+    Stream 4:
+        ☐ Orient helmet properly
+        ☐ Add emission texture
+        ☐ Implement diffuse BRDFs
+            ☐ Oren-Nayar
+            ☐ Microfacet
+                ☐ Burley 12
+        ☐ Implement specular BRDFs
+            ☐ Microfacet
+                ☐ GGX + Shlick
+                ☐ Multiscattering GGX + Shlick
+
     Stream 3:
-        ☐ Find a good model with PBR textures
-        ☐ Add normals to vertex layout
-        ☐ Create a simple light right in the shader
-        ☐ Implement PBR BRDF (Burley 12 for diffuse, GGX for specular)
+        ✔ Add normals to vertex layout @done (8/24/2019, 7:38:07 PM)
+        ✔ Find a good model with PBR textures @done (8/24/2019, 7:59:23 PM)
+        ✔ Create a simple light right in the shader @done (8/24/2019, 8:51:42 PM)
+        ✔ Implement diffuse BRDFs @done (8/24/2019, 11:45:52 PM)
+            ✔ Lambert @done (8/24/2019, 9:21:04 PM)
+            ✔ Half Lambert @done (8/24/2019, 9:21:04 PM)
+        ✔ Implement specular BRDFs @done (8/24/2019, 11:45:51 PM)
+            ✔ Blinn / Phong @done (8/24/2019, 10:54:19 PM)
     Stream 2:
         ✔ Replace git submodules to CMake 'find x' scripts @done (8/13/2019, 1:10:05 AM)
         ✔ Put all prebuilt 3rdparty libraries & headers to 3rdparty folder @done (8/13/2019, 1:10:06 AM)
