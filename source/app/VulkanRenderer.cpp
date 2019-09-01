@@ -170,12 +170,12 @@ void Renderer::init(const RenderScene *scene)
 	dynamicStateInfo.pDynamicStates = dynamicStates;
 
 	// Create descriptor set layout
-	std::array<VkDescriptorSetLayoutBinding, 5> bindings;
+	std::array<VkDescriptorSetLayoutBinding, 6> bindings;
 
 	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	bindings[0] = { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, stage, nullptr };
 
-	for (uint32_t i = 1; i < 5; i++)
+	for (uint32_t i = 1; i < 6; i++)
 		bindings[i] = { i, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, stage, nullptr };
 
 	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
@@ -205,6 +205,7 @@ void Renderer::init(const RenderScene *scene)
 		const VulkanTexture &normalTexture = scene->getNormalTexture();
 		const VulkanTexture &aoTexture = scene->getAOTexture();
 		const VulkanTexture &shadingTexture = scene->getShadingTexture();
+		const VulkanTexture &emissionTexture = scene->getEmissionTexture();
 
 		VulkanUtils::bindUniformBuffer(
 			context,
@@ -245,6 +246,14 @@ void Renderer::init(const RenderScene *scene)
 			4,
 			shadingTexture.getImageView(),
 			shadingTexture.getSampler()
+		);
+
+		VulkanUtils::bindCombinedImageSampler(
+			context,
+			descriptorSets[i],
+			5,
+			emissionTexture.getImageView(),
+			emissionTexture.getSampler()
 		);
 	}
 

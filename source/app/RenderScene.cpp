@@ -9,6 +9,7 @@ void RenderScene::init(
 	const std::string &normalFile,
 	const std::string &aoFile,
 	const std::string &shadingFile,
+	const std::string &emissionFile,
 	const std::string &modelFile
 )
 {
@@ -19,6 +20,7 @@ void RenderScene::init(
 	normalTexture.loadFromFile(normalFile);
 	aoTexture.loadFromFile(aoFile);
 	shadingTexture.loadFromFile(shadingFile);
+	emissionTexture.loadFromFile(emissionFile);
 }
 
 void RenderScene::shutdown()
@@ -27,6 +29,7 @@ void RenderScene::shutdown()
 	normalTexture.clearGPUData();
 	aoTexture.clearGPUData();
 	shadingTexture.clearGPUData();
+	emissionTexture.clearGPUData();
 	mesh.clearGPUData();
 	vertexShader.clear();
 	fragmentShader.clear();

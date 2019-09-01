@@ -19,7 +19,8 @@ static std::string albedoTexturePath = "D:/Development/Projects/pbr-sandbox/text
 static std::string normalTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_normal.jpg";
 static std::string aoTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_AO.jpg";
 static std::string shadingTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_metalRoughness.jpg";
-static std::string modelPath = "D:/Development/Projects/pbr-sandbox/models/DamagedHelmet.blend";
+static std::string emissionTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_emissive.jpg";
+static std::string modelPath = "D:/Development/Projects/pbr-sandbox/models/DamagedHelmet.fbx";
 
 static int maxCombinedImageSamplers = 32;
 static int maxUniformBuffers = 32;
@@ -182,6 +183,7 @@ void Application::initRenderScene()
 		normalTexturePath,
 		aoTexturePath,
 		shadingTexturePath,
+		emissionTexturePath,
 		modelPath
 	);
 }
