@@ -1,16 +1,20 @@
 PBR Sandbox:
-    Stream 4:
-        ☐ Orient helmet properly
-        ☐ Add emission texture
-        ☐ Implement diffuse BRDFs
-            ☐ Oren-Nayar
-            ☐ Microfacet
-                ☐ Burley 12
-        ☐ Implement specular BRDFs
-            ☐ Microfacet
-                ☐ GGX + Shlick
-                ☐ Multiscattering GGX + Shlick
+    Stream N:
+        ☐ Implement Oren-Nayar diffuse BRDF
+        ☐ Implement microfacet Burley 12 diffuse BRDF
+        ☐ Improve microfacet BRDFs
+            ☐ Different impls for D/F/G specular factors
+            ☐ Multiscattering GGX + Shlick
 
+    Stream 5:
+        ☐ Add support for cube (hdri?) textures
+        ☐ Add cube sampler binding to the shader
+        ☐ Implement IBL (naive) in the shader
+    Stream 4:
+        ✔ Orient helmet properly @done (9/1/2019, 6:42:51 PM)
+        ✔ Add emission texture @done (9/1/2019, 6:57:24 PM)
+        ✔ Implement microfacet BRDFs @done (9/1/2019, 8:36:34 PM)
+            ✔ GGX + Shlick @done (9/1/2019, 8:33:05 PM)
     Stream 3:
         ✔ Add normals to vertex layout @done (8/24/2019, 7:38:07 PM)
         ✔ Find a good model with PBR textures @done (8/24/2019, 7:59:23 PM)
