@@ -7,9 +7,10 @@ PBR Sandbox:
             ☐ Multiscattering GGX + Shlick
 
     Stream 5:
+        ✔ Fix microfacet BRDF & shading @done (9/12/2019, 11:29:40 PM)
         ☐ Add support for cube (hdri?) textures
         ☐ Add cube sampler binding to the shader
-        ☐ Implement IBL (naive) in the shader
+        ✔ Implement IBL (naive) in the shader @done (9/13/2019, 12:56:33 AM)
     Stream 4:
         ✔ Orient helmet properly @done (9/1/2019, 6:42:51 PM)
         ✔ Add emission texture @done (9/1/2019, 6:57:24 PM)
