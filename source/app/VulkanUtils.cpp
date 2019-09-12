@@ -59,6 +59,56 @@ void VulkanUtils::createBuffer(
 		throw std::runtime_error("Can't bind buffer memory");
 }
 
+void VulkanUtils::createImageCube(
+	const VulkanRendererContext &context,
+	uint32_t width,
+	uint32_t height,
+	uint32_t mipLevels,
+	VkSampleCountFlagBits numSamples,
+	VkFormat format,
+	VkImageTiling tiling,
+	VkImageUsageFlags usage,
+	VkMemoryPropertyFlags memoryProperties,
+	VkImage &image,
+	VkDeviceMemory &memory
+)
+{
+	// Create buffer
+	VkImageCreateInfo imageInfo = {};
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent.width = width;
+	imageInfo.extent.height = height;
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = mipLevels;
+	imageInfo.arrayLayers = 6;
+	imageInfo.format = format;
+	imageInfo.tiling = tiling;
+	imageInfo.usage = usage;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.samples = numSamples;
+	imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+	if (vkCreateImage(context.device, &imageInfo, nullptr, &image) != VK_SUCCESS)
+		throw std::runtime_error("Can't create image");
+
+	// Allocate memory for the buffer
+	VkMemoryRequirements memoryRequirements = {};
+	vkGetImageMemoryRequirements(context.device, image, &memoryRequirements);
+
+	VkMemoryAllocateInfo memoryAllocateInfo = {};
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context, memoryRequirements.memoryTypeBits, memoryProperties);
+
+	if (vkAllocateMemory(context.device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+		throw std::runtime_error("Can't allocate image memory");
+
+	if (vkBindImageMemory(context.device, image, memory, 0) != VK_SUCCESS)
+		throw std::runtime_error("Can't bind image memory");
+}
+
 void VulkanUtils::createImage2D(
 	const VulkanRendererContext &context,
 	uint32_t width,
@@ -107,6 +157,32 @@ void VulkanUtils::createImage2D(
 
 	if (vkBindImageMemory(context.device, image, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't bind image memory");
+}
+
+VkImageView VulkanUtils::createImageCubeView(
+	const VulkanRendererContext &context,
+	VkImage image,
+	uint32_t mipLevels,
+	VkFormat format,
+	VkImageAspectFlags aspectFlags
+)
+{
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = image;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+	viewInfo.format = format;
+	viewInfo.subresourceRange.aspectMask = aspectFlags;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = mipLevels;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 6;
+
+	VkImageView imageView;
+	if (vkCreateImageView(context.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+		throw std::runtime_error("Can't create image view!");
+
+	return imageView;
 }
 
 VkImageView VulkanUtils::createImage2DView(

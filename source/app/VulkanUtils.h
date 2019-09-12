@@ -25,6 +25,20 @@ public:
 		VkDeviceMemory &memory
 	);
 
+	static void createImageCube(
+		const VulkanRendererContext &context,
+		uint32_t width,
+		uint32_t height,
+		uint32_t mipLevels,
+		VkSampleCountFlagBits numSamples,
+		VkFormat format,
+		VkImageTiling tiling,
+		VkImageUsageFlags usage,
+		VkMemoryPropertyFlags memoryProperties,
+		VkImage &image,
+		VkDeviceMemory &memory
+	);
+
 	static void createImage2D(
 		const VulkanRendererContext &context,
 		uint32_t width,
@@ -37,6 +51,14 @@ public:
 		VkMemoryPropertyFlags memoryProperties,
 		VkImage &image,
 		VkDeviceMemory &memory
+	);
+
+	static VkImageView createImageCubeView(
+		const VulkanRendererContext &context,
+		VkImage image,
+		uint32_t mipLevels,
+		VkFormat format,
+		VkImageAspectFlags aspectFlags
 	);
 
 	static VkImageView createImage2DView(
