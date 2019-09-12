@@ -454,6 +454,9 @@ void VulkanUtils::generateImage2DMipmaps(
 	VkFilter filter
 )
 {
+	if (mipLevels == 1)
+		return;
+
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(context.physicalDevice, format, &formatProperties);
 
