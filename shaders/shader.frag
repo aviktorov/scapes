@@ -13,6 +13,7 @@ layout(binding = 2) uniform sampler2D normalSampler;
 layout(binding = 3) uniform sampler2D aoSampler;
 layout(binding = 4) uniform sampler2D shadingSampler;
 layout(binding = 5) uniform sampler2D emissionSampler;
+layout(binding = 6) uniform sampler2D hdrSampler;
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
@@ -32,6 +33,10 @@ struct Surface
 	vec3 view;
 	vec3 normal;
 	vec3 halfVector;
+	float dotNH;
+	float dotNL;
+	float dotNV;
+	float dotHV;
 };
 
 float sqr(float a)
@@ -49,47 +54,15 @@ vec3 lerp(vec3 a, vec3 b, float t)
 	return a * (1.0f - t) + b * t;
 }
 
-//////////////// Vanilla world
+//////////////// Equirectangular world
 
-struct VanillaMaterial
+const vec2 invAtan = vec2(0.1591, 0.3183);
+vec2 SampleSphericalMap(vec3 v)
 {
-	float shininess;
-	vec3 color;
-};
-
-vec3 DiffuseLambertBRDF(Surface surface, VanillaMaterial material)
-{
-	float dotNL = max(dot(surface.normal, surface.light), 0.0f);
-	return vec3(1.0f, 1.0f, 1.0f) * dotNL;
-}
-
-vec3 DiffuseHalfLambertBRDF(Surface surface, VanillaMaterial material)
-{
-	float dotNL = max(dot(surface.normal, surface.light), 0.0f);
-	float halfLambert = (dotNL + 1) * 0.5f;
-	return vec3(1.0f, 1.0f, 1.0f) * halfLambert * halfLambert;
-}
-
-vec3 SpecularBlinnPhongBRDF(Surface surface, VanillaMaterial material)
-{
-	vec3 h = normalize(surface.light + surface.view);
-	float dotNH = max(dot(surface.normal, h), 0.0f);
-	return vec3(1.0f, 1.0f, 1.0f) * pow(dotNH, material.shininess);
-}
-
-vec3 SpecularPhongBRDF(Surface surface, VanillaMaterial material)
-{
-	vec3 r = reflect(-surface.light, surface.normal);
-	float dotRV = max(dot(r, surface.view), 0.0f);
-	return vec3(1.0f, 1.0f, 1.0f) * pow(dotRV, material.shininess / 4.0f);
-}
-
-vec3 VanillaBRDF(Surface surface, VanillaMaterial material)
-{
-	vec3 diffuse = DiffuseHalfLambertBRDF(surface, material);
-	vec3 specular = SpecularBlinnPhongBRDF(surface, material);
-
-	return diffuse * material.color + specular;
+	vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
+	uv *= invAtan;
+	uv += 0.5;
+	return uv;
 }
 
 //////////////// Microfacet world
@@ -104,64 +77,37 @@ struct MicrofacetMaterial
 float D_GGX(Surface surface, float roughness)
 {
 	float alpha2 = sqr(roughness * roughness);
-	float dotNH = dot(surface.normal, surface.halfVector);
 
-	return alpha2 * iPI / sqr(1.0f + dotNH * dotNH * (alpha2 - 1.0f));
+	return alpha2 / (PI * sqr(1.0f + surface.dotNH * surface.dotNH * (alpha2 - 1.0f)));
 }
 
-float G_SmithGGX(Surface surface, float roughness)
+float G_SmithGGX_Normalized(Surface surface, float roughness)
 {
-	float dotNL = max(dot(surface.normal, surface.light), 0.0f);
-	float dotNV = max(dot(surface.normal, surface.view), 0.0f);
-	float dotNH = max(dot(surface.normal, surface.halfVector), 0.0f);
-
 	float alpha2 = sqr(roughness * roughness);
 
-	float ggx_VH = 2.0f * dotNV / (dotNV + sqrt(alpha2 + (1.0f - alpha2) * dotNV * dotNV));
-	float ggx_LH = 2.0f * dotNL / (dotNL + sqrt(alpha2 + (1.0f - alpha2) * dotNL * dotNL));
+	float ggx_NV = surface.dotNV + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNV * surface.dotNV);
+	float ggx_NL = surface.dotNL + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNL * surface.dotNL);
 
-	return ggx_VH * ggx_LH;
+	return 1.0f / (ggx_NV * ggx_NL);
 }
 
 vec3 F_Shlick(Surface surface, vec3 f0)
 {
-	float dotHV = max(dot(surface.halfVector, surface.view), 0.0f);
-
-	return f0 + (vec3(1.0f, 1.0f, 1.0f) - f0) * pow(1.0f - dotHV, 5);
-}
-
-vec3 MicrofacetMetalBRDF(Surface surface, MicrofacetMaterial material)
-{
-	float dotNL = max(dot(surface.normal, surface.light), 0.0f);
-	float dotNV = max(dot(surface.normal, surface.view), 0.0f);
-
-	float D = D_GGX(surface, material.roughness);
-	float G = G_SmithGGX(surface, material.roughness);
-	vec3 F = F_Shlick(surface, material.albedo);
-
-	return D * G * F / (4.0f * dotNL * dotNV);
-}
-
-vec3 MicrofacetDielectricBDRF(Surface surface, MicrofacetMaterial material)
-{
-	vec3 f0_dielectric = vec3(0.04f, 0.04f, 0.04f);
-
-	float dotNL = max(dot(surface.normal, surface.light), 0.0f);
-	float dotNV = max(dot(surface.normal, surface.view), 0.0f);
-
-	float D = D_GGX(surface, material.roughness);
-	float G = G_SmithGGX(surface, material.roughness);
-	vec3 F = F_Shlick(surface, f0_dielectric);
-
-	return D * G * F / (4.0f * dotNL * dotNV) + material.albedo * iPI;
+	return f0 + (vec3(1.0f, 1.0f, 1.0f) - f0) * pow(1.0f - surface.dotHV, 5);
 }
 
 vec3 MicrofacetBRDF(Surface surface, MicrofacetMaterial material)
 {
-	vec3 metal = MicrofacetMetalBRDF(surface, material);
-	vec3 dielectric = MicrofacetDielectricBDRF(surface, material);
+	vec3 f0 = lerp(vec3(0.04f), material.albedo, material.metalness);
 
-	return lerp(metal, dielectric, material.metalness);
+	float D = D_GGX(surface, material.roughness);
+	vec3 F = F_Shlick(surface, f0);
+	float G_normalized = G_SmithGGX_Normalized(surface, material.roughness);
+
+	vec3 specular_reflection = D * F * G_normalized;
+	vec3 diffuse_reflection = material.albedo * lerp(vec3(1.0f) - F, vec3(0.0f), material.metalness);
+
+	return (diffuse_reflection * iPI + specular_reflection);
 }
 
 void main() {
@@ -181,26 +127,44 @@ void main() {
 	surface.view = cameraDirWS;
 	surface.normal = normalize(m * normal);
 	surface.halfVector = normalize(lightDirWS + cameraDirWS);
+	surface.dotNH = max(0.0f, dot(surface.normal, surface.halfVector));
+	surface.dotNL = max(0.0f, dot(surface.normal, surface.light));
+	surface.dotNV = max(0.0f, dot(surface.normal, surface.view));
+	surface.dotHV = max(0.0f, dot(surface.halfVector, surface.view));
 
-	if (true) {
-		MicrofacetMaterial microfacet_material;
-		microfacet_material.albedo = texture(albedoSampler, fragTexCoord).rgb;
-		microfacet_material.roughness = texture(shadingSampler, fragTexCoord).b;
-		microfacet_material.metalness = texture(shadingSampler, fragTexCoord).g;
+	Surface ibl;
+	ibl.light = reflect(-surface.view, surface.normal);
+	ibl.view = cameraDirWS;
+	ibl.normal = normalize(m * normal);
+	ibl.halfVector = normalize(lightDirWS + cameraDirWS);
+	ibl.dotNH = max(0.0f, dot(ibl.normal, ibl.halfVector));
+	ibl.dotNL = max(0.0f, dot(ibl.normal, ibl.light));
+	ibl.dotNV = max(0.0f, dot(ibl.normal, ibl.view));
+	ibl.dotHV = max(0.0f, dot(ibl.halfVector, ibl.view));
 
-		vec3 microfacet_bdrf = MicrofacetBRDF(surface, microfacet_material);
-		outColor = vec4(microfacet_bdrf, 1.0f);
-	}
-	else
-	{
-		VanillaMaterial vanilla_material;
-		vanilla_material.shininess = 10.0f;
-		vanilla_material.color = texture(albedoSampler, fragTexCoord).rgb;
+	MicrofacetMaterial microfacet_material;
+	microfacet_material.albedo = texture(albedoSampler, fragTexCoord).rgb;
+	microfacet_material.roughness = texture(shadingSampler, fragTexCoord).g;
+	microfacet_material.metalness = texture(shadingSampler, fragTexCoord).b;
 
-		vec3 vanilla_brdf = VanillaBRDF(surface, vanilla_material);
-		outColor = vec4(vanilla_brdf, 1.0f);
-	}
+	// Direct light
+	float attenuation = 1.0f / dot(lightPos - fragPositionWS, lightPos - fragPositionWS);
 
-	outColor *= texture(aoSampler, fragTexCoord);
-	outColor += texture(emissionSampler, fragTexCoord);
+	vec3 light = MicrofacetBRDF(surface, microfacet_material) * attenuation * 2.0f * surface.dotNL;
+
+	// Ambient light (IBL)
+	// vec3 ambient = microfacet_material.albedo * vec3(0.01f);
+	vec3 ambient = MicrofacetBRDF(ibl, microfacet_material) * texture(hdrSampler, SampleSphericalMap(ibl.light)).rgb;
+	ambient *= texture(aoSampler, fragTexCoord).r;
+
+	// Result
+	vec3 color = ambient;
+	// color += light;
+	// color += texture(emissionSampler, fragTexCoord).rgb;
+
+	// Tonemapping + gamma correction
+	color = color / (color + vec3(1.0));
+	color = pow(color, vec3(1.0/2.2));
+
+	outColor = vec4(color, 1.0f);
 }
