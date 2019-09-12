@@ -19,11 +19,14 @@ public:
 	inline VkImageView getImageView() const { return imageView; }
 	inline VkSampler getSampler() const { return imageSampler; }
 
+	bool loadHDRFromFile(const std::string &path);
 	bool loadFromFile(const std::string &path);
 
-	void uploadToGPU();
 	void clearGPUData();
 	void clearCPUData();
+
+private:
+	void uploadToGPU(VkFormat format, size_t pixel_size);
 
 private:
 	VulkanRendererContext context;
@@ -33,8 +36,6 @@ private:
 	int height {0};
 	int channels {0};
 	int mipLevels {0};
-
-	VkFormat format {VK_FORMAT_R8G8B8A8_UNORM};
 
 	VkImage image {VK_NULL_HANDLE};
 	VkDeviceMemory imageMemory {VK_NULL_HANDLE};

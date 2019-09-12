@@ -17,20 +17,19 @@ VulkanTexture::~VulkanTexture()
 
 /*
  */
-bool VulkanTexture::loadFromFile(const std::string &path)
+bool VulkanTexture::loadHDRFromFile(const std::string &path)
 {
-	// TODO: support other image formats
-	stbi_uc *stb_pixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+	float *stb_pixels = stbi_loadf(path.c_str(), &width, &height, &channels, 0);
 
 	if (!stb_pixels)
 	{
-		std::cerr << "VulkanTexture::loadFromFile(): " << stbi_failure_reason() << std::endl;
+		std::cerr << "VulkanTexture::loadHDRFromFile(): " << stbi_failure_reason() << std::endl;
 		return false;
 	}
 
-	mipLevels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
-
-	size_t imageSize = width * height * 4;
+	mipLevels = 1;
+	size_t pixelSize = channels * sizeof(float);
+	size_t imageSize = width * height * pixelSize;
 	if (pixels != nullptr)
 		delete[] pixels;
 
@@ -42,7 +41,49 @@ bool VulkanTexture::loadFromFile(const std::string &path)
 
 	// Upload CPU data to GPU
 	clearGPUData();
-	uploadToGPU();
+
+	VkFormat format = VK_FORMAT_UNDEFINED;
+	switch(channels)
+	{
+		case 1: format = VK_FORMAT_R32_SFLOAT;
+		case 2: format = VK_FORMAT_R32G32_SFLOAT;
+		case 3: format = VK_FORMAT_R32G32B32_SFLOAT;
+	}
+	uploadToGPU(format, pixelSize);
+
+	return true;
+}
+
+/*
+ */
+bool VulkanTexture::loadFromFile(const std::string &path)
+{
+	// TODO: support other image formats
+	stbi_uc *stb_pixels = stbi_load(path.c_str(), &width, &height, nullptr, STBI_rgb_alpha);
+	channels = 4;
+
+	if (!stb_pixels)
+	{
+		std::cerr << "VulkanTexture::loadFromFile(): " << stbi_failure_reason() << std::endl;
+		return false;
+	}
+
+	mipLevels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
+
+	size_t pixelSize = channels * sizeof(stbi_uc);
+	size_t imageSize = width * height * pixelSize;
+	if (pixels != nullptr)
+		delete[] pixels;
+
+	pixels = new unsigned char[imageSize];
+	memcpy(pixels, stb_pixels, imageSize);
+
+	stbi_image_free(stb_pixels);
+	stb_pixels = nullptr;
+
+	// Upload CPU data to GPU
+	clearGPUData();
+	uploadToGPU(VK_FORMAT_R8G8B8A8_UNORM, pixelSize);
 
 	// TODO: should we clear CPU data after uploading it to the GPU?
 
@@ -51,13 +92,10 @@ bool VulkanTexture::loadFromFile(const std::string &path)
 
 /*
  */
-void VulkanTexture::uploadToGPU()
+void VulkanTexture::uploadToGPU(VkFormat format, size_t pixelSize)
 {
-	// TODO: support other image formats
-	format = VK_FORMAT_R8G8B8A8_UNORM;
-
 	// Pixel data will have alpha channel even if the original image doesn't
-	VkDeviceSize imageSize = width * height * 4;
+	VkDeviceSize imageSize = width * height * pixelSize;
 
 	VkBuffer stagingBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
