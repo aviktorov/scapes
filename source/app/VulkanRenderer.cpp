@@ -170,12 +170,12 @@ void Renderer::init(const RenderScene *scene)
 	dynamicStateInfo.pDynamicStates = dynamicStates;
 
 	// Create descriptor set layout
-	std::array<VkDescriptorSetLayoutBinding, 6> bindings;
+	std::array<VkDescriptorSetLayoutBinding, 7> bindings;
 
 	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	bindings[0] = { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, stage, nullptr };
 
-	for (uint32_t i = 1; i < 6; i++)
+	for (uint32_t i = 1; i < bindings.size(); i++)
 		bindings[i] = { i, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, stage, nullptr };
 
 	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
@@ -201,11 +201,15 @@ void Renderer::init(const RenderScene *scene)
 
 	for (size_t i = 0; i < imageCount; i++)
 	{
-		const VulkanTexture &albedoTexture = scene->getAlbedoTexture();
-		const VulkanTexture &normalTexture = scene->getNormalTexture();
-		const VulkanTexture &aoTexture = scene->getAOTexture();
-		const VulkanTexture &shadingTexture = scene->getShadingTexture();
-		const VulkanTexture &emissionTexture = scene->getEmissionTexture();
+		std::array<const VulkanTexture *, 6> textures =
+		{
+			&scene->getAlbedoTexture(),
+			&scene->getNormalTexture(),
+			&scene->getAOTexture(),
+			&scene->getShadingTexture(),
+			&scene->getEmissionTexture(),
+			&scene->getHDRTexture()
+		};
 
 		VulkanUtils::bindUniformBuffer(
 			context,
@@ -216,45 +220,14 @@ void Renderer::init(const RenderScene *scene)
 			sizeof(SharedRendererState)
 		);
 
-		VulkanUtils::bindCombinedImageSampler(
-			context,
-			descriptorSets[i],
-			1,
-			albedoTexture.getImageView(),
-			albedoTexture.getSampler()
-		);
-
-		VulkanUtils::bindCombinedImageSampler(
-			context,
-			descriptorSets[i],
-			2,
-			normalTexture.getImageView(),
-			normalTexture.getSampler()
-		);
-
-		VulkanUtils::bindCombinedImageSampler(
-			context,
-			descriptorSets[i],
-			3,
-			aoTexture.getImageView(),
-			aoTexture.getSampler()
-		);
-
-		VulkanUtils::bindCombinedImageSampler(
-			context,
-			descriptorSets[i],
-			4,
-			shadingTexture.getImageView(),
-			shadingTexture.getSampler()
-		);
-
-		VulkanUtils::bindCombinedImageSampler(
-			context,
-			descriptorSets[i],
-			5,
-			emissionTexture.getImageView(),
-			emissionTexture.getSampler()
-		);
+		for (int k = 0; k < textures.size(); k++)
+			VulkanUtils::bindCombinedImageSampler(
+				context,
+				descriptorSets[i],
+				k + 1,
+				textures[k]->getImageView(),
+				textures[k]->getSampler()
+			);
 	}
 
 	// Create pipeline layout

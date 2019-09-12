@@ -16,7 +16,7 @@ public:
 	RenderScene(const VulkanRendererContext &context)
 		: context(context), mesh(context),
 		albedoTexture(context), normalTexture(context),	aoTexture(context),
-		shadingTexture(context), emissionTexture(context),
+		shadingTexture(context), emissionTexture(context), hdrTexture(context),
 		vertexShader(context), fragmentShader(context) { }
 
 	void init(
@@ -27,6 +27,7 @@ public:
 		const std::string &aoFile,
 		const std::string &shadingFile,
 		const std::string &emissionFile,
+		const std::string &hdrFile,
 		const std::string &modelFile
 	);
 	void shutdown();
@@ -36,6 +37,7 @@ public:
 	inline const VulkanTexture &getAOTexture() const { return aoTexture; }
 	inline const VulkanTexture &getShadingTexture() const { return shadingTexture; }
 	inline const VulkanTexture &getEmissionTexture() const { return emissionTexture; }
+	inline const VulkanTexture &getHDRTexture() const { return hdrTexture; }
 	inline const VulkanMesh &getMesh() const { return mesh; }
 	inline const VulkanShader &getVertexShader() const { return vertexShader; }
 	inline const VulkanShader &getFragmentShader() const { return fragmentShader; }
@@ -49,6 +51,7 @@ private:
 	VulkanTexture aoTexture;
 	VulkanTexture shadingTexture;
 	VulkanTexture emissionTexture;
+	VulkanTexture hdrTexture;
 
 	VulkanShader vertexShader;
 	VulkanShader fragmentShader;
