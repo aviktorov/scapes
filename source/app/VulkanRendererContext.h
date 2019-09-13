@@ -12,7 +12,7 @@ struct VulkanRendererContext
 	VkCommandPool commandPool {VK_NULL_HANDLE};
 	VkQueue graphicsQueue {VK_NULL_HANDLE};
 	VkQueue presentQueue {VK_NULL_HANDLE};
-	VkSampleCountFlagBits msaaSamples {VK_SAMPLE_COUNT_1_BIT};
+	VkSampleCountFlagBits maxMSAASamples {VK_SAMPLE_COUNT_1_BIT};
 };
 
 struct VulkanSwapChainContext
