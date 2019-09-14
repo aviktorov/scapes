@@ -1,9 +1,10 @@
 #include "VulkanMesh.h"
 #include "VulkanRenderer.h"
 #include "VulkanUtils.h"
-#include "VulkanGraphicsPipelineBuilder.h"
-#include "VulkanRenderPassBuilder.h"
 #include "VulkanDescriptorSetLayoutBuilder.h"
+#include "VulkanGraphicsPipelineBuilder.h"
+#include "VulkanPipelineLayoutBuilder.h"
+#include "VulkanRenderPassBuilder.h"
 
 #include "RenderScene.h"
 
@@ -28,8 +29,10 @@ struct SharedRendererState
  */
 void Renderer::init(const RenderScene *scene)
 {
-	const VulkanShader &vertexShader = scene->getVertexShader();
-	const VulkanShader &fragmentShader = scene->getFragmentShader();
+	const VulkanShader &pbrVertexShader = scene->getPBRVertexShader();
+	const VulkanShader &pbrFragmentShader = scene->getPBRFragmentShader();
+	const VulkanShader &skyboxVertexShader = scene->getSkyboxVertexShader();
+	const VulkanShader &skyboxFragmentShader = scene->getSkyboxFragmentShader();
 
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
@@ -46,7 +49,7 @@ void Renderer::init(const RenderScene *scene)
 	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	VulkanDescriptorSetLayoutBuilder descriptorSetLayoutBuilder(context);
-	descriptorSetLayoutBuilder
+	descriptorSetLayout = descriptorSetLayoutBuilder
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
@@ -56,10 +59,8 @@ void Renderer::init(const RenderScene *scene)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.build();
 
-	descriptorSetLayout = descriptorSetLayoutBuilder.getDescriptorSetLayout();
-
 	VulkanRenderPassBuilder renderPassBuilder(context);
-	renderPassBuilder
+	renderPass = renderPassBuilder
 		.addColorAttachment(swapChainContext.colorFormat, context.maxMSAASamples)
 		.addColorResolveAttachment(swapChainContext.colorFormat)
 		.addDepthStencilAttachment(swapChainContext.depthFormat, context.maxMSAASamples)
@@ -69,12 +70,15 @@ void Renderer::init(const RenderScene *scene)
 		.setDepthStencilAttachmentReference(0, 2)
 		.build();
 
-	renderPass = renderPassBuilder.getRenderPass();
+	VulkanPipelineLayoutBuilder pipelineLayoutBuilder(context);
+	pipelineLayout = pipelineLayoutBuilder
+		.addDescriptorSetLayout(descriptorSetLayout)
+		.build();
 
-	VulkanGraphicsPipelineBuilder pipelineBuilder(context);
-	pipelineBuilder
-		.addShaderStage(vertexShader.getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
-		.addShaderStage(fragmentShader.getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
+	VulkanGraphicsPipelineBuilder pbrPipelineBuilder(context, pipelineLayout, renderPass);
+	pbrPipeline = pbrPipelineBuilder
+		.addShaderStage(pbrVertexShader.getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
+		.addShaderStage(pbrFragmentShader.getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
 		.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions())
 		.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 		.addViewport(viewport)
@@ -83,12 +87,21 @@ void Renderer::init(const RenderScene *scene)
 		.setMultisampleState(context.maxMSAASamples, true)
 		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
 		.addBlendColorAttachment()
-		.addDescriptorSetLayout(descriptorSetLayout)
-		.setRenderPass(renderPass)
 		.build();
 
-	pipelineLayout = pipelineBuilder.getPipelineLayout();
-	pipeline = pipelineBuilder.getPipeline();
+	VulkanGraphicsPipelineBuilder skyboxPipelineBuilder(context, pipelineLayout, renderPass);
+	skyboxPipeline = skyboxPipelineBuilder
+		.addShaderStage(skyboxVertexShader.getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
+		.addShaderStage(skyboxFragmentShader.getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
+		.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions())
+		.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+		.addViewport(viewport)
+		.addScissor(scissor)
+		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+		.setMultisampleState(context.maxMSAASamples, true)
+		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
+		.addBlendColorAttachment()
+		.build();
 
 	// Create uniform buffers
 	VkDeviceSize uboSize = sizeof(SharedRendererState);
@@ -212,18 +225,33 @@ void Renderer::init(const RenderScene *scene)
 		renderPassInfo.pClearValues = clearValues.data();
 
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline);
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
+		{
+			const VulkanMesh &skybox = scene->getSkybox();
 
-		const VulkanMesh &mesh = scene->getMesh();
+			VkBuffer vertexBuffers[] = { skybox.getVertexBuffer() };
+			VkBuffer indexBuffer = skybox.getIndexBuffer();
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-		VkBuffer vertexBuffers[] = { mesh.getVertexBuffer() };
-		VkBuffer indexBuffer = mesh.getIndexBuffer();
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(commandBuffers[i], skybox.getNumIndices(), 1, 0, 0, 0);
+		}
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pbrPipeline);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
+		{
+			const VulkanMesh &mesh = scene->getMesh();
 
-		vkCmdDrawIndexed(commandBuffers[i], mesh.getNumIndices(), 1, 0, 0, 0);
+			VkBuffer vertexBuffers[] = { mesh.getVertexBuffer() };
+			VkBuffer indexBuffer = mesh.getIndexBuffer();
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+			vkCmdDrawIndexed(commandBuffers[i], mesh.getNumIndices(), 1, 0, 0, 0);
+		}
 		vkCmdEndRenderPass(commandBuffers[i]);
 
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
@@ -248,8 +276,11 @@ void Renderer::shutdown()
 
 	frameBuffers.clear();
 
-	vkDestroyPipeline(context.device, pipeline, nullptr);
-	pipeline = VK_NULL_HANDLE;
+	vkDestroyPipeline(context.device, pbrPipeline, nullptr);
+	pbrPipeline = VK_NULL_HANDLE;
+
+	vkDestroyPipeline(context.device, skyboxPipeline, nullptr);
+	skyboxPipeline = VK_NULL_HANDLE;
 
 	vkDestroyPipelineLayout(context.device, pipelineLayout, nullptr);
 	pipelineLayout = VK_NULL_HANDLE;
@@ -279,7 +310,7 @@ VkCommandBuffer Renderer::render(uint32_t imageIndex)
 
 	const float aspect = swapChainContext.extent.width / (float) swapChainContext.extent.height;
 	const float zNear = 0.1f;
-	const float zFar = 10.0f;
+	const float zFar = 1000.0f;
 
 	SharedRendererState ubo = {};
 	ubo.world = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);

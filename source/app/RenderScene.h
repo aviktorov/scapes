@@ -14,14 +14,19 @@ class RenderScene
 {
 public:
 	RenderScene(const VulkanRendererContext &context)
-		: context(context), mesh(context),
+		: context(context),
 		albedoTexture(context), normalTexture(context),	aoTexture(context),
 		shadingTexture(context), emissionTexture(context), hdrTexture(context),
-		vertexShader(context), fragmentShader(context) { }
+		pbrVertexShader(context), pbrFragmentShader(context),
+		skyboxVertexShader(context), skyboxFragmentShader(context),
+		mesh(context), skybox(context)
+	{ }
 
 	void init(
-		const std::string &vertexShaderFile,
-		const std::string &fragmentShaderFile,
+		const std::string &pbrVertexShaderFile,
+		const std::string &pbrFragmentShaderFile,
+		const std::string &skyboxVertexShaderFile,
+		const std::string &skyboxFragmentShaderFile,
 		const std::string &albedoFile,
 		const std::string &normalFile,
 		const std::string &aoFile,
@@ -32,20 +37,29 @@ public:
 	);
 	void shutdown();
 
+	inline const VulkanShader &getPBRVertexShader() const { return pbrVertexShader; }
+	inline const VulkanShader &getPBRFragmentShader() const { return pbrFragmentShader; }
+	inline const VulkanShader &getSkyboxVertexShader() const { return skyboxVertexShader; }
+	inline const VulkanShader &getSkyboxFragmentShader() const { return skyboxFragmentShader; }
+
 	inline const VulkanTexture &getAlbedoTexture() const { return albedoTexture; }
 	inline const VulkanTexture &getNormalTexture() const { return normalTexture; }
 	inline const VulkanTexture &getAOTexture() const { return aoTexture; }
 	inline const VulkanTexture &getShadingTexture() const { return shadingTexture; }
 	inline const VulkanTexture &getEmissionTexture() const { return emissionTexture; }
 	inline const VulkanTexture &getHDRTexture() const { return hdrTexture; }
+
 	inline const VulkanMesh &getMesh() const { return mesh; }
-	inline const VulkanShader &getVertexShader() const { return vertexShader; }
-	inline const VulkanShader &getFragmentShader() const { return fragmentShader; }
+	inline const VulkanMesh &getSkybox() const { return skybox; }
 
 private:
 	VulkanRendererContext context;
 
-	VulkanMesh mesh;
+	VulkanShader pbrVertexShader;
+	VulkanShader pbrFragmentShader;
+	VulkanShader skyboxVertexShader;
+	VulkanShader skyboxFragmentShader;
+
 	VulkanTexture albedoTexture;
 	VulkanTexture normalTexture;
 	VulkanTexture aoTexture;
@@ -53,6 +67,6 @@ private:
 	VulkanTexture emissionTexture;
 	VulkanTexture hdrTexture;
 
-	VulkanShader vertexShader;
-	VulkanShader fragmentShader;
+	VulkanMesh mesh;
+	VulkanMesh skybox;
 };

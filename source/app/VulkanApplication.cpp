@@ -13,8 +13,10 @@
 #include <iostream>
 #include <set>
 
-static std::string vertexShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/shader.vert";
-static std::string fragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/shader.frag";
+static std::string pbrVertexShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/pbr.vert";
+static std::string pbrFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/pbr.frag";
+static std::string skyboxVertexShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/skybox.vert";
+static std::string skyboxFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/skybox.frag";
 static std::string albedoTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_albedo.jpg";
 static std::string normalTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_normal.jpg";
 static std::string aoTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_AO.jpg";
@@ -187,8 +189,10 @@ void Application::initRenderScene()
 {
 	scene = new RenderScene(context);
 	scene->init(
-		vertexShaderPath,
-		fragmentShaderPath,
+		pbrVertexShaderPath,
+		pbrFragmentShaderPath,
+		skyboxVertexShaderPath,
+		skyboxFragmentShaderPath,
 		albedoTexturePath,
 		normalTexturePath,
 		aoTexturePath,
