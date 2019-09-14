@@ -85,8 +85,8 @@ public:
 
 	VulkanGraphicsPipelineBuilder &setMultisampleState(
 		VkSampleCountFlagBits msaaSamples,
-		bool sampleShading,
-		float minSampleShading
+		bool sampleShading = false,
+		float minSampleShading = 1.0f
 	);
 
 	VulkanGraphicsPipelineBuilder &setDepthStencilState(

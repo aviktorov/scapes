@@ -114,6 +114,8 @@ VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addColorAttachment
 	colorAttachmentReference.attachment = static_cast<uint32_t>(renderPassAttachments.size() - 1);
 	colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	colorAttachmentReferences.push_back(colorAttachmentReference);
+
 	if (msaaSamples == VK_SAMPLE_COUNT_1_BIT)
 		return *this;
 
@@ -132,6 +134,8 @@ VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addColorAttachment
 	VkAttachmentReference colorAttachmentResolveReference = {};
 	colorAttachmentResolveReference.attachment = static_cast<uint32_t>(renderPassAttachments.size() - 1);
 	colorAttachmentResolveReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	colorAttachmentResolveReferences.push_back(colorAttachmentResolveReference);
 
 	return *this;
 }
