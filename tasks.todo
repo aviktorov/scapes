@@ -6,11 +6,19 @@ PBR Sandbox:
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
 
+    Stream 8:
+        ☐ Render equirectangular hdr image to hdr cubemap
+        ☐ Add cube sampler binding to the shader
+    Stream 7:
+        ✔ Transition image layout to present optimal @done (9/14/2019, 10:22:15 PM)
+        ✔ Create another graphics pipeline for cubemap rendering @done (9/15/2019, 12:16:44 AM)
+        ✔ Render equirectangular hdr image as cubemap @done (9/15/2019, 12:43:31 AM)
+    Stream 6:
+        ✔ Create pipeline builder class @done (9/14/2019, 1:48:30 AM)
     Stream 5:
         ✔ Fix microfacet BRDF & shading @done (9/12/2019, 11:29:40 PM)
-        ☐ Add support for cube (hdri?) textures
-        ☐ Add cube sampler binding to the shader
         ✔ Implement IBL (naive) in the shader @done (9/13/2019, 12:56:33 AM)
+        ✔ Add support for cube (hdri?) textures @done (9/13/2019, 1:12:11 AM)
     Stream 4:
         ✔ Orient helmet properly @done (9/1/2019, 6:42:51 PM)
         ✔ Add emission texture @done (9/1/2019, 6:57:24 PM)
