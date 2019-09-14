@@ -75,22 +75,6 @@ VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addBlendColorAttac
 	return *this;
 }
 
-VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addDescriptorSetLayout(
-	VkDescriptorSetLayout descriptorSetLayout
-)
-{
-	descriptorSetLayouts.push_back(descriptorSetLayout);
-	return *this;
-}
-
-VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::setRenderPass(
-	VkRenderPass pass
-)
-{
-	renderPass = pass;
-	return *this;
-}
-
 VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::setInputAssemblyState(
 	VkPrimitiveTopology topology,
 	bool primitiveRestart
@@ -180,7 +164,7 @@ VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::setDepthStencilSta
 
 /*
  */
-void VulkanGraphicsPipelineBuilder::build()
+VkPipeline VulkanGraphicsPipelineBuilder::build()
 {
 	VkPipelineVertexInputStateCreateInfo vertexInputState = {};
 	vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -207,17 +191,6 @@ void VulkanGraphicsPipelineBuilder::build()
 	colorBlendState.blendConstants[2] = 0.0f;
 	colorBlendState.blendConstants[3] = 0.0f;
 
-	// Create pipeline layout
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
-	pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-	pipelineLayoutInfo.pushConstantRangeCount = 0; // TODO: add support for push constants
-	pipelineLayoutInfo.pPushConstantRanges = nullptr;
-
-	if (vkCreatePipelineLayout(context.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
-		throw std::runtime_error("Can't create pipeline layout");
-
 	// Create graphics pipeline
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -236,4 +209,6 @@ void VulkanGraphicsPipelineBuilder::build()
 
 	if (vkCreateGraphicsPipelines(context.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		throw std::runtime_error("Can't create graphics pipeline");
+
+	return pipeline;
 }

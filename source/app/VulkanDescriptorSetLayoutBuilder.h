@@ -21,7 +21,7 @@ public:
 		int descriptorCount = 1
 	);
 
-	void build();
+	VkDescriptorSetLayout build();
 
 private:
 	VulkanRendererContext context;

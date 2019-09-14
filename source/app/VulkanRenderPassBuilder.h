@@ -48,7 +48,7 @@ public:
 		int attachmentIndex
 	);
 
-	void build();
+	VkRenderPass build();
 
 private:
 	struct SubpassData

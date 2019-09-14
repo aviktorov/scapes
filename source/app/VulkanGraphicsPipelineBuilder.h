@@ -10,10 +10,9 @@
 class VulkanGraphicsPipelineBuilder
 {
 public:
-	VulkanGraphicsPipelineBuilder(const VulkanRendererContext &context)
-		: context(context) { }
+	VulkanGraphicsPipelineBuilder(const VulkanRendererContext &context, VkPipelineLayout pipelineLayout, VkRenderPass renderPass)
+		: context(context), renderPass(renderPass), pipelineLayout(pipelineLayout) { }
 
-	inline VkPipelineLayout getPipelineLayout() const { return pipelineLayout; }
 	inline VkPipeline getPipeline() const { return pipeline; }
 
 	VulkanGraphicsPipelineBuilder &addShaderStage(
@@ -46,14 +45,6 @@ public:
 		VkColorComponentFlags colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
 	);
 
-	VulkanGraphicsPipelineBuilder &addDescriptorSetLayout(
-		VkDescriptorSetLayout descriptorSetLayout
-	);
-
-	VulkanGraphicsPipelineBuilder &setRenderPass(
-		VkRenderPass pass
-	);
-
 	VulkanGraphicsPipelineBuilder &setInputAssemblyState(
 		VkPrimitiveTopology topology,
 		bool primitiveRestart = false
@@ -84,10 +75,12 @@ public:
 		VkCompareOp depthCompareOp
 	);
 
-	void build();
+	VkPipeline build();
 
 private:
 	VulkanRendererContext context;
+	VkRenderPass renderPass { VK_NULL_HANDLE };
+	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 	std::vector<VkVertexInputBindingDescription> vertexInputBindings;
@@ -102,9 +95,5 @@ private:
 	VkPipelineMultisampleStateCreateInfo multisamplingState {};
 	VkPipelineDepthStencilStateCreateInfo depthStencilState {};
 
-	VkRenderPass renderPass { VK_NULL_HANDLE };
-	std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
-
-	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 	VkPipeline pipeline {VK_NULL_HANDLE};
 };

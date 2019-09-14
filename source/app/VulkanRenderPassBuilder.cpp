@@ -137,7 +137,7 @@ VulkanRenderPassBuilder &VulkanRenderPassBuilder::setDepthStencilAttachmentRefer
 
 /*
  */
-void VulkanRenderPassBuilder::build()
+VkRenderPass VulkanRenderPassBuilder::build()
 {
 	for (int i = 0; i < subpassInfos.size(); i++)
 	{
@@ -159,4 +159,6 @@ void VulkanRenderPassBuilder::build()
 
 	if (vkCreateRenderPass(context.device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
 		throw std::runtime_error("Can't create render pass");
+
+	return renderPass;
 }

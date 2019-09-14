@@ -20,7 +20,7 @@ VulkanDescriptorSetLayoutBuilder &VulkanDescriptorSetLayoutBuilder::addDescripto
 
 /*
  */
-void VulkanDescriptorSetLayoutBuilder::build()
+VkDescriptorSetLayout VulkanDescriptorSetLayoutBuilder::build()
 {
 	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
 	descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -29,4 +29,6 @@ void VulkanDescriptorSetLayoutBuilder::build()
 
 	if (vkCreateDescriptorSetLayout(context.device, &descriptorSetLayoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
 		throw std::runtime_error("Can't create descriptor set layout");
+
+	return descriptorSetLayout;
 }
