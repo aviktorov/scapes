@@ -125,6 +125,37 @@ bool VulkanMesh::loadFromFile(const std::string &path)
 	return true;
 }
 
+void VulkanMesh::createSkybox(float size)
+{
+	clearCPUData();
+	clearGPUData();
+
+	vertices.resize(8);
+	indices.resize(36);
+
+	float halfSize = size * 0.5f;
+
+	vertices[0].position = glm::vec3(-halfSize, -halfSize, -halfSize);
+	vertices[1].position = glm::vec3( halfSize, -halfSize, -halfSize);
+	vertices[2].position = glm::vec3( halfSize,  halfSize, -halfSize);
+	vertices[3].position = glm::vec3(-halfSize,  halfSize, -halfSize);
+	vertices[4].position = glm::vec3(-halfSize, -halfSize,  halfSize);
+	vertices[5].position = glm::vec3( halfSize, -halfSize,  halfSize);
+	vertices[6].position = glm::vec3( halfSize,  halfSize,  halfSize);
+	vertices[7].position = glm::vec3(-halfSize,  halfSize,  halfSize);
+
+	indices = {
+		0, 1, 2, 2, 3, 0,
+		1, 5, 6, 6, 2, 1,
+		3, 2, 6, 6, 7, 3,
+		5, 4, 6, 4, 7, 6,
+		1, 0, 4, 4, 5, 1,
+		4, 0, 3, 3, 7, 4,
+	};
+
+	uploadToGPU();
+}
+
 /*
  */
 void VulkanMesh::createVertexBuffer()

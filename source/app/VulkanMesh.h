@@ -28,6 +28,7 @@ public:
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
 
 	bool loadFromFile(const std::string &path);
+	void createSkybox(float size);
 
 	void uploadToGPU();
 	void clearGPUData();
