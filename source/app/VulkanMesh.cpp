@@ -19,24 +19,21 @@ VulkanMesh::~VulkanMesh()
  */
 VkVertexInputBindingDescription VulkanMesh::getVertexInputBindingDescription()
 {
-	VkVertexInputBindingDescription bindingDescription;
-	bindingDescription.binding = 0;
-	bindingDescription.stride = sizeof(Vertex);
-	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	static VkVertexInputBindingDescription bindingDescription = { 0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX };
 
 	return bindingDescription;
 }
 
-std::array<VkVertexInputAttributeDescription, 6> VulkanMesh::getAttributeDescriptions()
+std::vector<VkVertexInputAttributeDescription> VulkanMesh::getAttributeDescriptions()
 {
-	std::array<VkVertexInputAttributeDescription, 6> attributes;
-
-	attributes[0] = { 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, position) };
-	attributes[1] = { 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, tangent) };
-	attributes[2] = { 2, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, binormal) };
-	attributes[3] = { 3, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal) };
-	attributes[4] = { 4, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color) };
-	attributes[5] = { 5, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv) };
+	static std::vector<VkVertexInputAttributeDescription> attributes = {
+		{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, position) },
+		{ 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, tangent) },
+		{ 2, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, binormal) },
+		{ 3, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal) },
+		{ 4, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color) },
+		{ 5, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv) },
+	};
 
 	return attributes;
 }

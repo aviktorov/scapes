@@ -25,7 +25,7 @@ public:
 	inline uint32_t getNumIndices() const { return static_cast<uint32_t>(indices.size()); }
 
 	static VkVertexInputBindingDescription getVertexInputBindingDescription();
-	static std::array<VkVertexInputAttributeDescription, 6> getAttributeDescriptions();
+	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
 
 	bool loadFromFile(const std::string &path);
 
