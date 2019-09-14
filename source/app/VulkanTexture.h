@@ -26,7 +26,7 @@ public:
 	void clearCPUData();
 
 private:
-	void uploadToGPU(VkFormat format, size_t pixel_size);
+	void uploadToGPU(VkFormat format, VkImageTiling tiling, size_t pixel_size);
 
 private:
 	VulkanRendererContext context;

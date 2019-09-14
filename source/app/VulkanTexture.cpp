@@ -49,7 +49,7 @@ bool VulkanTexture::loadHDRFromFile(const std::string &path)
 		case 2: format = VK_FORMAT_R32G32_SFLOAT;
 		case 3: format = VK_FORMAT_R32G32B32_SFLOAT;
 	}
-	uploadToGPU(format, pixelSize);
+	uploadToGPU(format, VK_IMAGE_TILING_LINEAR, pixelSize);
 
 	return true;
 }
@@ -83,7 +83,7 @@ bool VulkanTexture::loadFromFile(const std::string &path)
 
 	// Upload CPU data to GPU
 	clearGPUData();
-	uploadToGPU(VK_FORMAT_R8G8B8A8_UNORM, pixelSize);
+	uploadToGPU(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, pixelSize);
 
 	// TODO: should we clear CPU data after uploading it to the GPU?
 
@@ -92,7 +92,7 @@ bool VulkanTexture::loadFromFile(const std::string &path)
 
 /*
  */
-void VulkanTexture::uploadToGPU(VkFormat format, size_t pixelSize)
+void VulkanTexture::uploadToGPU(VkFormat format, VkImageTiling tiling, size_t pixelSize)
 {
 	// Pixel data will have alpha channel even if the original image doesn't
 	VkDeviceSize imageSize = width * height * pixelSize;
@@ -122,7 +122,7 @@ void VulkanTexture::uploadToGPU(VkFormat format, size_t pixelSize)
 		mipLevels,
 		VK_SAMPLE_COUNT_1_BIT,
 		format,
-		VK_IMAGE_TILING_OPTIMAL,
+		tiling,
 		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		image,
