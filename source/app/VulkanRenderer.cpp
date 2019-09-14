@@ -2,6 +2,8 @@
 #include "VulkanRenderer.h"
 #include "VulkanUtils.h"
 #include "VulkanGraphicsPipelineBuilder.h"
+#include "VulkanRenderPassBuilder.h"
+#include "VulkanDescriptorSetLayoutBuilder.h"
 
 #include "RenderScene.h"
 
@@ -26,18 +28,9 @@ struct SharedRendererState
  */
 void Renderer::init(const RenderScene *scene)
 {
-	// Create graphics pipeline
 	const VulkanShader &vertexShader = scene->getVertexShader();
 	const VulkanShader &fragmentShader = scene->getFragmentShader();
 
-	VulkanGraphicsPipelineBuilder builder(context);
-
-	builder.addShaderStage(vertexShader.getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT);
-	builder.addShaderStage(fragmentShader.getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT);
-	builder.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions());
-	builder.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	
-	// Create viewport state
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
@@ -50,30 +43,52 @@ void Renderer::init(const RenderScene *scene)
 	scissor.offset = {0, 0};
 	scissor.extent = swapChainContext.extent;
 
-	builder.addViewport(viewport);
-	builder.addScissor(scissor);
-
-	builder.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-	builder.setMultisampleState(context.maxMSAASamples, true);
-	builder.setDepthStencilState(true, true, VK_COMPARE_OP_LESS);
-	builder.addBlendColorAttachment();
-
 	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	builder.addDescriptorSetLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, stage);
+	VulkanDescriptorSetLayoutBuilder descriptorSetLayoutBuilder(context);
+	descriptorSetLayoutBuilder
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.build();
 
-	for (uint32_t i = 1; i < 7; i++)
-		builder.addDescriptorSetLayoutBinding(i, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage);
+	descriptorSetLayout = descriptorSetLayoutBuilder.getDescriptorSetLayout();
 
-	builder.addColorAttachment(swapChainContext.colorFormat, context.maxMSAASamples);
-	builder.addDepthStencilAttachment(swapChainContext.depthFormat, context.maxMSAASamples);
+	VulkanRenderPassBuilder renderPassBuilder(context);
+	renderPassBuilder
+		.addColorAttachment(swapChainContext.colorFormat, context.maxMSAASamples)
+		.addColorResolveAttachment(swapChainContext.colorFormat)
+		.addDepthStencilAttachment(swapChainContext.depthFormat, context.maxMSAASamples)
+		.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
+		.addColorAttachmentReference(0, 0)
+		.addColorResolveAttachmentReference(0, 1)
+		.setDepthStencilAttachmentReference(0, 2)
+		.build();
 
-	builder.build();
+	renderPass = renderPassBuilder.getRenderPass();
 
-	renderPass = builder.getRenderPass();
-	descriptorSetLayout = builder.getDescriptorSetLayout();
-	pipelineLayout = builder.getPipelineLayout();
-	pipeline = builder.getPipeline();
+	VulkanGraphicsPipelineBuilder pipelineBuilder(context);
+	pipelineBuilder
+		.addShaderStage(vertexShader.getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
+		.addShaderStage(fragmentShader.getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
+		.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions())
+		.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+		.addViewport(viewport)
+		.addScissor(scissor)
+		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
+		.setMultisampleState(context.maxMSAASamples, true)
+		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
+		.addBlendColorAttachment()
+		.addDescriptorSetLayout(descriptorSetLayout)
+		.setRenderPass(renderPass)
+		.build();
+
+	pipelineLayout = pipelineBuilder.getPipelineLayout();
+	pipeline = pipelineBuilder.getPipeline();
 
 	// Create uniform buffers
 	VkDeviceSize uboSize = sizeof(SharedRendererState);

@@ -25,10 +25,10 @@ private:
 	VulkanRendererContext context;
 	VulkanSwapChainContext swapChainContext;
 
-	VkRenderPass renderPass {VK_NULL_HANDLE};
-	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 	VkPipeline pipeline {VK_NULL_HANDLE};
+	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
+	VkRenderPass renderPass {VK_NULL_HANDLE};
 
 	std::vector<VkFramebuffer> frameBuffers;
 	std::vector<VkCommandBuffer> commandBuffers;

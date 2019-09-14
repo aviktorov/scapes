@@ -13,8 +13,6 @@ public:
 	VulkanGraphicsPipelineBuilder(const VulkanRendererContext &context)
 		: context(context) { }
 
-	inline VkRenderPass getRenderPass() const { return renderPass; }
-	inline VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout; }
 	inline VkPipelineLayout getPipelineLayout() const { return pipelineLayout; }
 	inline VkPipeline getPipeline() const { return pipeline; }
 
@@ -37,7 +35,6 @@ public:
 		const VkRect2D &scissor
 	);
 
-
 	VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addBlendColorAttachment(
 		bool blend = false,
 		VkBlendFactor srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
@@ -49,20 +46,12 @@ public:
 		VkColorComponentFlags colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
 	);
 
-	VulkanGraphicsPipelineBuilder &addDescriptorSetLayoutBinding(
-		uint32_t binding,
-		VkDescriptorType type,
-		VkShaderStageFlags shaderStageFlags
+	VulkanGraphicsPipelineBuilder &addDescriptorSetLayout(
+		VkDescriptorSetLayout descriptorSetLayout
 	);
 
-	VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addColorAttachment(
-		VkFormat format,
-		VkSampleCountFlagBits msaaSamples
-	);
-
-	VulkanGraphicsPipelineBuilder &addDepthStencilAttachment(
-		VkFormat format,
-		VkSampleCountFlagBits msaaSamples
+	VulkanGraphicsPipelineBuilder &setRenderPass(
+		VkRenderPass pass
 	);
 
 	VulkanGraphicsPipelineBuilder &setInputAssemblyState(
@@ -104,7 +93,6 @@ private:
 	std::vector<VkVertexInputBindingDescription> vertexInputBindings;
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttributes;
 	std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
-	std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings;
 
 	std::vector<VkViewport> viewports;
 	std::vector<VkRect2D> scissors;
@@ -114,14 +102,9 @@ private:
 	VkPipelineMultisampleStateCreateInfo multisamplingState {};
 	VkPipelineDepthStencilStateCreateInfo depthStencilState {};
 
-	std::vector<VkAttachmentDescription> renderPassAttachments;
+	VkRenderPass renderPass { VK_NULL_HANDLE };
+	std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 
-	std::vector<VkAttachmentReference> colorAttachmentReferences;
-	std::vector<VkAttachmentReference> colorAttachmentResolveReferences;
-	VkAttachmentReference depthAttachmentReference {};
-
-	VkRenderPass renderPass {VK_NULL_HANDLE};
-	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 	VkPipeline pipeline {VK_NULL_HANDLE};
 };
