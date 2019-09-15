@@ -827,7 +827,8 @@ void Application::initVulkanSwapChain()
 			context,
 			swapChainImages[i],
 			swapChainImageFormat,
-			VK_IMAGE_ASPECT_COLOR_BIT
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_VIEW_TYPE_2D
 		);
 
 	// Create color buffer & image view
@@ -849,7 +850,8 @@ void Application::initVulkanSwapChain()
 		context,
 		colorImage,
 		swapChainImageFormat,
-		VK_IMAGE_ASPECT_COLOR_BIT
+		VK_IMAGE_ASPECT_COLOR_BIT,
+		VK_IMAGE_VIEW_TYPE_2D
 	);
 
 	VulkanUtils::transitionImageLayout(
@@ -881,7 +883,8 @@ void Application::initVulkanSwapChain()
 		context,
 		depthImage,
 		depthFormat,
-		VK_IMAGE_ASPECT_DEPTH_BIT
+		VK_IMAGE_ASPECT_DEPTH_BIT,
+		VK_IMAGE_VIEW_TYPE_2D
 	);
 
 	VulkanUtils::transitionImageLayout(
