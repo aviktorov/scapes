@@ -10,6 +10,7 @@ struct VulkanRendererContext
 	VkDevice device {VK_NULL_HANDLE};
 	VkPhysicalDevice physicalDevice {VK_NULL_HANDLE};
 	VkCommandPool commandPool {VK_NULL_HANDLE};
+	VkDescriptorPool descriptorPool {VK_NULL_HANDLE};
 	VkQueue graphicsQueue {VK_NULL_HANDLE};
 	VkQueue presentQueue {VK_NULL_HANDLE};
 	VkSampleCountFlagBits maxMSAASamples {VK_SAMPLE_COUNT_1_BIT};
@@ -17,7 +18,6 @@ struct VulkanRendererContext
 
 struct VulkanSwapChainContext
 {
-	VkDescriptorPool descriptorPool {VK_NULL_HANDLE};
 	VkFormat colorFormat;
 	VkFormat depthFormat;
 	VkExtent2D extent;

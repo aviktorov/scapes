@@ -127,7 +127,7 @@ void Renderer::init(const RenderScene *scene)
 
 	VkDescriptorSetAllocateInfo descriptorSetAllocInfo = {};
 	descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descriptorSetAllocInfo.descriptorPool = swapChainContext.descriptorPool;
+	descriptorSetAllocInfo.descriptorPool = context.descriptorPool;
 	descriptorSetAllocInfo.descriptorSetCount = imageCount;
 	descriptorSetAllocInfo.pSetLayouts = layouts.data();
 
@@ -312,16 +312,15 @@ VkCommandBuffer Renderer::render(uint32_t imageIndex)
 	const float zNear = 0.1f;
 	const float zFar = 1000.0f;
 
-	SharedRendererState ubo = {};
-	ubo.world = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), zero, up);
-	ubo.proj = glm::perspective(glm::radians(45.0f), aspect, zNear, zFar);
-	ubo.proj[1][1] *= -1;
-	ubo.cameraPos = glm::vec3(2.0f, 2.0f, 2.0f);
+	SharedRendererState *ubo = nullptr;
+	vkMapMemory(context.device, uniformBufferMemory, 0, sizeof(SharedRendererState), 0, reinterpret_cast<void**>(&ubo));
 
-	void *data;
-	vkMapMemory(context.device, uniformBufferMemory, 0, sizeof(ubo), 0, &data);
-	memcpy(data, &ubo, sizeof(ubo));
+	ubo->world = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);
+	ubo->view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), zero, up);
+	ubo->proj = glm::perspective(glm::radians(45.0f), aspect, zNear, zFar);
+	ubo->proj[1][1] *= -1;
+	ubo->cameraPos = glm::vec3(2.0f, 2.0f, 2.0f);
+
 	vkUnmapMemory(context.device, uniformBufferMemory);
 
 	return commandBuffers[imageIndex];

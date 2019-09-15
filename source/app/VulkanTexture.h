@@ -18,6 +18,14 @@ public:
 	inline VkImage getImage() const { return image; }
 	inline VkImageView getImageView() const { return imageView; }
 	inline VkSampler getSampler() const { return imageSampler; }
+	inline VkFormat getImageFormat() const { return imageFormat; }
+
+	inline int getNumLayers() const { return layers; }
+	inline int getNumMipLevels() const { return mipLevels; }
+	inline int getWidth() const { return width; }
+	inline int getHeight() const { return height; }
+
+	void createCube(VkFormat format, int width, int height, int numMipLevels);
 
 	bool loadHDRFromFile(const std::string &path);
 	bool loadFromFile(const std::string &path);
@@ -36,6 +44,9 @@ private:
 	int height {0};
 	int channels {0};
 	int mipLevels {0};
+	int layers {0};
+
+	VkFormat imageFormat {VK_FORMAT_UNDEFINED};
 
 	VkImage image {VK_NULL_HANDLE};
 	VkDeviceMemory imageMemory {VK_NULL_HANDLE};

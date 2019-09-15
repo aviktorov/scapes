@@ -53,20 +53,15 @@ public:
 		VkDeviceMemory &memory
 	);
 
-	static VkImageView createImageCubeView(
+	static VkImageView createImageView(
 		const VulkanRendererContext &context,
 		VkImage image,
-		uint32_t mipLevels,
 		VkFormat format,
-		VkImageAspectFlags aspectFlags
-	);
-
-	static VkImageView createImage2DView(
-		const VulkanRendererContext &context,
-		VkImage image,
-		uint32_t mipLevels,
-		VkFormat format,
-		VkImageAspectFlags aspectFlags
+		VkImageAspectFlags aspectFlags,
+		uint32_t baseMipLevel = 0,
+		uint32_t numMipLevels = 1,
+		uint32_t baseLayer = 0,
+		uint32_t numLayers = 1
 	);
 
 	static VkSampler createSampler(
@@ -115,10 +110,13 @@ public:
 	static void transitionImageLayout(
 		const VulkanRendererContext &context,
 		VkImage image,
-		uint32_t mipLevels,
 		VkFormat format,
 		VkImageLayout oldLayout,
-		VkImageLayout newLayout
+		VkImageLayout newLayout,
+		uint32_t baseMipLevel = 0,
+		uint32_t numMipLevels = 1,
+		uint32_t baseLayer = 0,
+		uint32_t numLayers = 1
 	);
 
 	static void generateImage2DMipmaps(

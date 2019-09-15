@@ -159,38 +159,15 @@ void VulkanUtils::createImage2D(
 		throw std::runtime_error("Can't bind image memory");
 }
 
-VkImageView VulkanUtils::createImageCubeView(
+VkImageView VulkanUtils::createImageView(
 	const VulkanRendererContext &context,
 	VkImage image,
-	uint32_t mipLevels,
 	VkFormat format,
-	VkImageAspectFlags aspectFlags
-)
-{
-	VkImageViewCreateInfo viewInfo = {};
-	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewInfo.image = image;
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-	viewInfo.format = format;
-	viewInfo.subresourceRange.aspectMask = aspectFlags;
-	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = mipLevels;
-	viewInfo.subresourceRange.baseArrayLayer = 0;
-	viewInfo.subresourceRange.layerCount = 6;
-
-	VkImageView imageView;
-	if (vkCreateImageView(context.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
-		throw std::runtime_error("Can't create image view!");
-
-	return imageView;
-}
-
-VkImageView VulkanUtils::createImage2DView(
-	const VulkanRendererContext &context,
-	VkImage image,
-	uint32_t mipLevels,
-	VkFormat format,
-	VkImageAspectFlags aspectFlags
+	VkImageAspectFlags aspectFlags,
+	uint32_t baseMipLevel,
+	uint32_t numMipLevels,
+	uint32_t baseLayer,
+	uint32_t numLayers
 )
 {
 	VkImageViewCreateInfo viewInfo = {};
@@ -199,10 +176,10 @@ VkImageView VulkanUtils::createImage2DView(
 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	viewInfo.format = format;
 	viewInfo.subresourceRange.aspectMask = aspectFlags;
-	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = mipLevels;
-	viewInfo.subresourceRange.baseArrayLayer = 0;
-	viewInfo.subresourceRange.layerCount = 1;
+	viewInfo.subresourceRange.baseMipLevel = baseMipLevel;
+	viewInfo.subresourceRange.levelCount = numMipLevels;
+	viewInfo.subresourceRange.baseArrayLayer = baseLayer;
+	viewInfo.subresourceRange.layerCount = numLayers;
 
 	VkImageView imageView;
 	if (vkCreateImageView(context.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
@@ -363,10 +340,13 @@ void VulkanUtils::copyBufferToImage(
 void VulkanUtils::transitionImageLayout(
 	const VulkanRendererContext &context,
 	VkImage image,
-	uint32_t mipLevels,
 	VkFormat format,
 	VkImageLayout oldLayout,
-	VkImageLayout newLayout
+	VkImageLayout newLayout,
+	uint32_t baseMipLevel,
+	uint32_t numMipLevels,
+	uint32_t baseLayer,
+	uint32_t numLayers
 )
 {
 	VkCommandBuffer commandBuffer = beginSingleTimeCommands(context);
@@ -381,10 +361,10 @@ void VulkanUtils::transitionImageLayout(
 
 	barrier.image = image;
 	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = mipLevels;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.baseMipLevel = baseMipLevel;
+	barrier.subresourceRange.levelCount = numMipLevels;
+	barrier.subresourceRange.baseArrayLayer = baseLayer;
+	barrier.subresourceRange.layerCount = numLayers;
 
 	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 	{
