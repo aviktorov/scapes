@@ -1,6 +1,7 @@
 #include "VulkanMesh.h"
 #include "VulkanRenderer.h"
 #include "VulkanUtils.h"
+#include "VulkanCubemapRenderer.h"
 #include "VulkanDescriptorSetLayoutBuilder.h"
 #include "VulkanGraphicsPipelineBuilder.h"
 #include "VulkanPipelineLayoutBuilder.h"
@@ -29,6 +30,25 @@ struct SharedRendererState
  */
 void Renderer::init(const RenderScene *scene)
 {
+	const VulkanTexture &hdrTexture = scene->getHDRTexture();
+	rendererCubemap.createCube(VK_FORMAT_R8G8B8A8_UNORM, 1024, 1024, 1);
+
+	{
+		VulkanCubemapRenderer cubeRenderer(context);
+		cubeRenderer.init(hdrTexture, rendererCubemap);
+		cubeRenderer.render();
+
+		VulkanUtils::transitionImageLayout(
+			context,
+			rendererCubemap.getImage(),
+			rendererCubemap.getImageFormat(),
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			0, rendererCubemap.getNumMipLevels(),
+			0, rendererCubemap.getNumLayers()
+		);
+	}
+
 	const VulkanShader &pbrVertexShader = scene->getPBRVertexShader();
 	const VulkanShader &pbrFragmentShader = scene->getPBRFragmentShader();
 	const VulkanShader &skyboxVertexShader = scene->getSkyboxVertexShader();
@@ -144,7 +164,7 @@ void Renderer::init(const RenderScene *scene)
 			&scene->getAOTexture(),
 			&scene->getShadingTexture(),
 			&scene->getEmissionTexture(),
-			&scene->getHDRTexture()
+			&rendererCubemap
 		};
 
 		VulkanUtils::bindUniformBuffer(

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "VulkanRendererContext.h"
+#include "VulkanTexture.h"
 
 class RenderScene;
 
@@ -14,7 +15,10 @@ class Renderer
 {
 public:
 	Renderer(const VulkanRendererContext &context, const VulkanSwapChainContext &swapChainContext)
-		: context(context), swapChainContext(swapChainContext) { }
+		: context(context)
+		, swapChainContext(swapChainContext)
+		, rendererCubemap(context)
+	{ }
 
 	void init(const RenderScene *scene);
 
@@ -24,6 +28,8 @@ public:
 private:
 	VulkanRendererContext context;
 	VulkanSwapChainContext swapChainContext;
+
+	VulkanTexture rendererCubemap;
 
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
