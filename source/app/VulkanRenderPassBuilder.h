@@ -12,6 +12,7 @@ class VulkanRenderPassBuilder
 public:
 	VulkanRenderPassBuilder(const VulkanRendererContext &context)
 		: context(context) { }
+	~VulkanRenderPassBuilder();
 
 	inline VkRenderPass getRenderPass() const { return renderPass; }
 
@@ -55,7 +56,7 @@ private:
 	{
 		std::vector<VkAttachmentReference> colorAttachmentReferences;
 		std::vector<VkAttachmentReference> colorAttachmentResolveReferences;
-		VkAttachmentReference depthStencilAttachmentReference {};
+		VkAttachmentReference *depthStencilAttachmentReference {nullptr};
 	};
 
 	VulkanRendererContext context;
@@ -63,7 +64,6 @@ private:
 	std::vector<VkAttachmentDescription> attachments;
 	std::vector<VkSubpassDescription> subpassInfos;
 	std::vector<SubpassData> subpassDatas;
-
 
 	VkRenderPass renderPass {VK_NULL_HANDLE};
 };

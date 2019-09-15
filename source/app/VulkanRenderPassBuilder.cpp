@@ -1,6 +1,12 @@
 #include "VulkanRenderPassBuilder.h"
 #include "VulkanUtils.h"
 
+VulkanRenderPassBuilder::~VulkanRenderPassBuilder()
+{
+	for (SubpassData &data : subpassDatas)
+		delete data.depthStencilAttachmentReference;
+}
+
 VulkanRenderPassBuilder &VulkanRenderPassBuilder::addColorAttachment(
 	VkFormat format,
 	VkSampleCountFlagBits msaaSamples
@@ -128,9 +134,12 @@ VulkanRenderPassBuilder &VulkanRenderPassBuilder::setDepthStencilAttachmentRefer
 
 	SubpassData &data = subpassDatas[subpassIndex];
 
-	data.depthStencilAttachmentReference = {};
-	data.depthStencilAttachmentReference.attachment = attachmentIndex;
-	data.depthStencilAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	if (data.depthStencilAttachmentReference == nullptr)
+		data.depthStencilAttachmentReference = new VkAttachmentReference();
+
+	*(data.depthStencilAttachmentReference) = {};
+	data.depthStencilAttachmentReference->attachment = attachmentIndex;
+	data.depthStencilAttachmentReference->layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	return *this;
 }
@@ -144,7 +153,7 @@ VkRenderPass VulkanRenderPassBuilder::build()
 		SubpassData &data = subpassDatas[i];
 		VkSubpassDescription &info = subpassInfos[i];
 
-		info.pDepthStencilAttachment = &data.depthStencilAttachmentReference;
+		info.pDepthStencilAttachment = data.depthStencilAttachmentReference;
 		info.colorAttachmentCount = static_cast<uint32_t>(data.colorAttachmentReferences.size());
 		info.pColorAttachments = data.colorAttachmentReferences.data();
 		info.pResolveAttachments = data.colorAttachmentResolveReferences.data();
