@@ -6,9 +6,13 @@ PBR Sandbox:
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
 
+    Stream 9:
+        ☐ Debug cubemap renderer
+        ☐ Create VulkanUniformBuffer template class
     Stream 8:
-        ☐ Render equirectangular hdr image to hdr cubemap
-        ☐ Add cube sampler binding to the shader
+        ✔ Add support for cubemaps to VulkanTexture class @done (9/15/2019, 7:54:57 PM)
+        ✔ Render equirectangular hdr image to hdr cubemap @done (9/15/2019, 9:01:27 PM)
+        ✔ Add cube sampler binding to the shader @done (9/15/2019, 9:01:28 PM)
     Stream 7:
         ✔ Transition image layout to present optimal @done (9/14/2019, 10:22:15 PM)
         ✔ Create another graphics pipeline for cubemap rendering @done (9/15/2019, 12:16:44 AM)
