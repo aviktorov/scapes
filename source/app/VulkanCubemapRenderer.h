@@ -16,21 +16,25 @@ class VulkanCubemapRenderer
 public:
 	VulkanCubemapRenderer(const VulkanRendererContext &context)
 		: context(context)
-		, rendererVertexShader(context)
-		, rendererFragmentShader(context)
 		, rendererQuad(context)
 	{ }
 
-	void init(const VulkanTexture &inputTexture, const VulkanTexture &targetTexture);
+	void init(
+		const VulkanShader &vertexShader,
+		const VulkanShader &fragmentShader,
+		const VulkanTexture &inputTexture,
+		const VulkanTexture &targetTexture
+	);
+
 	void shutdown();
 
 	void render();
 
 private:
 	VulkanRendererContext context;
-	VulkanShader rendererVertexShader;
-	VulkanShader rendererFragmentShader;
 	VulkanMesh rendererQuad;
+
+	VkImageView faceViews[6] {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
@@ -44,6 +48,4 @@ private:
 	// TODO: move to VkUniformBuffer<T>;
 	VkBuffer uniformBuffer {VK_NULL_HANDLE};
 	VkDeviceMemory uniformBufferMemory {VK_NULL_HANDLE};
-
-	
 };

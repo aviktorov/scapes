@@ -12,23 +12,36 @@
 #include <GLM/glm.hpp>
 #include <GLM/gtc/matrix_transform.hpp>
 
-static std::string rendererVertexShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/cubemapRenderer.vert";
-static std::string rendererFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/cubemapRenderer.frag";
-
 /*
  */
 struct CubemapFaceOrientationData
 {
-	glm::mat3 faces[6];
+	glm::mat4 faces[6];
 };
 
 /*
  */
-void VulkanCubemapRenderer::init(const VulkanTexture &inputTexture, const VulkanTexture &targetTexture)
+void VulkanCubemapRenderer::init(
+	const VulkanShader &vertexShader,
+	const VulkanShader &fragmentShader,
+	const VulkanTexture &inputTexture,
+	const VulkanTexture &targetTexture
+)
 {
-	rendererVertexShader.compileFromFile(rendererVertexShaderPath, VulkanShaderKind::Vertex);
-	rendererFragmentShader.compileFromFile(rendererFragmentShaderPath, VulkanShaderKind::Fragment);
 	rendererQuad.createQuad(2.0f);
+
+	for (int i = 0; i < 6; i++)
+	{
+		faceViews[i] = VulkanUtils::createImageView(
+			context,
+			targetTexture.getImage(),
+			targetTexture.getImageFormat(),
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_VIEW_TYPE_2D,
+			0, targetTexture.getNumMipLevels(),
+			i, 1
+		);
+	}
 
 	VkImageView targetView = targetTexture.getImageView();
 
@@ -56,8 +69,18 @@ void VulkanCubemapRenderer::init(const VulkanTexture &inputTexture, const Vulkan
 	VulkanRenderPassBuilder renderPassBuilder(context);
 	renderPass = renderPassBuilder
 		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
 		.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
 		.addColorAttachmentReference(0, 0)
+		.addColorAttachmentReference(0, 1)
+		.addColorAttachmentReference(0, 2)
+		.addColorAttachmentReference(0, 3)
+		.addColorAttachmentReference(0, 4)
+		.addColorAttachmentReference(0, 5)
 		.build();
 
 	VulkanPipelineLayoutBuilder pipelineLayoutBuilder(context);
@@ -67,8 +90,8 @@ void VulkanCubemapRenderer::init(const VulkanTexture &inputTexture, const Vulkan
 
 	VulkanGraphicsPipelineBuilder pipelineBuilder(context, pipelineLayout, renderPass);
 	pipeline = pipelineBuilder
-		.addShaderStage(rendererVertexShader.getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
-		.addShaderStage(rendererFragmentShader.getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
+		.addShaderStage(vertexShader.getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
+		.addShaderStage(fragmentShader.getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
 		.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions())
 		.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 		.addViewport(viewport)
@@ -76,6 +99,11 @@ void VulkanCubemapRenderer::init(const VulkanTexture &inputTexture, const Vulkan
 		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
 		.setMultisampleState(VK_SAMPLE_COUNT_1_BIT)
 		.setDepthStencilState(false, false, VK_COMPARE_OP_LESS)
+		.addBlendColorAttachment()
+		.addBlendColorAttachment()
+		.addBlendColorAttachment()
+		.addBlendColorAttachment()
+		.addBlendColorAttachment()
 		.addBlendColorAttachment()
 		.build();
 
@@ -105,11 +133,11 @@ void VulkanCubemapRenderer::init(const VulkanTexture &inputTexture, const Vulkan
 	VkFramebufferCreateInfo framebufferInfo = {};
 	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 	framebufferInfo.renderPass = renderPass;
-	framebufferInfo.attachmentCount = 1;
-	framebufferInfo.pAttachments = &targetView;
+	framebufferInfo.attachmentCount = 6;
+	framebufferInfo.pAttachments = faceViews;
 	framebufferInfo.width = targetTexture.getWidth();
 	framebufferInfo.height = targetTexture.getHeight();
-	framebufferInfo.layers = targetTexture.getNumLayers();
+	framebufferInfo.layers = 1;
 
 	if (vkCreateFramebuffer(context.device, &framebufferInfo, nullptr, &frameBuffer) != VK_SUCCESS)
 		throw std::runtime_error("Can't create framebuffer");
@@ -128,10 +156,37 @@ void VulkanCubemapRenderer::init(const VulkanTexture &inputTexture, const Vulkan
 	CubemapFaceOrientationData *ubo = nullptr;
 	vkMapMemory(context.device, uniformBufferMemory, 0, sizeof(CubemapFaceOrientationData), 0, reinterpret_cast<void**>(&ubo));
 
+	const glm::mat4 &translateZ = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	const glm::vec3 faceDirs[6] = {
+		glm::vec3( 1.0f,  0.0f,  0.0f),
+		glm::vec3(-1.0f,  0.0f,  0.0f),
+		glm::vec3( 0.0f,  1.0f,  0.0f),
+		glm::vec3( 0.0f, -1.0f,  0.0f),
+		glm::vec3( 0.0f,  0.0f,  1.0f),
+		glm::vec3( 0.0f,  0.0f, -1.0f),
+	};
+
+	const glm::vec3 faceUps[6] = {
+		glm::vec3( 0.0f,  0.0f, -1.0f),
+		glm::vec3( 0.0f,  0.0f,  1.0f),
+		glm::vec3(-1.0f,  0.0f,  0.0f),
+		glm::vec3(-1.0f,  0.0f,  0.0f),
+		glm::vec3( 0.0f, -1.0f,  0.0f),
+		glm::vec3( 0.0f, -1.0f,  0.0f),
+	};
+
+	const glm::mat4 faceRotations[6] = {
+		glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
+		glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
+		glm::mat4(1.0f),
+		glm::mat4(1.0f),
+		glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+		glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+	};
+
 	for (int i = 0; i < 6; i++)
-	{
-		ubo->faces[i] = glm::mat3(1.0f);
-	}
+		ubo->faces[i] = faceRotations[i] * glm::lookAtRH(glm::vec3(0.0f), faceDirs[i], faceUps[i]) * translateZ;
 
 	vkUnmapMemory(context.device, uniformBufferMemory);
 
@@ -170,10 +225,14 @@ void VulkanCubemapRenderer::init(const VulkanTexture &inputTexture, const Vulkan
 	renderPassInfo.renderArea.extent.width = static_cast<uint32_t>(targetTexture.getWidth());
 	renderPassInfo.renderArea.extent.height = static_cast<uint32_t>(targetTexture.getHeight());
 
-	VkClearValue clearValue = {};
-	clearValue.color = {0.0f, 0.0f, 0.0f, 1.0f};
-	renderPassInfo.clearValueCount = 1;
-	renderPassInfo.pClearValues = &clearValue;
+	VkClearValue clearValues[6];
+	for (int i = 0; i < 6; i++)
+	{
+		clearValues[i] = {};
+		clearValues[i].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	}
+	renderPassInfo.clearValueCount = 6;
+	renderPassInfo.pClearValues = clearValues;
 
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -218,7 +277,20 @@ void VulkanCubemapRenderer::shutdown()
 	vkDestroyRenderPass(context.device, renderPass, nullptr);
 	renderPass = VK_NULL_HANDLE;
 
-	rendererFragmentShader.clear();
+	for (int i = 0; i < 6; i++)
+	{
+		vkDestroyImageView(context.device, faceViews[i], nullptr);
+		faceViews[i] = VK_NULL_HANDLE;
+	}
+
+	vkFreeCommandBuffers(context.device, context.commandPool, 1, &commandBuffer);
+	commandBuffer = VK_NULL_HANDLE;
+
+	vkFreeDescriptorSets(context.device, context.descriptorPool, 1, &descriptorSet);
+	descriptorSet = VK_NULL_HANDLE;
+
+	rendererQuad.clearGPUData();
+	rendererQuad.clearCPUData();
 }
 
 /*
