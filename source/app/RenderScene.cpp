@@ -29,7 +29,7 @@ void RenderScene::init(
 	hdrTexture.loadHDRFromFile(hdrFile);
 
 	mesh.loadFromFile(modelFile);
-	skybox.createSkybox(100.0f);
+	skybox.createSkybox(1000.0f);
 }
 
 void RenderScene::shutdown()
