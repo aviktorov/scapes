@@ -11,6 +11,10 @@ static int deduceChannels(VkFormat format)
 {
 	switch(format)
 	{
+		case VK_FORMAT_R16_SFLOAT: return 1;
+		case VK_FORMAT_R16G16_SFLOAT: return 2;
+		case VK_FORMAT_R16G16B16_SFLOAT: return 3;
+		case VK_FORMAT_R16G16B16A16_SFLOAT: return 4;
 		case VK_FORMAT_R32_SFLOAT: return 1;
 		case VK_FORMAT_R32G32_SFLOAT: return 2;
 		case VK_FORMAT_R32G32B32_SFLOAT: return 3;
@@ -24,6 +28,10 @@ static size_t deducePixelSize(VkFormat format)
 {
 	switch(format)
 	{
+		case VK_FORMAT_R16_SFLOAT: return 2;
+		case VK_FORMAT_R16G16_SFLOAT: return 4;
+		case VK_FORMAT_R16G16B16_SFLOAT: return 6;
+		case VK_FORMAT_R16G16B16A16_SFLOAT: return 8;
 		case VK_FORMAT_R32_SFLOAT: return 4;
 		case VK_FORMAT_R32G32_SFLOAT: return 8;
 		case VK_FORMAT_R32G32B32_SFLOAT: return 12;
@@ -37,6 +45,10 @@ static VkImageTiling deduceTiling(VkFormat format)
 {
 	switch(format)
 	{
+		case VK_FORMAT_R16_SFLOAT: return VK_IMAGE_TILING_LINEAR;
+		case VK_FORMAT_R16G16_SFLOAT: return VK_IMAGE_TILING_LINEAR;
+		case VK_FORMAT_R16G16B16_SFLOAT: return  VK_IMAGE_TILING_LINEAR;
+		case VK_FORMAT_R16G16B16A16_SFLOAT: return  VK_IMAGE_TILING_LINEAR;
 		case VK_FORMAT_R32_SFLOAT: return VK_IMAGE_TILING_LINEAR;
 		case VK_FORMAT_R32G32_SFLOAT: return VK_IMAGE_TILING_LINEAR;
 		case VK_FORMAT_R32G32B32_SFLOAT: return  VK_IMAGE_TILING_LINEAR;
@@ -112,7 +124,6 @@ void VulkanTexture::createCube(VkFormat format, int w, int h, int mips)
  */
 bool VulkanTexture::loadHDRFromFile(const std::string &path)
 {
-	stbi_set_flip_vertically_on_load(true);
 	float *stb_pixels = stbi_loadf(path.c_str(), &width, &height, &channels, 0);
 
 	if (!stb_pixels)
