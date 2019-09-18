@@ -688,7 +688,7 @@ void Application::initVulkan()
 	descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
 	descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
 	descriptorPoolInfo.maxSets = maxCombinedImageSamplers + maxUniformBuffers;
-	descriptorPoolInfo.flags = 0; // Optional
+	descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
 	if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
 		throw std::runtime_error("Can't create descriptor pool");
@@ -731,6 +731,9 @@ void Application::initVulkan()
 
 void Application::shutdownVulkan()
 {
+	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+	descriptorPool = VK_NULL_HANDLE;
+
 	vkDestroyCommandPool(device, commandPool, nullptr);
 	commandPool = VK_NULL_HANDLE;
 
@@ -898,9 +901,6 @@ void Application::initVulkanSwapChain()
 
 void Application::shutdownVulkanSwapChain()
 {
-	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-	descriptorPool = VK_NULL_HANDLE;
-
 	vkDestroyImageView(device, colorImageView, nullptr);
 	colorImageView = VK_NULL_HANDLE;
 
