@@ -4,8 +4,10 @@
 #include <string>
 #include <vector>
 
+#include "VulkanCubemapRenderer.h"
 #include "VulkanRendererContext.h"
 #include "VulkanTexture.h"
+#include "VulkanShader.h"
 
 class RenderScene;
 
@@ -17,7 +19,13 @@ public:
 	Renderer(const VulkanRendererContext &context, const VulkanSwapChainContext &swapChainContext)
 		: context(context)
 		, swapChainContext(swapChainContext)
-		, rendererCubemap(context)
+		, commonCubeVertexShader(context)
+		, hdriToCubeFragmentShader(context)
+		, hdriToCubeRenderer(context)
+		, diffuseIrradianceFragmentShader(context)
+		, diffuseIrradianceRenderer(context)
+		, environmentCubemap(context)
+		, diffuseIrradianceCubemap(context)
 	{ }
 
 	void init(const RenderScene *scene);
@@ -29,7 +37,16 @@ private:
 	VulkanRendererContext context;
 	VulkanSwapChainContext swapChainContext;
 
-	VulkanTexture rendererCubemap;
+	VulkanShader commonCubeVertexShader;
+
+	VulkanShader hdriToCubeFragmentShader;
+	VulkanCubemapRenderer hdriToCubeRenderer;
+
+	VulkanShader diffuseIrradianceFragmentShader;
+	VulkanCubemapRenderer diffuseIrradianceRenderer;
+
+	VulkanTexture environmentCubemap;
+	VulkanTexture diffuseIrradianceCubemap;
 
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};

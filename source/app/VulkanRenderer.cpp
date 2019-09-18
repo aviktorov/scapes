@@ -1,7 +1,6 @@
 #include "VulkanMesh.h"
 #include "VulkanRenderer.h"
 #include "VulkanUtils.h"
-#include "VulkanCubemapRenderer.h"
 #include "VulkanDescriptorSetLayoutBuilder.h"
 #include "VulkanGraphicsPipelineBuilder.h"
 #include "VulkanPipelineLayoutBuilder.h"
@@ -15,6 +14,10 @@
 #include <GLM/gtc/matrix_transform.hpp>
 
 #include <chrono>
+
+static std::string commonCubeVertexShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/commonCube.vert";
+static std::string hdriToCubeFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/hdriToCube.frag";
+static std::string diffuseIrradianceFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/diffuseIrradiance.frag";
 
 /*
  */
@@ -30,22 +33,71 @@ struct SharedRendererState
  */
 void Renderer::init(const RenderScene *scene)
 {
-	const VulkanTexture &hdrTexture = scene->getHDRTexture();
-	rendererCubemap.createCube(VK_FORMAT_R8G8B8A8_UNORM, 1024, 1024, 1);
+	commonCubeVertexShader.compileFromFile(commonCubeVertexShaderPath, VulkanShaderKind::Vertex);
+
+	hdriToCubeFragmentShader.compileFromFile(hdriToCubeFragmentShaderPath, VulkanShaderKind::Fragment);
+	diffuseIrradianceFragmentShader.compileFromFile(diffuseIrradianceFragmentShaderPath, VulkanShaderKind::Fragment);
+
+	environmentCubemap.createCube(VK_FORMAT_R8G8B8A8_UNORM, 1024, 1024, 1);
+	diffuseIrradianceCubemap.createCube(VK_FORMAT_R8G8B8A8_UNORM, 1024, 1024, 1);
 
 	{
-		VulkanCubemapRenderer cubeRenderer(context);
-		cubeRenderer.init(hdrTexture, rendererCubemap);
-		cubeRenderer.render();
+		VulkanUtils::transitionImageLayout(
+			context,
+			environmentCubemap.getImage(),
+			environmentCubemap.getImageFormat(),
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			0, environmentCubemap.getNumMipLevels(),
+			0, environmentCubemap.getNumLayers()
+		);
+
+		hdriToCubeRenderer.init(
+			commonCubeVertexShader,
+			hdriToCubeFragmentShader,
+			scene->getHDRTexture(),
+			environmentCubemap
+		);
+		hdriToCubeRenderer.render();
 
 		VulkanUtils::transitionImageLayout(
 			context,
-			rendererCubemap.getImage(),
-			rendererCubemap.getImageFormat(),
+			environmentCubemap.getImage(),
+			environmentCubemap.getImageFormat(),
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			0, rendererCubemap.getNumMipLevels(),
-			0, rendererCubemap.getNumLayers()
+			0, environmentCubemap.getNumMipLevels(),
+			0, environmentCubemap.getNumLayers()
+		);
+	}
+
+	{
+		VulkanUtils::transitionImageLayout(
+			context,
+			diffuseIrradianceCubemap.getImage(),
+			diffuseIrradianceCubemap.getImageFormat(),
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			0, diffuseIrradianceCubemap.getNumMipLevels(),
+			0, diffuseIrradianceCubemap.getNumLayers()
+		);
+
+		diffuseIrradianceRenderer.init(
+			commonCubeVertexShader,
+			diffuseIrradianceFragmentShader,
+			environmentCubemap,
+			diffuseIrradianceCubemap
+		);
+		diffuseIrradianceRenderer.render();
+
+		VulkanUtils::transitionImageLayout(
+			context,
+			diffuseIrradianceCubemap.getImage(),
+			diffuseIrradianceCubemap.getImageFormat(),
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			0, diffuseIrradianceCubemap.getNumMipLevels(),
+			0, diffuseIrradianceCubemap.getNumLayers()
 		);
 	}
 
@@ -71,6 +123,7 @@ void Renderer::init(const RenderScene *scene)
 	VulkanDescriptorSetLayoutBuilder descriptorSetLayoutBuilder(context);
 	descriptorSetLayout = descriptorSetLayoutBuilder
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
@@ -157,14 +210,15 @@ void Renderer::init(const RenderScene *scene)
 
 	for (size_t i = 0; i < imageCount; i++)
 	{
-		std::array<const VulkanTexture *, 6> textures =
+		std::array<const VulkanTexture *, 7> textures =
 		{
 			&scene->getAlbedoTexture(),
 			&scene->getNormalTexture(),
 			&scene->getAOTexture(),
 			&scene->getShadingTexture(),
 			&scene->getEmissionTexture(),
-			&rendererCubemap
+			&environmentCubemap,
+			&diffuseIrradianceCubemap,
 		};
 
 		VulkanUtils::bindUniformBuffer(
@@ -310,6 +364,23 @@ void Renderer::shutdown()
 
 	vkDestroyRenderPass(context.device, renderPass, nullptr);
 	renderPass = VK_NULL_HANDLE;
+
+	vkFreeCommandBuffers(context.device, context.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+	commandBuffers.clear();
+
+	vkFreeDescriptorSets(context.device, context.descriptorPool, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data());
+	descriptorSets.clear();
+
+	commonCubeVertexShader.clear();
+
+	hdriToCubeFragmentShader.clear();
+	hdriToCubeRenderer.shutdown();
+
+	diffuseIrradianceFragmentShader.clear();
+	diffuseIrradianceRenderer.shutdown();
+
+	environmentCubemap.clearGPUData();
+	diffuseIrradianceCubemap.clearGPUData();
 }
 
 /*
@@ -335,11 +406,13 @@ VkCommandBuffer Renderer::render(uint32_t imageIndex)
 	SharedRendererState *ubo = nullptr;
 	vkMapMemory(context.device, uniformBufferMemory, 0, sizeof(SharedRendererState), 0, reinterpret_cast<void**>(&ubo));
 
+	const glm::vec3 &cameraPos = glm::vec3(2.0f, 2.0f, 2.0f);
+
 	ubo->world = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);
-	ubo->view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), zero, up);
-	ubo->proj = glm::perspective(glm::radians(45.0f), aspect, zNear, zFar);
+	ubo->view = glm::lookAt(cameraPos, zero, up);
+	ubo->proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
 	ubo->proj[1][1] *= -1;
-	ubo->cameraPos = glm::vec3(2.0f, 2.0f, 2.0f);
+	ubo->cameraPos = cameraPos;
 
 	vkUnmapMemory(context.device, uniformBufferMemory);
 
