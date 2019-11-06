@@ -26,7 +26,7 @@ struct SharedRendererState
 	glm::mat4 world;
 	glm::mat4 view;
 	glm::mat4 proj;
-	glm::vec3 cameraPos;
+	glm::vec3 cameraPosWS;
 };
 
 /*
@@ -38,8 +38,8 @@ void Renderer::init(const RenderScene *scene)
 	hdriToCubeFragmentShader.compileFromFile(hdriToCubeFragmentShaderPath, VulkanShaderKind::Fragment);
 	diffuseIrradianceFragmentShader.compileFromFile(diffuseIrradianceFragmentShaderPath, VulkanShaderKind::Fragment);
 
-	environmentCubemap.createCube(VK_FORMAT_R8G8B8A8_UNORM, 1024, 1024, 1);
-	diffuseIrradianceCubemap.createCube(VK_FORMAT_R8G8B8A8_UNORM, 1024, 1024, 1);
+	environmentCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
+	diffuseIrradianceCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
 
 	{
 		VulkanUtils::transitionImageLayout(
@@ -407,12 +407,13 @@ VkCommandBuffer Renderer::render(uint32_t imageIndex)
 	vkMapMemory(context.device, uniformBufferMemory, 0, sizeof(SharedRendererState), 0, reinterpret_cast<void**>(&ubo));
 
 	const glm::vec3 &cameraPos = glm::vec3(2.0f, 2.0f, 2.0f);
+	const glm::mat4 &rotation = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);
 
-	ubo->world = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);
-	ubo->view = glm::lookAt(cameraPos, zero, up);
+	ubo->world = glm::mat4(1.0f);
+	ubo->view = glm::lookAt(cameraPos, zero, up) * rotation;
 	ubo->proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
 	ubo->proj[1][1] *= -1;
-	ubo->cameraPos = cameraPos;
+	ubo->cameraPosWS = glm::vec3(glm::vec4(cameraPos, 1.0f) * rotation);
 
 	vkUnmapMemory(context.device, uniformBufferMemory);
 
