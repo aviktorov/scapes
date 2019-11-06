@@ -5,7 +5,7 @@ layout(binding = 0) uniform UniformBufferObject {
 	mat4 world;
 	mat4 view;
 	mat4 proj;
-	vec3 cameraPos;
+	vec3 cameraPosWS;
 } ubo;
 
 layout(binding = 6) uniform samplerCube environmentSampler;
