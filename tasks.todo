@@ -1,4 +1,6 @@
 PBR Sandbox:
+    Offline:
+        ☐ Debug slow shader render failure
     Stream N:
         ☐ Create VulkanUniformBuffer template class
         ☐ Implement Oren-Nayar diffuse BRDF
@@ -6,10 +8,14 @@ PBR Sandbox:
         ☐ Improve microfacet BRDFs
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
-
-    Stream 11:
-        ☐ Create HDR cubemaps
         ☐ Try to render to a specific cubemap mip level
+    Stream 13:
+        ☐ Integrate imgui 3rdparty
+        ☐ Add debug parameter overrides for metalness & roughness
+    Stream 12:
+        ✔ Implement specular IBL in a naive way @done (11/7/2019, 2:11:46 AM)
+    Stream 11:
+        ✔ Create HDR cubemaps @done (11/6/2019, 2:00:35 AM)
     Stream 10:
         ✔ Refactor cubemap renderer to allow passing custom fragment shaders @done (9/18/2019, 9:03:09 PM)
         ✔ Render diffuse irradiance cubemap @done (9/18/2019, 9:03:09 PM)
