@@ -208,6 +208,14 @@ void VulkanCubemapRenderer::init(
 		inputTexture.getSampler()
 	);
 
+	// Create fence
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = 0;
+
+	if (vkCreateFence(context.device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+		throw std::runtime_error("Can't create fence");
+
 	// Record command buffer
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -289,6 +297,9 @@ void VulkanCubemapRenderer::shutdown()
 	vkFreeDescriptorSets(context.device, context.descriptorPool, 1, &descriptorSet);
 	descriptorSet = VK_NULL_HANDLE;
 
+	vkDestroyFence(context.device, fence, nullptr);
+	fence = VK_NULL_HANDLE;
+
 	rendererQuad.clearGPUData();
 	rendererQuad.clearCPUData();
 }
@@ -302,6 +313,9 @@ void VulkanCubemapRenderer::render()
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(context.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(context.graphicsQueue);
+	if (vkQueueSubmit(context.graphicsQueue, 1, &submitInfo, fence) != VK_SUCCESS)
+		throw std::runtime_error("Can't submit command buffer");
+
+	if (vkWaitForFences(context.device, 1, &fence, VK_TRUE, 100000000000) != VK_SUCCESS)
+		throw std::runtime_error("Can't wait for a fence");
 }

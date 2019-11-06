@@ -176,6 +176,7 @@ VkImageView VulkanUtils::createImageView(
 	viewInfo.image = image;
 	viewInfo.viewType = viewType;
 	viewInfo.format = format;
+	viewInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
 	viewInfo.subresourceRange.aspectMask = aspectFlags;
 	viewInfo.subresourceRange.baseMipLevel = baseMipLevel;
 	viewInfo.subresourceRange.levelCount = numMipLevels;
@@ -611,13 +612,26 @@ void VulkanUtils::endSingleTimeCommands(const VulkanRendererContext &context, Vk
 {
 	vkEndCommandBuffer(commandBuffer);
 
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = 0;
+
+	VkFence fence;
+	if (vkCreateFence(context.device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+		throw std::runtime_error("Can't create fence");
+
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(context.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(context.graphicsQueue);
+	if (vkQueueSubmit(context.graphicsQueue, 1, &submitInfo, fence) != VK_SUCCESS)
+		throw std::runtime_error("Can't submit command buffer");
+	
+	if (vkWaitForFences(context.device, 1, &fence, VK_TRUE, 100000000000) != VK_SUCCESS)
+		throw std::runtime_error("Can't wait for a fence");
+
+	vkDestroyFence(context.device, fence, nullptr);
 
 	vkFreeCommandBuffers(context.device, context.commandPool, 1, &commandBuffer);
 }
