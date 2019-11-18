@@ -6,6 +6,9 @@ layout(binding = 0) uniform UniformBufferObject {
 	mat4 view;
 	mat4 proj;
 	vec3 cameraPosWS;
+	float lerpUserValues;
+	float userMetalness;
+	float userRoughness;
 } ubo;
 
 layout(binding = 1) uniform sampler2D albedoSampler;
@@ -222,6 +225,11 @@ void main() {
 	microfacet_material.albedo = texture(albedoSampler, fragTexCoord).rgb;
 	microfacet_material.roughness = texture(shadingSampler, fragTexCoord).g;
 	microfacet_material.metalness = texture(shadingSampler, fragTexCoord).b;
+
+	microfacet_material.albedo = lerp(microfacet_material.albedo, vec3(0.5f, 0.5f, 0.5f), ubo.lerpUserValues);
+	microfacet_material.roughness = lerp(microfacet_material.roughness, ubo.userRoughness, ubo.lerpUserValues);
+	microfacet_material.metalness = lerp(microfacet_material.metalness, ubo.userMetalness, ubo.lerpUserValues);
+
 	microfacet_material.f0 = lerp(vec3(0.04f), microfacet_material.albedo, microfacet_material.metalness);
 
 	// Direct light
@@ -231,18 +239,17 @@ void main() {
 
 	// Ambient light (diffuse & specular IBL)
 	vec3 ibl_diffuse = texture(diffuseIrradianceSampler, ibl.light).rgb * microfacet_material.albedo;
-	ibl_diffuse *= iPI;
-	ibl_diffuse *= 1.0f - F_Shlick(ibl.dotNV, microfacet_material.f0, microfacet_material.roughness);
+	ibl_diffuse *= lerp(vec3(1.0f) - F_Shlick(ibl.dotNV, microfacet_material.f0, microfacet_material.roughness), vec3(0.0f), microfacet_material.metalness);
 
 	vec3 ibl_specular = SpecularIBL(ibl, microfacet_material);
 
-	vec3 ambient = ibl_diffuse + ibl_specular;
+	vec3 ambient = ibl_diffuse * iPI + ibl_specular;
 	ambient *= texture(aoSampler, fragTexCoord).r;
 
 	// Result
 	vec3 color = vec3(0.0f);
 	color += ambient;
-	color += light;
+	//color += light;
 	// color += texture(emissionSampler, fragTexCoord).rgb;
 
 	// TODO: move to separate pass

@@ -8,26 +8,14 @@
 
 #include "RenderScene.h"
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <GLM/glm.hpp>
-#include <GLM/gtc/matrix_transform.hpp>
+#include "imgui.h"
+#include "imgui_impl_vulkan.h"
 
 #include <chrono>
 
 static std::string commonCubeVertexShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/commonCube.vert";
 static std::string hdriToCubeFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/hdriToCube.frag";
 static std::string diffuseIrradianceFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/diffuseIrradiance.frag";
-
-/*
- */
-struct SharedRendererState
-{
-	glm::mat4 world;
-	glm::mat4 view;
-	glm::mat4 proj;
-	glm::vec3 cameraPosWS;
-};
 
 /*
  */
@@ -177,7 +165,7 @@ void Renderer::init(const RenderScene *scene)
 		.build();
 
 	// Create uniform buffers
-	VkDeviceSize uboSize = sizeof(SharedRendererState);
+	VkDeviceSize uboSize = sizeof(RendererState);
 
 	uint32_t imageCount = static_cast<uint32_t>(swapChainContext.swapChainImageViews.size());
 	uniformBuffers.resize(imageCount);
@@ -227,7 +215,7 @@ void Renderer::init(const RenderScene *scene)
 			0,
 			uniformBuffers[i],
 			0,
-			sizeof(SharedRendererState)
+			sizeof(RendererState)
 		);
 
 		for (int k = 0; k < textures.size(); k++)
@@ -274,62 +262,33 @@ void Renderer::init(const RenderScene *scene)
 	if (vkAllocateCommandBuffers(context.device, &allocateInfo, commandBuffers.data()) != VK_SUCCESS)
 		throw std::runtime_error("Can't create command buffers");
 
-	// Record command buffers
-	for (size_t i = 0; i < commandBuffers.size(); i++) {
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-		beginInfo.pInheritanceInfo = nullptr; // Optional
+	// Init ImGui bindings for Vulkan
+	{
+		ImGui_ImplVulkan_InitInfo init_info = {};
+		init_info.Instance = context.instance;
+		init_info.PhysicalDevice = context.physicalDevice;
+		init_info.Device = context.device;
+		init_info.QueueFamily = context.graphicsQueueFamily;
+		init_info.Queue = context.graphicsQueue;
+		init_info.DescriptorPool = context.descriptorPool;
+		init_info.MSAASamples = context.maxMSAASamples;
+		init_info.MinImageCount = static_cast<uint32_t>(swapChainContext.swapChainImageViews.size());
+		init_info.ImageCount = static_cast<uint32_t>(swapChainContext.swapChainImageViews.size());
 
-		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
-			throw std::runtime_error("Can't begin recording command buffer");
+		ImGui_ImplVulkan_Init(&init_info, renderPass);
 
-		VkRenderPassBeginInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = renderPass;
-		renderPassInfo.framebuffer = frameBuffers[i];
-		renderPassInfo.renderArea.offset = {0, 0};
-		renderPassInfo.renderArea.extent = swapChainContext.extent;
+		VulkanRendererContext imGuiContext = {};
+		imGuiContext.commandPool = context.commandPool;
+		imGuiContext.descriptorPool = context.descriptorPool;
+		imGuiContext.device = context.device;
+		imGuiContext.graphicsQueue = context.graphicsQueue;
+		imGuiContext.maxMSAASamples = context.maxMSAASamples;
+		imGuiContext.physicalDevice = context.physicalDevice;
+		imGuiContext.presentQueue = context.presentQueue;
 
-		std::array<VkClearValue, 3> clearValues = {};
-		clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
-		clearValues[1].color = {0.0f, 0.0f, 0.0f, 1.0f};
-		clearValues[2].depthStencil = {1.0f, 0};
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassInfo.pClearValues = clearValues.data();
-
-		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline);
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
-		{
-			const VulkanMesh &skybox = scene->getSkybox();
-
-			VkBuffer vertexBuffers[] = { skybox.getVertexBuffer() };
-			VkBuffer indexBuffer = skybox.getIndexBuffer();
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-			vkCmdDrawIndexed(commandBuffers[i], skybox.getNumIndices(), 1, 0, 0, 0);
-		}
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pbrPipeline);
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
-		{
-			const VulkanMesh &mesh = scene->getMesh();
-
-			VkBuffer vertexBuffers[] = { mesh.getVertexBuffer() };
-			VkBuffer indexBuffer = mesh.getIndexBuffer();
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-			vkCmdDrawIndexed(commandBuffers[i], mesh.getNumIndices(), 1, 0, 0, 0);
-		}
-		vkCmdEndRenderPass(commandBuffers[i]);
-
-		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
-			throw std::runtime_error("Can't record command buffer");
+		VkCommandBuffer imGuiCommandBuffer = VulkanUtils::beginSingleTimeCommands(imGuiContext);
+		ImGui_ImplVulkan_CreateFontsTexture(imGuiCommandBuffer);
+		VulkanUtils::endSingleTimeCommands(imGuiContext, imGuiCommandBuffer);
 	}
 }
 
@@ -381,20 +340,20 @@ void Renderer::shutdown()
 
 	environmentCubemap.clearGPUData();
 	diffuseIrradianceCubemap.clearGPUData();
+
+	ImGui_ImplVulkan_Shutdown();
 }
 
 /*
  */
-VkCommandBuffer Renderer::render(uint32_t imageIndex)
+void Renderer::update(const RenderScene *scene)
 {
+	// Render state
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
 
 	const float rotationSpeed = 0.1f;
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-	VkBuffer uniformBuffer = uniformBuffers[imageIndex];
-	VkDeviceMemory uniformBufferMemory = uniformBuffersMemory[imageIndex];
 
 	const glm::vec3 &up = {0.0f, 0.0f, 1.0f};
 	const glm::vec3 &zero = {0.0f, 0.0f, 0.0f};
@@ -403,19 +362,109 @@ VkCommandBuffer Renderer::render(uint32_t imageIndex)
 	const float zNear = 0.1f;
 	const float zFar = 1000.0f;
 
-	SharedRendererState *ubo = nullptr;
-	vkMapMemory(context.device, uniformBufferMemory, 0, sizeof(SharedRendererState), 0, reinterpret_cast<void**>(&ubo));
-
 	const glm::vec3 &cameraPos = glm::vec3(2.0f, 2.0f, 2.0f);
 	const glm::mat4 &rotation = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);
 
-	ubo->world = glm::mat4(1.0f);
-	ubo->view = glm::lookAt(cameraPos, zero, up) * rotation;
-	ubo->proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
-	ubo->proj[1][1] *= -1;
-	ubo->cameraPosWS = glm::vec3(glm::vec4(cameraPos, 1.0f) * rotation);
+	state.world = glm::mat4(1.0f);
+	state.view = glm::lookAt(cameraPos, zero, up) * rotation;
+	state.proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
+	state.proj[1][1] *= -1;
+	state.cameraPosWS = glm::vec3(glm::vec4(cameraPos, 1.0f) * rotation);
 
+	// ImGui
+	static float f = 0.0f;
+	static int counter = 0;
+	static bool show_demo_window = false;
+	static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+	if (show_demo_window)
+		ImGui::ShowDemoWindow(&show_demo_window);
+
+	ImGui::Begin("Material Parameters");
+
+	ImGui::Checkbox("Demo Window", &show_demo_window);
+
+	ImGui::SliderFloat("Lerp User Material", &state.lerpUserValues, 0.0f, 1.0f);
+	ImGui::SliderFloat("Metalness", &state.userMetalness, 0.0f, 1.0f);
+	ImGui::SliderFloat("Roughness", &state.userRoughness, 0.0f, 1.0f);
+
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::End();
+}
+
+VkCommandBuffer Renderer::render(const RenderScene *scene, uint32_t imageIndex)
+{
+	VkCommandBuffer commandBuffer = commandBuffers[imageIndex];
+	VkFramebuffer frameBuffer = frameBuffers[imageIndex];
+	VkDescriptorSet descriptorSet = descriptorSets[imageIndex];
+	VkBuffer uniformBuffer = uniformBuffers[imageIndex];
+	VkDeviceMemory uniformBufferMemory = uniformBuffersMemory[imageIndex];
+
+	void *ubo = nullptr;
+	vkMapMemory(context.device, uniformBufferMemory, 0, sizeof(RendererState), 0, &ubo);
+	memcpy(ubo, &state, sizeof(RendererState));
 	vkUnmapMemory(context.device, uniformBufferMemory);
 
-	return commandBuffers[imageIndex];
+	if (vkResetCommandBuffer(commandBuffer, 0) != VK_SUCCESS)
+		throw std::runtime_error("Can't reset command buffer");
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+	beginInfo.pInheritanceInfo = nullptr; // Optional
+
+	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+		throw std::runtime_error("Can't begin recording command buffer");
+
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = renderPass;
+	renderPassInfo.framebuffer = frameBuffer;
+	renderPassInfo.renderArea.offset = {0, 0};
+	renderPassInfo.renderArea.extent = swapChainContext.extent;
+
+	std::array<VkClearValue, 3> clearValues = {};
+	clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+	clearValues[1].color = {0.0f, 0.0f, 0.0f, 1.0f};
+	clearValues[2].depthStencil = {1.0f, 0};
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassInfo.pClearValues = clearValues.data();
+
+	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+	{
+		const VulkanMesh &skybox = scene->getSkybox();
+
+		VkBuffer vertexBuffers[] = { skybox.getVertexBuffer() };
+		VkBuffer indexBuffer = skybox.getIndexBuffer();
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdDrawIndexed(commandBuffer, skybox.getNumIndices(), 1, 0, 0, 0);
+	}
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrPipeline);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+	{
+		const VulkanMesh &mesh = scene->getMesh();
+
+		VkBuffer vertexBuffers[] = { mesh.getVertexBuffer() };
+		VkBuffer indexBuffer = mesh.getIndexBuffer();
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdDrawIndexed(commandBuffer, mesh.getNumIndices(), 1, 0, 0, 0);
+	}
+
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
+	vkCmdEndRenderPass(commandBuffer);
+
+	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+		throw std::runtime_error("Can't record command buffer");
+	
+	return commandBuffer;
 }

@@ -134,8 +134,15 @@ public:
 		const VulkanRendererContext &context
 	);
 
+	static VkCommandBuffer beginSingleTimeCommands(
+		const VulkanRendererContext &context
+	);
+
+	static void endSingleTimeCommands(
+		const VulkanRendererContext &context,
+		VkCommandBuffer commandBuffer
+	);
+
 private:
 	static bool hasStencilComponent(VkFormat format);
-	static VkCommandBuffer beginSingleTimeCommands(const VulkanRendererContext &context);
-	static void endSingleTimeCommands(const VulkanRendererContext &context, VkCommandBuffer commandBuffer);
 };

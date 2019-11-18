@@ -17,6 +17,8 @@ include_directories("3rdparty/glm")
 include_directories("3rdparty/shaderc/include")
 include_directories("3rdparty/stb")
 include_directories("3rdparty/volk")
+include_directories("3rdparty/imgui")
+include_directories("3rdparty/imgui/examples")
 
 link_directories("3rdparty/assimp/lib")
 link_directories("3rdparty/glfw/lib")
@@ -34,6 +36,12 @@ file(GLOB PBR_SANDBOX_SOURCES
 	source/engine/*.h
 	source/engine/*.cpp
 	3rdparty/volk/volk.c
+	3rdparty/imgui/imgui.cpp
+	3rdparty/imgui/imgui_draw.cpp
+	3rdparty/imgui/imgui_demo.cpp
+	3rdparty/imgui/imgui_widgets.cpp
+	3rdparty/imgui/examples/imgui_impl_glfw.cpp
+	3rdparty/imgui/examples/imgui_impl_vulkan.cpp
 )
 
 add_compile_definitions(NOMINMAX VK_USE_PLATFORM_WIN32_KHR)

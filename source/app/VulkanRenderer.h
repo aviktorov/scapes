@@ -9,6 +9,24 @@
 #include "VulkanTexture.h"
 #include "VulkanShader.h"
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <GLM/glm.hpp>
+#include <GLM/gtc/matrix_transform.hpp>
+
+/*
+ */
+struct RendererState
+{
+	glm::mat4 world;
+	glm::mat4 view;
+	glm::mat4 proj;
+	glm::vec3 cameraPosWS;
+	float lerpUserValues {0.0f};
+	float userMetalness {0.0f};
+	float userRoughness {0.0f};
+};
+
 class RenderScene;
 
 /*
@@ -29,8 +47,8 @@ public:
 	{ }
 
 	void init(const RenderScene *scene);
-
-	VkCommandBuffer render(uint32_t imageIndex);
+	void update(const RenderScene *scene);
+	VkCommandBuffer render(const RenderScene *scene, uint32_t imageIndex);
 	void shutdown();
 
 private:
@@ -62,4 +80,6 @@ private:
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 
 	std::vector<VkDescriptorSet> descriptorSets;
+
+	RendererState state;
 };

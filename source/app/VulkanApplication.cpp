@@ -9,6 +9,9 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+
 #include <array>
 #include <iostream>
 #include <set>
@@ -55,6 +58,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 void Application::run()
 {
 	initWindow();
+	initImGui();
 	initVulkan();
 	initVulkanSwapChain();
 	initRenderScene();
@@ -64,7 +68,15 @@ void Application::run()
 	shutdownRenderScene();
 	shutdownVulkanSwapChain();
 	shutdownVulkan();
+	shutdownImGui();
 	shutdownWindow();
+}
+
+/*
+ */
+void Application::update()
+{
+	renderer->update(scene);
 }
 
 /*
@@ -91,7 +103,7 @@ void Application::render()
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
 		throw std::runtime_error("Can't aquire swap chain image");
 
-	VkCommandBuffer commandBuffer = renderer->render(imageIndex);
+	VkCommandBuffer commandBuffer = renderer->render(scene, imageIndex);
 
 	VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -151,6 +163,13 @@ void Application::mainloop()
 
 	while (!glfwWindowShouldClose(window))
 	{
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		update();
+
+		ImGui::Render();
+
 		render();
 		glfwPollEvents();
 	}
@@ -232,6 +251,25 @@ void Application::shutdownRenderer()
 
 	delete renderer;
 	renderer = nullptr;
+}
+
+/*
+ */
+void Application::initImGui()
+{
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	ImGui::StyleColorsDark();
+
+	// TODO: use own GLFW callbacks
+	ImGui_ImplGlfw_InitForVulkan(window, true);
+}
+
+void Application::shutdownImGui()
+{
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 }
 
 /*
@@ -671,7 +709,7 @@ void Application::initVulkan()
 	VkCommandPoolCreateInfo commandPoolInfo = {};
 	commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	commandPoolInfo.queueFamilyIndex = indices.graphicsFamily.value();
-	commandPoolInfo.flags = 0; // Optional
+	commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	if (vkCreateCommandPool(device, &commandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
 		throw std::runtime_error("Can't create command pool");
@@ -720,10 +758,13 @@ void Application::initVulkan()
 			throw std::runtime_error("Can't create in flight frame fence");
 	}
 
+	context.instance = instance;
 	context.device = device;
 	context.physicalDevice = physicalDevice;
 	context.commandPool = commandPool;
 	context.descriptorPool = descriptorPool;
+	context.graphicsQueueFamily = indices.graphicsFamily.value();
+	context.presentQueueFamily = indices.presentFamily.value();
 	context.graphicsQueue = graphicsQueue;
 	context.presentQueue = presentQueue;
 	context.maxMSAASamples = VulkanUtils::getMaxUsableSampleCount(context);

@@ -10,8 +10,8 @@ PBR Sandbox:
             ☐ Multiscattering GGX + Shlick
         ☐ Try to render to a specific cubemap mip level
     Stream 13:
-        ☐ Integrate imgui 3rdparty
-        ☐ Add debug parameter overrides for metalness & roughness
+        ✔ Integrate imgui 3rdparty @done (11/18/2019, 10:50:58 PM)
+        ✔ Add debug parameter overrides for metalness & roughness @done (11/18/2019, 11:21:15 PM)
     Stream 12:
         ✔ Implement specular IBL in a naive way @done (11/7/2019, 2:11:46 AM)
     Stream 11:

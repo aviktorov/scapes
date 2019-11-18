@@ -14,7 +14,7 @@ class RenderScene;
  */
 struct QueueFamilyIndices
 {
-	std::optional<uint32_t> graphicsFamily { std::nullopt };
+	std::optional<uint32_t> graphicsFamily {std::nullopt};
 	std::optional<uint32_t> presentFamily {std::nullopt};
 
 	inline bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
@@ -79,6 +79,10 @@ private:
 	void initRenderer();
 	void shutdownRenderer();
 
+	void initImGui();
+	void shutdownImGui();
+
+	void update();
 	void render();
 	void mainloop();
 
@@ -101,7 +105,7 @@ private:
 	VkCommandPool commandPool {VK_NULL_HANDLE};
 	VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
 
-	VulkanRendererContext context = {};
+	VulkanRendererContext context {};
 
 	//
 	VkSwapchainKHR swapChain {VK_NULL_HANDLE};
