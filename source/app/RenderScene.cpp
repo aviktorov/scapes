@@ -1,6 +1,8 @@
 #include "RenderScene.h"
 #include "VulkanShader.h"
 
+#include <cassert>
+
 namespace config
 {
 	// Meshes
@@ -38,7 +40,11 @@ namespace config
 		"textures/Default_emissive.jpg",
 	};
 
-	static const char *hdrTexture = "textures/Default_environment.hdr";
+	static std::vector<const char *> hdrTextures = {
+		"textures/environment/arctic.hdr",
+		"textures/environment/umbrellas.hdr",
+		"textures/environment/shanghai_bund_4k.hdr",
+	};
 }
 
 /*
@@ -46,6 +52,19 @@ namespace config
 RenderScene::RenderScene(const VulkanRendererContext &context)
 	: resources(context)
 { }
+
+/*
+ */
+const char *RenderScene::getHDRTexturePath(int index) const
+{
+	assert(index >= 0 && index < config::hdrTextures.size());
+	return config::hdrTextures[index];
+}
+
+size_t RenderScene::getNumHDRTextures() const
+{
+	return config::hdrTextures.size();
+}
 
 /*
  */
@@ -62,7 +81,8 @@ void RenderScene::init()
 	for (int i = 0; i < config::textures.size(); i++)
 		resources.loadTexture(i, config::textures[i]);
 
-	resources.loadHDRTexture(config::Textures::Environment, config::hdrTexture);
+	for (int i = 0; i < config::hdrTextures.size(); i++)
+		resources.loadHDRTexture(config::Textures::EnvironmentBase + i, config::hdrTextures[i]);
 }
 
 void RenderScene::shutdown()
@@ -78,5 +98,6 @@ void RenderScene::shutdown()
 	for (int i = 0; i < config::textures.size(); i++)
 		resources.unloadTexture(i);
 
-	resources.unloadTexture(config::Textures::Environment);
+	for (int i = 0; i < config::hdrTextures.size(); i++)
+		resources.unloadTexture(config::Textures::EnvironmentBase + i);
 }

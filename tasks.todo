@@ -1,7 +1,8 @@
 PBR Sandbox:
     Offline:
         ☐ Debug slow shader render failure
-    Stream N:
+        ☐ Create a pull request to ImGui (Vulkan + Volk)
+    Online:
         ☐ Create VulkanUniformBuffer template class
         ☐ Implement Oren-Nayar diffuse BRDF
         ☐ Implement microfacet Burley 12 diffuse BRDF
@@ -9,6 +10,14 @@ PBR Sandbox:
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
         ☐ Try to render to a specific cubemap mip level
+        ☐ Use #include parser from shaderc
+    Stream 15:
+        ☐ Get rid of direct resource dependency from VulkanRenderer
+        ☐ Deduce shader kind from extension
+        ☐ Deduce texture type (HDR or LDR) from extension
+    Stream 14:
+        ✔ Get rid of all hardcoded paths @done (11/23/2019, 2:42:39 AM)
+        ✔ Add environment selection UI @done (11/23/2019, 3:37:47 AM)
     Stream 13:
         ✔ Integrate imgui 3rdparty @done (11/18/2019, 10:50:58 PM)
         ✔ Add debug parameter overrides for metalness & roughness @done (11/18/2019, 11:21:15 PM)
