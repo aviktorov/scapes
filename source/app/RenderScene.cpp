@@ -1,50 +1,82 @@
 #include "RenderScene.h"
+#include "VulkanShader.h"
+
+namespace config
+{
+	// Meshes
+	static std::vector<const char *>meshes = {
+		"models/SciFiHelmet.gltf",
+	};
+
+	// Shaders
+	static std::vector<const char *> shaders = {
+		"shaders/pbr.vert",
+		"shaders/pbr.frag",
+		"shaders/skybox.vert",
+		"shaders/skybox.frag",
+		"shaders/commonCube.vert",
+		"shaders/hdriToCube.frag",
+		"shaders/diffuseIrradiance.frag",
+	};
+
+	static std::vector<VulkanShaderKind> shaderKinds = {
+		VulkanShaderKind::Vertex,
+		VulkanShaderKind::Fragment,
+		VulkanShaderKind::Vertex,
+		VulkanShaderKind::Fragment,
+		VulkanShaderKind::Vertex,
+		VulkanShaderKind::Fragment,
+		VulkanShaderKind::Fragment,
+	};
+
+	// Textures
+	static std::vector<const char *> textures = {
+		"textures/SciFiHelmet_BaseColor.png",
+		"textures/SciFiHelmet_Normal.png",
+		"textures/SciFiHelmet_AmbientOcclusion.png",
+		"textures/SciFiHelmet_MetallicRoughness.png",
+		"textures/Default_emissive.jpg",
+	};
+
+	static const char *hdrTexture = "textures/Default_environment.hdr";
+}
 
 /*
  */
-void RenderScene::init(
-	const std::string &pbrVertexShaderFile,
-	const std::string &pbrFragmentShaderFile,
-	const std::string &skyboxVertexShaderFile,
-	const std::string &skyboxFragmentShaderFile,
-	const std::string &albedoFile,
-	const std::string &normalFile,
-	const std::string &aoFile,
-	const std::string &shadingFile,
-	const std::string &emissionFile,
-	const std::string &hdrFile,
-	const std::string &modelFile
-)
+RenderScene::RenderScene(const VulkanRendererContext &context)
+	: resources(context)
+{ }
+
+/*
+ */
+void RenderScene::init()
 {
-	pbrVertexShader.compileFromFile(pbrVertexShaderFile, VulkanShaderKind::Vertex);
-	pbrFragmentShader.compileFromFile(pbrFragmentShaderFile, VulkanShaderKind::Fragment);
-	skyboxVertexShader.compileFromFile(skyboxVertexShaderFile, VulkanShaderKind::Vertex);
-	skyboxFragmentShader.compileFromFile(skyboxFragmentShaderFile, VulkanShaderKind::Fragment);
+	for (int i = 0; i < config::meshes.size(); i++)
+		resources.loadMesh(i, config::meshes[i]);
 
-	albedoTexture.loadFromFile(albedoFile);
-	normalTexture.loadFromFile(normalFile);
-	aoTexture.loadFromFile(aoFile);
-	shadingTexture.loadFromFile(shadingFile);
-	emissionTexture.loadFromFile(emissionFile);
-	hdrTexture.loadHDRFromFile(hdrFile);
+	resources.createCubeMesh(config::Meshes::Skybox, 1000.0f);
 
-	mesh.loadFromFile(modelFile);
-	skybox.createSkybox(1000.0f);
+	for (int i = 0; i < config::shaders.size(); i++)
+		resources.loadShader(i, config::shaderKinds[i], config::shaders[i]);
+
+	for (int i = 0; i < config::textures.size(); i++)
+		resources.loadTexture(i, config::textures[i]);
+
+	resources.loadHDRTexture(config::Textures::Environment, config::hdrTexture);
 }
 
 void RenderScene::shutdown()
 {
-	pbrVertexShader.clear();
-	pbrFragmentShader.clear();
-	skyboxVertexShader.clear();
-	skyboxFragmentShader.clear();
+	for (int i = 0; i < config::meshes.size(); i++)
+		resources.unloadMesh(i);
 
-	albedoTexture.clearGPUData();
-	normalTexture.clearGPUData();
-	aoTexture.clearGPUData();
-	shadingTexture.clearGPUData();
-	emissionTexture.clearGPUData();
-	hdrTexture.clearGPUData();
+	resources.unloadMesh(config::Meshes::Skybox);
 
-	mesh.clearGPUData();
+	for (int i = 0; i < config::shaders.size(); i++)
+		resources.unloadShader(i);
+
+	for (int i = 0; i < config::textures.size(); i++)
+		resources.unloadTexture(i);
+
+	resources.unloadTexture(config::Textures::Environment);
 }

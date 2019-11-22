@@ -13,19 +13,10 @@
 
 #include <chrono>
 
-static std::string commonCubeVertexShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/commonCube.vert";
-static std::string hdriToCubeFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/hdriToCube.frag";
-static std::string diffuseIrradianceFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/diffuseIrradiance.frag";
-
 /*
  */
 void Renderer::init(const RenderScene *scene)
 {
-	commonCubeVertexShader.compileFromFile(commonCubeVertexShaderPath, VulkanShaderKind::Vertex);
-
-	hdriToCubeFragmentShader.compileFromFile(hdriToCubeFragmentShaderPath, VulkanShaderKind::Fragment);
-	diffuseIrradianceFragmentShader.compileFromFile(diffuseIrradianceFragmentShaderPath, VulkanShaderKind::Fragment);
-
 	environmentCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
 	diffuseIrradianceCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
 
@@ -41,9 +32,9 @@ void Renderer::init(const RenderScene *scene)
 		);
 
 		hdriToCubeRenderer.init(
-			commonCubeVertexShader,
-			hdriToCubeFragmentShader,
-			scene->getHDRTexture(),
+			*scene->getCubeVertexShader(),
+			*scene->getHDRIToFragmentShader(),
+			*scene->getHDRTexture(),
 			environmentCubemap
 		);
 		hdriToCubeRenderer.render();
@@ -71,8 +62,8 @@ void Renderer::init(const RenderScene *scene)
 		);
 
 		diffuseIrradianceRenderer.init(
-			commonCubeVertexShader,
-			diffuseIrradianceFragmentShader,
+			*scene->getCubeVertexShader(),
+			*scene->getDiffuseIrradianceFragmentShader(),
 			environmentCubemap,
 			diffuseIrradianceCubemap
 		);
@@ -89,10 +80,10 @@ void Renderer::init(const RenderScene *scene)
 		);
 	}
 
-	const VulkanShader &pbrVertexShader = scene->getPBRVertexShader();
-	const VulkanShader &pbrFragmentShader = scene->getPBRFragmentShader();
-	const VulkanShader &skyboxVertexShader = scene->getSkyboxVertexShader();
-	const VulkanShader &skyboxFragmentShader = scene->getSkyboxFragmentShader();
+	const VulkanShader *pbrVertexShader = scene->getPBRVertexShader();
+	const VulkanShader *pbrFragmentShader = scene->getPBRFragmentShader();
+	const VulkanShader *skyboxVertexShader = scene->getSkyboxVertexShader();
+	const VulkanShader *skyboxFragmentShader = scene->getSkyboxFragmentShader();
 
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
@@ -138,8 +129,8 @@ void Renderer::init(const RenderScene *scene)
 
 	VulkanGraphicsPipelineBuilder pbrPipelineBuilder(context, pipelineLayout, renderPass);
 	pbrPipeline = pbrPipelineBuilder
-		.addShaderStage(pbrVertexShader.getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
-		.addShaderStage(pbrFragmentShader.getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
+		.addShaderStage(pbrVertexShader->getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
+		.addShaderStage(pbrFragmentShader->getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
 		.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions())
 		.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 		.addViewport(viewport)
@@ -152,8 +143,8 @@ void Renderer::init(const RenderScene *scene)
 
 	VulkanGraphicsPipelineBuilder skyboxPipelineBuilder(context, pipelineLayout, renderPass);
 	skyboxPipeline = skyboxPipelineBuilder
-		.addShaderStage(skyboxVertexShader.getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
-		.addShaderStage(skyboxFragmentShader.getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
+		.addShaderStage(skyboxVertexShader->getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
+		.addShaderStage(skyboxFragmentShader->getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
 		.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions())
 		.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
 		.addViewport(viewport)
@@ -200,11 +191,11 @@ void Renderer::init(const RenderScene *scene)
 	{
 		std::array<const VulkanTexture *, 7> textures =
 		{
-			&scene->getAlbedoTexture(),
-			&scene->getNormalTexture(),
-			&scene->getAOTexture(),
-			&scene->getShadingTexture(),
-			&scene->getEmissionTexture(),
+			scene->getAlbedoTexture(),
+			scene->getNormalTexture(),
+			scene->getAOTexture(),
+			scene->getShadingTexture(),
+			scene->getEmissionTexture(),
 			&environmentCubemap,
 			&diffuseIrradianceCubemap,
 		};
@@ -330,12 +321,7 @@ void Renderer::shutdown()
 	vkFreeDescriptorSets(context.device, context.descriptorPool, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data());
 	descriptorSets.clear();
 
-	commonCubeVertexShader.clear();
-
-	hdriToCubeFragmentShader.clear();
 	hdriToCubeRenderer.shutdown();
-
-	diffuseIrradianceFragmentShader.clear();
 	diffuseIrradianceRenderer.shutdown();
 
 	environmentCubemap.clearGPUData();
@@ -435,28 +421,28 @@ VkCommandBuffer Renderer::render(const RenderScene *scene, uint32_t imageIndex)
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 	{
-		const VulkanMesh &skybox = scene->getSkybox();
+		const VulkanMesh *skybox = scene->getSkybox();
 
-		VkBuffer vertexBuffers[] = { skybox.getVertexBuffer() };
-		VkBuffer indexBuffer = skybox.getIndexBuffer();
+		VkBuffer vertexBuffers[] = { skybox->getVertexBuffer() };
+		VkBuffer indexBuffer = skybox->getIndexBuffer();
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(commandBuffer, skybox.getNumIndices(), 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffer, skybox->getNumIndices(), 1, 0, 0, 0);
 	}
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrPipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 	{
-		const VulkanMesh &mesh = scene->getMesh();
+		const VulkanMesh *mesh = scene->getMesh();
 
-		VkBuffer vertexBuffers[] = { mesh.getVertexBuffer() };
-		VkBuffer indexBuffer = mesh.getIndexBuffer();
+		VkBuffer vertexBuffers[] = { mesh->getVertexBuffer() };
+		VkBuffer indexBuffer = mesh->getIndexBuffer();
 		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(commandBuffer, mesh.getNumIndices(), 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffer, mesh->getNumIndices(), 1, 0, 0, 0);
 	}
 
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);

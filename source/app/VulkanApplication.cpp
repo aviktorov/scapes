@@ -16,18 +16,6 @@
 #include <iostream>
 #include <set>
 
-static std::string pbrVertexShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/pbr.vert";
-static std::string pbrFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/pbr.frag";
-static std::string skyboxVertexShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/skybox.vert";
-static std::string skyboxFragmentShaderPath = "D:/Development/Projects/pbr-sandbox/shaders/skybox.frag";
-static std::string albedoTexturePath = "D:/Development/Projects/pbr-sandbox/textures/SciFiHelmet_BaseColor.png";
-static std::string normalTexturePath = "D:/Development/Projects/pbr-sandbox/textures/SciFiHelmet_Normal.png";
-static std::string aoTexturePath = "D:/Development/Projects/pbr-sandbox/textures/SciFiHelmet_AmbientOcclusion.png";
-static std::string shadingTexturePath = "D:/Development/Projects/pbr-sandbox/textures/SciFiHelmet_MetallicRoughness.png";
-static std::string emissionTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_emissive.jpg";
-static std::string hdrTexturePath = "D:/Development/Projects/pbr-sandbox/textures/Default_environment.hdr";
-static std::string modelPath = "D:/Development/Projects/pbr-sandbox/models/SciFiHelmet.gltf";
-
 static int maxCombinedImageSamplers = 32;
 static int maxUniformBuffers = 32;
 
@@ -206,19 +194,7 @@ void Application::onFramebufferResize(GLFWwindow *window, int width, int height)
 void Application::initRenderScene()
 {
 	scene = new RenderScene(context);
-	scene->init(
-		pbrVertexShaderPath,
-		pbrFragmentShaderPath,
-		skyboxVertexShaderPath,
-		skyboxFragmentShaderPath,
-		albedoTexturePath,
-		normalTexturePath,
-		aoTexturePath,
-		shadingTexturePath,
-		emissionTexturePath,
-		hdrTexturePath,
-		modelPath
-	);
+	scene->init();
 }
 
 void Application::shutdownRenderScene()

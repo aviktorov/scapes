@@ -37,10 +37,7 @@ public:
 	Renderer(const VulkanRendererContext &context, const VulkanSwapChainContext &swapChainContext)
 		: context(context)
 		, swapChainContext(swapChainContext)
-		, commonCubeVertexShader(context)
-		, hdriToCubeFragmentShader(context)
 		, hdriToCubeRenderer(context)
-		, diffuseIrradianceFragmentShader(context)
 		, diffuseIrradianceRenderer(context)
 		, environmentCubemap(context)
 		, diffuseIrradianceCubemap(context)
@@ -55,12 +52,7 @@ private:
 	VulkanRendererContext context;
 	VulkanSwapChainContext swapChainContext;
 
-	VulkanShader commonCubeVertexShader;
-
-	VulkanShader hdriToCubeFragmentShader;
 	VulkanCubemapRenderer hdriToCubeRenderer;
-
-	VulkanShader diffuseIrradianceFragmentShader;
 	VulkanCubemapRenderer diffuseIrradianceRenderer;
 
 	VulkanTexture environmentCubemap;
