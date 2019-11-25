@@ -23,6 +23,7 @@ public:
 	void unloadMesh(int id);
 
 	VulkanShader *getShader(int id) const;
+	VulkanShader *loadShader(int id, const char *path);
 	VulkanShader *loadShader(int id, VulkanShaderKind kind, const char *path);
 	void unloadShader(int id);
 

@@ -1,5 +1,5 @@
 #version 450
-#extension GL_ARB_separate_shader_objects : enable
+#pragma shader_stage(fragment)
 
 layout(binding = 0) uniform UniformBufferObject {
 	mat4 faces[6];

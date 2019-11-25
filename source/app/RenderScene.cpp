@@ -21,16 +21,6 @@ namespace config
 		"shaders/diffuseIrradiance.frag",
 	};
 
-	static std::vector<VulkanShaderKind> shaderKinds = {
-		VulkanShaderKind::Vertex,
-		VulkanShaderKind::Fragment,
-		VulkanShaderKind::Vertex,
-		VulkanShaderKind::Fragment,
-		VulkanShaderKind::Vertex,
-		VulkanShaderKind::Fragment,
-		VulkanShaderKind::Fragment,
-	};
-
 	// Textures
 	static std::vector<const char *> textures = {
 		"textures/SciFiHelmet_BaseColor.png",
@@ -76,7 +66,7 @@ void RenderScene::init()
 	resources.createCubeMesh(config::Meshes::Skybox, 1000.0f);
 
 	for (int i = 0; i < config::shaders.size(); i++)
-		resources.loadShader(i, config::shaderKinds[i], config::shaders[i]);
+		resources.loadShader(i, config::shaders[i]);
 
 	for (int i = 0; i < config::textures.size(); i++)
 		resources.loadTexture(i, config::textures[i]);

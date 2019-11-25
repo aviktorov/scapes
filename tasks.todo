@@ -13,8 +13,8 @@ PBR Sandbox:
         ☐ Use #include parser from shaderc
     Stream 15:
         ☐ Get rid of direct resource dependency from VulkanRenderer
-        ☐ Deduce shader kind from extension
-        ☐ Deduce texture type (HDR or LDR) from extension
+        ✔ Deduce shader kind from extension @done (11/26/2019, 12:44:58 AM)
+        ✔ Deduce texture type (HDR or LDR) from extension @done (11/26/2019, 12:21:15 AM)
     Stream 14:
         ✔ Get rid of all hardcoded paths @done (11/23/2019, 2:42:39 AM)
         ✔ Add environment selection UI @done (11/23/2019, 3:37:47 AM)

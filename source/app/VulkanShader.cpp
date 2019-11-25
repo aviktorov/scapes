@@ -1,8 +1,6 @@
 #include "VulkanShader.h"
 #include "VulkanUtils.h"
 
-#include "shaderc/shaderc.h"
-
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -33,7 +31,7 @@ VulkanShader::~VulkanShader()
 
 /*
  */
-bool VulkanShader::compileFromFile(const std::string &path, VulkanShaderKind kind)
+bool VulkanShader::compileFromFile(const char *path)
 {
 	std::ifstream file(path, std::ios::ate | std::ios::binary);
 
@@ -50,13 +48,38 @@ bool VulkanShader::compileFromFile(const std::string &path, VulkanShaderKind kin
 	file.read(buffer.data(), fileSize);
 	file.close();
 
+	return compileFromSourceInternal(path, buffer.data(), buffer.size(), shaderc_glsl_infer_from_source);
+}
+
+bool VulkanShader::compileFromFile(const char *path, VulkanShaderKind kind)
+{
+	std::ifstream file(path, std::ios::ate | std::ios::binary);
+
+	if (!file.is_open())
+	{
+		std::cerr << "VulkanShader::loadFromFile(): can't load shader at \"" << path << "\"" << std::endl;
+		return false;
+	}
+
+	size_t fileSize = static_cast<size_t>(file.tellg());
+	std::vector<char> buffer(fileSize);
+
+	file.seekg(0);
+	file.read(buffer.data(), fileSize);
+	file.close();
+
+	return compileFromSourceInternal(path, buffer.data(), buffer.size(), vulkan_to_shaderc_kind(kind));
+}
+
+bool VulkanShader::compileFromSourceInternal(const char *path, const char *sourceData, size_t sourceSize, shaderc_shader_kind kind)
+{
 	// convert glsl/hlsl code to SPIR-V bytecode
 	shaderc_compiler_t compiler = shaderc_compiler_initialize();
 	shaderc_compilation_result_t result = shaderc_compile_into_spv(
 		compiler,
-		buffer.data(), buffer.size(),
-		vulkan_to_shaderc_kind(kind),
-		path.c_str(),
+		sourceData, sourceSize,
+		shaderc_glsl_infer_from_source,
+		path,
 		"main",
 		nullptr
 	);
