@@ -227,6 +227,18 @@ void Renderer::initEnvironment(const RenderScene *scene)
 	environmentCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
 	diffuseIrradianceCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
 
+	hdriToCubeRenderer.init(
+		*scene->getCubeVertexShader(),
+		*scene->getHDRIToFragmentShader(),
+		environmentCubemap
+	);
+
+	diffuseIrradianceRenderer.init(
+		*scene->getCubeVertexShader(),
+		*scene->getDiffuseIrradianceFragmentShader(),
+		diffuseIrradianceCubemap
+	);
+
 	setEnvironment(scene, currentEnvironment);
 }
 
@@ -243,14 +255,7 @@ void Renderer::setEnvironment(const RenderScene *scene, int index)
 			0, environmentCubemap.getNumLayers()
 		);
 
-		hdriToCubeRenderer.init(
-			*scene->getCubeVertexShader(),
-			*scene->getHDRIToFragmentShader(),
-			*scene->getHDRTexture(index),
-			environmentCubemap
-		);
-		hdriToCubeRenderer.render();
-		hdriToCubeRenderer.shutdown();
+		hdriToCubeRenderer.render(*scene->getHDRTexture(index));
 
 		VulkanUtils::transitionImageLayout(
 			context,
@@ -274,14 +279,7 @@ void Renderer::setEnvironment(const RenderScene *scene, int index)
 			0, diffuseIrradianceCubemap.getNumLayers()
 		);
 
-		diffuseIrradianceRenderer.init(
-			*scene->getCubeVertexShader(),
-			*scene->getDiffuseIrradianceFragmentShader(),
-			environmentCubemap,
-			diffuseIrradianceCubemap
-		);
-		diffuseIrradianceRenderer.render();
-		diffuseIrradianceRenderer.shutdown();
+		diffuseIrradianceRenderer.render(environmentCubemap);
 
 		VulkanUtils::transitionImageLayout(
 			context,

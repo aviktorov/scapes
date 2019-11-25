@@ -24,7 +24,6 @@ struct CubemapFaceOrientationData
 void VulkanCubemapRenderer::init(
 	const VulkanShader &vertexShader,
 	const VulkanShader &fragmentShader,
-	const VulkanTexture &inputTexture,
 	const VulkanTexture &targetTexture
 )
 {
@@ -43,20 +42,21 @@ void VulkanCubemapRenderer::init(
 		);
 	}
 
-	VkImageView targetView = targetTexture.getImageView();
+	targetExtent.width = targetTexture.getWidth();
+	targetExtent.height = targetTexture.getHeight();
 
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(targetTexture.getWidth());
-	viewport.height = static_cast<float>(targetTexture.getHeight());
+	viewport.width = static_cast<float>(targetExtent.width);
+	viewport.height = static_cast<float>(targetExtent.height);
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = {0, 0};
-	scissor.extent.width = targetTexture.getWidth();
-	scissor.extent.height = targetTexture.getHeight();
+	scissor.extent.width = targetExtent.width;
+	scissor.extent.height = targetExtent.height;
 
 	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -135,8 +135,8 @@ void VulkanCubemapRenderer::init(
 	framebufferInfo.renderPass = renderPass;
 	framebufferInfo.attachmentCount = 6;
 	framebufferInfo.pAttachments = faceViews;
-	framebufferInfo.width = targetTexture.getWidth();
-	framebufferInfo.height = targetTexture.getHeight();
+	framebufferInfo.width = targetExtent.width;
+	framebufferInfo.height = targetExtent.height;
 	framebufferInfo.layers = 1;
 
 	if (vkCreateFramebuffer(context.device, &framebufferInfo, nullptr, &frameBuffer) != VK_SUCCESS)
@@ -200,14 +200,6 @@ void VulkanCubemapRenderer::init(
 		uboSize
 	);
 
-	VulkanUtils::bindCombinedImageSampler(
-		context,
-		descriptorSet,
-		1,
-		inputTexture.getImageView(),
-		inputTexture.getSampler()
-	);
-
 	// Create fence
 	VkFenceCreateInfo fenceInfo{};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -215,51 +207,6 @@ void VulkanCubemapRenderer::init(
 
 	if (vkCreateFence(context.device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't create fence");
-
-	// Record command buffer
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-	beginInfo.pInheritanceInfo = nullptr; // Optional
-
-	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-		throw std::runtime_error("Can't begin recording command buffer");
-
-	VkRenderPassBeginInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = renderPass;
-	renderPassInfo.framebuffer = frameBuffer;
-	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent.width = static_cast<uint32_t>(targetTexture.getWidth());
-	renderPassInfo.renderArea.extent.height = static_cast<uint32_t>(targetTexture.getHeight());
-
-	VkClearValue clearValues[6];
-	for (int i = 0; i < 6; i++)
-	{
-		clearValues[i] = {};
-		clearValues[i].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	}
-	renderPassInfo.clearValueCount = 6;
-	renderPassInfo.pClearValues = clearValues;
-
-	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-	{
-		VkBuffer vertexBuffers[] = { rendererQuad.getVertexBuffer() };
-		VkBuffer indexBuffer = rendererQuad.getIndexBuffer();
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-		vkCmdDrawIndexed(commandBuffer, rendererQuad.getNumIndices(), 1, 0, 0, 0);
-	}
-
-	vkCmdEndRenderPass(commandBuffer);
-
-	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-		throw std::runtime_error("Can't record command buffer");
 }
 
 void VulkanCubemapRenderer::shutdown()
@@ -306,12 +253,68 @@ void VulkanCubemapRenderer::shutdown()
 
 /*
  */
-void VulkanCubemapRenderer::render()
+void VulkanCubemapRenderer::render(const VulkanTexture &inputTexture)
 {
+	VulkanUtils::bindCombinedImageSampler(
+		context,
+		descriptorSet,
+		1,
+		inputTexture.getImageView(),
+		inputTexture.getSampler()
+	);
+
+	// Record command buffer
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+	beginInfo.pInheritanceInfo = nullptr; // Optional
+
+	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+		throw std::runtime_error("Can't begin recording command buffer");
+
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = renderPass;
+	renderPassInfo.framebuffer = frameBuffer;
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent.width = targetExtent.width;
+	renderPassInfo.renderArea.extent.height = targetExtent.height;
+
+	VkClearValue clearValues[6];
+	for (int i = 0; i < 6; i++)
+	{
+		clearValues[i] = {};
+		clearValues[i].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	}
+	renderPassInfo.clearValueCount = 6;
+	renderPassInfo.pClearValues = clearValues;
+
+	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+	{
+		VkBuffer vertexBuffers[] = { rendererQuad.getVertexBuffer() };
+		VkBuffer indexBuffer = rendererQuad.getIndexBuffer();
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdDrawIndexed(commandBuffer, rendererQuad.getNumIndices(), 1, 0, 0, 0);
+	}
+
+	vkCmdEndRenderPass(commandBuffer);
+
+	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+		throw std::runtime_error("Can't record command buffer");
+
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
+
+	if (vkResetFences(context.device, 1, &fence) != VK_SUCCESS)
+		throw std::runtime_error("Can't reset fence");
 
 	if (vkQueueSubmit(context.graphicsQueue, 1, &submitInfo, fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't submit command buffer");

@@ -22,17 +22,17 @@ public:
 	void init(
 		const VulkanShader &vertexShader,
 		const VulkanShader &fragmentShader,
-		const VulkanTexture &inputTexture,
 		const VulkanTexture &targetTexture
 	);
 
 	void shutdown();
 
-	void render();
+	void render(const VulkanTexture &inputTexture);
 
 private:
 	VulkanRendererContext context;
 	VulkanMesh rendererQuad;
+	VkExtent2D targetExtent;
 
 	VkImageView faceViews[6] {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
 
@@ -45,6 +45,7 @@ private:
 	VkCommandBuffer commandBuffer {VK_NULL_HANDLE};
 	VkDescriptorSet descriptorSet {VK_NULL_HANDLE};
 	VkFence fence {VK_NULL_HANDLE};
+
 
 	// TODO: move to VkUniformBuffer<T>;
 	VkBuffer uniformBuffer {VK_NULL_HANDLE};
