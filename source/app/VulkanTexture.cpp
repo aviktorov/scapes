@@ -122,9 +122,9 @@ void VulkanTexture::createCube(VkFormat format, int w, int h, int mips)
 
 /*
  */
-bool VulkanTexture::loadFromFile(const std::string &path)
+bool VulkanTexture::loadFromFile(const char *path)
 {
-	if (stbi_info(path.c_str(), nullptr, nullptr, nullptr) == 0)
+	if (stbi_info(path, nullptr, nullptr, nullptr) == 0)
 	{
 		std::cerr << "VulkanTexture::loadFromFile(): unsupported image format for \"" << path << "\" file" << std::endl;
 		return false;
@@ -133,14 +133,14 @@ bool VulkanTexture::loadFromFile(const std::string &path)
 	void *stbPixels = nullptr;
 	size_t pixelSize = 0;
 
-	if (stbi_is_hdr(path.c_str()))
+	if (stbi_is_hdr(path))
 	{
-		stbPixels = stbi_loadf(path.c_str(), &width, &height, &channels, STBI_default);
+		stbPixels = stbi_loadf(path, &width, &height, &channels, STBI_default);
 		pixelSize = sizeof(float);
 	}
 	else
 	{
-		stbPixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_default);
+		stbPixels = stbi_load(path, &width, &height, &channels, STBI_default);
 		pixelSize = sizeof(stbi_uc);
 	}
 

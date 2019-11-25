@@ -27,7 +27,7 @@ public:
 
 	void createCube(VkFormat format, int width, int height, int numMipLevels);
 
-	bool loadFromFile(const std::string &path);
+	bool loadFromFile(const char *path);
 
 	void clearGPUData();
 	void clearCPUData();

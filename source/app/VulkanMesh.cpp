@@ -40,7 +40,7 @@ std::vector<VkVertexInputAttributeDescription> VulkanMesh::getAttributeDescripti
 
 /*
  */
-bool VulkanMesh::loadFromFile(const std::string &path)
+bool VulkanMesh::loadFromFile(const char *path)
 {
 	Assimp::Importer importer;
 

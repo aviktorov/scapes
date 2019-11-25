@@ -27,7 +27,7 @@ public:
 	static VkVertexInputBindingDescription getVertexInputBindingDescription();
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
 
-	bool loadFromFile(const std::string &path);
+	bool loadFromFile(const char *path);
 
 	void createSkybox(float size);
 	void createQuad(float size);
