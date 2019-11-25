@@ -44,11 +44,13 @@ public:
 	{ }
 
 	void init(const RenderScene *scene);
-	void initEnvironment(const RenderScene *scene);
-	void setEnvironment(const RenderScene *scene, int index);
 	void update(const RenderScene *scene);
 	VkCommandBuffer render(const RenderScene *scene, uint32_t imageIndex);
 	void shutdown();
+
+private:
+	void initEnvironment(const RenderScene *scene);
+	void setEnvironment(const RenderScene *scene, int index);
 
 private:
 	VulkanRendererContext context;

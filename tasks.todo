@@ -11,8 +11,11 @@ PBR Sandbox:
             ☐ Multiscattering GGX + Shlick
         ☐ Try to render to a specific cubemap mip level
         ☐ Use #include parser from shaderc
+    Stream 16:
+        ☐ Create a material class (holds textures, shaders & UBO for material params)
+        ☐ Move framebuffer/commandbuffer/ubo from VulkanRenderer to VulkanApplication as it's swapchain dependent
+        ☐ Split VulkanRenderer::render method into VulkanRenderer::begin()/end() + renderObjectWithMaterial()
     Stream 15:
-        ☐ Get rid of direct resource dependency from VulkanRenderer
         ✔ Deduce shader kind from extension @done (11/26/2019, 12:44:58 AM)
         ✔ Deduce texture type (HDR or LDR) from extension @done (11/26/2019, 12:21:15 AM)
     Stream 14:
