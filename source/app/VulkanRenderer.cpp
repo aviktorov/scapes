@@ -250,6 +250,7 @@ void Renderer::setEnvironment(const RenderScene *scene, int index)
 			environmentCubemap
 		);
 		hdriToCubeRenderer.render();
+		hdriToCubeRenderer.shutdown();
 
 		VulkanUtils::transitionImageLayout(
 			context,
@@ -280,6 +281,7 @@ void Renderer::setEnvironment(const RenderScene *scene, int index)
 			diffuseIrradianceCubemap
 		);
 		diffuseIrradianceRenderer.render();
+		diffuseIrradianceRenderer.shutdown();
 
 		VulkanUtils::transitionImageLayout(
 			context,
