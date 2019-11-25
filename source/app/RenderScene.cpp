@@ -82,7 +82,7 @@ void RenderScene::init()
 		resources.loadTexture(i, config::textures[i]);
 
 	for (int i = 0; i < config::hdrTextures.size(); i++)
-		resources.loadHDRTexture(config::Textures::EnvironmentBase + i, config::hdrTextures[i]);
+		resources.loadTexture(config::Textures::EnvironmentBase + i, config::hdrTextures[i]);
 }
 
 void RenderScene::shutdown()

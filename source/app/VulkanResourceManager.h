@@ -28,7 +28,6 @@ public:
 
 	VulkanTexture *getTexture(int id) const;
 	VulkanTexture *loadTexture(int id, const char *path);
-	VulkanTexture *loadHDRTexture(int id, const char *path);
 	void unloadTexture(int id);
 
 private:

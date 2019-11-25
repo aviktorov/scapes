@@ -27,14 +27,13 @@ public:
 
 	void createCube(VkFormat format, int width, int height, int numMipLevels);
 
-	bool loadHDRFromFile(const std::string &path);
 	bool loadFromFile(const std::string &path);
 
 	void clearGPUData();
 	void clearCPUData();
 
 private:
-	void uploadToGPU(VkFormat format, VkImageTiling tiling, size_t pixel_size);
+	void uploadToGPU(VkFormat format, VkImageTiling tiling, size_t imageSize);
 
 private:
 	VulkanRendererContext context;

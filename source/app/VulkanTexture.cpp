@@ -4,13 +4,49 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <cassert>
 #include <algorithm>
 #include <iostream>
 
+static VkFormat deduceFormat(size_t pixelSize, int channels)
+{
+	assert(channels > 0 && channels <= 4);
+
+	if (pixelSize == sizeof(stbi_uc))
+	{
+		switch (channels)
+		{
+			case 1: return VK_FORMAT_R8_UNORM;
+			case 2: return VK_FORMAT_R8G8_UNORM;
+			case 3: return VK_FORMAT_R8G8B8_UNORM;
+			case 4: return VK_FORMAT_R8G8B8A8_UNORM;
+		}
+	}
+
+	if (pixelSize == sizeof(float))
+	{
+		switch (channels)
+		{
+			case 1: return VK_FORMAT_R32_SFLOAT;
+			case 2: return VK_FORMAT_R32G32_SFLOAT;
+			case 3: return VK_FORMAT_R32G32B32_SFLOAT;
+			case 4: return VK_FORMAT_R32G32B32A32_SFLOAT;
+		}
+	}
+
+	return VK_FORMAT_UNDEFINED;
+}
+
 static int deduceChannels(VkFormat format)
 {
+	assert(format != VK_FORMAT_UNDEFINED);
+
 	switch(format)
 	{
+		case VK_FORMAT_R8_UNORM: return 1;
+		case VK_FORMAT_R8G8_UNORM: return 2;
+		case VK_FORMAT_R8G8B8_UNORM: return 3;
+		case VK_FORMAT_R8G8B8A8_UNORM: return 4;
 		case VK_FORMAT_R16_SFLOAT: return 1;
 		case VK_FORMAT_R16G16_SFLOAT: return 2;
 		case VK_FORMAT_R16G16B16_SFLOAT: return 3;
@@ -19,45 +55,9 @@ static int deduceChannels(VkFormat format)
 		case VK_FORMAT_R32G32_SFLOAT: return 2;
 		case VK_FORMAT_R32G32B32_SFLOAT: return 3;
 		case VK_FORMAT_R32G32B32A32_SFLOAT: return 4;
-		case VK_FORMAT_R8G8B8A8_UNORM: return 4;
 		default: throw std::runtime_error("Format is not supported");
 	}
 }
-
-static size_t deducePixelSize(VkFormat format)
-{
-	switch(format)
-	{
-		case VK_FORMAT_R16_SFLOAT: return 2;
-		case VK_FORMAT_R16G16_SFLOAT: return 4;
-		case VK_FORMAT_R16G16B16_SFLOAT: return 6;
-		case VK_FORMAT_R16G16B16A16_SFLOAT: return 8;
-		case VK_FORMAT_R32_SFLOAT: return 4;
-		case VK_FORMAT_R32G32_SFLOAT: return 8;
-		case VK_FORMAT_R32G32B32_SFLOAT: return 12;
-		case VK_FORMAT_R32G32B32A32_SFLOAT: return 16;
-		case VK_FORMAT_R8G8B8A8_UNORM: return 4;
-		default: throw std::runtime_error("Format is not supported");
-	}
-}
-
-static VkImageTiling deduceTiling(VkFormat format)
-{
-	switch(format)
-	{
-		case VK_FORMAT_R16_SFLOAT: return VK_IMAGE_TILING_OPTIMAL;
-		case VK_FORMAT_R16G16_SFLOAT: return VK_IMAGE_TILING_OPTIMAL;
-		case VK_FORMAT_R16G16B16_SFLOAT: return  VK_IMAGE_TILING_OPTIMAL;
-		case VK_FORMAT_R16G16B16A16_SFLOAT: return  VK_IMAGE_TILING_OPTIMAL;
-		case VK_FORMAT_R32_SFLOAT: return VK_IMAGE_TILING_OPTIMAL;
-		case VK_FORMAT_R32G32_SFLOAT: return VK_IMAGE_TILING_OPTIMAL;
-		case VK_FORMAT_R32G32B32_SFLOAT: return  VK_IMAGE_TILING_OPTIMAL;
-		case VK_FORMAT_R32G32B32A32_SFLOAT: return  VK_IMAGE_TILING_OPTIMAL;
-		case VK_FORMAT_R8G8B8A8_UNORM: return VK_IMAGE_TILING_OPTIMAL;
-		default: throw std::runtime_error("Format is not supported");
-	}
-}
-
 
 /*
  */
@@ -78,7 +78,7 @@ void VulkanTexture::createCube(VkFormat format, int w, int h, int mips)
 	imageFormat = format;
 
 	channels = deduceChannels(format);
-	VkImageTiling tiling = deduceTiling(format);
+	VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
 
 	VulkanUtils::createImageCube(
 		context,
@@ -122,76 +122,80 @@ void VulkanTexture::createCube(VkFormat format, int w, int h, int mips)
 
 /*
  */
-bool VulkanTexture::loadHDRFromFile(const std::string &path)
+bool VulkanTexture::loadFromFile(const std::string &path)
 {
-	float *stb_pixels = stbi_loadf(path.c_str(), &width, &height, &channels, 0);
-
-	if (!stb_pixels)
+	if (stbi_info(path.c_str(), nullptr, nullptr, nullptr) == 0)
 	{
-		std::cerr << "VulkanTexture::loadHDRFromFile(): " << stbi_failure_reason() << std::endl;
+		std::cerr << "VulkanTexture::loadFromFile(): unsupported image format for \"" << path << "\" file" << std::endl;
 		return false;
 	}
 
-	mipLevels = 1;
-	layers = 1;
+	void *stbPixels = nullptr;
+	size_t pixelSize = 0;
 
-	size_t pixelSize = channels * sizeof(float);
-	size_t imageSize = width * height * pixelSize;
-	if (pixels != nullptr)
-		delete[] pixels;
-
-	pixels = new unsigned char[imageSize];
-	memcpy(pixels, stb_pixels, imageSize);
-
-	stbi_image_free(stb_pixels);
-	stb_pixels = nullptr;
-
-	// Upload CPU data to GPU
-	clearGPUData();
-
-	VkFormat format = VK_FORMAT_UNDEFINED;
-	switch(channels)
+	if (stbi_is_hdr(path.c_str()))
 	{
-		case 1: format = VK_FORMAT_R32_SFLOAT;
-		case 2: format = VK_FORMAT_R32G32_SFLOAT;
-		case 3: format = VK_FORMAT_R32G32B32_SFLOAT;
+		stbPixels = stbi_loadf(path.c_str(), &width, &height, &channels, STBI_default);
+		pixelSize = sizeof(float);
 	}
-	uploadToGPU(format, VK_IMAGE_TILING_LINEAR, pixelSize);
+	else
+	{
+		stbPixels = stbi_load(path.c_str(), &width, &height, &channels, STBI_default);
+		pixelSize = sizeof(stbi_uc);
+	}
 
-	return true;
-}
-
-/*
- */
-bool VulkanTexture::loadFromFile(const std::string &path)
-{
-	// TODO: support other image formats
-	stbi_uc *stb_pixels = stbi_load(path.c_str(), &width, &height, nullptr, STBI_rgb_alpha);
-	channels = 4;
-
-	if (!stb_pixels)
+	if (!stbPixels)
 	{
 		std::cerr << "VulkanTexture::loadFromFile(): " << stbi_failure_reason() << std::endl;
 		return false;
 	}
 
-	mipLevels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
 	layers = 1;
+	mipLevels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
 
-	size_t pixelSize = channels * sizeof(stbi_uc);
-	size_t imageSize = width * height * pixelSize;
+	bool convert = false;
+	if (channels == 3)
+	{
+		channels = 4;
+		convert = true;
+	}
+
+	size_t imageSize = width * height * channels * pixelSize;
 	if (pixels != nullptr)
 		delete[] pixels;
 
 	pixels = new unsigned char[imageSize];
-	memcpy(pixels, stb_pixels, imageSize);
 
-	stbi_image_free(stb_pixels);
-	stb_pixels = nullptr;
+	// As most hardware doesn't support rgb textures, convert it to rgba
+	if (convert)
+	{
+		size_t numPixels = width * height;
+		size_t stride = pixelSize * 3;
+
+		unsigned char *d = pixels;
+		unsigned char *s = reinterpret_cast<unsigned char *>(stbPixels);
+
+		for (int i = 0; i < numPixels; i++)
+		{
+			memcpy(d, s, stride);
+			s += stride;
+			d += stride;
+
+			memset(d, 0, pixelSize);
+			d+= pixelSize;
+		}
+	}
+	else
+		memcpy(pixels, stbPixels, imageSize);
+
+	stbi_image_free(stbPixels);
+	stbPixels = nullptr;
+
+	VkFormat format = deduceFormat(pixelSize, channels);
 
 	// Upload CPU data to GPU
 	clearGPUData();
-	uploadToGPU(VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, pixelSize);
+	uploadToGPU(format, VK_IMAGE_TILING_OPTIMAL, imageSize);
 
 	// TODO: should we clear CPU data after uploading it to the GPU?
 
@@ -200,18 +204,16 @@ bool VulkanTexture::loadFromFile(const std::string &path)
 
 /*
  */
-void VulkanTexture::uploadToGPU(VkFormat format, VkImageTiling tiling, size_t pixelSize)
+void VulkanTexture::uploadToGPU(VkFormat format, VkImageTiling tiling, size_t imageSize)
 {
 	imageFormat = format;
-
-	VkDeviceSize imageSize = width * height * pixelSize;
 
 	VkBuffer stagingBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
 
 	VulkanUtils::createBuffer(
 		context,
-		imageSize,
+		static_cast<VkDeviceSize>(imageSize),
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		stagingBuffer,
@@ -220,8 +222,8 @@ void VulkanTexture::uploadToGPU(VkFormat format, VkImageTiling tiling, size_t pi
 
 	// Fill staging buffer
 	void *data = nullptr;
-	vkMapMemory(context.device, stagingBufferMemory, 0, imageSize, 0, &data);
-	memcpy(data, pixels, static_cast<size_t>(imageSize));
+	vkMapMemory(context.device, stagingBufferMemory, 0, static_cast<VkDeviceSize>(imageSize), 0, &data);
+	memcpy(data, pixels, imageSize);
 	vkUnmapMemory(context.device, stagingBufferMemory);
 
 	VulkanUtils::createImage2D(
@@ -294,6 +296,7 @@ void VulkanTexture::uploadToGPU(VkFormat format, VkImageTiling tiling, size_t pi
 		0, mipLevels,
 		0, layers
 	);
+
 	imageSampler = VulkanUtils::createSampler(context, mipLevels);
 }
 

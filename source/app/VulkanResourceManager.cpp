@@ -135,23 +135,6 @@ VulkanTexture *VulkanResourceManager::loadTexture(int id, const char *path)
 	return texture;
 }
 
-VulkanTexture *VulkanResourceManager::loadHDRTexture(int id, const char *path)
-{
-	auto it = textures.find(id);
-	if (it != textures.end())
-	{
-		std::cerr << "VulkanResourceManager::loadHDRTexture(): " << id << " is already taken by another texture" << std::endl;
-		return nullptr;
-	}
-
-	VulkanTexture *texture = new VulkanTexture(context);
-	if (!texture->loadHDRFromFile(path))
-		return nullptr;
-
-	textures.insert(std::make_pair(id, texture));
-	return texture;
-}
-
 void VulkanResourceManager::unloadTexture(int id)
 {
 	auto it = textures.find(id);
