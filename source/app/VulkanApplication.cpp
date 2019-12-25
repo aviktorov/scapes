@@ -588,4 +588,6 @@ void Application::recreateVulkanSwapChain()
 
 	glfwGetWindowSize(window, &width, &height);
 	swapChain->reinit(width, height);
+	renderer->resize(swapChain);
+	imguiRenderer->resize(swapChain);
 }

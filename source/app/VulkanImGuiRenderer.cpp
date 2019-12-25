@@ -65,6 +65,12 @@ void VulkanImGuiRenderer::shutdown()
 	ImGui_ImplVulkan_Shutdown();
 }
 
+void VulkanImGuiRenderer::resize(const VulkanSwapChain *swapChain)
+{
+	extent = swapChain->getExtent();
+	ImGui_ImplVulkan_SetMinImageCount(swapChain->getNumImages());
+}
+
 /*
  */
 void VulkanImGuiRenderer::update(RendererState *state, const RenderScene *scene)

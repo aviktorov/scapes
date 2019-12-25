@@ -52,18 +52,6 @@ void VulkanRenderer::init(const RendererState *state, const RenderScene *scene)
 	const VulkanShader *skyboxVertexShader = scene->getSkyboxVertexShader();
 	const VulkanShader *skyboxFragmentShader = scene->getSkyboxFragmentShader();
 
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(extent.width);
-	viewport.height = static_cast<float>(extent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
-
-	VkRect2D scissor = {};
-	scissor.offset = {0, 0};
-	scissor.extent = extent;
-
 	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	VulkanDescriptorSetLayoutBuilder sceneDescriptorSetLayoutBuilder(context);
@@ -89,8 +77,8 @@ void VulkanRenderer::init(const RendererState *state, const RenderScene *scene)
 		.addShaderStage(pbrFragmentShader->getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
 		.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions())
 		.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-		.addViewport(viewport)
-		.addScissor(scissor)
+		.addDynamicState(VK_DYNAMIC_STATE_SCISSOR)
+		.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT)
 		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
 		.setMultisampleState(context.maxMSAASamples, true)
 		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
@@ -103,8 +91,8 @@ void VulkanRenderer::init(const RendererState *state, const RenderScene *scene)
 		.addShaderStage(skyboxFragmentShader->getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
 		.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions())
 		.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-		.addViewport(viewport)
-		.addScissor(scissor)
+		.addDynamicState(VK_DYNAMIC_STATE_SCISSOR)
+		.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT)
 		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
 		.setMultisampleState(context.maxMSAASamples, true)
 		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
@@ -254,6 +242,11 @@ void VulkanRenderer::shutdown()
 	diffuseIrradianceCubemap.clearGPUData();
 }
 
+void VulkanRenderer::resize(const VulkanSwapChain *swapChain)
+{
+	extent = swapChain->getExtent();
+}
+
 /*
  */
 void VulkanRenderer::update(RendererState *state, const RenderScene *scene)
@@ -310,6 +303,21 @@ void VulkanRenderer::render(const RendererState *state, const RenderScene *scene
 	renderPassInfo.pClearValues = clearValues.data();
 
 	std::array<VkDescriptorSet, 2> sets = {descriptorSet, sceneDescriptorSet};
+
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = static_cast<float>(extent.width);
+	viewport.height = static_cast<float>(extent.height);
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor = {};
+	scissor.offset = {0, 0};
+	scissor.extent = extent;
+
+	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 

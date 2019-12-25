@@ -10,6 +10,8 @@
 #include "VulkanShader.h"
 
 class RenderScene;
+class VulkanSwapChain;
+
 struct RendererState;
 struct VulkanRenderFrame;
 
@@ -31,6 +33,8 @@ public:
 	void update(RendererState *state, const RenderScene *scene);
 	void render(const RendererState *state, const RenderScene *scene, const VulkanRenderFrame &frame);
 	void shutdown();
+
+	void resize(const VulkanSwapChain *swapChain);
 
 private:
 	void initEnvironment(const RendererState *state, const RenderScene *scene);
