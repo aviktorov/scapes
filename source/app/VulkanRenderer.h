@@ -9,79 +9,52 @@
 #include "VulkanTexture.h"
 #include "VulkanShader.h"
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <GLM/glm.hpp>
-#include <GLM/gtc/matrix_transform.hpp>
-
-/*
- */
-struct RendererState
-{
-	glm::mat4 world;
-	glm::mat4 view;
-	glm::mat4 proj;
-	glm::vec3 cameraPosWS;
-	float lerpUserValues {0.0f};
-	float userMetalness {0.0f};
-	float userRoughness {0.0f};
-};
-
 class RenderScene;
+struct RendererState;
+struct VulkanRenderFrame;
 
 /*
  */
-class Renderer
+class VulkanRenderer
 {
 public:
-	Renderer(const VulkanRendererContext &context, const VulkanSwapChainContext &swapChainContext)
-		: context(context)
-		, swapChainContext(swapChainContext)
-		, hdriToCubeRenderer(context)
-		, diffuseIrradianceRenderer(context)
-		, environmentCubemap(context)
-		, diffuseIrradianceCubemap(context)
-	{ }
+	VulkanRenderer(
+		const VulkanRendererContext &context,
+		VkExtent2D extent,
+		VkDescriptorSetLayout descriptorSetLayout,
+		VkRenderPass renderPass
+	);
 
-	void init(const RenderScene *scene);
-	void update(const RenderScene *scene);
-	VkCommandBuffer render(const RenderScene *scene, uint32_t imageIndex);
+	virtual ~VulkanRenderer();
+
+	void init(const RendererState *state, const RenderScene *scene);
+	void update(RendererState *state, const RenderScene *scene);
+	void render(const RendererState *state, const RenderScene *scene, const VulkanRenderFrame &frame);
 	void shutdown();
 
 private:
-	void initEnvironment(const RenderScene *scene);
+	void initEnvironment(const RendererState *state, const RenderScene *scene);
 	void setEnvironment(const RenderScene *scene, int index);
 
 private:
 	VulkanRendererContext context;
-	VulkanSwapChainContext swapChainContext;
+	VkExtent2D extent;
+	VkRenderPass renderPass {VK_NULL_HANDLE};
+	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 
+	//
 	VulkanCubemapRenderer hdriToCubeRenderer;
 	VulkanCubemapRenderer diffuseIrradianceRenderer;
 
 	VulkanTexture environmentCubemap;
 	VulkanTexture diffuseIrradianceCubemap;
 
-	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
-	VkRenderPass renderPass {VK_NULL_HANDLE};
-
 	VkPipeline skyboxPipeline {VK_NULL_HANDLE};
 	VkPipeline pbrPipeline {VK_NULL_HANDLE};
 
+	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
 	VkDescriptorSetLayout sceneDescriptorSetLayout {VK_NULL_HANDLE};
-	VkDescriptorSet sceneDescriptorSet;
+	VkDescriptorSet sceneDescriptorSet {VK_NULL_HANDLE};
 
-	int currentEnvironment {0};
-	RendererState state;
-
-	// TODO: move to swap chain
-	VkDescriptorSetLayout swapChainDescriptorSetLayout {VK_NULL_HANDLE};
-	std::vector<VkDescriptorSet> swapChainDescriptorSets;
-
-	std::vector<VkFramebuffer> frameBuffers;
-	std::vector<VkCommandBuffer> commandBuffers;
-
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
-
+	uint32_t currentEnvironment {0};
 };

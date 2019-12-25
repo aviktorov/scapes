@@ -4,11 +4,29 @@
 #include <vector>
 #include <optional>
 
+#include <GLM/glm.hpp>
+
 #include "VulkanRendererContext.h"
 
 struct GLFWwindow;
-class Renderer;
 class RenderScene;
+class VulkanRenderer;
+class VulkanImGuiRenderer;
+class VulkanSwapChain;
+
+/*
+ */
+struct RendererState
+{
+	glm::mat4 world;
+	glm::mat4 view;
+	glm::mat4 proj;
+	glm::vec3 cameraPosWS;
+	float lerpUserValues {0.0f};
+	float userMetalness {0.0f};
+	float userRoughness {0.0f};
+	int currentEnvironment {0};
+};
 
 /*
  */
@@ -18,24 +36,6 @@ struct QueueFamilyIndices
 	std::optional<uint32_t> presentFamily {std::nullopt};
 
 	inline bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
-};
-
-/*
- */
-struct SwapChainSupportDetails
-{
-	VkSurfaceCapabilitiesKHR capabilities;
-	std::vector<VkSurfaceFormatKHR> formats;
-	std::vector<VkPresentModeKHR> presentModes;
-};
-
-/*
- */
-struct SwapChainSettings
-{
-	VkSurfaceFormatKHR format;
-	VkPresentModeKHR presentMode;
-	VkExtent2D extent;
 };
 
 /*
@@ -54,17 +54,7 @@ private:
 	bool checkRequiredPhysicalDeviceExtensions(VkPhysicalDevice device, std::vector<const char *> &extensions) const;
 	bool checkPhysicalDevice(VkPhysicalDevice device, VkSurfaceKHR surface) const;
 
-	SwapChainSupportDetails fetchSwapChainSupportDetails(VkPhysicalDevice device, VkSurfaceKHR surface) const;
 	QueueFamilyIndices fetchQueueFamilyIndices(VkPhysicalDevice device) const;
-
-	SwapChainSettings selectOptimalSwapChainSettings(const SwapChainSupportDetails &details) const;
-	VkFormat selectOptimalSupportedFormat(
-		const std::vector<VkFormat> &candidates,
-		VkImageTiling tiling,
-		VkFormatFeatureFlags features
-	) const;
-
-	VkFormat selectOptimalDepthFormat() const;
 
 	void initVulkan();
 	void shutdownVulkan();
@@ -76,8 +66,8 @@ private:
 	void initRenderScene();
 	void shutdownRenderScene();
 
-	void initRenderer();
-	void shutdownRenderer();
+	void initRenderers();
+	void shutdownRenderers();
 
 	void initImGui();
 	void shutdownImGui();
@@ -90,8 +80,14 @@ private:
 
 private:
 	GLFWwindow *window {nullptr};
-	Renderer *renderer {nullptr};
 	RenderScene *scene {nullptr};
+	RendererState state;
+
+	VulkanRenderer *renderer {nullptr};
+	VulkanImGuiRenderer *imguiRenderer {nullptr};
+
+	VulkanSwapChain *swapChain {nullptr};
+	VulkanRendererContext context {};
 
 	//
 	VkInstance instance {VK_NULL_HANDLE};
@@ -103,39 +99,9 @@ private:
 	VkQueue presentQueue {VK_NULL_HANDLE};
 
 	VkCommandPool commandPool {VK_NULL_HANDLE};
-	VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
-
-	VulkanRendererContext context {};
-
-	//
-	VkSwapchainKHR swapChain {VK_NULL_HANDLE};
-	std::vector<VkImage> swapChainImages;
-	std::vector<VkImageView> swapChainImageViews;
-
-	VkFormat swapChainImageFormat;
-	VkExtent2D swapChainExtent;
-
-	VkImage colorImage {VK_NULL_HANDLE};
-	VkImageView colorImageView {VK_NULL_HANDLE};
-	VkDeviceMemory colorImageMemory {VK_NULL_HANDLE};
-
-	VkImage depthImage {VK_NULL_HANDLE};
-	VkImageView depthImageView {VK_NULL_HANDLE};
-	VkDeviceMemory depthImageMemory {VK_NULL_HANDLE};
-
-	VkFormat depthFormat;
-
 	VkDescriptorPool descriptorPool {VK_NULL_HANDLE};
 
-	//
-	std::vector<VkSemaphore> imageAvailableSemaphores;
-	std::vector<VkSemaphore> renderFinishedSemaphores;
-	std::vector<VkFence> inFlightFences;
-	size_t currentFrame {0};
+	VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
 
-	bool framebufferResized {false};
-	enum
-	{
-		MAX_FRAMES_IN_FLIGHT = 2,
-	};
+	bool windowResized {false};
 };

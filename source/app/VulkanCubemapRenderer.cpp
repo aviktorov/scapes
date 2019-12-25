@@ -68,12 +68,12 @@ void VulkanCubemapRenderer::init(
 
 	VulkanRenderPassBuilder renderPassBuilder(context);
 	renderPass = renderPassBuilder
-		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
-		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
-		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
-		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
-		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
-		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
+		.addColorAttachment(targetTexture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
 		.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
 		.addColorAttachmentReference(0, 0)
 		.addColorAttachmentReference(0, 1)

@@ -10,6 +10,17 @@ struct VulkanRendererContext;
 class VulkanUtils
 {
 public:
+	static VkFormat VulkanUtils::selectOptimalImageFormat(
+		const VulkanRendererContext &context,
+		const std::vector<VkFormat> &candidates,
+		VkImageTiling tiling,
+		VkFormatFeatureFlags features
+	);
+
+	static VkFormat VulkanUtils::selectOptimalDepthFormat(
+		const VulkanRendererContext &context
+	);
+
 	static uint32_t findMemoryType(
 		const VulkanRendererContext &context,
 		uint32_t typeFilter,

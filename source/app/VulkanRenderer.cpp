@@ -1,3 +1,4 @@
+#include "VulkanApplication.h"
 #include "VulkanMesh.h"
 #include "VulkanRenderer.h"
 #include "VulkanUtils.h"
@@ -5,17 +6,46 @@
 #include "VulkanGraphicsPipelineBuilder.h"
 #include "VulkanPipelineLayoutBuilder.h"
 #include "VulkanRenderPassBuilder.h"
+#include "VulkanSwapChain.h"
 
 #include "RenderScene.h"
 
 #include "imgui.h"
-#include "imgui_impl_vulkan.h"
+
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <GLM/glm.hpp>
+#include <GLM/gtc/matrix_transform.hpp>
 
 #include <chrono>
 
 /*
  */
-void Renderer::init(const RenderScene *scene)
+VulkanRenderer::VulkanRenderer(
+	const VulkanRendererContext &context,
+	VkExtent2D extent,
+	VkDescriptorSetLayout descriptorSetLayout,
+	VkRenderPass renderPass
+)
+	: context(context)
+	, extent(extent)
+	, renderPass(renderPass)
+	, descriptorSetLayout(descriptorSetLayout)
+	, hdriToCubeRenderer(context)
+	, diffuseIrradianceRenderer(context)
+	, environmentCubemap(context)
+	, diffuseIrradianceCubemap(context)
+{
+}
+
+VulkanRenderer::~VulkanRenderer()
+{
+	shutdown();
+}
+
+/*
+ */
+void VulkanRenderer::init(const RendererState *state, const RenderScene *scene)
 {
 	const VulkanShader *pbrVertexShader = scene->getPBRVertexShader();
 	const VulkanShader *pbrFragmentShader = scene->getPBRFragmentShader();
@@ -25,14 +55,14 @@ void Renderer::init(const RenderScene *scene)
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(swapChainContext.extent.width);
-	viewport.height = static_cast<float>(swapChainContext.extent.height);
+	viewport.width = static_cast<float>(extent.width);
+	viewport.height = static_cast<float>(extent.height);
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = {0, 0};
-	scissor.extent = swapChainContext.extent;
+	scissor.extent = extent;
 
 	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -47,25 +77,9 @@ void Renderer::init(const RenderScene *scene)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.build();
 
-	VulkanDescriptorSetLayoutBuilder swapChainDescriptorSetLayoutBuilder(context);
-	swapChainDescriptorSetLayout = swapChainDescriptorSetLayoutBuilder
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, stage)
-		.build();
-
-	VulkanRenderPassBuilder renderPassBuilder(context);
-	renderPass = renderPassBuilder
-		.addColorAttachment(swapChainContext.colorFormat, context.maxMSAASamples)
-		.addColorResolveAttachment(swapChainContext.colorFormat)
-		.addDepthStencilAttachment(swapChainContext.depthFormat, context.maxMSAASamples)
-		.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
-		.addColorAttachmentReference(0, 0)
-		.addColorResolveAttachmentReference(0, 1)
-		.setDepthStencilAttachmentReference(0, 2)
-		.build();
-
 	VulkanPipelineLayoutBuilder pipelineLayoutBuilder(context);
 	pipelineLayout = pipelineLayoutBuilder
-		.addDescriptorSetLayout(swapChainDescriptorSetLayout)
+		.addDescriptorSetLayout(descriptorSetLayout)
 		.addDescriptorSetLayout(sceneDescriptorSetLayout)
 		.build();
 
@@ -97,48 +111,6 @@ void Renderer::init(const RenderScene *scene)
 		.addBlendColorAttachment()
 		.build();
 
-	// Create uniform buffers
-	VkDeviceSize uboSize = sizeof(RendererState);
-
-	uint32_t imageCount = static_cast<uint32_t>(swapChainContext.swapChainImageViews.size());
-	uniformBuffers.resize(imageCount);
-	uniformBuffersMemory.resize(imageCount);
-
-	for (uint32_t i = 0; i < imageCount; i++)
-	{
-		VulkanUtils::createBuffer(
-			context,
-			uboSize,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			uniformBuffers[i],
-			uniformBuffersMemory[i]
-		);
-	}
-
-	// Create swap chain descriptor sets
-	std::vector<VkDescriptorSetLayout> layouts(imageCount, swapChainDescriptorSetLayout);
-	swapChainDescriptorSets.resize(imageCount);
-
-	VkDescriptorSetAllocateInfo swapChainDescriptorSetAllocInfo = {};
-	swapChainDescriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	swapChainDescriptorSetAllocInfo.descriptorPool = context.descriptorPool;
-	swapChainDescriptorSetAllocInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
-	swapChainDescriptorSetAllocInfo.pSetLayouts = layouts.data();
-
-	if (vkAllocateDescriptorSets(context.device, &swapChainDescriptorSetAllocInfo, swapChainDescriptorSets.data()) != VK_SUCCESS)
-		throw std::runtime_error("Can't allocate swap chain descriptor sets");
-
-	for (uint32_t i = 0; i < imageCount; i++)
-		VulkanUtils::bindUniformBuffer(
-			context,
-			swapChainDescriptorSets[i],
-			0,
-			uniformBuffers[i],
-			0,
-			sizeof(RendererState)
-		);
-
 	// Create scene descriptor set
 	VkDescriptorSetAllocateInfo sceneDescriptorSetAllocInfo = {};
 	sceneDescriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -149,7 +121,7 @@ void Renderer::init(const RenderScene *scene)
 	if (vkAllocateDescriptorSets(context.device, &sceneDescriptorSetAllocInfo, &sceneDescriptorSet) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate scene descriptor set");
 
-	initEnvironment(scene);
+	initEnvironment(state, scene);
 
 	std::array<const VulkanTexture *, 7> textures =
 	{
@@ -170,72 +142,9 @@ void Renderer::init(const RenderScene *scene)
 			textures[k]->getImageView(),
 			textures[k]->getSampler()
 		);
-
-	// Create framebuffers
-	frameBuffers.resize(imageCount);
-	for (size_t i = 0; i < imageCount; i++) {
-		std::array<VkImageView, 3> attachments = {
-			swapChainContext.colorImageView,
-			swapChainContext.swapChainImageViews[i],
-			swapChainContext.depthImageView,
-		};
-
-		VkFramebufferCreateInfo framebufferInfo = {};
-		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = renderPass;
-		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = swapChainContext.extent.width;
-		framebufferInfo.height = swapChainContext.extent.height;
-		framebufferInfo.layers = 1;
-
-		if (vkCreateFramebuffer(context.device, &framebufferInfo, nullptr, &frameBuffers[i]) != VK_SUCCESS)
-			throw std::runtime_error("Can't create framebuffer");
-	}
-
-	// Create command buffers
-	commandBuffers.resize(imageCount);
-
-	VkCommandBufferAllocateInfo allocateInfo = {};
-	allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocateInfo.commandPool = context.commandPool;
-	allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocateInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
-
-	if (vkAllocateCommandBuffers(context.device, &allocateInfo, commandBuffers.data()) != VK_SUCCESS)
-		throw std::runtime_error("Can't create command buffers");
-
-	// Init ImGui bindings for Vulkan
-	{
-		ImGui_ImplVulkan_InitInfo init_info = {};
-		init_info.Instance = context.instance;
-		init_info.PhysicalDevice = context.physicalDevice;
-		init_info.Device = context.device;
-		init_info.QueueFamily = context.graphicsQueueFamily;
-		init_info.Queue = context.graphicsQueue;
-		init_info.DescriptorPool = context.descriptorPool;
-		init_info.MSAASamples = context.maxMSAASamples;
-		init_info.MinImageCount = static_cast<uint32_t>(swapChainContext.swapChainImageViews.size());
-		init_info.ImageCount = static_cast<uint32_t>(swapChainContext.swapChainImageViews.size());
-
-		ImGui_ImplVulkan_Init(&init_info, renderPass);
-
-		VulkanRendererContext imGuiContext = {};
-		imGuiContext.commandPool = context.commandPool;
-		imGuiContext.descriptorPool = context.descriptorPool;
-		imGuiContext.device = context.device;
-		imGuiContext.graphicsQueue = context.graphicsQueue;
-		imGuiContext.maxMSAASamples = context.maxMSAASamples;
-		imGuiContext.physicalDevice = context.physicalDevice;
-		imGuiContext.presentQueue = context.presentQueue;
-
-		VkCommandBuffer imGuiCommandBuffer = VulkanUtils::beginSingleTimeCommands(imGuiContext);
-		ImGui_ImplVulkan_CreateFontsTexture(imGuiCommandBuffer);
-		VulkanUtils::endSingleTimeCommands(imGuiContext, imGuiCommandBuffer);
-	}
 }
 
-void Renderer::initEnvironment(const RenderScene *scene)
+void VulkanRenderer::initEnvironment(const RendererState *state, const RenderScene *scene)
 {
 	environmentCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
 	diffuseIrradianceCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
@@ -252,10 +161,10 @@ void Renderer::initEnvironment(const RenderScene *scene)
 		diffuseIrradianceCubemap
 	);
 
-	setEnvironment(scene, currentEnvironment);
+	setEnvironment(scene, state->currentEnvironment);
 }
 
-void Renderer::setEnvironment(const RenderScene *scene, int index)
+void VulkanRenderer::setEnvironment(const RenderScene *scene, int index)
 {
 	{
 		VulkanUtils::transitionImageLayout(
@@ -321,23 +230,8 @@ void Renderer::setEnvironment(const RenderScene *scene, int index)
 		);
 }
 
-void Renderer::shutdown()
+void VulkanRenderer::shutdown()
 {
-	for (auto uniformBuffer : uniformBuffers)
-		vkDestroyBuffer(context.device, uniformBuffer, nullptr);
-	
-	uniformBuffers.clear();
-
-	for (auto uniformBufferMemory : uniformBuffersMemory)
-		vkFreeMemory(context.device, uniformBufferMemory, nullptr);
-
-	uniformBuffersMemory.clear();
-
-	for (auto framebuffer : frameBuffers)
-		vkDestroyFramebuffer(context.device, framebuffer, nullptr);
-
-	frameBuffers.clear();
-
 	vkDestroyPipeline(context.device, pbrPipeline, nullptr);
 	pbrPipeline = VK_NULL_HANDLE;
 
@@ -350,18 +244,6 @@ void Renderer::shutdown()
 	vkDestroyDescriptorSetLayout(context.device, sceneDescriptorSetLayout, nullptr);
 	sceneDescriptorSetLayout = nullptr;
 
-	vkDestroyDescriptorSetLayout(context.device, swapChainDescriptorSetLayout, nullptr);
-	swapChainDescriptorSetLayout = nullptr;
-
-	vkDestroyRenderPass(context.device, renderPass, nullptr);
-	renderPass = VK_NULL_HANDLE;
-
-	vkFreeCommandBuffers(context.device, context.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-	commandBuffers.clear();
-
-	vkFreeDescriptorSets(context.device, context.descriptorPool, static_cast<uint32_t>(swapChainDescriptorSets.size()), swapChainDescriptorSets.data());
-	swapChainDescriptorSets.clear();
-
 	vkFreeDescriptorSets(context.device, context.descriptorPool, 1, &sceneDescriptorSet);
 	sceneDescriptorSet = VK_NULL_HANDLE;
 
@@ -370,13 +252,11 @@ void Renderer::shutdown()
 
 	environmentCubemap.clearGPUData();
 	diffuseIrradianceCubemap.clearGPUData();
-
-	ImGui_ImplVulkan_Shutdown();
 }
 
 /*
  */
-void Renderer::update(const RenderScene *scene)
+void VulkanRenderer::update(RendererState *state, const RenderScene *scene)
 {
 	// Render state
 	static auto startTime = std::chrono::high_resolution_clock::now();
@@ -388,89 +268,39 @@ void Renderer::update(const RenderScene *scene)
 	const glm::vec3 &up = {0.0f, 0.0f, 1.0f};
 	const glm::vec3 &zero = {0.0f, 0.0f, 0.0f};
 
-	const float aspect = swapChainContext.extent.width / (float) swapChainContext.extent.height;
+	const float aspect = extent.width / (float) extent.height;
 	const float zNear = 0.1f;
 	const float zFar = 1000.0f;
 
 	const glm::vec3 &cameraPos = glm::vec3(2.0f, 2.0f, 2.0f);
 	const glm::mat4 &rotation = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);
 
-	state.world = glm::mat4(1.0f);
-	state.view = glm::lookAt(cameraPos, zero, up) * rotation;
-	state.proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
-	state.proj[1][1] *= -1;
-	state.cameraPosWS = glm::vec3(glm::vec4(cameraPos, 1.0f) * rotation);
+	state->world = glm::mat4(1.0f);
+	state->view = glm::lookAt(cameraPos, zero, up) * rotation;
+	state->proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
+	state->proj[1][1] *= -1;
+	state->cameraPosWS = glm::vec3(glm::vec4(cameraPos, 1.0f) * rotation);
 
-	// ImGui
-	static float f = 0.0f;
-	static int counter = 0;
-	static bool show_demo_window = false;
-	static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-	if (show_demo_window)
-		ImGui::ShowDemoWindow(&show_demo_window);
-
-	ImGui::Begin("Material Parameters");
-
-	int oldCurrentEnvironment = currentEnvironment;
-	if (ImGui::BeginCombo("Choose Your Destiny", scene->getHDRTexturePath(currentEnvironment)))
+	if (currentEnvironment != state->currentEnvironment)
 	{
-		for (int i = 0; i < scene->getNumHDRTextures(); i++)
-		{
-			bool selected = (i == currentEnvironment);
-			if (ImGui::Selectable(scene->getHDRTexturePath(i), &selected))
-				currentEnvironment = i;
-			if (selected)
-				ImGui::SetItemDefaultFocus();
-		}
-		ImGui::EndCombo();
+		currentEnvironment = state->currentEnvironment;
+		setEnvironment(scene, state->currentEnvironment);
 	}
-
-	ImGui::Checkbox("Demo Window", &show_demo_window);
-
-	ImGui::SliderFloat("Lerp User Material", &state.lerpUserValues, 0.0f, 1.0f);
-	ImGui::SliderFloat("Metalness", &state.userMetalness, 0.0f, 1.0f);
-	ImGui::SliderFloat("Roughness", &state.userRoughness, 0.0f, 1.0f);
-
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-	ImGui::End();
-
-	if (oldCurrentEnvironment != currentEnvironment)
-		setEnvironment(scene, currentEnvironment);
 }
 
-VkCommandBuffer Renderer::render(const RenderScene *scene, uint32_t imageIndex)
+void VulkanRenderer::render(const RendererState *state, const RenderScene *scene, const VulkanRenderFrame &frame)
 {
-	VkCommandBuffer commandBuffer = commandBuffers[imageIndex];
-	VkFramebuffer frameBuffer = frameBuffers[imageIndex];
-	VkBuffer uniformBuffer = uniformBuffers[imageIndex];
-	VkDeviceMemory uniformBufferMemory = uniformBuffersMemory[imageIndex];
-	VkDescriptorSet descriptorSet = swapChainDescriptorSets[imageIndex];
-
-	// copy render state to ubo
-	void *ubo = nullptr;
-	vkMapMemory(context.device, uniformBufferMemory, 0, sizeof(RendererState), 0, &ubo);
-	memcpy(ubo, &state, sizeof(RendererState));
-	vkUnmapMemory(context.device, uniformBufferMemory);
-
-	// do the actual drawing
-	if (vkResetCommandBuffer(commandBuffer, 0) != VK_SUCCESS)
-		throw std::runtime_error("Can't reset command buffer");
-
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-	beginInfo.pInheritanceInfo = nullptr; // Optional
-
-	if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-		throw std::runtime_error("Can't begin recording command buffer");
+	VkCommandBuffer commandBuffer = frame.commandBuffer;
+	VkFramebuffer frameBuffer = frame.frameBuffer;
+	VkDeviceMemory uniformBufferMemory = frame.uniformBufferMemory;
+	VkDescriptorSet descriptorSet = frame.descriptorSet;
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = renderPass;
 	renderPassInfo.framebuffer = frameBuffer;
 	renderPassInfo.renderArea.offset = {0, 0};
-	renderPassInfo.renderArea.extent = swapChainContext.extent;
+	renderPassInfo.renderArea.extent = extent;
 
 	std::array<VkClearValue, 3> clearValues = {};
 	clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -510,12 +340,5 @@ VkCommandBuffer Renderer::render(const RenderScene *scene, uint32_t imageIndex)
 		vkCmdDrawIndexed(commandBuffer, mesh->getNumIndices(), 1, 0, 0, 0);
 	}
 
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
-
 	vkCmdEndRenderPass(commandBuffer);
-
-	if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-		throw std::runtime_error("Can't record command buffer");
-	
-	return commandBuffer;
 }
