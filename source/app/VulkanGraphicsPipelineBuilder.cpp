@@ -75,6 +75,15 @@ VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addBlendColorAttac
 	return *this;
 }
 
+VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addDynamicState(
+	VkDynamicState state
+)
+{
+	dynamicStates.push_back(state);
+
+	return *this;
+}
+
 VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::setInputAssemblyState(
 	VkPrimitiveTopology topology,
 	bool primitiveRestart
@@ -191,6 +200,11 @@ VkPipeline VulkanGraphicsPipelineBuilder::build()
 	colorBlendState.blendConstants[2] = 0.0f;
 	colorBlendState.blendConstants[3] = 0.0f;
 
+	VkPipelineDynamicStateCreateInfo dynamicState = {};
+	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicState.pDynamicStates = dynamicStates.data();
+
 	// Create graphics pipeline
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -203,6 +217,7 @@ VkPipeline VulkanGraphicsPipelineBuilder::build()
 	pipelineInfo.pMultisampleState = &multisamplingState;
 	pipelineInfo.pDepthStencilState = &depthStencilState;
 	pipelineInfo.pColorBlendState = &colorBlendState;
+	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.layout = pipelineLayout;
 	pipelineInfo.renderPass = renderPass;
 	pipelineInfo.subpass = 0;

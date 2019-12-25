@@ -45,6 +45,10 @@ public:
 		VkColorComponentFlags colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
 	);
 
+	VulkanGraphicsPipelineBuilder &addDynamicState(
+		VkDynamicState state
+	);
+
 	VulkanGraphicsPipelineBuilder &setInputAssemblyState(
 		VkPrimitiveTopology topology,
 		bool primitiveRestart = false
@@ -87,6 +91,7 @@ private:
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttributes;
 	std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
 
+	std::vector<VkDynamicState> dynamicStates;
 	std::vector<VkViewport> viewports;
 	std::vector<VkRect2D> scissors;
 
