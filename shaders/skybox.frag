@@ -1,15 +1,15 @@
 #version 450
 #pragma shader_stage(fragment)
 
-layout(binding = 0) uniform UniformBufferObject {
+layout(set = 0, binding = 0) uniform RenderState {
 	mat4 world;
 	mat4 view;
 	mat4 proj;
 	vec3 cameraPosWS;
 } ubo;
 
-layout(binding = 6) uniform samplerCube environmentSampler;
-layout(binding = 7) uniform samplerCube diffuseIrradianceSampler;
+layout(set = 1, binding = 5) uniform samplerCube environmentSampler;
+layout(set = 1, binding = 6) uniform samplerCube diffuseIrradianceSampler;
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;

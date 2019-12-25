@@ -36,16 +36,20 @@ void Renderer::init(const RenderScene *scene)
 
 	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VulkanDescriptorSetLayoutBuilder descriptorSetLayoutBuilder(context);
-	descriptorSetLayout = descriptorSetLayoutBuilder
+	VulkanDescriptorSetLayoutBuilder sceneDescriptorSetLayoutBuilder(context);
+	sceneDescriptorSetLayout = sceneDescriptorSetLayoutBuilder
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.build();
+
+	VulkanDescriptorSetLayoutBuilder swapChainDescriptorSetLayoutBuilder(context);
+	swapChainDescriptorSetLayout = swapChainDescriptorSetLayoutBuilder
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, stage)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.build();
 
 	VulkanRenderPassBuilder renderPassBuilder(context);
@@ -61,7 +65,8 @@ void Renderer::init(const RenderScene *scene)
 
 	VulkanPipelineLayoutBuilder pipelineLayoutBuilder(context);
 	pipelineLayout = pipelineLayoutBuilder
-		.addDescriptorSetLayout(descriptorSetLayout)
+		.addDescriptorSetLayout(swapChainDescriptorSetLayout)
+		.addDescriptorSetLayout(sceneDescriptorSetLayout)
 		.build();
 
 	VulkanGraphicsPipelineBuilder pbrPipelineBuilder(context, pipelineLayout, renderPass);
@@ -111,52 +116,60 @@ void Renderer::init(const RenderScene *scene)
 		);
 	}
 
-	// Create descriptor sets
-	std::vector<VkDescriptorSetLayout> layouts(imageCount, descriptorSetLayout);
+	// Create swap chain descriptor sets
+	std::vector<VkDescriptorSetLayout> layouts(imageCount, swapChainDescriptorSetLayout);
+	swapChainDescriptorSets.resize(imageCount);
 
-	VkDescriptorSetAllocateInfo descriptorSetAllocInfo = {};
-	descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descriptorSetAllocInfo.descriptorPool = context.descriptorPool;
-	descriptorSetAllocInfo.descriptorSetCount = imageCount;
-	descriptorSetAllocInfo.pSetLayouts = layouts.data();
+	VkDescriptorSetAllocateInfo swapChainDescriptorSetAllocInfo = {};
+	swapChainDescriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	swapChainDescriptorSetAllocInfo.descriptorPool = context.descriptorPool;
+	swapChainDescriptorSetAllocInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
+	swapChainDescriptorSetAllocInfo.pSetLayouts = layouts.data();
 
-	descriptorSets.resize(imageCount);
-	if (vkAllocateDescriptorSets(context.device, &descriptorSetAllocInfo, descriptorSets.data()) != VK_SUCCESS)
-		throw std::runtime_error("Can't allocate descriptor sets");
+	if (vkAllocateDescriptorSets(context.device, &swapChainDescriptorSetAllocInfo, swapChainDescriptorSets.data()) != VK_SUCCESS)
+		throw std::runtime_error("Can't allocate swap chain descriptor sets");
 
-	initEnvironment(scene);
-
-	for (size_t i = 0; i < imageCount; i++)
-	{
-		std::array<const VulkanTexture *, 7> textures =
-		{
-			scene->getAlbedoTexture(),
-			scene->getNormalTexture(),
-			scene->getAOTexture(),
-			scene->getShadingTexture(),
-			scene->getEmissionTexture(),
-			&environmentCubemap,
-			&diffuseIrradianceCubemap,
-		};
-
+	for (uint32_t i = 0; i < imageCount; i++)
 		VulkanUtils::bindUniformBuffer(
 			context,
-			descriptorSets[i],
+			swapChainDescriptorSets[i],
 			0,
 			uniformBuffers[i],
 			0,
 			sizeof(RendererState)
 		);
 
-		for (int k = 0; k < textures.size(); k++)
-			VulkanUtils::bindCombinedImageSampler(
-				context,
-				descriptorSets[i],
-				k + 1,
-				textures[k]->getImageView(),
-				textures[k]->getSampler()
-			);
-	}
+	// Create scene descriptor set
+	VkDescriptorSetAllocateInfo sceneDescriptorSetAllocInfo = {};
+	sceneDescriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	sceneDescriptorSetAllocInfo.descriptorPool = context.descriptorPool;
+	sceneDescriptorSetAllocInfo.descriptorSetCount = 1;
+	sceneDescriptorSetAllocInfo.pSetLayouts = &sceneDescriptorSetLayout;
+
+	if (vkAllocateDescriptorSets(context.device, &sceneDescriptorSetAllocInfo, &sceneDescriptorSet) != VK_SUCCESS)
+		throw std::runtime_error("Can't allocate scene descriptor set");
+
+	initEnvironment(scene);
+
+	std::array<const VulkanTexture *, 7> textures =
+	{
+		scene->getAlbedoTexture(),
+		scene->getNormalTexture(),
+		scene->getAOTexture(),
+		scene->getShadingTexture(),
+		scene->getEmissionTexture(),
+		&environmentCubemap,
+		&diffuseIrradianceCubemap,
+	};
+
+	for (int k = 0; k < textures.size(); k++)
+		VulkanUtils::bindCombinedImageSampler(
+			context,
+			sceneDescriptorSet,
+			k,
+			textures[k]->getImageView(),
+			textures[k]->getSampler()
+		);
 
 	// Create framebuffers
 	frameBuffers.resize(imageCount);
@@ -298,17 +311,14 @@ void Renderer::setEnvironment(const RenderScene *scene, int index)
 		&diffuseIrradianceCubemap,
 	};
 
-	int imageCount = static_cast<int>(swapChainContext.swapChainImageViews.size());
-
-	for (size_t i = 0; i < imageCount; i++)
-		for (int k = 0; k < textures.size(); k++)
-			VulkanUtils::bindCombinedImageSampler(
-				context,
-				descriptorSets[i],
-				k + 6,
-				textures[k]->getImageView(),
-				textures[k]->getSampler()
-			);
+	for (int k = 0; k < textures.size(); k++)
+		VulkanUtils::bindCombinedImageSampler(
+			context,
+			sceneDescriptorSet,
+			k + 5,
+			textures[k]->getImageView(),
+			textures[k]->getSampler()
+		);
 }
 
 void Renderer::shutdown()
@@ -337,8 +347,11 @@ void Renderer::shutdown()
 	vkDestroyPipelineLayout(context.device, pipelineLayout, nullptr);
 	pipelineLayout = VK_NULL_HANDLE;
 
-	vkDestroyDescriptorSetLayout(context.device, descriptorSetLayout, nullptr);
-	descriptorSetLayout = nullptr;
+	vkDestroyDescriptorSetLayout(context.device, sceneDescriptorSetLayout, nullptr);
+	sceneDescriptorSetLayout = nullptr;
+
+	vkDestroyDescriptorSetLayout(context.device, swapChainDescriptorSetLayout, nullptr);
+	swapChainDescriptorSetLayout = nullptr;
 
 	vkDestroyRenderPass(context.device, renderPass, nullptr);
 	renderPass = VK_NULL_HANDLE;
@@ -346,8 +359,11 @@ void Renderer::shutdown()
 	vkFreeCommandBuffers(context.device, context.commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 	commandBuffers.clear();
 
-	vkFreeDescriptorSets(context.device, context.descriptorPool, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data());
-	descriptorSets.clear();
+	vkFreeDescriptorSets(context.device, context.descriptorPool, static_cast<uint32_t>(swapChainDescriptorSets.size()), swapChainDescriptorSets.data());
+	swapChainDescriptorSets.clear();
+
+	vkFreeDescriptorSets(context.device, context.descriptorPool, 1, &sceneDescriptorSet);
+	sceneDescriptorSet = VK_NULL_HANDLE;
 
 	hdriToCubeRenderer.shutdown();
 	diffuseIrradianceRenderer.shutdown();
@@ -427,15 +443,17 @@ VkCommandBuffer Renderer::render(const RenderScene *scene, uint32_t imageIndex)
 {
 	VkCommandBuffer commandBuffer = commandBuffers[imageIndex];
 	VkFramebuffer frameBuffer = frameBuffers[imageIndex];
-	VkDescriptorSet descriptorSet = descriptorSets[imageIndex];
 	VkBuffer uniformBuffer = uniformBuffers[imageIndex];
 	VkDeviceMemory uniformBufferMemory = uniformBuffersMemory[imageIndex];
+	VkDescriptorSet descriptorSet = swapChainDescriptorSets[imageIndex];
 
+	// copy render state to ubo
 	void *ubo = nullptr;
 	vkMapMemory(context.device, uniformBufferMemory, 0, sizeof(RendererState), 0, &ubo);
 	memcpy(ubo, &state, sizeof(RendererState));
 	vkUnmapMemory(context.device, uniformBufferMemory);
 
+	// do the actual drawing
 	if (vkResetCommandBuffer(commandBuffer, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't reset command buffer");
 
@@ -461,10 +479,12 @@ VkCommandBuffer Renderer::render(const RenderScene *scene, uint32_t imageIndex)
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
+	std::array<VkDescriptorSet, 2> sets = {descriptorSet, sceneDescriptorSet};
+
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
 	{
 		const VulkanMesh *skybox = scene->getSkybox();
 
@@ -477,7 +497,7 @@ VkCommandBuffer Renderer::render(const RenderScene *scene, uint32_t imageIndex)
 		vkCmdDrawIndexed(commandBuffer, skybox->getNumIndices(), 1, 0, 0, 0);
 	}
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrPipeline);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
 	{
 		const VulkanMesh *mesh = scene->getMesh();
 

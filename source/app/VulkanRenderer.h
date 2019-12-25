@@ -63,11 +63,20 @@ private:
 	VulkanTexture diffuseIrradianceCubemap;
 
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
-	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
 	VkRenderPass renderPass {VK_NULL_HANDLE};
 
 	VkPipeline skyboxPipeline {VK_NULL_HANDLE};
 	VkPipeline pbrPipeline {VK_NULL_HANDLE};
+
+	VkDescriptorSetLayout sceneDescriptorSetLayout {VK_NULL_HANDLE};
+	VkDescriptorSet sceneDescriptorSet;
+
+	int currentEnvironment {0};
+	RendererState state;
+
+	// TODO: move to swap chain
+	VkDescriptorSetLayout swapChainDescriptorSetLayout {VK_NULL_HANDLE};
+	std::vector<VkDescriptorSet> swapChainDescriptorSets;
 
 	std::vector<VkFramebuffer> frameBuffers;
 	std::vector<VkCommandBuffer> commandBuffers;
@@ -75,8 +84,4 @@ private:
 	std::vector<VkBuffer> uniformBuffers;
 	std::vector<VkDeviceMemory> uniformBuffersMemory;
 
-	std::vector<VkDescriptorSet> descriptorSets;
-
-	int currentEnvironment {0};
-	RendererState state;
 };
