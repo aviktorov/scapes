@@ -186,7 +186,14 @@ bool VulkanShader::compileFromSourceInternal(const char *path, const char *sourc
 	shaderc_compile_options_release(options);
 	shaderc_compiler_release(compiler);
 
+	shaderPath = path;
+
 	return true;
+}
+
+bool VulkanShader::reload()
+{
+	return compileFromFile(shaderPath.c_str());
 }
 
 void VulkanShader::clear()

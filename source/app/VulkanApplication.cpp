@@ -11,12 +11,18 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <GLM/glm.hpp>
+#include <GLM/gtc/matrix_transform.hpp>
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 
 #include <array>
 #include <iostream>
 #include <set>
+#include <chrono>
 
 static int maxCombinedImageSamplers = 32;
 static int maxUniformBuffers = 32;
@@ -66,8 +72,71 @@ void Application::run()
  */
 void Application::update()
 {
-	renderer->update(&state, scene);
-	imguiRenderer->update(&state, scene);
+	static auto startTime = std::chrono::high_resolution_clock::now();
+	auto currentTime = std::chrono::high_resolution_clock::now();
+
+	const float rotationSpeed = 0.1f;
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+	const glm::vec3 &up = {0.0f, 0.0f, 1.0f};
+	const glm::vec3 &zero = {0.0f, 0.0f, 0.0f};
+
+	VkExtent2D extent = swapChain->getExtent();
+
+	const float aspect = extent.width / (float) extent.height;
+	const float zNear = 0.1f;
+	const float zFar = 1000.0f;
+
+	const glm::vec3 &cameraPos = glm::vec3(2.0f, 2.0f, 2.0f);
+	const glm::mat4 &rotation = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);
+
+	state.world = glm::mat4(1.0f);
+	state.view = glm::lookAt(cameraPos, zero, up) * rotation;
+	state.proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
+	state.proj[1][1] *= -1;
+	state.cameraPosWS = glm::vec3(glm::vec4(cameraPos, 1.0f) * rotation);
+
+	static float f = 0.0f;
+	static int counter = 0;
+	static bool show_demo_window = false;
+
+	if (show_demo_window)
+		ImGui::ShowDemoWindow(&show_demo_window);
+
+	ImGui::Begin("Material Parameters");
+
+	if (ImGui::Button("Reload Shaders"))
+	{
+		scene->reloadShaders();
+		renderer->reload(scene);
+		renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
+	}
+
+	int oldCurrentEnvironment = state.currentEnvironment;
+	if (ImGui::BeginCombo("Choose Your Destiny", scene->getHDRTexturePath(state.currentEnvironment)))
+	{
+		for (int i = 0; i < scene->getNumHDRTextures(); i++)
+		{
+			bool selected = (i == state.currentEnvironment);
+			if (ImGui::Selectable(scene->getHDRTexturePath(i), &selected))
+			{
+				state.currentEnvironment = i;
+				renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
+			}
+			if (selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+
+	ImGui::Checkbox("Demo Window", &show_demo_window);
+
+	ImGui::SliderFloat("Lerp User Material", &state.lerpUserValues, 0.0f, 1.0f);
+	ImGui::SliderFloat("Metalness", &state.userMetalness, 0.0f, 1.0f);
+	ImGui::SliderFloat("Roughness", &state.userRoughness, 0.0f, 1.0f);
+
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::End();
 }
 
 /*
@@ -81,8 +150,8 @@ void Application::render()
 		return;
 	}
 
-	renderer->render(&state, scene, frame);
-	imguiRenderer->render(&state, scene, frame);
+	renderer->render(scene, frame);
+	imguiRenderer->render(scene, frame);
 
 	if (!swapChain->present(frame) || windowResized)
 	{
@@ -159,10 +228,11 @@ void Application::shutdownRenderScene()
 void Application::initRenderers()
 {
 	renderer = new VulkanRenderer(context, swapChain->getExtent(), swapChain->getDescriptorSetLayout(), swapChain->getRenderPass());
-	renderer->init(&state, scene);
+	renderer->init(scene);
+	renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
 
 	imguiRenderer = new VulkanImGuiRenderer(context, swapChain->getExtent(), swapChain->getNoClearRenderPass());
-	imguiRenderer->init(&state, scene, swapChain);
+	imguiRenderer->init(scene, swapChain);
 }
 
 void Application::shutdownRenderers()

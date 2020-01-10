@@ -29,16 +29,13 @@ public:
 
 	virtual ~VulkanRenderer();
 
-	void init(const RendererState *state, const RenderScene *scene);
-	void update(RendererState *state, const RenderScene *scene);
-	void render(const RendererState *state, const RenderScene *scene, const VulkanRenderFrame &frame);
+	void init(const RenderScene *scene);
 	void shutdown();
-
 	void resize(const VulkanSwapChain *swapChain);
+	void render(const RenderScene *scene, const VulkanRenderFrame &frame);
 
-private:
-	void initEnvironment(const RendererState *state, const RenderScene *scene);
-	void setEnvironment(const RenderScene *scene, int index);
+	void reload(const RenderScene *scene);
+	void setEnvironment(const VulkanTexture *texture);
 
 private:
 	VulkanRendererContext context;
@@ -59,6 +56,4 @@ private:
 	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
 	VkDescriptorSetLayout sceneDescriptorSetLayout {VK_NULL_HANDLE};
 	VkDescriptorSet sceneDescriptorSet {VK_NULL_HANDLE};
-
-	uint32_t currentEnvironment {0};
 };

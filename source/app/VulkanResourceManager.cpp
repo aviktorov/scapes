@@ -114,6 +114,15 @@ VulkanShader *VulkanResourceManager::loadShader(int id, VulkanShaderKind kind, c
 	return shader;
 }
 
+bool VulkanResourceManager::reloadShader(int id)
+{
+	auto it = shaders.find(id);
+	if (it == shaders.end())
+		return false;
+
+	return it->second->reload();
+}
+
 void VulkanResourceManager::unloadShader(int id)
 {
 	auto it = shaders.find(id);

@@ -29,6 +29,7 @@ public:
 
 	bool compileFromFile(const char *path);
 	bool compileFromFile(const char *path, VulkanShaderKind kind);
+	bool reload();
 	void clear();
 
 	inline VkShaderModule getShaderModule() const { return shaderModule; }
@@ -39,5 +40,6 @@ private:
 private:
 	VulkanRendererContext context;
 
+	std::string shaderPath;
 	VkShaderModule shaderModule {VK_NULL_HANDLE};
 };

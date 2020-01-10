@@ -30,7 +30,7 @@ VulkanImGuiRenderer::~VulkanImGuiRenderer()
 
 /*
  */
-void VulkanImGuiRenderer::init(const RendererState *state, const RenderScene *scene, const VulkanSwapChain *swapChain)
+void VulkanImGuiRenderer::init(const RenderScene *scene, const VulkanSwapChain *swapChain)
 {
 	// Init ImGui bindings for Vulkan
 	ImGui_ImplVulkan_InitInfo init_info = {};
@@ -65,51 +65,15 @@ void VulkanImGuiRenderer::shutdown()
 	ImGui_ImplVulkan_Shutdown();
 }
 
+/*
+ */
 void VulkanImGuiRenderer::resize(const VulkanSwapChain *swapChain)
 {
 	extent = swapChain->getExtent();
 	ImGui_ImplVulkan_SetMinImageCount(swapChain->getNumImages());
 }
 
-/*
- */
-void VulkanImGuiRenderer::update(RendererState *state, const RenderScene *scene)
-{
-	static float f = 0.0f;
-	static int counter = 0;
-	static bool show_demo_window = false;
-	static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-	if (show_demo_window)
-		ImGui::ShowDemoWindow(&show_demo_window);
-
-	ImGui::Begin("Material Parameters");
-
-	int oldCurrentEnvironment = state->currentEnvironment;
-	if (ImGui::BeginCombo("Choose Your Destiny", scene->getHDRTexturePath(state->currentEnvironment)))
-	{
-		for (int i = 0; i < scene->getNumHDRTextures(); i++)
-		{
-			bool selected = (i == state->currentEnvironment);
-			if (ImGui::Selectable(scene->getHDRTexturePath(i), &selected))
-				state->currentEnvironment = i;
-			if (selected)
-				ImGui::SetItemDefaultFocus();
-		}
-		ImGui::EndCombo();
-	}
-
-	ImGui::Checkbox("Demo Window", &show_demo_window);
-
-	ImGui::SliderFloat("Lerp User Material", &state->lerpUserValues, 0.0f, 1.0f);
-	ImGui::SliderFloat("Metalness", &state->userMetalness, 0.0f, 1.0f);
-	ImGui::SliderFloat("Roughness", &state->userRoughness, 0.0f, 1.0f);
-
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-	ImGui::End();
-}
-
-void VulkanImGuiRenderer::render(const RendererState *state, const RenderScene *scene, const VulkanRenderFrame &frame)
+void VulkanImGuiRenderer::render(const RenderScene *scene, const VulkanRenderFrame &frame)
 {
 	VkCommandBuffer commandBuffer = frame.commandBuffer;
 	VkFramebuffer frameBuffer = frame.frameBuffer;

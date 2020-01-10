@@ -25,6 +25,7 @@ public:
 	VulkanShader *getShader(int id) const;
 	VulkanShader *loadShader(int id, const char *path);
 	VulkanShader *loadShader(int id, VulkanShaderKind kind, const char *path);
+	bool reloadShader(int id);
 	void unloadShader(int id);
 
 	VulkanTexture *getTexture(int id) const;

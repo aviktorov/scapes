@@ -66,6 +66,8 @@ public:
 	inline const VulkanMesh *getMesh() const { return resources.getMesh(config::Meshes::Helmet); }
 	inline const VulkanMesh *getSkybox() const { return resources.getMesh(config::Meshes::Skybox); }
 
+	void reloadShaders();
+
 private:
 	VulkanResourceManager resources;
 };

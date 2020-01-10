@@ -22,11 +22,10 @@ public:
 
 	virtual ~VulkanImGuiRenderer();
 
-	void init(const RendererState *state, const RenderScene *scene, const VulkanSwapChain *swapChain);
-	void resize(const VulkanSwapChain *swapChain);
-	void update(RendererState *state, const RenderScene *scene);
-	void render(const RendererState *state, const RenderScene *scene, const VulkanRenderFrame &frame);
+	void init(const RenderScene *scene, const VulkanSwapChain *swapChain);
 	void shutdown();
+	void resize(const VulkanSwapChain *swapChain);
+	void render(const RenderScene *scene, const VulkanRenderFrame &frame);
 
 private:
 	VulkanRendererContext context;
