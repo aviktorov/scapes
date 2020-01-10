@@ -10,11 +10,19 @@ PBR Sandbox:
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
         ☐ Try to render to a specific cubemap mip level
-        ☐ Use #include parser from shaderc
-    Stream 16:
         ☐ Create a material class (holds textures, shaders & UBO for material params)
-        ☐ Move framebuffer/commandbuffer/ubo from VulkanRenderer to VulkanApplication as it's swapchain dependent
-        ☐ Split VulkanRenderer::render method into VulkanRenderer::begin()/end() + renderObjectWithMaterial()
+        ☐ Remove render scene dependency from renderer
+            ☐ Split VulkanRenderer::render method into VulkanRenderer::begin()/end() + renderObjectWithMaterial()
+    Stream 19:
+        ☐ Bake specular IBL
+    Strean 18:
+        ☐ Add FileWatcher for shader auto reloading
+        ☐ Move Vulkan initialization from VulkanApplication to VulkanRendererContext class
+    Stream 17:
+        ✔ Add temporary 'reload shaders' button to ImGui @done (1/11/2020, 1:17:28 AM)
+        ✔ Use #include parser from shaderc @done (1/11/2020, 12:27:38 AM)
+    Stream 16:
+        ✔ Move framebuffer/commandbuffer/ubo from VulkanRenderer to VulkanApplication as it's swapchain dependent @done (12/26/2019, 4:42:01 AM)
     Stream 15:
         ✔ Deduce shader kind from extension @done (11/26/2019, 12:44:58 AM)
         ✔ Deduce texture type (HDR or LDR) from extension @done (11/26/2019, 12:21:15 AM)
