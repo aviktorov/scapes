@@ -1,23 +1,8 @@
 #version 450
 #pragma shader_stage(fragment)
 
-layout(set = 0, binding = 0) uniform RenderState {
-	mat4 world;
-	mat4 view;
-	mat4 proj;
-	vec3 cameraPosWS;
-	float lerpUserValues;
-	float userMetalness;
-	float userRoughness;
-} ubo;
-
-layout(set = 1, binding = 0) uniform sampler2D albedoSampler;
-layout(set = 1, binding = 1) uniform sampler2D normalSampler;
-layout(set = 1, binding = 2) uniform sampler2D aoSampler;
-layout(set = 1, binding = 3) uniform sampler2D shadingSampler;
-layout(set = 1, binding = 4) uniform sampler2D emissionSampler;
-layout(set = 1, binding = 5) uniform samplerCube environmentSampler;
-layout(set = 1, binding = 6) uniform samplerCube diffuseIrradianceSampler;
+#include "RenderState.inc"
+#include "SceneTextures.inc"
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
