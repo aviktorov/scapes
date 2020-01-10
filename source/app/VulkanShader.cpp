@@ -24,6 +24,80 @@ static shaderc_shader_kind vulkan_to_shaderc_kind(VulkanShaderKind kind)
 
 /*
  */
+static shaderc_include_result *vulkan_include_resolver(
+	void *userData,
+	const char *requestedSource,
+	int type,
+	const char *requestingSource,
+	size_t includeDepth
+)
+{
+	shaderc_include_result *result = new shaderc_include_result();
+	result->user_data = userData;
+	result->source_name = nullptr;
+	result->source_name_length = 0;
+	result->content = nullptr;
+	result->content_length = 0;
+
+	std::string targetDir = "";
+
+	switch (type)
+	{
+		case shaderc_include_type_standard:
+		{
+			targetDir = "shaders/";
+		}
+		break;
+
+		case shaderc_include_type_relative:
+		{
+			std::string_view sourcePath = requestingSource;
+			size_t pos = sourcePath.find_last_of("/\\");
+
+			if (pos != std::string_view::npos)
+				targetDir = sourcePath.substr(0, pos + 1);
+		}
+		break;
+	}
+
+	std::string targetPath = targetDir + std::string(requestedSource);
+
+	std::ifstream file(targetPath, std::ios::ate | std::ios::binary);
+
+	if (!file.is_open())
+	{
+		std::cerr << "vulkan_include_resolver(): can't load include at \"" << targetPath << "\"" << std::endl;
+		return result;
+	}
+
+	size_t fileSize = static_cast<size_t>(file.tellg());
+	char *buffer = new char[fileSize];
+
+	file.seekg(0);
+	file.read(buffer, fileSize);
+	file.close();
+
+	char *path = new char[targetPath.size() + 1];
+	memcpy(path, targetPath.c_str(), targetPath.size());
+	path[targetPath.size()] = '\x0';
+
+	result->source_name = path;
+	result->source_name_length = targetPath.size() + 1;
+	result->content = buffer;
+	result->content_length = fileSize;
+
+	return result;
+}
+
+static void vulkan_include_result_releaser(void *userData, shaderc_include_result *result)
+{
+	delete result->source_name;
+	delete result->content;
+	delete result;
+}
+
+/*
+ */
 VulkanShader::~VulkanShader()
 {
 	clear();
@@ -75,13 +149,19 @@ bool VulkanShader::compileFromSourceInternal(const char *path, const char *sourc
 {
 	// convert glsl/hlsl code to SPIR-V bytecode
 	shaderc_compiler_t compiler = shaderc_compiler_initialize();
+	shaderc_compile_options_t options = shaderc_compile_options_initialize();
+
+	// set compile options
+	shaderc_compile_options_set_include_callbacks(options, vulkan_include_resolver, vulkan_include_result_releaser, nullptr);
+
+	// compile shader
 	shaderc_compilation_result_t result = shaderc_compile_into_spv(
 		compiler,
 		sourceData, sourceSize,
 		shaderc_glsl_infer_from_source,
 		path,
 		"main",
-		nullptr
+		options
 	);
 
 	if (shaderc_result_get_compilation_status(result) != shaderc_compilation_status_success)
@@ -90,6 +170,7 @@ bool VulkanShader::compileFromSourceInternal(const char *path, const char *sourc
 		std::cerr << "\t" << shaderc_result_get_error_message(result);
 
 		shaderc_result_release(result);
+		shaderc_compile_options_release(options);
 		shaderc_compiler_release(compiler);
 
 		return false;
@@ -102,6 +183,7 @@ bool VulkanShader::compileFromSourceInternal(const char *path, const char *sourc
 	shaderModule = VulkanUtils::createShaderModule(context, data, size);
 
 	shaderc_result_release(result);
+	shaderc_compile_options_release(options);
 	shaderc_compiler_release(compiler);
 
 	return true;
