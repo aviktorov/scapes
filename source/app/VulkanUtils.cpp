@@ -1,11 +1,155 @@
 #include "VulkanUtils.h"
-#include "VulkanRendererContext.h"
+#include "VulkanContext.h"
 
 #include <algorithm>
+#include <iostream>
 
+/*
+ */
+bool VulkanUtils::checkInstanceValidationLayers(
+	const std::vector<const char *> &requiredLayers,
+	bool verbose
+)
+{
+	uint32_t availableLayerCount = 0;
+	vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr);
 
+	std::vector<VkLayerProperties> availableLayers(availableLayerCount);
+	vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.data());
+
+	for (const char *requiredLayer : requiredLayers)
+	{
+		bool supported = false;
+		for (const VkLayerProperties &layer : availableLayers)
+		{
+			if (strcmp(requiredLayer, layer.layerName) == 0)
+			{
+				supported = true;
+				break;
+			}
+		}
+
+		if (!supported)
+		{
+			if (verbose)
+				std::cerr << requiredLayer << " is not supported" << std::endl;
+
+			return false;
+		}
+		
+		if (verbose)
+			std::cout << "Have " << requiredLayer << std::endl;
+	}
+
+	return true;
+}
+
+bool VulkanUtils::checkInstanceExtensions(
+	const std::vector<const char *> &requiredExtensions,
+	bool verbose
+)
+{
+	uint32_t availableExtensionCount = 0;
+	vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, nullptr);
+
+	std::vector<VkExtensionProperties> availableExtensions(availableExtensionCount);
+	vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, availableExtensions.data());
+
+	for (const char *requiredExtension : requiredExtensions)
+	{
+		bool supported = false;
+		for (const VkExtensionProperties &availableExtension : availableExtensions)
+		{
+			if (strcmp(requiredExtension, availableExtension.extensionName) == 0)
+			{
+				supported = true;
+				break;
+			}
+		}
+
+		if (!supported)
+		{
+			if (verbose)
+				std::cerr << requiredExtension << " is not supported" << std::endl;
+
+			return false;
+		}
+		
+		if (verbose)
+			std::cout << "Have " << requiredExtension << std::endl;
+	}
+
+	return true;
+}
+
+bool VulkanUtils::checkPhysicalDeviceExtensions(
+	VkPhysicalDevice physicalDevice,
+	const std::vector<const char *> &requiredExtensions,
+	bool verbose
+)
+{
+	uint32_t availableDeviceExtensionCount = 0;
+	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &availableDeviceExtensionCount, nullptr);
+
+	std::vector<VkExtensionProperties> availableDeviceExtensions(availableDeviceExtensionCount);
+	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &availableDeviceExtensionCount, availableDeviceExtensions.data());
+
+	for (const char *requiredExtension : requiredExtensions)
+	{
+		bool supported = false;
+		for (const VkExtensionProperties &availableDeviceExtension : availableDeviceExtensions)
+		{
+			if (strcmp(requiredExtension, availableDeviceExtension.extensionName) == 0)
+			{
+				supported = true;
+				break;
+			}
+		}
+
+		if (!supported)
+		{
+			if (verbose)
+				std::cerr << requiredExtension << " is not supported on this physical device" << std::endl;
+
+			return false;
+		}
+		
+		if (verbose)
+			std::cout << "Have " << requiredExtension << std::endl;
+	}
+
+	return true;
+}
+
+/*
+ */
+VkSampleCountFlagBits VulkanUtils::getMaxUsableSampleCount(
+	VkPhysicalDevice physicalDevice
+)
+{
+	VkPhysicalDeviceProperties physicalDeviceProperties;
+	vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+
+	// TODO: this might return wrong value in case color & depth have different multisampling options
+	VkSampleCountFlags counts = std::min(
+		physicalDeviceProperties.limits.framebufferColorSampleCounts,
+		physicalDeviceProperties.limits.framebufferDepthSampleCounts
+	);
+
+	if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+	if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+	if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+	if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+	if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+	if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+
+	return VK_SAMPLE_COUNT_1_BIT;
+}
+
+/*
+ */
 VkFormat VulkanUtils::selectOptimalImageFormat(
-	const VulkanRendererContext &context,
+	VkPhysicalDevice physicalDevice,
 	const std::vector<VkFormat> &candidates,
 	VkImageTiling tiling,
 	VkFormatFeatureFlags features
@@ -14,7 +158,7 @@ VkFormat VulkanUtils::selectOptimalImageFormat(
 	for (VkFormat format : candidates)
 	{
 		VkFormatProperties properties;
-		vkGetPhysicalDeviceFormatProperties(context.physicalDevice, format, &properties);
+		vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &properties);
 
 		if (tiling == VK_IMAGE_TILING_LINEAR && (properties.linearTilingFeatures & features) == features)
 			return format;
@@ -27,11 +171,11 @@ VkFormat VulkanUtils::selectOptimalImageFormat(
 }
 
 VkFormat VulkanUtils::selectOptimalDepthFormat(
-	const VulkanRendererContext &context
+	VkPhysicalDevice physicalDevice
 )
 {
 	return selectOptimalImageFormat(
-		context,
+		physicalDevice,
 		{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
 		VK_IMAGE_TILING_OPTIMAL,
 		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
@@ -41,13 +185,13 @@ VkFormat VulkanUtils::selectOptimalDepthFormat(
 /*
  */
 uint32_t VulkanUtils::findMemoryType(
-	const VulkanRendererContext &context,
+	VkPhysicalDevice physicalDevice,
 	uint32_t typeFilter,
 	VkMemoryPropertyFlags properties
 )
 {
 	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(context.physicalDevice, &memProperties);
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
 
 	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
 	{
@@ -60,7 +204,7 @@ uint32_t VulkanUtils::findMemoryType(
 }
 
 void VulkanUtils::createBuffer(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
 	VkMemoryPropertyFlags memoryProperties,
@@ -75,27 +219,27 @@ void VulkanUtils::createBuffer(
 	bufferInfo.usage = usage;
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	if (vkCreateBuffer(context.device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+	if (vkCreateBuffer(context->device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
 		throw std::runtime_error("Can't create buffer");
 
 	// Allocate memory for the buffer
 	VkMemoryRequirements memoryRequirements = {};
-	vkGetBufferMemoryRequirements(context.device, buffer, &memoryRequirements);
+	vkGetBufferMemoryRequirements(context->device, buffer, &memoryRequirements);
 
 	VkMemoryAllocateInfo memoryAllocateInfo = {};
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context, memoryRequirements.memoryTypeBits, memoryProperties);
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->physicalDevice, memoryRequirements.memoryTypeBits, memoryProperties);
 
-	if (vkAllocateMemory(context.device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+	if (vkAllocateMemory(context->device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate buffer memory");
 
-	if (vkBindBufferMemory(context.device, buffer, memory, 0) != VK_SUCCESS)
+	if (vkBindBufferMemory(context->device, buffer, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't bind buffer memory");
 }
 
 void VulkanUtils::createImageCube(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	uint32_t width,
 	uint32_t height,
 	uint32_t mipLevels,
@@ -125,27 +269,27 @@ void VulkanUtils::createImageCube(
 	imageInfo.samples = numSamples;
 	imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-	if (vkCreateImage(context.device, &imageInfo, nullptr, &image) != VK_SUCCESS)
+	if (vkCreateImage(context->device, &imageInfo, nullptr, &image) != VK_SUCCESS)
 		throw std::runtime_error("Can't create image");
 
 	// Allocate memory for the buffer
 	VkMemoryRequirements memoryRequirements = {};
-	vkGetImageMemoryRequirements(context.device, image, &memoryRequirements);
+	vkGetImageMemoryRequirements(context->device, image, &memoryRequirements);
 
 	VkMemoryAllocateInfo memoryAllocateInfo = {};
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context, memoryRequirements.memoryTypeBits, memoryProperties);
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->physicalDevice, memoryRequirements.memoryTypeBits, memoryProperties);
 
-	if (vkAllocateMemory(context.device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+	if (vkAllocateMemory(context->device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate image memory");
 
-	if (vkBindImageMemory(context.device, image, memory, 0) != VK_SUCCESS)
+	if (vkBindImageMemory(context->device, image, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't bind image memory");
 }
 
 void VulkanUtils::createImage2D(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	uint32_t width,
 	uint32_t height,
 	uint32_t mipLevels,
@@ -175,27 +319,27 @@ void VulkanUtils::createImage2D(
 	imageInfo.samples = numSamples;
 	imageInfo.flags = 0; // Optional
 
-	if (vkCreateImage(context.device, &imageInfo, nullptr, &image) != VK_SUCCESS)
+	if (vkCreateImage(context->device, &imageInfo, nullptr, &image) != VK_SUCCESS)
 		throw std::runtime_error("Can't create image");
 
 	// Allocate memory for the buffer
 	VkMemoryRequirements memoryRequirements = {};
-	vkGetImageMemoryRequirements(context.device, image, &memoryRequirements);
+	vkGetImageMemoryRequirements(context->device, image, &memoryRequirements);
 
 	VkMemoryAllocateInfo memoryAllocateInfo = {};
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context, memoryRequirements.memoryTypeBits, memoryProperties);
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->physicalDevice, memoryRequirements.memoryTypeBits, memoryProperties);
 
-	if (vkAllocateMemory(context.device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+	if (vkAllocateMemory(context->device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate image memory");
 
-	if (vkBindImageMemory(context.device, image, memory, 0) != VK_SUCCESS)
+	if (vkBindImageMemory(context->device, image, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't bind image memory");
 }
 
 VkImageView VulkanUtils::createImageView(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	VkImage image,
 	VkFormat format,
 	VkImageAspectFlags aspectFlags,
@@ -219,14 +363,14 @@ VkImageView VulkanUtils::createImageView(
 	viewInfo.subresourceRange.layerCount = numLayers;
 
 	VkImageView imageView;
-	if (vkCreateImageView(context.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+	if (vkCreateImageView(context->device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
 		throw std::runtime_error("Can't create image view!");
 
 	return imageView;
 }
 
 VkSampler VulkanUtils::createSampler(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	uint32_t mipLevels
 )
 {
@@ -248,14 +392,14 @@ VkSampler VulkanUtils::createSampler(
 	samplerInfo.maxLod = static_cast<float>(mipLevels);
 
 	VkSampler sampler = VK_NULL_HANDLE;
-	if (vkCreateSampler(context.device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
+	if (vkCreateSampler(context->device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
 		throw std::runtime_error("Can't create texture sampler");
 
 	return sampler;
 }
 
 VkShaderModule VulkanUtils::createShaderModule(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	const uint32_t *bytecode,
 	size_t bytecodeSize
 )
@@ -266,14 +410,14 @@ VkShaderModule VulkanUtils::createShaderModule(
 	shaderInfo.pCode = bytecode;
 
 	VkShaderModule shader;
-	if (vkCreateShaderModule(context.device, &shaderInfo, nullptr, &shader) != VK_SUCCESS)
+	if (vkCreateShaderModule(context->device, &shaderInfo, nullptr, &shader) != VK_SUCCESS)
 		throw std::runtime_error("Can't create shader module");
 
 	return shader;
 }
 
 void VulkanUtils::bindUniformBuffer(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	VkDescriptorSet descriptorSet,
 	int binding,
 	VkBuffer buffer,
@@ -297,11 +441,11 @@ void VulkanUtils::bindUniformBuffer(
 
 	// TODO: not optimal, probably should be refactored to a Binder class,
 	// i.e. it's better to collect all descriptor writes before the call
-	vkUpdateDescriptorSets(context.device, 1, &descriptorWrite, 0, nullptr);
+	vkUpdateDescriptorSets(context->device, 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanUtils::bindCombinedImageSampler(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	VkDescriptorSet descriptorSet,
 	int binding,
 	VkImageView imageView,
@@ -324,11 +468,11 @@ void VulkanUtils::bindCombinedImageSampler(
 
 	// TODO: not optimal, probably should be refactored to a Binder class,
 	// i.e. it's better to collect all descriptor writes before the call
-	vkUpdateDescriptorSets(context.device, 1, &descriptorWrite, 0, nullptr);
+	vkUpdateDescriptorSets(context->device, 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanUtils::copyBuffer(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	VkBuffer src,
 	VkBuffer dst,
 	VkDeviceSize size
@@ -345,7 +489,7 @@ void VulkanUtils::copyBuffer(
 
 
 void VulkanUtils::copyBufferToImage(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	VkBuffer src,
 	VkImage dst,
 	uint32_t width,
@@ -374,8 +518,15 @@ void VulkanUtils::copyBufferToImage(
 	endSingleTimeCommands(context, commandBuffer);
 }
 
+/*
+ */
+bool VulkanUtils::hasStencilComponent(VkFormat format)
+{
+	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
 void VulkanUtils::transitionImageLayout(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	VkImage image,
 	VkFormat format,
 	VkImageLayout oldLayout,
@@ -494,7 +645,7 @@ void VulkanUtils::transitionImageLayout(
 }
 
 void VulkanUtils::generateImage2DMipmaps(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	VkImage image,
 	uint32_t width,
 	uint32_t height,
@@ -507,7 +658,7 @@ void VulkanUtils::generateImage2DMipmaps(
 		return;
 
 	VkFormatProperties formatProperties;
-	vkGetPhysicalDeviceFormatProperties(context.physicalDevice, format, &formatProperties);
+	vkGetPhysicalDeviceFormatProperties(context->physicalDevice, format, &formatProperties);
 
 	bool supportsLinearFiltering = (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0;
 	bool supportsCubicFiltering = (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT) != 0;
@@ -594,45 +745,16 @@ void VulkanUtils::generateImage2DMipmaps(
 	endSingleTimeCommands(context, commandBuffer);
 }
 
-VkSampleCountFlagBits VulkanUtils::getMaxUsableSampleCount(
-	const VulkanRendererContext &context
-)
-{
-	VkPhysicalDeviceProperties physicalDeviceProperties;
-	vkGetPhysicalDeviceProperties(context.physicalDevice, &physicalDeviceProperties);
-
-	VkSampleCountFlags counts = std::min(
-		physicalDeviceProperties.limits.framebufferColorSampleCounts,
-		physicalDeviceProperties.limits.framebufferDepthSampleCounts
-	);
-
-	if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
-	if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
-	if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
-	if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
-	if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
-	if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
-
-	return VK_SAMPLE_COUNT_1_BIT;
-}
-
-/*
- */
-bool VulkanUtils::hasStencilComponent(VkFormat format)
-{
-	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-}
-
-VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const VulkanRendererContext &context)
+VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const VulkanContext *context)
 {
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = context.commandPool;
+	allocInfo.commandPool = context->commandPool;
 	allocInfo.commandBufferCount = 1;
 
 	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(context.device, &allocInfo, &commandBuffer);
+	vkAllocateCommandBuffers(context->device, &allocInfo, &commandBuffer);
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -643,7 +765,7 @@ VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const VulkanRendererContext
 	return commandBuffer;
 }
 
-void VulkanUtils::endSingleTimeCommands(const VulkanRendererContext &context, VkCommandBuffer commandBuffer)
+void VulkanUtils::endSingleTimeCommands(const VulkanContext *context, VkCommandBuffer commandBuffer)
 {
 	vkEndCommandBuffer(commandBuffer);
 
@@ -652,7 +774,7 @@ void VulkanUtils::endSingleTimeCommands(const VulkanRendererContext &context, Vk
 	fenceInfo.flags = 0;
 
 	VkFence fence;
-	if (vkCreateFence(context.device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+	if (vkCreateFence(context->device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't create fence");
 
 	VkSubmitInfo submitInfo = {};
@@ -660,13 +782,13 @@ void VulkanUtils::endSingleTimeCommands(const VulkanRendererContext &context, Vk
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	if (vkQueueSubmit(context.graphicsQueue, 1, &submitInfo, fence) != VK_SUCCESS)
+	if (vkQueueSubmit(context->graphicsQueue, 1, &submitInfo, fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't submit command buffer");
 	
-	if (vkWaitForFences(context.device, 1, &fence, VK_TRUE, 100000000000) != VK_SUCCESS)
+	if (vkWaitForFences(context->device, 1, &fence, VK_TRUE, 100000000000) != VK_SUCCESS)
 		throw std::runtime_error("Can't wait for a fence");
 
-	vkDestroyFence(context.device, fence, nullptr);
+	vkDestroyFence(context->device, fence, nullptr);
 
-	vkFreeCommandBuffers(context.device, context.commandPool, 1, &commandBuffer);
+	vkFreeCommandBuffers(context->device, context->commandPool, 1, &commandBuffer);
 }

@@ -3,9 +3,7 @@
 #include <volk.h>
 #include <vector>
 
-#include "VulkanRendererContext.h"
-
-struct RendererState;
+class VulkanContext;
 
 /*
  */
@@ -25,14 +23,14 @@ struct VulkanRenderFrame
 class VulkanSwapChain
 {
 public:
-	VulkanSwapChain(const VulkanRendererContext &context, VkDeviceSize uboSize);
+	VulkanSwapChain(const VulkanContext *context, VkDeviceSize uboSize);
 	virtual ~VulkanSwapChain();
 
 	void init(int width, int height);
 	void reinit(int width, int height);
 	void shutdown();
 
-	bool acquire(const RendererState &state, VulkanRenderFrame &frame);
+	bool acquire(void *state, VulkanRenderFrame &frame);
 	bool present(const VulkanRenderFrame &frame);
 
 	inline uint32_t getNumImages() const { return static_cast<uint32_t>(swapChainImages.size()); }
@@ -70,7 +68,7 @@ private:
 	void shutdownFrames();
 
 private:
-	VulkanRendererContext context;
+	const VulkanContext *context {nullptr};
 	std::vector<VulkanRenderFrame> frames;
 	VkDeviceSize uboSize;
 

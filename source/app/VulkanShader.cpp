@@ -1,4 +1,5 @@
 #include "VulkanShader.h"
+#include "VulkanContext.h"
 #include "VulkanUtils.h"
 
 #include <fstream>
@@ -198,6 +199,6 @@ bool VulkanShader::reload()
 
 void VulkanShader::clear()
 {
-	vkDestroyShaderModule(context.device, shaderModule, nullptr);
+	vkDestroyShaderModule(context->device, shaderModule, nullptr);
 	shaderModule = VK_NULL_HANDLE;
 }

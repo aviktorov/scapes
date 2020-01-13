@@ -2,10 +2,9 @@
 
 #include <unordered_map>
 
-#include "VulkanRendererContext.h"
-
 enum class VulkanShaderKind;
 
+class VulkanContext;
 class VulkanMesh;
 class VulkanShader;
 class VulkanTexture;
@@ -15,7 +14,7 @@ class VulkanTexture;
 class VulkanResourceManager
 {
 public:
-	VulkanResourceManager(const VulkanRendererContext &context);
+	VulkanResourceManager(const VulkanContext *context);
 
 	VulkanMesh *getMesh(int id) const;
 	VulkanMesh *createCubeMesh(int id, float size);
@@ -33,7 +32,7 @@ public:
 	void unloadTexture(int id);
 
 private:
-	VulkanRendererContext context;
+	const VulkanContext *context {nullptr};
 
 	std::unordered_map<int, VulkanMesh *> meshes;
 	std::unordered_map<int, VulkanShader *> shaders;

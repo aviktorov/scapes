@@ -3,14 +3,14 @@
 #include <vector>
 #include <volk.h>
 
-#include "VulkanRendererContext.h"
+class VulkanContext;
 
 /*
  */
 class VulkanPipelineLayoutBuilder
 {
 public:
-	VulkanPipelineLayoutBuilder(const VulkanRendererContext &context)
+	VulkanPipelineLayoutBuilder(const VulkanContext *context)
 		: context(context) { }
 
 	inline VkPipelineLayout getPipelineLayout() const { return pipelineLayout; }
@@ -22,7 +22,7 @@ public:
 	VkPipelineLayout build();
 
 private:
-	VulkanRendererContext context;
+	const VulkanContext *context {nullptr};
 
 	std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 

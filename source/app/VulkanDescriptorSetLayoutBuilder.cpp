@@ -1,4 +1,5 @@
 #include "VulkanDescriptorSetLayoutBuilder.h"
+#include "VulkanContext.h"
 #include "VulkanUtils.h"
 
 VulkanDescriptorSetLayoutBuilder &VulkanDescriptorSetLayoutBuilder::addDescriptorBinding(
@@ -27,7 +28,7 @@ VkDescriptorSetLayout VulkanDescriptorSetLayoutBuilder::build()
 	descriptorSetLayoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 	descriptorSetLayoutInfo.pBindings = bindings.data();
 
-	if (vkCreateDescriptorSetLayout(context.device, &descriptorSetLayoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+	if (vkCreateDescriptorSetLayout(context->device, &descriptorSetLayoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
 		throw std::runtime_error("Can't create descriptor set layout");
 
 	return descriptorSetLayout;

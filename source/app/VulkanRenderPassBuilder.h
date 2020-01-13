@@ -3,14 +3,14 @@
 #include <vector>
 #include <volk.h>
 
-#include "VulkanRendererContext.h"
+class VulkanContext;
 
 /*
  */
 class VulkanRenderPassBuilder
 {
 public:
-	VulkanRenderPassBuilder(const VulkanRendererContext &context)
+	VulkanRenderPassBuilder(const VulkanContext *context)
 		: context(context) { }
 	~VulkanRenderPassBuilder();
 
@@ -71,7 +71,7 @@ private:
 		VkAttachmentReference *depthStencilAttachmentReference {nullptr};
 	};
 
-	VulkanRendererContext context;
+	const VulkanContext *context {nullptr};
 
 	std::vector<VkAttachmentDescription> attachments;
 	std::vector<VkSubpassDescription> subpassInfos;

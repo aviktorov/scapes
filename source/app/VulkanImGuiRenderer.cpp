@@ -1,5 +1,5 @@
-#include "VulkanApplication.h"
 #include "VulkanImGuiRenderer.h"
+#include "VulkanContext.h"
 #include "VulkanSwapChain.h"
 #include "VulkanUtils.h"
 
@@ -13,7 +13,7 @@
 /*
  */
 VulkanImGuiRenderer::VulkanImGuiRenderer(
-	const VulkanRendererContext &context,
+	const VulkanContext *context,
 	VkExtent2D extent,
 	VkRenderPass renderPass
 )
@@ -34,30 +34,21 @@ void VulkanImGuiRenderer::init(const RenderScene *scene, const VulkanSwapChain *
 {
 	// Init ImGui bindings for Vulkan
 	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = context.instance;
-	init_info.PhysicalDevice = context.physicalDevice;
-	init_info.Device = context.device;
-	init_info.QueueFamily = context.graphicsQueueFamily;
-	init_info.Queue = context.graphicsQueue;
-	init_info.DescriptorPool = context.descriptorPool;
-	init_info.MSAASamples = context.maxMSAASamples;
+	init_info.Instance = context->instance;
+	init_info.PhysicalDevice = context->physicalDevice;
+	init_info.Device = context->device;
+	init_info.QueueFamily = context->graphicsQueueFamily;
+	init_info.Queue = context->graphicsQueue;
+	init_info.DescriptorPool = context->descriptorPool;
+	init_info.MSAASamples = context->maxMSAASamples;
 	init_info.MinImageCount = static_cast<uint32_t>(swapChain->getNumImages());
 	init_info.ImageCount = static_cast<uint32_t>(swapChain->getNumImages());
 
 	ImGui_ImplVulkan_Init(&init_info, renderPass);
 
-	VulkanRendererContext imGuiContext = {};
-	imGuiContext.commandPool = context.commandPool;
-	imGuiContext.descriptorPool = context.descriptorPool;
-	imGuiContext.device = context.device;
-	imGuiContext.graphicsQueue = context.graphicsQueue;
-	imGuiContext.maxMSAASamples = context.maxMSAASamples;
-	imGuiContext.physicalDevice = context.physicalDevice;
-	imGuiContext.presentQueue = context.presentQueue;
-
-	VkCommandBuffer imGuiCommandBuffer = VulkanUtils::beginSingleTimeCommands(imGuiContext);
+	VkCommandBuffer imGuiCommandBuffer = VulkanUtils::beginSingleTimeCommands(context);
 	ImGui_ImplVulkan_CreateFontsTexture(imGuiCommandBuffer);
-	VulkanUtils::endSingleTimeCommands(imGuiContext, imGuiCommandBuffer);
+	VulkanUtils::endSingleTimeCommands(context, imGuiCommandBuffer);
 }
 
 void VulkanImGuiRenderer::shutdown()

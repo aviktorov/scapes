@@ -8,14 +8,14 @@
 #include <vector>
 #include <string>
 
-#include "VulkanRendererContext.h"
+class VulkanContext;
 
 /*
  */
 class VulkanMesh
 {
 public:
-	VulkanMesh(const VulkanRendererContext &context)
+	VulkanMesh(const VulkanContext *context)
 		: context(context) { }
 
 	~VulkanMesh();
@@ -41,7 +41,7 @@ private:
 	void createIndexBuffer();
 
 private:
-	VulkanRendererContext context;
+	const VulkanContext *context {nullptr};
 
 	struct Vertex
 	{

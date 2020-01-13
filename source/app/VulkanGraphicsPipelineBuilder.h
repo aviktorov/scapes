@@ -3,14 +3,14 @@
 #include <vector>
 #include <volk.h>
 
-#include "VulkanRendererContext.h"
+class VulkanContext;
 
 /*
  */
 class VulkanGraphicsPipelineBuilder
 {
 public:
-	VulkanGraphicsPipelineBuilder(const VulkanRendererContext &context, VkPipelineLayout pipelineLayout, VkRenderPass renderPass)
+	VulkanGraphicsPipelineBuilder(const VulkanContext *context, VkPipelineLayout pipelineLayout, VkRenderPass renderPass)
 		: context(context), renderPass(renderPass), pipelineLayout(pipelineLayout) { }
 
 	inline VkPipeline getPipeline() const { return pipeline; }
@@ -82,8 +82,8 @@ public:
 	VkPipeline build();
 
 private:
-	VulkanRendererContext context;
-	VkRenderPass renderPass { VK_NULL_HANDLE };
+	const VulkanContext *context {nullptr};
+	VkRenderPass renderPass {VK_NULL_HANDLE};
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages;

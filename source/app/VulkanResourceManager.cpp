@@ -1,6 +1,6 @@
 #include "VulkanResourceManager.h"
 
-#include "VulkanRendererContext.h"
+#include "VulkanContext.h"
 #include "VulkanMesh.h"
 #include "VulkanShader.h"
 #include "VulkanTexture.h"
@@ -9,7 +9,7 @@
 
 /*
  */
-VulkanResourceManager::VulkanResourceManager(const VulkanRendererContext &context)
+VulkanResourceManager::VulkanResourceManager(const VulkanContext *context)
 : context(context)
 {
 

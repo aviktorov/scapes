@@ -2,11 +2,9 @@
 
 #include <volk.h>
 
-#include "VulkanRendererContext.h"
-
 class RenderScene;
+class VulkanContext;
 class VulkanSwapChain;
-struct RendererState;
 struct VulkanRenderFrame;
 
 /*
@@ -15,7 +13,7 @@ class VulkanImGuiRenderer
 {
 public:
 	VulkanImGuiRenderer(
-		const VulkanRendererContext &context,
+		const VulkanContext *context,
 		VkExtent2D extent,
 		VkRenderPass renderPass
 	);
@@ -28,7 +26,7 @@ public:
 	void render(const RenderScene *scene, const VulkanRenderFrame &frame);
 
 private:
-	VulkanRendererContext context;
+	const VulkanContext *context {nullptr};
 	VkExtent2D extent;
 	VkRenderPass renderPass;
 };

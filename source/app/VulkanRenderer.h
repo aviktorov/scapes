@@ -5,14 +5,12 @@
 #include <vector>
 
 #include "VulkanCubemapRenderer.h"
-#include "VulkanRendererContext.h"
 #include "VulkanTexture.h"
 #include "VulkanShader.h"
 
 class RenderScene;
+class VulkanContext;
 class VulkanSwapChain;
-
-struct RendererState;
 struct VulkanRenderFrame;
 
 /*
@@ -21,7 +19,7 @@ class VulkanRenderer
 {
 public:
 	VulkanRenderer(
-		const VulkanRendererContext &context,
+		const VulkanContext *context,
 		VkExtent2D extent,
 		VkDescriptorSetLayout descriptorSetLayout,
 		VkRenderPass renderPass
@@ -38,7 +36,7 @@ public:
 	void setEnvironment(const VulkanTexture *texture);
 
 private:
-	VulkanRendererContext context;
+	const VulkanContext *context {nullptr};
 	VkExtent2D extent;
 	VkRenderPass renderPass {VK_NULL_HANDLE};
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};

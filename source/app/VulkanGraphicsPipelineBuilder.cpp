@@ -1,4 +1,5 @@
 #include "VulkanGraphicsPipelineBuilder.h"
+#include "VulkanContext.h"
 #include "VulkanUtils.h"
 
 VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addShaderStage(
@@ -222,7 +223,7 @@ VkPipeline VulkanGraphicsPipelineBuilder::build()
 	pipelineInfo.renderPass = renderPass;
 	pipelineInfo.subpass = 0;
 
-	if (vkCreateGraphicsPipelines(context.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines(context->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		throw std::runtime_error("Can't create graphics pipeline");
 
 	return pipeline;

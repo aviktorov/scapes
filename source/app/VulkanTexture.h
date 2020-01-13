@@ -3,14 +3,14 @@
 #include <volk.h>
 #include <string>
 
-#include "VulkanRendererContext.h"
+class VulkanContext;
 
 /*
  */
 class VulkanTexture
 {
 public:
-	VulkanTexture(const VulkanRendererContext &context)
+	VulkanTexture(const VulkanContext *context)
 		: context(context) { }
 
 	~VulkanTexture();
@@ -36,7 +36,7 @@ private:
 	void uploadToGPU(VkFormat format, VkImageTiling tiling, size_t imageSize);
 
 private:
-	VulkanRendererContext context;
+	const VulkanContext *context {nullptr};
 
 	unsigned char *pixels {nullptr};
 	int width {0};

@@ -4,17 +4,18 @@
 #include <string>
 #include <vector>
 
-#include "VulkanRendererContext.h"
 #include "VulkanShader.h"
 #include "VulkanTexture.h"
 #include "VulkanMesh.h"
+
+class VulkanContext;
 
 /*
  */
 class VulkanCubemapRenderer
 {
 public:
-	VulkanCubemapRenderer(const VulkanRendererContext &context)
+	VulkanCubemapRenderer(const VulkanContext *context)
 		: context(context)
 		, rendererQuad(context)
 	{ }
@@ -30,7 +31,7 @@ public:
 	void render(const VulkanTexture &inputTexture);
 
 private:
-	VulkanRendererContext context;
+	const VulkanContext *context {nullptr};
 	VulkanMesh rendererQuad;
 	VkExtent2D targetExtent;
 

@@ -1,22 +1,20 @@
 #pragma once
 
-#include <volk.h>
-#include <vector>
-#include <optional>
-
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLM/glm.hpp>
-
-#include "VulkanRendererContext.h"
+#include <GLM/gtc/matrix_transform.hpp>
 
 struct GLFWwindow;
 class RenderScene;
 class VulkanRenderer;
 class VulkanImGuiRenderer;
 class VulkanSwapChain;
+class VulkanContext;
 
 /*
  */
-struct RendererState
+struct ApplicationState
 {
 	glm::mat4 world;
 	glm::mat4 view;
@@ -30,16 +28,6 @@ struct RendererState
 
 /*
  */
-struct QueueFamilyIndices
-{
-	std::optional<uint32_t> graphicsFamily {std::nullopt};
-	std::optional<uint32_t> presentFamily {std::nullopt};
-
-	inline bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
-};
-
-/*
- */
 class Application
 {
 public:
@@ -48,13 +36,6 @@ public:
 private:
 	void initWindow();
 	void shutdownWindow();
-
-	bool checkRequiredValidationLayers(std::vector<const char *> &layers) const;
-	bool checkRequiredExtensions(std::vector<const char *> &extensions) const;
-	bool checkRequiredPhysicalDeviceExtensions(VkPhysicalDevice device, std::vector<const char *> &extensions) const;
-	bool checkPhysicalDevice(VkPhysicalDevice device, VkSurfaceKHR surface) const;
-
-	QueueFamilyIndices fetchQueueFamilyIndices(VkPhysicalDevice device) const;
 
 	void initVulkan();
 	void shutdownVulkan();
@@ -79,29 +60,16 @@ private:
 	static void onFramebufferResize(GLFWwindow *window, int width, int height);
 
 private:
+	// TODO: move to another class (Window?)
 	GLFWwindow *window {nullptr};
+	bool windowResized {false};
+
 	RenderScene *scene {nullptr};
-	RendererState state;
+	ApplicationState state;
 
 	VulkanRenderer *renderer {nullptr};
 	VulkanImGuiRenderer *imguiRenderer {nullptr};
 
 	VulkanSwapChain *swapChain {nullptr};
-	VulkanRendererContext context {};
-
-	//
-	VkInstance instance {VK_NULL_HANDLE};
-	VkPhysicalDevice physicalDevice {VK_NULL_HANDLE};
-	VkDevice device {VK_NULL_HANDLE};
-	VkSurfaceKHR surface {VK_NULL_HANDLE};
-
-	VkQueue graphicsQueue {VK_NULL_HANDLE};
-	VkQueue presentQueue {VK_NULL_HANDLE};
-
-	VkCommandPool commandPool {VK_NULL_HANDLE};
-	VkDescriptorPool descriptorPool {VK_NULL_HANDLE};
-
-	VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
-
-	bool windowResized {false};
+	VulkanContext *context {nullptr};
 };

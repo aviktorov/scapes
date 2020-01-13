@@ -5,7 +5,7 @@
 
 #include "shaderc/shaderc.h"
 
-#include "VulkanRendererContext.h"
+class VulkanContext;
 
 enum class VulkanShaderKind
 {
@@ -22,7 +22,7 @@ enum class VulkanShaderKind
 class VulkanShader
 {
 public:
-	VulkanShader(const VulkanRendererContext &context)
+	VulkanShader(const VulkanContext *context)
 		: context(context) { }
 
 	~VulkanShader();
@@ -38,7 +38,7 @@ private:
 	bool compileFromSourceInternal(const char *path, const char *sourceData, size_t sourceSize, shaderc_shader_kind kind);
 
 private:
-	VulkanRendererContext context;
+	const VulkanContext *context {nullptr};
 
 	std::string shaderPath;
 	VkShaderModule shaderModule {VK_NULL_HANDLE};

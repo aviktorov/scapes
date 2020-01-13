@@ -1,4 +1,5 @@
 #include "RenderScene.h"
+#include "VulkanContext.h"
 #include "VulkanShader.h"
 
 #include <cassert>
@@ -39,7 +40,7 @@ namespace config
 
 /*
  */
-RenderScene::RenderScene(const VulkanRendererContext &context)
+RenderScene::RenderScene(const VulkanContext *context)
 	: resources(context)
 { }
 

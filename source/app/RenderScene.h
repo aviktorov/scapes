@@ -4,7 +4,8 @@
 #include <string>
 
 #include "VulkanResourceManager.h"
-#include "VulkanRendererContext.h"
+
+class VulkanContext;
 
 namespace config
 {
@@ -41,7 +42,7 @@ namespace config
 class RenderScene
 {
 public:
-	RenderScene(const VulkanRendererContext &context);
+	RenderScene(const VulkanContext *context);
 
 	void init();
 	void shutdown();
