@@ -3,21 +3,22 @@ PBR Sandbox:
         ☐ Debug slow shader render failure
         ☐ Create a pull request to ImGui (Vulkan + Volk)
     Online:
-        ☐ Create VulkanUniformBuffer template class
         ☐ Implement Oren-Nayar diffuse BRDF
         ☐ Implement microfacet Burley 12 diffuse BRDF
         ☐ Improve microfacet BRDFs
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
+        ☐ Create VulkanUniformBuffer template class
         ☐ Try to render to a specific cubemap mip level
         ☐ Create a material class (holds textures, shaders & UBO for material params)
         ☐ Remove render scene dependency from renderer
             ☐ Split VulkanRenderer::render method into VulkanRenderer::begin()/end() + renderObjectWithMaterial()
+        ☐ Add FileWatcher for shader auto reloading
+        ☐ Add support for other platforms (Linux, MacOS, iOS, Android)
     Stream 19:
         ☐ Bake specular IBL
     Strean 18:
-        ☐ Add FileWatcher for shader auto reloading
-        ☐ Move Vulkan initialization from VulkanApplication to VulkanRendererContext class
+        ✔ Move Vulkan initialization from VulkanApplication to VulkanRendererContext class @done (1/14/2020, 1:26:58 AM)
     Stream 17:
         ✔ Add temporary 'reload shaders' button to ImGui @done (1/11/2020, 1:17:28 AM)
         ✔ Use #include parser from shaderc @done (1/11/2020, 12:27:38 AM)
