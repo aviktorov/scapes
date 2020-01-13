@@ -242,6 +242,13 @@ void VulkanContext::shutdown()
 
 /*
  */
+void VulkanContext::wait()
+{
+	vkDeviceWaitIdle(device);
+}
+
+/*
+ */
 int VulkanContext::examinePhysicalDevice(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) const
 {
 	QueueFamilyIndices indices = fetchQueueFamilyIndices(physicalDevice);

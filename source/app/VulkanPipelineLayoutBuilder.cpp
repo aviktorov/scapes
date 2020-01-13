@@ -22,7 +22,7 @@ VkPipelineLayout VulkanPipelineLayoutBuilder::build()
 	pipelineLayoutInfo.pushConstantRangeCount = 0; // TODO: add support for push constants
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
-	if (vkCreatePipelineLayout(context->device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+	if (vkCreatePipelineLayout(context->getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Can't create pipeline layout");
 
 	return pipelineLayout;

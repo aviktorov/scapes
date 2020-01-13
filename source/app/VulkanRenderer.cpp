@@ -73,7 +73,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 		.addDynamicState(VK_DYNAMIC_STATE_SCISSOR)
 		.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT)
 		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
-		.setMultisampleState(context->maxMSAASamples, true)
+		.setMultisampleState(context->getMaxMSAASamples(), true)
 		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
 		.addBlendColorAttachment()
 		.build();
@@ -89,7 +89,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 		.addDynamicState(VK_DYNAMIC_STATE_SCISSOR)
 		.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT)
 		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
-		.setMultisampleState(context->maxMSAASamples, true)
+		.setMultisampleState(context->getMaxMSAASamples(), true)
 		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
 		.addBlendColorAttachment()
 		.build();
@@ -112,11 +112,11 @@ void VulkanRenderer::init(const RenderScene *scene)
 	// Create scene descriptor set
 	VkDescriptorSetAllocateInfo sceneDescriptorSetAllocInfo = {};
 	sceneDescriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	sceneDescriptorSetAllocInfo.descriptorPool = context->descriptorPool;
+	sceneDescriptorSetAllocInfo.descriptorPool = context->getDescriptorPool();
 	sceneDescriptorSetAllocInfo.descriptorSetCount = 1;
 	sceneDescriptorSetAllocInfo.pSetLayouts = &sceneDescriptorSetLayout;
 
-	if (vkAllocateDescriptorSets(context->device, &sceneDescriptorSetAllocInfo, &sceneDescriptorSet) != VK_SUCCESS)
+	if (vkAllocateDescriptorSets(context->getDevice(), &sceneDescriptorSetAllocInfo, &sceneDescriptorSet) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate scene descriptor set");
 
 	std::array<const VulkanTexture *, 7> textures =
@@ -142,19 +142,19 @@ void VulkanRenderer::init(const RenderScene *scene)
 
 void VulkanRenderer::shutdown()
 {
-	vkDestroyPipeline(context->device, pbrPipeline, nullptr);
+	vkDestroyPipeline(context->getDevice(), pbrPipeline, nullptr);
 	pbrPipeline = VK_NULL_HANDLE;
 
-	vkDestroyPipeline(context->device, skyboxPipeline, nullptr);
+	vkDestroyPipeline(context->getDevice(), skyboxPipeline, nullptr);
 	skyboxPipeline = VK_NULL_HANDLE;
 
-	vkDestroyPipelineLayout(context->device, pipelineLayout, nullptr);
+	vkDestroyPipelineLayout(context->getDevice(), pipelineLayout, nullptr);
 	pipelineLayout = VK_NULL_HANDLE;
 
-	vkDestroyDescriptorSetLayout(context->device, sceneDescriptorSetLayout, nullptr);
+	vkDestroyDescriptorSetLayout(context->getDevice(), sceneDescriptorSetLayout, nullptr);
 	sceneDescriptorSetLayout = nullptr;
 
-	vkFreeDescriptorSets(context->device, context->descriptorPool, 1, &sceneDescriptorSet);
+	vkFreeDescriptorSets(context->getDevice(), context->getDescriptorPool(), 1, &sceneDescriptorSet);
 	sceneDescriptorSet = VK_NULL_HANDLE;
 
 	hdriToCubeRenderer.shutdown();

@@ -11,6 +11,36 @@ struct GLFWwindow;
 class VulkanContext
 {
 public:
+	inline VkInstance getInstance() const { return instance; }
+	inline VkSurfaceKHR getSurface() const { return surface; }
+	inline VkDevice getDevice() const { return device; }
+	inline VkPhysicalDevice getPhysicalDevice() const { return physicalDevice; }
+	inline VkCommandPool getCommandPool() const { return commandPool; }
+	inline VkDescriptorPool getDescriptorPool() const { return descriptorPool; }
+	inline uint32_t getGraphicsQueueFamily() const { return graphicsQueueFamily; }
+	inline uint32_t getPresentQueueFamily() const { return presentQueueFamily; }
+	inline VkQueue getGraphicsQueue() const { return graphicsQueue; }
+	inline VkQueue getPresentQueue() const { return presentQueue; }
+	inline VkSampleCountFlagBits getMaxMSAASamples() const { return maxMSAASamples; }
+
+public:
+	void init(GLFWwindow *window, const char *applicationName, const char *engineName);
+	void shutdown();
+	void wait();
+
+private:
+	struct QueueFamilyIndices
+	{
+		std::optional<uint32_t> graphicsFamily {std::nullopt};
+		std::optional<uint32_t> presentFamily {std::nullopt};
+
+		inline bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
+	};
+
+	int examinePhysicalDevice(VkPhysicalDevice device, VkSurfaceKHR surface) const;
+	VulkanContext::QueueFamilyIndices fetchQueueFamilyIndices(VkPhysicalDevice device) const;
+
+private:
 	VkInstance instance {VK_NULL_HANDLE};
 	VkSurfaceKHR surface {VK_NULL_HANDLE};
 
@@ -27,23 +57,5 @@ public:
 	VkQueue presentQueue {VK_NULL_HANDLE};
 
 	VkSampleCountFlagBits maxMSAASamples {VK_SAMPLE_COUNT_1_BIT};
-
-public:
-	void init(GLFWwindow *window, const char *applicationName, const char *engineName);
-	void shutdown();
-
-private:
-	struct QueueFamilyIndices
-	{
-		std::optional<uint32_t> graphicsFamily {std::nullopt};
-		std::optional<uint32_t> presentFamily {std::nullopt};
-
-		inline bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
-	};
-
-	int examinePhysicalDevice(VkPhysicalDevice device, VkSurfaceKHR surface) const;
-	VulkanContext::QueueFamilyIndices fetchQueueFamilyIndices(VkPhysicalDevice device) const;
-
-private:
 	VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
 };

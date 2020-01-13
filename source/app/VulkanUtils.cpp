@@ -219,22 +219,22 @@ void VulkanUtils::createBuffer(
 	bufferInfo.usage = usage;
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	if (vkCreateBuffer(context->device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+	if (vkCreateBuffer(context->getDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
 		throw std::runtime_error("Can't create buffer");
 
 	// Allocate memory for the buffer
 	VkMemoryRequirements memoryRequirements = {};
-	vkGetBufferMemoryRequirements(context->device, buffer, &memoryRequirements);
+	vkGetBufferMemoryRequirements(context->getDevice(), buffer, &memoryRequirements);
 
 	VkMemoryAllocateInfo memoryAllocateInfo = {};
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->physicalDevice, memoryRequirements.memoryTypeBits, memoryProperties);
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
 
-	if (vkAllocateMemory(context->device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+	if (vkAllocateMemory(context->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate buffer memory");
 
-	if (vkBindBufferMemory(context->device, buffer, memory, 0) != VK_SUCCESS)
+	if (vkBindBufferMemory(context->getDevice(), buffer, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't bind buffer memory");
 }
 
@@ -269,22 +269,22 @@ void VulkanUtils::createImageCube(
 	imageInfo.samples = numSamples;
 	imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-	if (vkCreateImage(context->device, &imageInfo, nullptr, &image) != VK_SUCCESS)
+	if (vkCreateImage(context->getDevice(), &imageInfo, nullptr, &image) != VK_SUCCESS)
 		throw std::runtime_error("Can't create image");
 
 	// Allocate memory for the buffer
 	VkMemoryRequirements memoryRequirements = {};
-	vkGetImageMemoryRequirements(context->device, image, &memoryRequirements);
+	vkGetImageMemoryRequirements(context->getDevice(), image, &memoryRequirements);
 
 	VkMemoryAllocateInfo memoryAllocateInfo = {};
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->physicalDevice, memoryRequirements.memoryTypeBits, memoryProperties);
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
 
-	if (vkAllocateMemory(context->device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+	if (vkAllocateMemory(context->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate image memory");
 
-	if (vkBindImageMemory(context->device, image, memory, 0) != VK_SUCCESS)
+	if (vkBindImageMemory(context->getDevice(), image, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't bind image memory");
 }
 
@@ -319,22 +319,22 @@ void VulkanUtils::createImage2D(
 	imageInfo.samples = numSamples;
 	imageInfo.flags = 0; // Optional
 
-	if (vkCreateImage(context->device, &imageInfo, nullptr, &image) != VK_SUCCESS)
+	if (vkCreateImage(context->getDevice(), &imageInfo, nullptr, &image) != VK_SUCCESS)
 		throw std::runtime_error("Can't create image");
 
 	// Allocate memory for the buffer
 	VkMemoryRequirements memoryRequirements = {};
-	vkGetImageMemoryRequirements(context->device, image, &memoryRequirements);
+	vkGetImageMemoryRequirements(context->getDevice(), image, &memoryRequirements);
 
 	VkMemoryAllocateInfo memoryAllocateInfo = {};
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->physicalDevice, memoryRequirements.memoryTypeBits, memoryProperties);
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
 
-	if (vkAllocateMemory(context->device, &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+	if (vkAllocateMemory(context->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate image memory");
 
-	if (vkBindImageMemory(context->device, image, memory, 0) != VK_SUCCESS)
+	if (vkBindImageMemory(context->getDevice(), image, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't bind image memory");
 }
 
@@ -363,7 +363,7 @@ VkImageView VulkanUtils::createImageView(
 	viewInfo.subresourceRange.layerCount = numLayers;
 
 	VkImageView imageView;
-	if (vkCreateImageView(context->device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+	if (vkCreateImageView(context->getDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS)
 		throw std::runtime_error("Can't create image view!");
 
 	return imageView;
@@ -392,7 +392,7 @@ VkSampler VulkanUtils::createSampler(
 	samplerInfo.maxLod = static_cast<float>(mipLevels);
 
 	VkSampler sampler = VK_NULL_HANDLE;
-	if (vkCreateSampler(context->device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
+	if (vkCreateSampler(context->getDevice(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
 		throw std::runtime_error("Can't create texture sampler");
 
 	return sampler;
@@ -410,7 +410,7 @@ VkShaderModule VulkanUtils::createShaderModule(
 	shaderInfo.pCode = bytecode;
 
 	VkShaderModule shader;
-	if (vkCreateShaderModule(context->device, &shaderInfo, nullptr, &shader) != VK_SUCCESS)
+	if (vkCreateShaderModule(context->getDevice(), &shaderInfo, nullptr, &shader) != VK_SUCCESS)
 		throw std::runtime_error("Can't create shader module");
 
 	return shader;
@@ -441,7 +441,7 @@ void VulkanUtils::bindUniformBuffer(
 
 	// TODO: not optimal, probably should be refactored to a Binder class,
 	// i.e. it's better to collect all descriptor writes before the call
-	vkUpdateDescriptorSets(context->device, 1, &descriptorWrite, 0, nullptr);
+	vkUpdateDescriptorSets(context->getDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanUtils::bindCombinedImageSampler(
@@ -468,7 +468,7 @@ void VulkanUtils::bindCombinedImageSampler(
 
 	// TODO: not optimal, probably should be refactored to a Binder class,
 	// i.e. it's better to collect all descriptor writes before the call
-	vkUpdateDescriptorSets(context->device, 1, &descriptorWrite, 0, nullptr);
+	vkUpdateDescriptorSets(context->getDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanUtils::copyBuffer(
@@ -658,7 +658,7 @@ void VulkanUtils::generateImage2DMipmaps(
 		return;
 
 	VkFormatProperties formatProperties;
-	vkGetPhysicalDeviceFormatProperties(context->physicalDevice, format, &formatProperties);
+	vkGetPhysicalDeviceFormatProperties(context->getPhysicalDevice(), format, &formatProperties);
 
 	bool supportsLinearFiltering = (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0;
 	bool supportsCubicFiltering = (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT) != 0;
@@ -750,11 +750,11 @@ VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const VulkanContext *contex
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = context->commandPool;
+	allocInfo.commandPool = context->getCommandPool();
 	allocInfo.commandBufferCount = 1;
 
 	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(context->device, &allocInfo, &commandBuffer);
+	vkAllocateCommandBuffers(context->getDevice(), &allocInfo, &commandBuffer);
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -774,7 +774,7 @@ void VulkanUtils::endSingleTimeCommands(const VulkanContext *context, VkCommandB
 	fenceInfo.flags = 0;
 
 	VkFence fence;
-	if (vkCreateFence(context->device, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+	if (vkCreateFence(context->getDevice(), &fenceInfo, nullptr, &fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't create fence");
 
 	VkSubmitInfo submitInfo = {};
@@ -782,13 +782,13 @@ void VulkanUtils::endSingleTimeCommands(const VulkanContext *context, VkCommandB
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	if (vkQueueSubmit(context->graphicsQueue, 1, &submitInfo, fence) != VK_SUCCESS)
+	if (vkQueueSubmit(context->getGraphicsQueue(), 1, &submitInfo, fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't submit command buffer");
 	
-	if (vkWaitForFences(context->device, 1, &fence, VK_TRUE, 100000000000) != VK_SUCCESS)
+	if (vkWaitForFences(context->getDevice(), 1, &fence, VK_TRUE, 100000000000) != VK_SUCCESS)
 		throw std::runtime_error("Can't wait for a fence");
 
-	vkDestroyFence(context->device, fence, nullptr);
+	vkDestroyFence(context->getDevice(), fence, nullptr);
 
-	vkFreeCommandBuffers(context->device, context->commandPool, 1, &commandBuffer);
+	vkFreeCommandBuffers(context->getDevice(), context->getCommandPool(), 1, &commandBuffer);
 }

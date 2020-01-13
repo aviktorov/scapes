@@ -34,13 +34,13 @@ void VulkanImGuiRenderer::init(const RenderScene *scene, const VulkanSwapChain *
 {
 	// Init ImGui bindings for Vulkan
 	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = context->instance;
-	init_info.PhysicalDevice = context->physicalDevice;
-	init_info.Device = context->device;
-	init_info.QueueFamily = context->graphicsQueueFamily;
-	init_info.Queue = context->graphicsQueue;
-	init_info.DescriptorPool = context->descriptorPool;
-	init_info.MSAASamples = context->maxMSAASamples;
+	init_info.Instance = context->getInstance();
+	init_info.PhysicalDevice = context->getPhysicalDevice();
+	init_info.Device = context->getDevice();
+	init_info.QueueFamily = context->getGraphicsQueueFamily();
+	init_info.Queue = context->getGraphicsQueue();
+	init_info.DescriptorPool = context->getDescriptorPool();
+	init_info.MSAASamples = context->getMaxMSAASamples();
 	init_info.MinImageCount = static_cast<uint32_t>(swapChain->getNumImages());
 	init_info.ImageCount = static_cast<uint32_t>(swapChain->getNumImages());
 

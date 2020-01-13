@@ -199,6 +199,6 @@ bool VulkanShader::reload()
 
 void VulkanShader::clear()
 {
-	vkDestroyShaderModule(context->device, shaderModule, nullptr);
+	vkDestroyShaderModule(context->getDevice(), shaderModule, nullptr);
 	shaderModule = VK_NULL_HANDLE;
 }

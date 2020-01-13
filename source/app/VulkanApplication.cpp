@@ -148,7 +148,7 @@ void Application::mainloop()
 		glfwPollEvents();
 	}
 
-	vkDeviceWaitIdle(context->device);
+	context->wait();
 }
 
 /*
@@ -278,7 +278,7 @@ void Application::recreateVulkanSwapChain()
 		glfwGetFramebufferSize(window, &width, &height);
 		glfwWaitEvents();
 	}
-	vkDeviceWaitIdle(context->device);
+	context->wait();
 
 	glfwGetWindowSize(window, &width, &height);
 	swapChain->reinit(width, height);
