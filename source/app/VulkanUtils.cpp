@@ -785,7 +785,7 @@ void VulkanUtils::endSingleTimeCommands(const VulkanContext *context, VkCommandB
 	if (vkQueueSubmit(context->getGraphicsQueue(), 1, &submitInfo, fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't submit command buffer");
 	
-	if (vkWaitForFences(context->getDevice(), 1, &fence, VK_TRUE, 100000000000) != VK_SUCCESS)
+	if (vkWaitForFences(context->getDevice(), 1, &fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS)
 		throw std::runtime_error("Can't wait for a fence");
 
 	vkDestroyFence(context->getDevice(), fence, nullptr);
