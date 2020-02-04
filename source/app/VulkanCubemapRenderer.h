@@ -47,7 +47,6 @@ private:
 	VkDescriptorSet descriptorSet {VK_NULL_HANDLE};
 	VkFence fence {VK_NULL_HANDLE};
 
-
 	// TODO: move to VkUniformBuffer<T>;
 	VkBuffer uniformBuffer {VK_NULL_HANDLE};
 	VkDeviceMemory uniformBufferMemory {VK_NULL_HANDLE};
