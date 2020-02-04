@@ -2,6 +2,7 @@ PBR Sandbox:
     Offline:
         ☐ Debug slow shader render failure
         ☐ Create a pull request to ImGui (Vulkan + Volk)
+        ☐ Figure out different probability density functions for different NDF
     Online:
         ☐ Implement Oren-Nayar diffuse BRDF
         ☐ Implement microfacet Burley 12 diffuse BRDF
@@ -15,8 +16,12 @@ PBR Sandbox:
             ☐ Split VulkanRenderer::render method into VulkanRenderer::begin()/end() + renderObjectWithMaterial()
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add support for other platforms (Linux, MacOS, iOS, Android)
+    Stream 21:
+        ☐ Bake prefiltered IBL to cubemap mips
+    Stream 20:
+        ✔ Bake BRDF to a separate 2D texture @done (2/5/2020, 12:47:57 AM)
     Stream 19:
-        ☐ Bake specular IBL
+        ✔ Bake specular IBL @done (2/3/2020, 8:40:15 PM)
     Strean 18:
         ✔ Move Vulkan initialization from VulkanApplication to VulkanRendererContext class @done (1/14/2020, 1:26:58 AM)
     Stream 17:
