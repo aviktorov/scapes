@@ -26,6 +26,8 @@ VulkanRenderer::VulkanRenderer(
 	, diffuseIrradianceRenderer(context)
 	, environmentCubemap(context)
 	, diffuseIrradianceCubemap(context)
+	, bakedBRDF(context)
+	, bakedBRDFRenderer(context)
 {
 }
 
@@ -47,6 +49,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 
 	VulkanDescriptorSetLayoutBuilder sceneDescriptorSetLayoutBuilder(context);
 	sceneDescriptorSetLayout = sceneDescriptorSetLayoutBuilder
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
@@ -94,8 +97,39 @@ void VulkanRenderer::init(const RenderScene *scene)
 		.addBlendColorAttachment()
 		.build();
 
+	bakedBRDF.create2D(VK_FORMAT_R16G16_SFLOAT, 256, 256, 1);
 	environmentCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
 	diffuseIrradianceCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
+
+	bakedBRDFRenderer.init(
+		*scene->getBakedBRDFVertexShader(),
+		*scene->getBakedBRDFFragmentShader(),
+		bakedBRDF
+	);
+
+	{
+		VulkanUtils::transitionImageLayout(
+			context,
+			bakedBRDF.getImage(),
+			bakedBRDF.getImageFormat(),
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			0, bakedBRDF.getNumMipLevels(),
+			0, bakedBRDF.getNumLayers()
+		);
+
+		bakedBRDFRenderer.render();
+
+		VulkanUtils::transitionImageLayout(
+			context,
+			bakedBRDF.getImage(),
+			bakedBRDF.getImageFormat(),
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			0, bakedBRDF.getNumMipLevels(),
+			0, bakedBRDF.getNumLayers()
+		);
+	}
 
 	hdriToCubeRenderer.init(
 		*scene->getCubeVertexShader(),
@@ -119,7 +153,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 	if (vkAllocateDescriptorSets(context->getDevice(), &sceneDescriptorSetAllocInfo, &sceneDescriptorSet) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate scene descriptor set");
 
-	std::array<const VulkanTexture *, 7> textures =
+	std::array<const VulkanTexture *, 8> textures =
 	{
 		scene->getAlbedoTexture(),
 		scene->getNormalTexture(),
@@ -128,6 +162,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 		scene->getEmissionTexture(),
 		&environmentCubemap,
 		&diffuseIrradianceCubemap,
+		&bakedBRDF
 	};
 
 	for (int k = 0; k < textures.size(); k++)
@@ -157,9 +192,11 @@ void VulkanRenderer::shutdown()
 	vkFreeDescriptorSets(context->getDevice(), context->getDescriptorPool(), 1, &sceneDescriptorSet);
 	sceneDescriptorSet = VK_NULL_HANDLE;
 
+	bakedBRDFRenderer.shutdown();
 	hdriToCubeRenderer.shutdown();
 	diffuseIrradianceRenderer.shutdown();
 
+	bakedBRDF.clearGPUData();
 	environmentCubemap.clearGPUData();
 	diffuseIrradianceCubemap.clearGPUData();
 }
@@ -240,7 +277,6 @@ void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &f
 
 	vkCmdEndRenderPass(commandBuffer);
 }
-
 
 /*
  */

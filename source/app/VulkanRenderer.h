@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "VulkanCubemapRenderer.h"
+#include "VulkanTexture2DRenderer.h"
 #include "VulkanTexture.h"
 #include "VulkanShader.h"
 
@@ -42,9 +43,11 @@ private:
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 
 	//
+	VulkanTexture2DRenderer bakedBRDFRenderer;
 	VulkanCubemapRenderer hdriToCubeRenderer;
 	VulkanCubemapRenderer diffuseIrradianceRenderer;
 
+	VulkanTexture bakedBRDF;
 	VulkanTexture environmentCubemap;
 	VulkanTexture diffuseIrradianceCubemap;
 
