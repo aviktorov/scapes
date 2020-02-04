@@ -3,6 +3,7 @@
 
 #include "RenderState.inc"
 #include "SceneTextures.inc"
+#include "brdf.inc"
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
@@ -13,58 +14,6 @@ layout(location = 5) in vec3 fragPositionWS;
 
 layout(location = 0) out vec4 outColor;
 
-const float PI =  3.141592653589798979f;
-const float PI2 = 6.283185307179586477f;
-const float iPI = 0.318309886183790672f;
-
-struct Surface
-{
-	vec3 light;
-	vec3 view;
-	vec3 normal;
-	vec3 halfVector;
-	float dotNH;
-	float dotNL;
-	float dotNV;
-	float dotHV;
-};
-
-float sqr(float a)
-{
-	return a * a;
-}
-
-float lerp(float a, float b, float t)
-{
-	return a * (1.0f - t) + b * t;
-}
-
-vec3 lerp(vec3 a, vec3 b, float t)
-{
-	return a * (1.0f - t) + b * t;
-}
-
-vec3 lerp(vec3 a, vec3 b, vec3 t)
-{
-	return a * (1.0f - t) + b * t;
-}
-
-vec3 saturate(vec3 v)
-{
-	vec3 ret;
-	ret.x = clamp(v.x, 0.0f, 1.0f);
-	ret.y = clamp(v.y, 0.0f, 1.0f);
-	ret.z = clamp(v.z, 0.0f, 1.0f);
-	return ret;
-}
-
-vec2 Hammersley(uint i, uint N)
-{
-	return vec2(float(i) / float(N), float(bitfieldReverse(i)) * 2.3283064365386963e-10);
-}
-
-//////////////// Microfacet world
-
 struct MicrofacetMaterial
 {
 	vec3 albedo;
@@ -72,62 +21,6 @@ struct MicrofacetMaterial
 	float metalness;
 	vec3 f0;
 };
-
-vec3 ImportanceSamplingGGX(vec2 Xi, vec3 normal, float roughness)
-{
-	float alpha = sqr(roughness * roughness);
-	float alpha2 = sqr(alpha);
-
-	float phi = PI2 * Xi.x;
-	float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (alpha2 - 1.0f) * Xi.y));
-	float sinTheta = sqrt(1.0f - sqr(cosTheta));
-
-	// from spherical coordinates to cartesian coordinates
-	vec3 H;
-	H.x = cos(phi) * sinTheta;
-	H.y = sin(phi) * sinTheta;
-	H.z = cosTheta;
-
-	// from tangent-space vector to world-space sample vector
-	vec3 up        = abs(normal.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-	vec3 tangent   = normalize(cross(up, normal));
-	vec3 bitangent = cross(normal, tangent);
-
-	vec3 sampleVec = tangent * H.x + bitangent * H.y + normal * H.z;
-	return normalize(sampleVec);
-}
-
-float D_GGX(Surface surface, float roughness)
-{
-	float alpha2 = sqr(roughness * roughness);
-
-	return alpha2 / (PI * sqr(1.0f + surface.dotNH * surface.dotNH * (alpha2 - 1.0f)));
-}
-
-float G_SmithGGX_Normalized(Surface surface, float roughness)
-{
-	float alpha2 = sqr(roughness * roughness);
-
-	float ggx_NV = surface.dotNV + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNV * surface.dotNV);
-	float ggx_NL = surface.dotNL + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNL * surface.dotNL);
-
-	return 1.0f / (ggx_NV * ggx_NL);
-}
-
-float G_SmithGGX(Surface surface, float roughness)
-{
-	return 4.0f * surface.dotNV * surface.dotNL * G_SmithGGX_Normalized(surface, roughness);
-}
-
-vec3 F_Shlick(Surface surface, vec3 f0)
-{
-	return f0 + (vec3(1.0f, 1.0f, 1.0f) - f0) * pow(1.0f - surface.dotHV, 5);
-}
-
-vec3 F_Shlick(float cosTheta, vec3 f0, float roughness)
-{
-	return f0 + (max(vec3(1.0 - roughness), f0) - f0) * pow(1.0f - cosTheta, 5);
-}
 
 vec3 MicrofacetBRDF(Surface surface, MicrofacetMaterial material)
 {
@@ -155,23 +48,60 @@ vec3 SpecularIBL(Surface surface, MicrofacetMaterial material)
 	{
 		vec2 Xi = Hammersley(i, samples);
 
-		// ?
-		sample_surface.halfVector = ImportanceSamplingGGX(Xi, surface.normal, material.roughness);
+		sample_surface.halfVector = ImportanceSamplingGGX(Xi, sample_surface.normal, material.roughness);
 		sample_surface.light = -reflect(sample_surface.view, sample_surface.halfVector);
 
 		sample_surface.dotNH = max(0.0f, dot(sample_surface.normal, sample_surface.halfVector));
 		sample_surface.dotNL = max(0.0f, dot(sample_surface.normal, sample_surface.light));
 		sample_surface.dotHV = max(0.0f, dot(sample_surface.halfVector, sample_surface.view));
 
+		float D = D_GGX(surface, material.roughness);
 		vec3 F = F_Shlick(sample_surface, material.f0);
-		float G = G_SmithGGX(surface, material.roughness);
+		float G_normalized = G_SmithGGX(surface, material.roughness);
 
-		vec3 color = texture(environmentSampler, sample_surface.light).rgb;
-	
-		result += color * F * G * sample_surface.dotHV / (sample_surface.dotNH * sample_surface.dotNV);
+		vec3 Li = texture(environmentSampler, sample_surface.light).rgb;
+		vec3 specular_brdf = D * F * G_normalized;
+
+		float pdf = D * sample_surface.dotNH / (4.0f * sample_surface.dotHV); // ?
+
+		result += specular_brdf * Li * sample_surface.dotNL / pdf;
 	}
 
 	return result / float(samples);
+}
+
+vec3 PrefilterSpecularEnvMap(vec3 view, vec3 normal, float roughness)
+{
+	vec3 result = vec3(0.0);
+
+	float weight = 0.0f;
+
+	const uint samples = 256;
+	for (uint i = 0; i < samples; ++i)
+	{
+		vec2 Xi = Hammersley(i, samples);
+
+		vec3 halfVector = ImportanceSamplingGGX(Xi, normal, roughness);
+		vec3 light = -reflect(view, halfVector);
+
+		float dotNL = max(0.0f, dot(normal, light));
+		vec3 Li = texture(environmentSampler, light).rgb;
+
+		result += Li * dotNL;
+		weight += dotNL;
+	}
+
+	return result / weight;
+}
+
+vec3 ApproximateSpecularIBL(vec3 f0, vec3 view, vec3 normal, float roughness)
+{
+	float dotNV = max(0.0f, dot(normal, view));
+
+	vec3 prefilteredLi = PrefilterSpecularEnvMap(view, normal, roughness);
+	vec2 integratedBRDF = texture(bakedBRDFSampler, vec2(roughness, dotNV)).xy;
+
+	return prefilteredLi * (f0 * integratedBRDF.x + integratedBRDF.y);
 }
 
 void main() {
@@ -226,7 +156,7 @@ void main() {
 	vec3 ibl_diffuse = texture(diffuseIrradianceSampler, ibl.light).rgb * microfacet_material.albedo;
 	ibl_diffuse *= lerp(vec3(1.0f) - F_Shlick(ibl.dotNV, microfacet_material.f0, microfacet_material.roughness), vec3(0.0f), microfacet_material.metalness);
 
-	vec3 ibl_specular = SpecularIBL(ibl, microfacet_material);
+	vec3 ibl_specular = ApproximateSpecularIBL(microfacet_material.f0, ibl.view, ibl.normal, microfacet_material.roughness);
 
 	vec3 ambient = ibl_diffuse * iPI + ibl_specular;
 	ambient *= texture(aoSampler, fragTexCoord).r;
@@ -234,7 +164,7 @@ void main() {
 	// Result
 	vec3 color = vec3(0.0f);
 	color += ambient;
-	//color += light;
+	// color += light;
 	// color += texture(emissionSampler, fragTexCoord).rgb;
 
 	// TODO: move to separate pass
