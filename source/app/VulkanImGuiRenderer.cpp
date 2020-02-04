@@ -1,6 +1,7 @@
 #include "VulkanImGuiRenderer.h"
 #include "VulkanContext.h"
 #include "VulkanSwapChain.h"
+#include "VulkanTexture.h"
 #include "VulkanUtils.h"
 
 #include "RenderScene.h"
@@ -26,6 +27,13 @@ VulkanImGuiRenderer::VulkanImGuiRenderer(
 VulkanImGuiRenderer::~VulkanImGuiRenderer()
 {
 	shutdown();
+}
+
+/*
+ */
+void *VulkanImGuiRenderer::addTexture(const VulkanTexture &texture) const
+{
+	return ImGui_ImplVulkan_AddTexture(texture.getSampler(), texture.getImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 /*

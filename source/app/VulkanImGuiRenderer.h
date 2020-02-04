@@ -5,6 +5,7 @@
 class RenderScene;
 class VulkanContext;
 class VulkanSwapChain;
+class VulkanTexture;
 struct VulkanRenderFrame;
 
 /*
@@ -19,6 +20,8 @@ public:
 	);
 
 	virtual ~VulkanImGuiRenderer();
+
+	void *addTexture(const VulkanTexture &texture) const;
 
 	void init(const RenderScene *scene, const VulkanSwapChain *swapChain);
 	void shutdown();
