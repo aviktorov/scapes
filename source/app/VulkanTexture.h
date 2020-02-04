@@ -25,6 +25,7 @@ public:
 	inline int getWidth() const { return width; }
 	inline int getHeight() const { return height; }
 
+	void create2D(VkFormat format, int width, int height, int numMipLevels);
 	void createCube(VkFormat format, int width, int height, int numMipLevels);
 
 	bool loadFromFile(const char *path);
