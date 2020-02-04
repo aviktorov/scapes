@@ -20,6 +20,8 @@ namespace config
 		"shaders/commonCube.vert",
 		"shaders/hdriToCube.frag",
 		"shaders/diffuseIrradiance.frag",
+		"shaders/bakedBRDF.vert",
+		"shaders/bakedBRDF.frag",
 	};
 
 	// Textures

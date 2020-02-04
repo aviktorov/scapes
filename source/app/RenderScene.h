@@ -24,6 +24,8 @@ namespace config
 		CubeVertex,
 		HDRIToCubeFragment,
 		DiffuseIrradianceFragment,
+		BakedBRDFVertex,
+		BakedBRDFFragment,
 	};
 
 	enum Textures
@@ -51,9 +53,13 @@ public:
 	inline const VulkanShader *getPBRFragmentShader() const { return resources.getShader(config::Shaders::PBRFragment); }
 	inline const VulkanShader *getSkyboxVertexShader() const { return resources.getShader(config::Shaders::SkyboxVertex); }
 	inline const VulkanShader *getSkyboxFragmentShader() const { return resources.getShader(config::Shaders::SkyboxFragment); }
+
 	inline const VulkanShader *getCubeVertexShader() const { return resources.getShader(config::Shaders::CubeVertex); }
 	inline const VulkanShader *getHDRIToFragmentShader() const { return resources.getShader(config::Shaders::HDRIToCubeFragment); }
 	inline const VulkanShader *getDiffuseIrradianceFragmentShader() const { return resources.getShader(config::Shaders::DiffuseIrradianceFragment); }
+
+	inline const VulkanShader *getBakedBRDFVertexShader() const { return resources.getShader(config::Shaders::BakedBRDFVertex); }
+	inline const VulkanShader *getBakedBRDFFragmentShader() const { return resources.getShader(config::Shaders::BakedBRDFFragment); }
 
 	inline const VulkanTexture *getAlbedoTexture() const { return resources.getTexture(config::Textures::Albedo); }
 	inline const VulkanTexture *getNormalTexture() const { return resources.getTexture(config::Textures::Normal); }
