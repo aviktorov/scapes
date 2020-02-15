@@ -23,6 +23,7 @@ namespace config
 		SkyboxFragment,
 		CubeVertex,
 		HDRIToCubeFragment,
+		CubeToPrefilteredSpecular,
 		DiffuseIrradianceFragment,
 		BakedBRDFVertex,
 		BakedBRDFFragment,
@@ -56,6 +57,7 @@ public:
 
 	inline const VulkanShader *getCubeVertexShader() const { return resources.getShader(config::Shaders::CubeVertex); }
 	inline const VulkanShader *getHDRIToFragmentShader() const { return resources.getShader(config::Shaders::HDRIToCubeFragment); }
+	inline const VulkanShader *getCubeToPrefilteredSpecularShader() const { return resources.getShader(config::Shaders::CubeToPrefilteredSpecular); }
 	inline const VulkanShader *getDiffuseIrradianceFragmentShader() const { return resources.getShader(config::Shaders::DiffuseIrradianceFragment); }
 
 	inline const VulkanShader *getBakedBRDFVertexShader() const { return resources.getShader(config::Shaders::BakedBRDFVertex); }

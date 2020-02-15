@@ -19,6 +19,7 @@ namespace config
 		"shaders/skybox.frag",
 		"shaders/commonCube.vert",
 		"shaders/hdriToCube.frag",
+		"shaders/cubeToPrefilteredSpecular.frag",
 		"shaders/diffuseIrradiance.frag",
 		"shaders/bakedBRDF.vert",
 		"shaders/bakedBRDF.frag",
