@@ -34,71 +34,13 @@ vec3 MicrofacetBRDF(Surface surface, MicrofacetMaterial material)
 	return (diffuse_reflection * iPI + specular_reflection);
 }
 
-vec3 SpecularIBL(Surface surface, MicrofacetMaterial material)
-{
-	vec3 result = vec3(0.0);
-	const uint samples = 128;
-
-	Surface sample_surface;
-	sample_surface.view = surface.view;
-	sample_surface.normal = surface.normal;
-	sample_surface.dotNV = max(0.0f, dot(sample_surface.normal, sample_surface.view));
-
-	for (uint i = 0; i < samples; ++i)
-	{
-		vec2 Xi = Hammersley(i, samples);
-
-		sample_surface.halfVector = ImportanceSamplingGGX(Xi, sample_surface.normal, material.roughness);
-		sample_surface.light = -reflect(sample_surface.view, sample_surface.halfVector);
-
-		sample_surface.dotNH = max(0.0f, dot(sample_surface.normal, sample_surface.halfVector));
-		sample_surface.dotNL = max(0.0f, dot(sample_surface.normal, sample_surface.light));
-		sample_surface.dotHV = max(0.0f, dot(sample_surface.halfVector, sample_surface.view));
-
-		float D = D_GGX(surface, material.roughness);
-		vec3 F = F_Shlick(sample_surface, material.f0);
-		float G_normalized = G_SmithGGX(surface, material.roughness);
-
-		vec3 Li = texture(environmentSampler, sample_surface.light).rgb;
-		vec3 specular_brdf = D * F * G_normalized;
-
-		float pdf = D * sample_surface.dotNH / (4.0f * sample_surface.dotHV); // ?
-
-		result += specular_brdf * Li * sample_surface.dotNL / pdf;
-	}
-
-	return result / float(samples);
-}
-
-vec3 PrefilterSpecularEnvMap(vec3 view, vec3 normal, float roughness)
-{
-	vec3 result = vec3(0.0);
-
-	float weight = 0.0f;
-
-	const uint samples = 256;
-	for (uint i = 0; i < samples; ++i)
-	{
-		vec2 Xi = Hammersley(i, samples);
-
-		vec3 halfVector = ImportanceSamplingGGX(Xi, normal, roughness);
-		vec3 light = -reflect(view, halfVector);
-
-		float dotNL = max(0.0f, dot(normal, light));
-		vec3 Li = texture(environmentSampler, light).rgb;
-
-		result += Li * dotNL;
-		weight += dotNL;
-	}
-
-	return result / weight;
-}
-
 vec3 ApproximateSpecularIBL(vec3 f0, vec3 view, vec3 normal, float roughness)
 {
 	float dotNV = max(0.0f, dot(normal, view));
 
-	vec3 prefilteredLi = PrefilterSpecularEnvMap(view, normal, roughness);
+	// TODO: remove magic constant, pass max mip levels instead
+	float mip = roughness * 8.0f;
+	vec3 prefilteredLi = textureLod(environmentSampler, -reflect(view, normal), mip).rgb;
 	vec2 integratedBRDF = texture(bakedBRDFSampler, vec2(roughness, dotNV)).xy;
 
 	return prefilteredLi * (f0 * integratedBRDF.x + integratedBRDF.y);
@@ -127,7 +69,7 @@ void main() {
 	surface.dotHV = max(0.0f, dot(surface.halfVector, surface.view));
 
 	Surface ibl;
-	ibl.light = reflect(-surface.view, surface.normal);
+	ibl.light = -reflect(surface.view, surface.normal);
 	ibl.view = cameraDirWS;
 	ibl.normal = normalize(m * normal);
 	ibl.halfVector = normalize(lightDirWS + cameraDirWS);
