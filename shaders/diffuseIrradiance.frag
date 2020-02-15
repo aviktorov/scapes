@@ -30,7 +30,7 @@ vec4 fillFace(int index)
 
 	vec3 irradiance = vec3(0.0f);
 
-	float angleStep = 0.025f;
+	float angleStep = 0.015f;
 	float numSamples = 0.0f;
 
 	for (float phi = 0.0f; phi < 2.0f * PI; phi += angleStep)

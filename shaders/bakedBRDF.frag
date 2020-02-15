@@ -19,7 +19,7 @@ vec2 IntegrateBRDF(float roughness, float dotNV)
 	float A = 0.0f;
 	float B = 0.0f;
 
-	const uint samples = 1024;
+	const uint samples = 2048;
 
 	Surface sample_surface;
 	sample_surface.view = view;
