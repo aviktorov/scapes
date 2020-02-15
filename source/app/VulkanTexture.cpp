@@ -118,7 +118,22 @@ void VulkanTexture::create2D(VkFormat format, int w, int h, int mips)
 		0, mipLevels,
 		0, layers
 	);
-	imageSampler = VulkanUtils::createSampler(context, mipLevels);
+	imageSampler = VulkanUtils::createSampler(context, 0, mipLevels);
+
+	// Create mip image views
+	mipViews.resize(mipLevels);
+	for (int i = 0; i < mipLevels; i++)
+	{
+		mipViews[i] = VulkanUtils::createImageView(
+			context,
+			image,
+			imageFormat,
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_VIEW_TYPE_2D,
+			i, 1,
+			0, layers
+		);
+	}
 }
 
 /*
@@ -171,7 +186,22 @@ void VulkanTexture::createCube(VkFormat format, int w, int h, int mips)
 		0, mipLevels,
 		0, layers
 	);
-	imageSampler = VulkanUtils::createSampler(context, mipLevels);
+	imageSampler = VulkanUtils::createSampler(context, 0, mipLevels);
+
+	// Create mip image views
+	mipViews.resize(mipLevels);
+	for (int i = 0; i < mipLevels; i++)
+	{
+		mipViews[i] = VulkanUtils::createImageView(
+			context,
+			image,
+			imageFormat,
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_VIEW_TYPE_CUBE,
+			i, 1,
+			0, layers
+		);
+	}
 }
 
 /*
@@ -229,7 +259,7 @@ bool VulkanTexture::loadFromFile(const char *path)
 		unsigned char *d = pixels;
 		unsigned char *s = reinterpret_cast<unsigned char *>(stbPixels);
 
-		for (int i = 0; i < numPixels; i++)
+		for (size_t i = 0; i < numPixels; i++)
 		{
 			memcpy(d, s, stride);
 			s += stride;
@@ -351,22 +381,41 @@ void VulkanTexture::uploadToGPU(VkFormat format, VkImageTiling tiling, size_t im
 		0, layers
 	);
 
-	imageSampler = VulkanUtils::createSampler(context, mipLevels);
+	imageSampler = VulkanUtils::createSampler(context, 0, mipLevels);
+
+	// Create mip image views
+	mipViews.resize(mipLevels);
+	for (int i = 0; i < mipLevels; i++)
+	{
+		mipViews[i] = VulkanUtils::createImageView(
+			context,
+			image,
+			imageFormat,
+			VK_IMAGE_ASPECT_COLOR_BIT,
+			VK_IMAGE_VIEW_TYPE_2D,
+			i, 1,
+			0, layers
+		);
+	}
 }
 
 void VulkanTexture::clearGPUData()
 {
 	vkDestroySampler(context->getDevice(), imageSampler, nullptr);
-	imageSampler = nullptr;
+	imageSampler = VK_NULL_HANDLE;
 
 	vkDestroyImageView(context->getDevice(), imageView, nullptr);
-	imageView = nullptr;
+	imageView = VK_NULL_HANDLE;
+
+	for (VkImageView mipView : mipViews)
+		vkDestroyImageView(context->getDevice(), mipView, nullptr);
+	mipViews.clear();
 
 	vkDestroyImage(context->getDevice(), image, nullptr);
-	image = nullptr;
+	image = VK_NULL_HANDLE;
 
 	vkFreeMemory(context->getDevice(), imageMemory, nullptr);
-	imageMemory = nullptr;
+	imageMemory = VK_NULL_HANDLE;
 
 	imageFormat = VK_FORMAT_UNDEFINED;
 }

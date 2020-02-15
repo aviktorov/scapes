@@ -371,7 +371,8 @@ VkImageView VulkanUtils::createImageView(
 
 VkSampler VulkanUtils::createSampler(
 	const VulkanContext *context,
-	uint32_t mipLevels
+	uint32_t minMipLevel,
+	uint32_t maxMipLevel
 )
 {
 	VkSamplerCreateInfo samplerInfo = {};
@@ -388,8 +389,8 @@ VkSampler VulkanUtils::createSampler(
 	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = static_cast<float>(mipLevels);
+	samplerInfo.minLod = static_cast<float>(minMipLevel);
+	samplerInfo.maxLod = static_cast<float>(maxMipLevel);
 
 	VkSampler sampler = VK_NULL_HANDLE;
 	if (vkCreateSampler(context->getDevice(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS)

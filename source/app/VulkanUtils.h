@@ -98,7 +98,8 @@ public:
 
 	static VkSampler createSampler(
 		const VulkanContext *context,
-		uint32_t mipLevels
+		uint32_t minMipLevel,
+		uint32_t maxMipLevel 
 	);
 
 	static VkShaderModule createShaderModule(
