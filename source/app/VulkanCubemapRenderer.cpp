@@ -25,9 +25,12 @@ struct CubemapFaceOrientationData
 void VulkanCubemapRenderer::init(
 	const VulkanShader &vertexShader,
 	const VulkanShader &fragmentShader,
-	const VulkanTexture &targetTexture
+	const VulkanTexture &targetTexture,
+	int mip,
+	uint32_t userDataSize
 )
 {
+	pushConstantsSize = userDataSize;
 	rendererQuad.createQuad(2.0f);
 
 	for (int i = 0; i < 6; i++)
@@ -38,13 +41,13 @@ void VulkanCubemapRenderer::init(
 			targetTexture.getImageFormat(),
 			VK_IMAGE_ASPECT_COLOR_BIT,
 			VK_IMAGE_VIEW_TYPE_2D,
-			0, targetTexture.getNumMipLevels(),
+			mip, 1,
 			i, 1
 		);
 	}
 
-	targetExtent.width = targetTexture.getWidth();
-	targetExtent.height = targetTexture.getHeight();
+	targetExtent.width = targetTexture.getWidth(mip);
+	targetExtent.height = targetTexture.getHeight(mip);
 
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
@@ -85,9 +88,12 @@ void VulkanCubemapRenderer::init(
 		.build();
 
 	VulkanPipelineLayoutBuilder pipelineLayoutBuilder(context);
-	pipelineLayout = pipelineLayoutBuilder
-		.addDescriptorSetLayout(descriptorSetLayout)
-		.build();
+	pipelineLayoutBuilder.addDescriptorSetLayout(descriptorSetLayout);
+
+	if (pushConstantsSize > 0)
+		pipelineLayoutBuilder.addPushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, 0, pushConstantsSize);
+
+	pipelineLayout = pipelineLayoutBuilder.build();
 
 	VulkanGraphicsPipelineBuilder pipelineBuilder(context, pipelineLayout, renderPass);
 	pipeline = pipelineBuilder
@@ -228,7 +234,7 @@ void VulkanCubemapRenderer::shutdown()
 	pipelineLayout = VK_NULL_HANDLE;
 
 	vkDestroyDescriptorSetLayout(context->getDevice(), descriptorSetLayout, nullptr);
-	descriptorSetLayout = nullptr;
+	descriptorSetLayout = VK_NULL_HANDLE;
 
 	vkDestroyRenderPass(context->getDevice(), renderPass, nullptr);
 	renderPass = VK_NULL_HANDLE;
@@ -254,13 +260,13 @@ void VulkanCubemapRenderer::shutdown()
 
 /*
  */
-void VulkanCubemapRenderer::render(const VulkanTexture &inputTexture)
+void VulkanCubemapRenderer::render(const VulkanTexture &inputTexture, float *userData, int inputMip)
 {
 	VulkanUtils::bindCombinedImageSampler(
 		context,
 		descriptorSet,
 		1,
-		inputTexture.getImageView(),
+		(inputMip == -1) ? inputTexture.getImageView() : inputTexture.getMipImageView(inputMip),
 		inputTexture.getSampler()
 	);
 
@@ -294,6 +300,10 @@ void VulkanCubemapRenderer::render(const VulkanTexture &inputTexture)
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+
+	if (pushConstantsSize > 0 && userData)
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, pushConstantsSize, userData);
+
 	{
 		VkBuffer vertexBuffers[] = { rendererQuad.getVertexBuffer() };
 		VkBuffer indexBuffer = rendererQuad.getIndexBuffer();

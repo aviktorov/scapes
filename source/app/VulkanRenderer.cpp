@@ -98,7 +98,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 		.build();
 
 	bakedBRDF.create2D(VK_FORMAT_R16G16_SFLOAT, 256, 256, 1);
-	environmentCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
+	environmentCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 8);
 	diffuseIrradianceCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
 
 	bakedBRDFRenderer.init(
@@ -134,13 +134,30 @@ void VulkanRenderer::init(const RenderScene *scene)
 	hdriToCubeRenderer.init(
 		*scene->getCubeVertexShader(),
 		*scene->getHDRIToFragmentShader(),
-		environmentCubemap
+		environmentCubemap,
+		0
 	);
+
+	cubeToPrefilteredRenderers.resize(environmentCubemap.getNumMipLevels() - 1);
+	for (int mip = 0; mip < environmentCubemap.getNumMipLevels() - 1; mip++)
+	{
+		VulkanCubemapRenderer *mipRenderer = new VulkanCubemapRenderer(context);
+		mipRenderer->init(
+			*scene->getCubeVertexShader(),
+			*scene->getCubeToPrefilteredSpecularShader(),
+			environmentCubemap,
+			mip + 1,
+			sizeof(float) * 4
+		);
+
+		cubeToPrefilteredRenderers[mip] = mipRenderer;
+	}
 
 	diffuseIrradianceRenderer.init(
 		*scene->getCubeVertexShader(),
 		*scene->getDiffuseIrradianceFragmentShader(),
-		diffuseIrradianceCubemap
+		diffuseIrradianceCubemap,
+		0
 	);
 
 	// Create scene descriptor set
@@ -187,10 +204,17 @@ void VulkanRenderer::shutdown()
 	pipelineLayout = VK_NULL_HANDLE;
 
 	vkDestroyDescriptorSetLayout(context->getDevice(), sceneDescriptorSetLayout, nullptr);
-	sceneDescriptorSetLayout = nullptr;
+	sceneDescriptorSetLayout = VK_NULL_HANDLE;
 
 	vkFreeDescriptorSets(context->getDevice(), context->getDescriptorPool(), 1, &sceneDescriptorSet);
 	sceneDescriptorSet = VK_NULL_HANDLE;
+
+	for (VulkanCubemapRenderer *renderer : cubeToPrefilteredRenderers)
+	{
+		renderer->shutdown();
+		delete renderer;
+	}
+	cubeToPrefilteredRenderers.clear();
 
 	bakedBRDFRenderer.shutdown();
 	hdriToCubeRenderer.shutdown();
@@ -295,7 +319,7 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 			environmentCubemap.getImageFormat(),
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			0, environmentCubemap.getNumMipLevels(),
+			0, 1,
 			0, environmentCubemap.getNumLayers()
 		);
 
@@ -307,7 +331,37 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 			environmentCubemap.getImageFormat(),
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			0, environmentCubemap.getNumMipLevels(),
+			0, 1,
+			0, environmentCubemap.getNumLayers()
+		);
+	}
+
+	for (uint32_t i = 0; i < cubeToPrefilteredRenderers.size(); i++)
+	{
+		VulkanUtils::transitionImageLayout(
+			context,
+			environmentCubemap.getImage(),
+			environmentCubemap.getImageFormat(),
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			i + 1, 1,
+			0, environmentCubemap.getNumLayers()
+		);
+
+		float data[4] = {
+			static_cast<float>(i) / environmentCubemap.getNumMipLevels(),
+			0.0f, 0.0f, 0.0f
+		};
+
+		cubeToPrefilteredRenderers[i]->render(environmentCubemap, data, i);
+
+		VulkanUtils::transitionImageLayout(
+			context,
+			environmentCubemap.getImage(),
+			environmentCubemap.getImageFormat(),
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			i + 1, 1,
 			0, environmentCubemap.getNumLayers()
 		);
 	}

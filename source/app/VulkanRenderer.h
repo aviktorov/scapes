@@ -42,9 +42,9 @@ private:
 	VkRenderPass renderPass {VK_NULL_HANDLE};
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 
-	//
 	VulkanTexture2DRenderer bakedBRDFRenderer;
 	VulkanCubemapRenderer hdriToCubeRenderer;
+	std::vector<VulkanCubemapRenderer*> cubeToPrefilteredRenderers;
 	VulkanCubemapRenderer diffuseIrradianceRenderer;
 
 	VulkanTexture bakedBRDF;

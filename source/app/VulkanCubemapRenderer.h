@@ -23,12 +23,14 @@ public:
 	void init(
 		const VulkanShader &vertexShader,
 		const VulkanShader &fragmentShader,
-		const VulkanTexture &targetTexture
+		const VulkanTexture &targetTexture,
+		int mip,
+		uint32_t userDataSize = 0
 	);
 
 	void shutdown();
 
-	void render(const VulkanTexture &inputTexture);
+	void render(const VulkanTexture &inputTexture, float *userData = nullptr, int inputMip = -1);
 
 private:
 	const VulkanContext *context {nullptr};
@@ -50,4 +52,6 @@ private:
 	// TODO: move to VkUniformBuffer<T>;
 	VkBuffer uniformBuffer {VK_NULL_HANDLE};
 	VkDeviceMemory uniformBufferMemory {VK_NULL_HANDLE};
+
+	uint32_t pushConstantsSize {0};
 };
