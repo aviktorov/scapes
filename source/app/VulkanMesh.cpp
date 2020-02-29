@@ -45,8 +45,7 @@ bool VulkanMesh::loadFromFile(const char *path)
 {
 	Assimp::Importer importer;
 
-	unsigned int flags = aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType;
-	const aiScene *scene = importer.ReadFile(path, flags);
+	const aiScene *scene = importer.ReadFile(path, aiProcessPreset_TargetRealtime_MaxQuality);
 
 	if (!scene)
 	{
@@ -68,6 +67,7 @@ bool VulkanMesh::loadFromFile(const char *path)
 	indices.resize(mesh->mNumFaces * 3);
 
 	aiVector3D *meshVertices = mesh->mVertices;
+
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
 		vertices[i].position = glm::vec3(meshVertices[i].x, meshVertices[i].y, meshVertices[i].z);
 
