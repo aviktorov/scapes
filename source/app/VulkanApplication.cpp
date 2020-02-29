@@ -53,16 +53,18 @@ void Application::update()
 
 	const float aspect = extent.width / (float) extent.height;
 	const float zNear = 0.1f;
-	const float zFar = 1000.0f;
+	const float zFar = 100000.0f;
 
-	const glm::vec3 &cameraPos = glm::vec3(2.0f, 2.0f, 2.0f);
-	const glm::mat4 &rotation = glm::rotate(glm::mat4(1.0f), time * rotationSpeed * glm::radians(90.0f), up);
+	glm::vec3 cameraPos;
+	cameraPos.x = static_cast<float>(glm::cos(camera.phi) * glm::cos(camera.theta) * camera.radius);
+	cameraPos.y = static_cast<float>(glm::sin(camera.phi) * glm::cos(camera.theta) * camera.radius);
+	cameraPos.z = static_cast<float>(glm::sin(camera.theta) * camera.radius);
 
 	state.world = glm::mat4(1.0f);
-	state.view = glm::lookAt(cameraPos, zero, up) * rotation;
+	state.view = glm::lookAt(cameraPos, zero, up);
 	state.proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
 	state.proj[1][1] *= -1;
-	state.cameraPosWS = glm::vec3(glm::vec4(cameraPos, 1.0f) * rotation);
+	state.cameraPosWS = cameraPos;
 
 	static float f = 0.0f;
 	static int counter = 0;
@@ -159,7 +161,11 @@ void Application::initWindow()
 	window = glfwCreateWindow(1024, 768, "Vulkan", nullptr, nullptr);
 
 	glfwSetWindowUserPointer(window, this);
+
 	glfwSetFramebufferSizeCallback(window, &Application::onFramebufferResize);
+	glfwSetCursorPosCallback(window, &Application::onMousePosition);
+	glfwSetMouseButtonCallback(window, &Application::onMouseButton);
+	glfwSetScrollCallback(window, &Application::onScroll);
 }
 
 void Application::shutdownWindow()
@@ -168,11 +174,52 @@ void Application::shutdownWindow()
 	window = nullptr;
 }
 
+/*
+ */
 void Application::onFramebufferResize(GLFWwindow *window, int width, int height)
 {
-	Application *app = reinterpret_cast<Application*>(glfwGetWindowUserPointer(window));
-	assert(app != nullptr);
-	app->windowResized = true;
+	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
+	assert(application != nullptr);
+
+	application->windowResized = true;
+}
+
+void Application::onMousePosition(GLFWwindow* window, double mouseX, double mouseY)
+{
+	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
+	assert(application != nullptr);
+
+	if (application->input.rotating)
+	{
+		double deltaX = mouseX - application->input.lastMouseX;
+		double deltaY = mouseY - application->input.lastMouseY;
+
+		application->camera.phi -= deltaX * application->input.rotationSpeed;
+		application->camera.theta += deltaY * application->input.rotationSpeed;
+
+		application->camera.phi = std::fmod(application->camera.phi, glm::two_pi<double>());
+		application->camera.theta = std::clamp<double>(application->camera.theta, -glm::half_pi<double>(), glm::half_pi<double>());
+	}
+
+	application->input.lastMouseX = mouseX;
+	application->input.lastMouseY = mouseY;
+}
+
+void Application::onMouseButton(GLFWwindow* window, int button, int action, int mods)
+{
+	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
+	assert(application != nullptr);
+
+	if (button == GLFW_MOUSE_BUTTON_RIGHT)
+		application->input.rotating = (action == GLFW_PRESS);
+}
+
+void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
+{
+	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
+	assert(application);
+
+	application->camera.radius -= deltaY * application->input.scrollSpeed;
 }
 
 /*
@@ -221,9 +268,7 @@ void Application::initImGui()
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::StyleColorsDark();
 
-	// TODO: use own GLFW callbacks
 	ImGui_ImplGlfw_InitForVulkan(window, true);
-
 }
 
 void Application::shutdownImGui()

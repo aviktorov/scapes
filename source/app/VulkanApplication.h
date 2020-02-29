@@ -26,6 +26,23 @@ struct ApplicationState
 	int currentEnvironment {0};
 };
 
+struct CameraState
+{
+	double phi {0.0f};
+	double theta {0.0f};
+	double radius {2.0f};
+	glm::vec3 target;
+};
+
+struct InputState
+{
+	const double rotationSpeed {0.01};
+	const double scrollSpeed {1.5};
+	bool rotating {false};
+	double lastMouseX {0.0};
+	double lastMouseY {0.0};
+};
+
 /*
  */
 class Application
@@ -58,6 +75,9 @@ private:
 	void mainloop();
 
 	static void onFramebufferResize(GLFWwindow *window, int width, int height);
+	static void onMousePosition(GLFWwindow* window, double mouseX, double mouseY);
+	static void onMouseButton(GLFWwindow* window, int button, int action, int mods);
+	static void onScroll(GLFWwindow* window, double deltaX, double deltaY);
 
 private:
 	// TODO: move to another class (Window?)
@@ -66,6 +86,8 @@ private:
 
 	RenderScene *scene {nullptr};
 	ApplicationState state;
+	CameraState camera;
+	InputState input;
 
 	VulkanRenderer *renderer {nullptr};
 	VulkanImGuiRenderer *imguiRenderer {nullptr};
