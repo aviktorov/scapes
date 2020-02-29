@@ -8,7 +8,7 @@ namespace config
 {
 	// Meshes
 	static std::vector<const char *>meshes = {
-		"models/SciFiHelmet.gltf",
+		"models/SciFiHelmet.fbx",
 	};
 
 	// Shaders
@@ -67,7 +67,7 @@ void RenderScene::init()
 	for (int i = 0; i < config::meshes.size(); i++)
 		resources.loadMesh(i, config::meshes[i]);
 
-	resources.createCubeMesh(config::Meshes::Skybox, 1000.0f);
+	resources.createCubeMesh(config::Meshes::Skybox, 10000.0f);
 
 	for (int i = 0; i < config::shaders.size(); i++)
 		resources.loadShader(i, config::shaders[i]);
