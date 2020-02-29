@@ -22,7 +22,10 @@ const float iPI = 0.31830988618379f;
 vec4 fillFace(int index)
 {
 	vec3 normal = normalize(fragFacePositions[index].xyz);
-	normal.z *= -1.0f;
+
+	// TODO: figure out why cubemap sampling direction is inversed and rotated 90 degress around Z axis
+	normal = -normal;
+	normal.xy = vec2(normal.y, -normal.x);
 
 	vec3 forward = vec3(0.0f, 1.0f, 0.0f);
 	vec3 right = normalize(cross(forward, normal));
