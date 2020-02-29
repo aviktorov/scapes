@@ -16,8 +16,14 @@ PBR Sandbox:
             ☐ Split VulkanRenderer::render method into VulkanRenderer::begin()/end() + renderObjectWithMaterial()
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add support for other platforms (Linux, MacOS, iOS, Android)
+    Stream 23:
+        ☐ Split application code from engine code
+        ☐ Add separate cmakelists files for app & engine
+    Stream 22:
+        ✔ Add orbit camera @done (2/29/2020, 11:53:21 PM)
+        ✔ Check if roughness / metalness shading is correct compared to Marmoset @done (3/1/2020, 3:56:47 AM)
     Stream 21:
-        ☐ Bake prefiltered IBL to cubemap mips
+        ✔ Bake prefiltered IBL to cubemap mips @done (2/16/2020, 12:30:46 AM)
     Stream 20:
         ✔ Bake BRDF to a separate 2D texture @done (2/5/2020, 12:47:57 AM)
     Stream 19:
