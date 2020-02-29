@@ -17,22 +17,11 @@ layout(location = 0) out vec4 outColor;
 struct MicrofacetMaterial
 {
 	vec3 albedo;
+	float ao;
 	float roughness;
 	float metalness;
 	vec3 f0;
 };
-
-vec3 MicrofacetBRDF(Surface surface, MicrofacetMaterial material)
-{
-	float D = D_GGX(surface, material.roughness);
-	vec3 F = F_Shlick(surface, material.f0);
-	float G_normalized = G_SmithGGX_Normalized(surface, material.roughness);
-
-	vec3 specular_reflection = D * F * G_normalized;
-	vec3 diffuse_reflection = material.albedo * lerp(vec3(1.0f) - F, vec3(0.0f), material.metalness);
-
-	return (diffuse_reflection * iPI + specular_reflection);
-}
 
 vec3 ApproximateSpecularIBL(vec3 f0, vec3 view, vec3 normal, float roughness)
 {
@@ -46,16 +35,40 @@ vec3 ApproximateSpecularIBL(vec3 f0, vec3 view, vec3 normal, float roughness)
 	return prefilteredLi * (f0 * integratedBRDF.x + integratedBRDF.y);
 }
 
-void main() {
+vec3 DirectBRDF(Surface surface, MicrofacetMaterial material)
+{
+	float D = D_GGX(surface, material.roughness);
+	vec3 F = F_Shlick(surface, material.f0);
+	float G = G_SmithGGX(surface, material.roughness);
+
+	vec3 specular_reflection = D * F * G / (4.0f * surface.dotNV * surface.dotNL);
+	vec3 diffuse_reflection = material.albedo * lerp(vec3(1.0f) - F, vec3(0.0f), material.metalness);
+
+	return diffuse_reflection * iPI + specular_reflection;
+}
+
+vec3 IBLBRDF(Surface surface, MicrofacetMaterial material)
+{
+	vec3 F = F_Shlick(surface.dotNV, material.f0, material.roughness);
+	vec3 irradiance = texture(diffuseIrradianceSampler, surface.normal).rgb * material.ao;
+
+	vec3 diffuse_reflection = irradiance * material.albedo * lerp(vec3(1.0f) - F, vec3(0.0f), material.metalness);
+	vec3 specular_reflection = ApproximateSpecularIBL(material.f0, surface.view, surface.normal, material.roughness);
+
+	return diffuse_reflection + specular_reflection;
+}
+
+void main()
+{
 	vec3 lightPosWS = ubo.cameraPosWS;
 	vec3 lightDirWS = normalize(lightPosWS - fragPositionWS);
 	vec3 cameraDirWS = normalize(ubo.cameraPosWS - fragPositionWS);
 
-	vec3 normal = texture(normalSampler, fragTexCoord).xyz * 2.0f - vec3(1.0f, 1.0f, 1.0f);
+	vec3 normal = texture(normalSampler, fragTexCoord).xyz * 2.0f - vec3(1.0f);
 
 	mat3 m;
 	m[0] = normalize(fragTangentWS);
-	m[1] = normalize(fragBinormalWS);
+	m[1] = normalize(-fragBinormalWS);
 	m[2] = normalize(fragNormalWS);
 
 	Surface surface;
@@ -68,20 +81,13 @@ void main() {
 	surface.dotNV = max(0.0f, dot(surface.normal, surface.view));
 	surface.dotHV = max(0.0f, dot(surface.halfVector, surface.view));
 
-	Surface ibl;
-	ibl.light = -reflect(surface.view, surface.normal);
-	ibl.view = cameraDirWS;
-	ibl.normal = normalize(m * normal);
-	ibl.halfVector = normalize(lightDirWS + cameraDirWS);
-	ibl.dotNH = max(0.0f, dot(ibl.normal, ibl.halfVector));
-	ibl.dotNL = max(0.0f, dot(ibl.normal, ibl.light));
-	ibl.dotNV = max(0.0f, dot(ibl.normal, ibl.view));
-	ibl.dotHV = max(0.0f, dot(ibl.halfVector, ibl.view));
-
 	MicrofacetMaterial microfacet_material;
 	microfacet_material.albedo = texture(albedoSampler, fragTexCoord).rgb;
+	microfacet_material.albedo = pow(microfacet_material.albedo, vec3(2.2f));
 	microfacet_material.roughness = texture(shadingSampler, fragTexCoord).g;
 	microfacet_material.metalness = texture(shadingSampler, fragTexCoord).b;
+	microfacet_material.ao = texture(aoSampler, fragTexCoord).r;
+	microfacet_material.ao = pow(microfacet_material.ao, 2.2f);
 
 	microfacet_material.albedo = lerp(microfacet_material.albedo, vec3(0.5f, 0.5f, 0.5f), ubo.lerpUserValues);
 	microfacet_material.roughness = lerp(microfacet_material.roughness, ubo.userRoughness, ubo.lerpUserValues);
@@ -92,27 +98,20 @@ void main() {
 	// Direct light
 	float attenuation = 1.0f / dot(lightPosWS - fragPositionWS, lightPosWS - fragPositionWS);
 
-	vec3 light = MicrofacetBRDF(surface, microfacet_material) * attenuation * 2.0f * surface.dotNL;
+	vec3 light = DirectBRDF(surface, microfacet_material) * attenuation * 2.0f * surface.dotNL;
 
 	// Ambient light (diffuse & specular IBL)
-	vec3 ibl_diffuse = texture(diffuseIrradianceSampler, ibl.light).rgb * microfacet_material.albedo;
-	ibl_diffuse *= lerp(vec3(1.0f) - F_Shlick(ibl.dotNV, microfacet_material.f0, microfacet_material.roughness), vec3(0.0f), microfacet_material.metalness);
-
-	vec3 ibl_specular = ApproximateSpecularIBL(microfacet_material.f0, ibl.view, ibl.normal, microfacet_material.roughness);
-
-	vec3 ambient = ibl_diffuse * iPI + ibl_specular;
-	ambient *= texture(aoSampler, fragTexCoord).r;
+	vec3 ambient = IBLBRDF(surface, microfacet_material);
 
 	// Result
 	vec3 color = vec3(0.0f);
 	color += ambient;
-	// color += light;
-	// color += texture(emissionSampler, fragTexCoord).rgb;
+	color += light;
 
 	// TODO: move to separate pass
 	// Tonemapping + gamma correction
-	color = color / (color + vec3(1.0));
-	// color = pow(color, vec3(1.0f / 2.2f));
+	// color = color / (color + vec3(1.0));
+	color = pow(color, vec3(1.0f / 2.2f));
 
 	outColor = vec4(color, 1.0f);
 }
