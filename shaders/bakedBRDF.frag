@@ -24,7 +24,7 @@ vec2 IntegrateBRDF(float roughness, float dotNV)
 	Surface sample_surface;
 	sample_surface.view = view;
 	sample_surface.normal = normal;
-	sample_surface.dotNV = max(0.0f, dot(sample_surface.normal, sample_surface.view));
+	sample_surface.dotNV = dotNV;
 
 	for (uint i = 0; i < samples; ++i)
 	{
@@ -37,12 +37,10 @@ vec2 IntegrateBRDF(float roughness, float dotNV)
 		sample_surface.dotNL = max(0.0f, dot(sample_surface.normal, sample_surface.light));
 		sample_surface.dotHV = max(0.0f, dot(sample_surface.halfVector, sample_surface.view));
 
-		float G_normalized = G_SmithGGX(sample_surface, roughness);
-		float F = pow(1 - sample_surface.dotHV, 5.0f);
+		float G = G_SmithGGX(sample_surface, roughness);
+		float F = F_Shlick(sample_surface);
 
-		float pdf = sample_surface.dotNH / (4.0f * sample_surface.dotHV);
-
-		float fr = G_normalized * sample_surface.dotNL / pdf;
+		float fr = (G * sample_surface.dotHV) / (sample_surface.dotNH * sample_surface.dotNV);
 
 		A += (1 - F) * fr;	
 		B += F * fr;
