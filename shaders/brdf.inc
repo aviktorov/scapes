@@ -37,6 +37,11 @@ vec3 lerp(vec3 a, vec3 b, vec3 t)
 	return a * (1.0f - t) + b * t;
 }
 
+float saturate(float v)
+{
+	return clamp(v, 0.0f, 1.0f);
+}
+
 vec3 saturate(vec3 v)
 {
 	vec3 ret;
@@ -54,7 +59,7 @@ vec2 Hammersley(uint i, uint N)
 vec3 ImportanceSamplingGGX(vec2 Xi, vec3 normal, float roughness)
 {
 	float alpha = sqr(roughness * roughness);
-	float alpha2 = sqr(alpha);
+	float alpha2 = saturate(sqr(alpha));
 
 	float phi = PI2 * Xi.x;
 	float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (alpha2 - 1.0f) * Xi.y));
@@ -77,14 +82,14 @@ vec3 ImportanceSamplingGGX(vec2 Xi, vec3 normal, float roughness)
 
 float D_GGX(Surface surface, float roughness)
 {
-	float alpha2 = sqr(roughness * roughness);
+	float alpha2 = saturate(sqr(roughness * roughness));
 
 	return alpha2 / (PI * sqr(1.0f + surface.dotNH * surface.dotNH * (alpha2 - 1.0f)));
 }
 
 float G_SmithGGX_Normalized(Surface surface, float roughness)
 {
-	float alpha2 = sqr(roughness * roughness);
+	float alpha2 = saturate(sqr(roughness * roughness));
 
 	float ggx_NV = surface.dotNV + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNV * surface.dotNV);
 	float ggx_NL = surface.dotNL + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNL * surface.dotNL);
@@ -97,14 +102,19 @@ float G_SmithGGX(Surface surface, float roughness)
 	return 4.0f * surface.dotNV * surface.dotNL * G_SmithGGX_Normalized(surface, roughness);
 }
 
+float F_Shlick(Surface surface)
+{
+	return pow(1.0f - surface.dotHV, 5.0f);
+}
+
 vec3 F_Shlick(Surface surface, vec3 f0)
 {
-	return f0 + (vec3(1.0f, 1.0f, 1.0f) - f0) * pow(1.0f - surface.dotHV, 5);
+	return f0 + (vec3(1.0f, 1.0f, 1.0f) - f0) * pow(1.0f - surface.dotHV, 5.0f);
 }
 
 vec3 F_Shlick(float cosTheta, vec3 f0, float roughness)
 {
-	return f0 + (max(vec3(1.0 - roughness), f0) - f0) * pow(1.0f - cosTheta, 5);
+	return f0 + (max(vec3(1.0 - roughness), f0) - f0) * pow(1.0f - cosTheta, 5.0f);
 }
 
 #endif // BRDF_H_
