@@ -47,6 +47,16 @@ public:
 		VkMemoryPropertyFlags properties
 	);
 
+	static uint32_t fetchGraphicsQueueFamily(
+		VkPhysicalDevice physicalDevice
+	);
+
+	static uint32_t fetchPresentQueueFamily(
+		VkPhysicalDevice physicalDevice,
+		VkSurfaceKHR surface,
+		uint32_t graphicsQueueFamily
+	);
+
 	static void createBuffer(
 		const VulkanContext *context,
 		VkDeviceSize size,

@@ -23,7 +23,7 @@ struct VulkanRenderFrame
 class VulkanSwapChain
 {
 public:
-	VulkanSwapChain(const VulkanContext *context, VkDeviceSize uboSize);
+	VulkanSwapChain(const VulkanContext *context, void *nativeWindow, VkDeviceSize uboSize);
 	virtual ~VulkanSwapChain();
 
 	void init(int width, int height);
@@ -51,11 +51,10 @@ private:
 	{
 		VkSurfaceFormatKHR format;
 		VkPresentModeKHR presentMode;
-		VkExtent2D extent;
 	};
 
-	VulkanSwapChain::SupportDetails fetchSwapChainSupportDetails() const;
-	VulkanSwapChain::Settings selectOptimalSwapChainSettings(const VulkanSwapChain::SupportDetails &details, int width, int height) const;
+	VulkanSwapChain::SupportDetails fetchSwapChainSupportDetails(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) const;
+	VulkanSwapChain::Settings selectOptimalSwapChainSettings(const VulkanSwapChain::SupportDetails &details) const;
 
 private:
 	void initTransient(int width, int height);
@@ -73,7 +72,15 @@ private:
 	VkDeviceSize uboSize;
 
 	//
+	void *nativeWindow {nullptr};
+	VkSurfaceKHR surface {VK_NULL_HANDLE};
 	VkSwapchainKHR swapChain {VK_NULL_HANDLE};
+
+	uint32_t presentQueueFamily {0xFFFF};
+	VkQueue presentQueue {VK_NULL_HANDLE};
+
+	VulkanSwapChain::SupportDetails details;
+	VulkanSwapChain::Settings settings;
 
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapChainImageViews;

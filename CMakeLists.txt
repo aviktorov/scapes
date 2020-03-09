@@ -44,7 +44,7 @@ file(GLOB PBR_SANDBOX_SOURCES
 	3rdparty/imgui/examples/imgui_impl_vulkan.cpp
 )
 
-add_compile_definitions(NOMINMAX VK_USE_PLATFORM_WIN32_KHR)
+add_compile_definitions(NOMINMAX VK_USE_PLATFORM_WIN32_KHR PBR_SANDBOX_WIN32 GLFW_EXPOSE_NATIVE_WIN32)
 add_executable(PBRSandbox ${PBR_SANDBOX_SOURCES})
 target_link_libraries(PBRSandbox glfw3 assimp-vc141-mt IrrXml zlibstatic shaderc_shared)
 

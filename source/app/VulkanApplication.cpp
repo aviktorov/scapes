@@ -10,6 +10,7 @@
 #include "RenderScene.h"
 
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -284,7 +285,7 @@ void Application::initVulkan()
 	if (!context)
 		context = new VulkanContext();
 	
-	context->init(window, "PBR Sandbox", "Fate Engine");
+	context->init("PBR Sandbox", "Scape");
 }
 
 void Application::shutdownVulkan()
@@ -300,8 +301,12 @@ void Application::shutdownVulkan()
  */
 void Application::initVulkanSwapChain()
 {
+#if defined(PBR_SANDBOX_WIN32)
+	void *nativeWindow = glfwGetWin32Window(window);
+#endif
+
 	if (!swapChain)
-		swapChain = new VulkanSwapChain(context, sizeof(ApplicationState));
+		swapChain = new VulkanSwapChain(context, nativeWindow, sizeof(ApplicationState));
 
 	int width, height;
 	glfwGetWindowSize(window, &width, &height);

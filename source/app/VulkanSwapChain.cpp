@@ -9,8 +9,9 @@
 #include <algorithm>
 #include <cassert>
 
-VulkanSwapChain::VulkanSwapChain(const VulkanContext *context, VkDeviceSize uboSize)
+VulkanSwapChain::VulkanSwapChain(const VulkanContext *context, void *nativeWindow, VkDeviceSize uboSize)
 	: context(context)
+	, nativeWindow(nativeWindow)
 	, uboSize(uboSize)
 {
 }
@@ -22,8 +23,8 @@ VulkanSwapChain::~VulkanSwapChain()
 
 void VulkanSwapChain::init(int width, int height)
 {
-	initTransient(width, height);
 	initPersistent();
+	initTransient(width, height);
 	initFrames(uboSize);
 }
 
@@ -129,7 +130,7 @@ bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
 		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	);
 
-	VkResult result = vkQueuePresentKHR(context->getPresentQueue(), &presentInfo);
+	VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
 		return false;
 
@@ -142,112 +143,35 @@ bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
 
 /*
  */
-VulkanSwapChain::SupportDetails VulkanSwapChain::fetchSwapChainSupportDetails() const
+void VulkanSwapChain::initTransient(int width, int height)
 {
-	VulkanSwapChain::SupportDetails details;
-
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->getPhysicalDevice(), context->getSurface(), &details.capabilities);
-
-	uint32_t formatCount = 0;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), context->getSurface(), &formatCount, nullptr);
-
-	if (formatCount > 0)
-	{
-		details.formats.resize(formatCount);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), context->getSurface(), &formatCount, details.formats.data());
-	}
-
-	uint32_t presentModeCount = 0;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), context->getSurface(), &presentModeCount, nullptr);
-
-	if (presentModeCount > 0)
-	{
-		details.presentModes.resize(presentModeCount);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), context->getSurface(), &presentModeCount, details.presentModes.data());
-	}
-
-	return details;
-}
-
-/*
- */
-VulkanSwapChain::Settings VulkanSwapChain::selectOptimalSwapChainSettings(const VulkanSwapChain::SupportDetails &details, int width, int height) const
-{
-	assert(!details.formats.empty());
-	assert(!details.presentModes.empty());
-
-	VulkanSwapChain::Settings settings;
-
-	// Select the best format if the surface has no preferred format
-	if (details.formats.size() == 1 && details.formats[0].format == VK_FORMAT_UNDEFINED)
-	{
-		settings.format = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-	}
-	// Otherwise, select one of the available formats
-	else
-	{
-		settings.format = details.formats[0];
-		for (const auto &format : details.formats)
-		{
-			if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-			{
-				settings.format = format;
-				break;
-			}
-		}
-	}
-
-	// Select the best present mode
-	settings.presentMode = VK_PRESENT_MODE_FIFO_KHR;
-	for (const auto &presentMode : details.presentModes)
-	{
-		// Some drivers currently don't properly support FIFO present mode,
-		// so we should prefer IMMEDIATE mode if MAILBOX mode is not available
-		if (presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
-			settings.presentMode = presentMode;
-
-		if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
-		{
-			settings.presentMode = presentMode;
-			break;
-		}
-	}
-
 	// Select current swap extent if window manager doesn't allow to set custom extent
 	if (details.capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 	{
-		settings.extent = details.capabilities.currentExtent;
+		swapChainExtent = details.capabilities.currentExtent;
 	}
 	// Otherwise, manually set extent to match the min/max extent bounds
 	else
 	{
 		const VkSurfaceCapabilitiesKHR &capabilities = details.capabilities;
 
-		settings.extent = {
+		swapChainExtent = {
 			static_cast<uint32_t>(width),
 			static_cast<uint32_t>(height)
 		};
 
-		settings.extent.width = std::max(
+		swapChainExtent.width = std::clamp(
+			swapChainExtent.width,
 			capabilities.minImageExtent.width,
-			std::min(settings.extent.width, capabilities.maxImageExtent.width)
+			capabilities.maxImageExtent.width
 		);
-		settings.extent.height = std::max(
+
+		swapChainExtent.height = std::clamp(
+			swapChainExtent.height,
 			capabilities.minImageExtent.height,
-			std::min(settings.extent.height, capabilities.maxImageExtent.height)
+			capabilities.maxImageExtent.height
 		);
 	}
-
-	return settings;
-}
-
-/*
- */
-void VulkanSwapChain::initTransient(int width, int height)
-{
-	// Create swap chain
-	VulkanSwapChain::SupportDetails details = fetchSwapChainSupportDetails();
-	VulkanSwapChain::Settings settings = selectOptimalSwapChainSettings(details, width, height);
 
 	// Simply sticking to this minimum means that we may sometimes have to wait
 	// on the driver to complete internal operations before we can acquire another image to render to.
@@ -261,17 +185,17 @@ void VulkanSwapChain::initTransient(int width, int height)
 
 	VkSwapchainCreateInfoKHR swapChainInfo = {};
 	swapChainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	swapChainInfo.surface = context->getSurface();
+	swapChainInfo.surface = surface;
 	swapChainInfo.minImageCount = imageCount;
 	swapChainInfo.imageFormat = settings.format.format;
 	swapChainInfo.imageColorSpace = settings.format.colorSpace;
-	swapChainInfo.imageExtent = settings.extent;
+	swapChainInfo.imageExtent = swapChainExtent;
 	swapChainInfo.imageArrayLayers = 1;
 	swapChainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	if (context->getGraphicsQueueFamily() != context->getPresentQueueFamily())
+	if (context->getGraphicsQueueFamily() != presentQueueFamily)
 	{
-		uint32_t queueFamilies[] = { context->getGraphicsQueueFamily(), context->getPresentQueueFamily() };
+		uint32_t queueFamilies[] = { context->getGraphicsQueueFamily(), presentQueueFamily };
 		swapChainInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		swapChainInfo.queueFamilyIndexCount = 2;
 		swapChainInfo.pQueueFamilyIndices = queueFamilies;
@@ -298,9 +222,6 @@ void VulkanSwapChain::initTransient(int width, int height)
 
 	swapChainImages.resize(swapChainImageCount);
 	vkGetSwapchainImagesKHR(context->getDevice(), swapChain, &swapChainImageCount, swapChainImages.data());
-
-	swapChainImageFormat = settings.format.format;
-	swapChainExtent = settings.extent;
 
 	// Create swap chain image views
 	swapChainImageViews.resize(swapChainImageCount);
@@ -345,8 +266,6 @@ void VulkanSwapChain::initTransient(int width, int height)
 	);
 
 	// Create depth buffer & image view
-	depthFormat = VulkanUtils::selectOptimalDepthFormat(context->getPhysicalDevice());
-
 	VulkanUtils::createImage2D(
 		context,
 		swapChainExtent.width,
@@ -412,6 +331,39 @@ void VulkanSwapChain::shutdownTransient()
  */
 void VulkanSwapChain::initPersistent()
 {
+	assert(nativeWindow);
+
+	// TODO: add support for other platforms
+	// Create Vulkan surface
+#if defined(PBR_SANDBOX_WIN32)
+	VkWin32SurfaceCreateInfoKHR surfaceInfo = {};
+	surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	surfaceInfo.hwnd = reinterpret_cast<HWND>(nativeWindow);
+	surfaceInfo.hinstance = GetModuleHandle(nullptr);
+
+	if (vkCreateWin32SurfaceKHR(context->getInstance(), &surfaceInfo, nullptr, &surface) != VK_SUCCESS)
+		throw std::runtime_error("Can't create Vulkan win32 surface KHR");
+#endif
+
+	// Fetch present queue
+	presentQueueFamily = VulkanUtils::fetchPresentQueueFamily(
+		context->getPhysicalDevice(),
+		surface,
+		context->getGraphicsQueueFamily()
+	);
+
+	// Get present queue
+	vkGetDeviceQueue(context->getDevice(), presentQueueFamily, 0, &presentQueue);
+	if (presentQueue == VK_NULL_HANDLE)
+		throw std::runtime_error("Can't get present queue from logical device");
+
+	// Select optimal swap chain settings
+	details = fetchSwapChainSupportDetails(context->getPhysicalDevice(), surface);
+	settings = selectOptimalSwapChainSettings(details);
+
+	depthFormat = VulkanUtils::selectOptimalDepthFormat(context->getPhysicalDevice());
+	swapChainImageFormat = settings.format.format;
+
 	// Create sync objects
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -463,7 +415,6 @@ void VulkanSwapChain::initPersistent()
 		.addColorResolveAttachmentReference(0, 1)
 		.setDepthStencilAttachmentReference(0, 2)
 		.build();
-
 }
 
 void VulkanSwapChain::shutdownPersistent()
@@ -488,6 +439,9 @@ void VulkanSwapChain::shutdownPersistent()
 
 	vkDestroyRenderPass(context->getDevice(), noClearRenderPass, nullptr);
 	noClearRenderPass = VK_NULL_HANDLE;
+
+	vkDestroySurfaceKHR(context->getInstance(), surface, nullptr);
+	surface = VK_NULL_HANDLE;
 }
 
 /*
@@ -572,4 +526,81 @@ void VulkanSwapChain::shutdownFrames()
 		vkDestroyFramebuffer(context->getDevice(), frame.frameBuffer, nullptr);
 	}
 	frames.clear();
+}
+
+/*
+ */
+VulkanSwapChain::SupportDetails VulkanSwapChain::fetchSwapChainSupportDetails(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) const
+{
+	VulkanSwapChain::SupportDetails details;
+
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &details.capabilities);
+
+	uint32_t formatCount = 0;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
+
+	if (formatCount > 0)
+	{
+		details.formats.resize(formatCount);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, details.formats.data());
+	}
+
+	uint32_t presentModeCount = 0;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
+
+	if (presentModeCount > 0)
+	{
+		details.presentModes.resize(presentModeCount);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, details.presentModes.data());
+	}
+
+	return details;
+}
+
+/*
+ */
+VulkanSwapChain::Settings VulkanSwapChain::selectOptimalSwapChainSettings(const VulkanSwapChain::SupportDetails &details) const
+{
+	assert(!details.formats.empty());
+	assert(!details.presentModes.empty());
+
+	VulkanSwapChain::Settings result;
+
+	// Select the best format if the surface has no preferred format
+	if (details.formats.size() == 1 && details.formats[0].format == VK_FORMAT_UNDEFINED)
+	{
+		result.format = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+	}
+	// Otherwise, select one of the available formats
+	else
+	{
+		result.format = details.formats[0];
+		for (const auto &format : details.formats)
+		{
+			if (format.format == VK_FORMAT_B8G8R8A8_UNORM && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			{
+				result.format = format;
+				break;
+			}
+		}
+	}
+
+	// Select the best present mode
+	result.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+	for (const auto &presentMode : details.presentModes)
+	{
+		// Some drivers currently don't properly support FIFO present mode,
+		// so we should prefer IMMEDIATE mode if MAILBOX mode is not available
+		if (presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+			result.presentMode = presentMode;
+
+		if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+		{
+			result.presentMode = presentMode;
+			break;
+		}
+	}
+
+
+	return result;
 }

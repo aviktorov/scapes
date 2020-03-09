@@ -4,27 +4,22 @@
 #include <vector>
 #include <optional>
 
-struct GLFWwindow;
-
 /*
  */
 class VulkanContext
 {
 public:
 	inline VkInstance getInstance() const { return instance; }
-	inline VkSurfaceKHR getSurface() const { return surface; }
 	inline VkDevice getDevice() const { return device; }
 	inline VkPhysicalDevice getPhysicalDevice() const { return physicalDevice; }
 	inline VkCommandPool getCommandPool() const { return commandPool; }
 	inline VkDescriptorPool getDescriptorPool() const { return descriptorPool; }
 	inline uint32_t getGraphicsQueueFamily() const { return graphicsQueueFamily; }
-	inline uint32_t getPresentQueueFamily() const { return presentQueueFamily; }
 	inline VkQueue getGraphicsQueue() const { return graphicsQueue; }
-	inline VkQueue getPresentQueue() const { return presentQueue; }
 	inline VkSampleCountFlagBits getMaxMSAASamples() const { return maxMSAASamples; }
 
 public:
-	void init(GLFWwindow *window, const char *applicationName, const char *engineName);
+	void init(const char *applicationName, const char *engineName);
 	void shutdown();
 	void wait();
 
@@ -37,12 +32,10 @@ private:
 		inline bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
 	};
 
-	int examinePhysicalDevice(VkPhysicalDevice device, VkSurfaceKHR surface) const;
-	VulkanContext::QueueFamilyIndices fetchQueueFamilyIndices(VkPhysicalDevice device) const;
+	int examinePhysicalDevice(VkPhysicalDevice physicalDevice) const;
 
 private:
 	VkInstance instance {VK_NULL_HANDLE};
-	VkSurfaceKHR surface {VK_NULL_HANDLE};
 
 	VkDevice device {VK_NULL_HANDLE};
 	VkPhysicalDevice physicalDevice {VK_NULL_HANDLE};
@@ -50,11 +43,8 @@ private:
 	VkCommandPool commandPool {VK_NULL_HANDLE};
 	VkDescriptorPool descriptorPool {VK_NULL_HANDLE};
 
-	uint32_t graphicsQueueFamily {0};
-	uint32_t presentQueueFamily {0};
-
+	uint32_t graphicsQueueFamily {0xFFFF};
 	VkQueue graphicsQueue {VK_NULL_HANDLE};
-	VkQueue presentQueue {VK_NULL_HANDLE};
 
 	VkSampleCountFlagBits maxMSAASamples {VK_SAMPLE_COUNT_1_BIT};
 	VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};

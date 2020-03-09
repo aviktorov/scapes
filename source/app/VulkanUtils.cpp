@@ -203,6 +203,62 @@ uint32_t VulkanUtils::findMemoryType(
 	throw std::runtime_error("Can't find suitable memory type");
 }
 
+/*
+ */
+uint32_t VulkanUtils::fetchGraphicsQueueFamily(
+	VkPhysicalDevice physicalDevice
+)
+{
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+
+	for (uint32_t i = 0; i < queueFamilyCount; i++) {
+		const auto &queueFamily = queueFamilies[i];
+		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			return i;
+	}
+
+	return 0xFFFF;
+}
+
+/*
+ */
+uint32_t VulkanUtils::fetchPresentQueueFamily(
+	VkPhysicalDevice physicalDevice,
+	VkSurfaceKHR surface,
+	uint32_t graphicsQueueFamily
+)
+{
+	VkBool32 presentSupported = VK_FALSE;
+
+	if (vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, graphicsQueueFamily, surface, &presentSupported) != VK_SUCCESS)
+		throw std::runtime_error("Can't check surface present support");
+
+	if (presentSupported)
+		return graphicsQueueFamily;
+
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+
+	for (uint32_t i = 0; i < queueFamilyCount; i++) {
+		if (vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupported) != VK_SUCCESS)
+			throw std::runtime_error("Can't check surface present support");
+
+		if (presentSupported)
+			return i;
+	}
+
+	return 0xFFFF;
+}
+
+/*
+ */
 void VulkanUtils::createBuffer(
 	const VulkanContext *context,
 	VkDeviceSize size,
