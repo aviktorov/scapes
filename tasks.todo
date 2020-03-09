@@ -16,9 +16,12 @@ PBR Sandbox:
             ☐ Split VulkanRenderer::render method into VulkanRenderer::begin()/end() + renderObjectWithMaterial()
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add support for other platforms (Linux, MacOS, iOS, Android)
-    Stream 23:
+    Stream 24:
         ☐ Split application code from engine code
         ☐ Add separate cmakelists files for app & engine
+    Stream 23:
+        ✔ Remove platform dependent code from VulkanContext @done (3/10/2020, 2:53:22 AM)
+        ✔ Move present queue fetch & surface creation to VulkanSwapChain @done (3/10/2020, 2:53:21 AM)
     Stream 22:
         ✔ Add orbit camera @done (2/29/2020, 11:53:21 PM)
         ✔ Check if roughness / metalness shading is correct compared to Marmoset @done (3/1/2020, 3:56:47 AM)
