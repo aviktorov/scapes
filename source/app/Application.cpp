@@ -117,20 +117,55 @@ void Application::render()
 
 	renderer->render(scene, frame);
 /*
+	IBLBaker iblBaker;
 	VulkanRenderPass mainRenderPass;
 	VulkanGraphicsProgram skyboxProgram;
 	VulkanGraphicsProgram pbrProgram;
 
+	VulkanTexture albedo;
+	VulkanTexture normal;
+	VulkanTexture ao;
+	VulkanTexture shading;
+	VulkanTexture emission;
+
 	VulkanMesh skybox;
 	VulkanMesh model;
 
+	renderer->beginFrame(frame);
+
 	renderer->beginRenderPass(mainRenderPass);
+	renderer->bindTexture(0, iblBaker->getEnvironmentCubemap());
 	renderer->bindGraphicsProgram(skyboxProgram);
 	renderer->drawIndexedPrimitive(skybox);
 
+	// direct binding
+	renderer->bindTexture(0, 0, albedo);
+	renderer->bindTexture(0, 1, normal);
+	renderer->bindTexture(0, 2, ao);
+	renderer->bindTexture(0, 3, shading);
+	renderer->bindTexture(0, 4, emission);
+	renderer->bindTexture(0, 5, iblBaker->getEnvironmentCubemap());
+	renderer->bindTexture(0, 6, iblBaker->getDiffuseIrradianceCubemap());
+	renderer->bindTexture(0, 7, iblBaker->getBakedBRDFTexture());
+
+	// bind groups
+	VulkanBindGroup group;
+	group.bindTexture(0, albedo);
+	group.bindTexture(1, normal);
+	group.bindTexture(2, ao);
+	group.bindTexture(3, shading);
+	group.bindTexture(4, emission);
+	group.bindTexture(5, iblBaker->getEnvironmentCubemap());
+	group.bindTexture(6, iblBaker->getDiffuseIrradianceCubemap());
+	group.bindTexture(7, iblBaker->getBakedBRDFTexture());
+
+	renderer->bindGroup(0, group);
 	renderer->bindGraphicsProgram(pbrProgram);
 	renderer->drawIndexedPrimitive(model);
+
 	renderer->endRenderPass(mainRenderPass);
+
+	renderer->endFrame();
 /**/
 	imguiRenderer->render(frame);
 
