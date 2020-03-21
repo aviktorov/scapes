@@ -16,9 +16,14 @@ PBR Sandbox:
             ☐ Split VulkanRenderer::render method into VulkanRenderer::begin()/end() + renderObjectWithMaterial()
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add support for other platforms (Linux, MacOS, iOS, Android)
+        ☐ Move ImGui example code to the app & engine (glfw to app, vulkan to engine)
+    Stream 25:
+        ☐ Extract IBL baker from VulkanRenderer
+        ☐ Add VulkanGraphicsProgram class
+        ☐ Make a simple VulkanRenderer interface with basic API (dip, binds, beginFrame / endFrame)
     Stream 24:
-        ☐ Split application code from engine code
-        ☐ Add separate cmakelists files for app & engine
+        ✔ Split application code from engine code @done (3/22/2020, 3:20:09 AM)
+        ✔ Add separate cmakelists files for app & engine @done (3/22/2020, 3:20:10 AM)
     Stream 23:
         ✔ Remove platform dependent code from VulkanContext @done (3/10/2020, 2:53:22 AM)
         ✔ Move present queue fetch & surface creation to VulkanSwapChain @done (3/10/2020, 2:53:21 AM)
