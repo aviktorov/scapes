@@ -15,7 +15,7 @@ file(GLOB HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 )
 
-add_library(${TARGET} SHARED ${SOURCES} ${HEADERS})
+add_library(${TARGET} STATIC ${SOURCES} ${HEADERS})
 
 target_compile_definitions(${TARGET} PUBLIC NOMINMAX VK_USE_PLATFORM_WIN32_KHR PBR_SANDBOX_WIN32)
 target_link_libraries(${TARGET} PUBLIC assimp-vc141-mt IrrXml zlibstatic shaderc_shared)
