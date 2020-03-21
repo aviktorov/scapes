@@ -11,6 +11,9 @@ if(MSVC)
 		"${CMAKE_EXE_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRT")
 endif()
 
+set(THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty)
+set(API_DIR ${CMAKE_CURRENT_SOURCE_DIR}/source/engine)
+
 include_directories("3rdparty/assimp/include")
 include_directories("3rdparty/glfw/include")
 include_directories("3rdparty/glm")
@@ -30,34 +33,5 @@ if (Vulkan_FOUND)
 	include_directories(${Vulkan_INCLUDE_DIRS})
 endif()
 
-file(GLOB PBR_SANDBOX_SOURCES
-	source/app/*.h
-	source/app/*.cpp
-	source/engine/*.h
-	source/engine/*.cpp
-	3rdparty/volk/volk.c
-	3rdparty/imgui/imgui.cpp
-	3rdparty/imgui/imgui_draw.cpp
-	3rdparty/imgui/imgui_demo.cpp
-	3rdparty/imgui/imgui_widgets.cpp
-	3rdparty/imgui/examples/imgui_impl_glfw.cpp
-	3rdparty/imgui/examples/imgui_impl_vulkan.cpp
-)
-
-add_compile_definitions(NOMINMAX VK_USE_PLATFORM_WIN32_KHR PBR_SANDBOX_WIN32 GLFW_EXPOSE_NATIVE_WIN32)
-add_executable(PBRSandbox ${PBR_SANDBOX_SOURCES})
-target_link_libraries(PBRSandbox glfw3 assimp-vc141-mt IrrXml zlibstatic shaderc_shared)
-
-add_custom_command(
-	TARGET PBRSandbox POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy
-		${CMAKE_SOURCE_DIR}/3rdparty/assimp/lib/assimp-vc141-mt.dll
-		${CMAKE_CURRENT_BINARY_DIR}/assimp-vc141-mt.dll
-)
-
-add_custom_command(
-	TARGET PBRSandbox POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy
-		${CMAKE_SOURCE_DIR}/3rdparty/shaderc/lib/shaderc_shared.dll
-		${CMAKE_CURRENT_BINARY_DIR}/shaderc_shared.dll
-)
+add_subdirectory(source/engine)
+add_subdirectory(source/app)

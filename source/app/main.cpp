@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "VulkanApplication.h"
+#include "Application.h"
 
 #include <GLFW/glfw3.h>
 

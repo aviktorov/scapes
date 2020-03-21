@@ -4,8 +4,6 @@
 #include "VulkanTexture.h"
 #include "VulkanUtils.h"
 
-#include "RenderScene.h"
-
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
 
@@ -15,13 +13,16 @@
  */
 VulkanImGuiRenderer::VulkanImGuiRenderer(
 	const VulkanContext *context,
+	ImGuiContext *imguiContext,
 	VkExtent2D extent,
 	VkRenderPass renderPass
 )
 	: context(context)
+	, imguiContext(imguiContext)
 	, extent(extent)
 	, renderPass(renderPass)
 {
+	ImGui::SetCurrentContext(imguiContext);
 }
 
 VulkanImGuiRenderer::~VulkanImGuiRenderer()
@@ -38,7 +39,7 @@ void *VulkanImGuiRenderer::addTexture(const VulkanTexture &texture) const
 
 /*
  */
-void VulkanImGuiRenderer::init(const RenderScene *scene, const VulkanSwapChain *swapChain)
+void VulkanImGuiRenderer::init(const VulkanSwapChain *swapChain)
 {
 	// Init ImGui bindings for Vulkan
 	ImGui_ImplVulkan_InitInfo init_info = {};
@@ -62,6 +63,7 @@ void VulkanImGuiRenderer::init(const RenderScene *scene, const VulkanSwapChain *
 void VulkanImGuiRenderer::shutdown()
 {
 	ImGui_ImplVulkan_Shutdown();
+	imguiContext = nullptr;
 }
 
 /*
@@ -72,7 +74,7 @@ void VulkanImGuiRenderer::resize(const VulkanSwapChain *swapChain)
 	ImGui_ImplVulkan_SetMinImageCount(swapChain->getNumImages());
 }
 
-void VulkanImGuiRenderer::render(const RenderScene *scene, const VulkanRenderFrame &frame)
+void VulkanImGuiRenderer::render(const VulkanRenderFrame &frame)
 {
 	VkCommandBuffer commandBuffer = frame.commandBuffer;
 	VkFramebuffer frameBuffer = frame.frameBuffer;
@@ -87,8 +89,6 @@ void VulkanImGuiRenderer::render(const RenderScene *scene, const VulkanRenderFra
 	renderPassInfo.renderArea.extent = extent;
 
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), frame.commandBuffer);
-
 	vkCmdEndRenderPass(commandBuffer);
 }

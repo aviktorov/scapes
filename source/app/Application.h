@@ -80,7 +80,6 @@ private:
 	static void onScroll(GLFWwindow* window, double deltaX, double deltaY);
 
 private:
-	// TODO: move to another class (Window?)
 	GLFWwindow *window {nullptr};
 	bool windowResized {false};
 

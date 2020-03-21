@@ -25,12 +25,12 @@ public:
 		const VulkanShader &fragmentShader,
 		const VulkanTexture &targetTexture,
 		int mip,
-		uint32_t userDataSize = 0
+		uint32_t pushConstantsSize = 0
 	);
 
 	void shutdown();
 
-	void render(const VulkanTexture &inputTexture, float *userData = nullptr, int inputMip = -1);
+	void render(const VulkanTexture &inputTexture, float *pushConstants = nullptr, int inputMip = -1);
 
 private:
 	const VulkanContext *context {nullptr};

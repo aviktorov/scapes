@@ -27,10 +27,10 @@ void VulkanCubemapRenderer::init(
 	const VulkanShader &fragmentShader,
 	const VulkanTexture &targetTexture,
 	int mip,
-	uint32_t userDataSize
+	uint32_t pushConstantsSize_
 )
 {
-	pushConstantsSize = userDataSize;
+	pushConstantsSize = pushConstantsSize_;
 	rendererQuad.createQuad(2.0f);
 
 	for (int i = 0; i < 6; i++)
@@ -260,7 +260,7 @@ void VulkanCubemapRenderer::shutdown()
 
 /*
  */
-void VulkanCubemapRenderer::render(const VulkanTexture &inputTexture, float *userData, int inputMip)
+void VulkanCubemapRenderer::render(const VulkanTexture &inputTexture, float *pushConstants, int inputMip)
 {
 	VulkanUtils::bindCombinedImageSampler(
 		context,
@@ -301,8 +301,8 @@ void VulkanCubemapRenderer::render(const VulkanTexture &inputTexture, float *use
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
-	if (pushConstantsSize > 0 && userData)
-		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, pushConstantsSize, userData);
+	if (pushConstantsSize > 0 && pushConstants)
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, pushConstantsSize, pushConstants);
 
 	{
 		VkBuffer vertexBuffers[] = { rendererQuad.getVertexBuffer() };

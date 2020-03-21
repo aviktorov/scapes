@@ -1,6 +1,6 @@
 #include <volk.h>
 
-#include "VulkanApplication.h"
+#include "Application.h"
 #include "VulkanContext.h"
 #include "VulkanImGuiRenderer.h"
 #include "VulkanRenderer.h"
@@ -69,10 +69,6 @@ void Application::update()
 
 	static float f = 0.0f;
 	static int counter = 0;
-	static bool show_demo_window = false;
-
-	if (show_demo_window)
-		ImGui::ShowDemoWindow(&show_demo_window);
 
 	ImGui::Begin("Material Parameters");
 
@@ -100,8 +96,6 @@ void Application::update()
 		ImGui::EndCombo();
 	}
 
-	ImGui::Checkbox("Demo Window", &show_demo_window);
-
 	ImGui::SliderFloat("Lerp User Material", &state.lerpUserValues, 0.0f, 1.0f);
 	ImGui::SliderFloat("Metalness", &state.userMetalness, 0.0f, 1.0f);
 	ImGui::SliderFloat("Roughness", &state.userRoughness, 0.0f, 1.0f);
@@ -122,7 +116,23 @@ void Application::render()
 	}
 
 	renderer->render(scene, frame);
-	imguiRenderer->render(scene, frame);
+/*
+	VulkanRenderPass mainRenderPass;
+	VulkanGraphicsProgram skyboxProgram;
+	VulkanGraphicsProgram pbrProgram;
+
+	VulkanMesh skybox;
+	VulkanMesh model;
+
+	renderer->beginRenderPass(mainRenderPass);
+	renderer->bindGraphicsProgram(skyboxProgram);
+	renderer->drawIndexedPrimitive(skybox);
+
+	renderer->bindGraphicsProgram(pbrProgram);
+	renderer->drawIndexedPrimitive(model);
+	renderer->endRenderPass(mainRenderPass);
+/**/
+	imguiRenderer->render(frame);
 
 	if (!swapChain->present(frame) || windowResized)
 	{
@@ -247,8 +257,8 @@ void Application::initRenderers()
 	renderer->init(scene);
 	renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
 
-	imguiRenderer = new VulkanImGuiRenderer(context, swapChain->getExtent(), swapChain->getNoClearRenderPass());
-	imguiRenderer->init(scene, swapChain);
+	imguiRenderer = new VulkanImGuiRenderer(context, ImGui::GetCurrentContext(), swapChain->getExtent(), swapChain->getNoClearRenderPass());
+	imguiRenderer->init(swapChain);
 }
 
 void Application::shutdownRenderers()
@@ -266,7 +276,6 @@ void Application::initImGui()
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO();
 	ImGui::StyleColorsDark();
 
 	ImGui_ImplGlfw_InitForVulkan(window, true);
@@ -303,6 +312,8 @@ void Application::initVulkanSwapChain()
 {
 #if defined(PBR_SANDBOX_WIN32)
 	void *nativeWindow = glfwGetWin32Window(window);
+#else
+	void *nativeWindow = nullptr;
 #endif
 
 	if (!swapChain)
