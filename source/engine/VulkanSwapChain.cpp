@@ -68,10 +68,7 @@ bool VulkanSwapChain::acquire(void *state, VulkanRenderFrame &frame)
 	frame = frames[imageIndex];
 
 	// copy render state to ubo
-	void *ubo = nullptr;
-	vkMapMemory(context->getDevice(), frame.uniformBufferMemory, 0, uboSize, 0, &ubo);
-	memcpy(ubo, state, static_cast<size_t>(uboSize));
-	vkUnmapMemory(context->getDevice(), frame.uniformBufferMemory);
+	memcpy(frame.uniformBufferData, state, static_cast<size_t>(uboSize));
 
 	// reset command buffer
 	if (vkResetCommandBuffer(frame.commandBuffer, 0) != VK_SUCCESS)
@@ -466,6 +463,8 @@ void VulkanSwapChain::initFrames(VkDeviceSize uboSize)
 			frame.uniformBufferMemory
 		);
 
+		vkMapMemory(context->getDevice(), frame.uniformBufferMemory, 0, uboSize, 0, &frame.uniformBufferData);
+
 		// Create & fill descriptor set
 		VkDescriptorSetAllocateInfo descriptorSetAllocInfo = {};
 		descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -521,6 +520,7 @@ void VulkanSwapChain::shutdownFrames()
 	{
 		vkFreeCommandBuffers(context->getDevice(), context->getCommandPool(), 1, &frame.commandBuffer);
 		vkFreeDescriptorSets(context->getDevice(), context->getDescriptorPool(), 1, &frame.descriptorSet);
+		vkUnmapMemory(context->getDevice(), frame.uniformBufferMemory);
 		vkDestroyBuffer(context->getDevice(), frame.uniformBuffer, nullptr);
 		vkFreeMemory(context->getDevice(), frame.uniformBufferMemory, nullptr);
 		vkDestroyFramebuffer(context->getDevice(), frame.frameBuffer, nullptr);

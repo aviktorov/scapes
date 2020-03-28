@@ -14,6 +14,7 @@ struct VulkanRenderFrame
 	VkFramebuffer frameBuffer {VK_NULL_HANDLE};
 	VkCommandBuffer commandBuffer {VK_NULL_HANDLE};
 
+	void *uniformBufferData {nullptr};
 	VkBuffer uniformBuffer {VK_NULL_HANDLE};
 	VkDeviceMemory uniformBufferMemory {VK_NULL_HANDLE};
 };
