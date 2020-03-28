@@ -1,3 +1,10 @@
+Vulkan backend challenges:
+    ☐ Video memory allocation (VMA aka Vulkan Memory Allocator)
+    ☐ Pipeline variety: either add *pipeline struct to backend or create pipeline cache internally
+    ☐ Render pass variety: create renderpass cache internally
+    ☐ Image layout transitions
+    ☐ Instance attribute bindings: either move them to separate binding (not compatible with OpenGL) or sequentially increase attribute index during pipeline creation
+
 PBR Sandbox:
     Offline:
         ☐ Debug slow shader render failure
@@ -9,18 +16,24 @@ PBR Sandbox:
         ☐ Improve microfacet BRDFs
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
-        ☐ Create VulkanUniformBuffer template class
-        ☐ Try to render to a specific cubemap mip level
         ☐ Create a material class (holds textures, shaders & UBO for material params)
-        ☐ Remove render scene dependency from renderer
-            ☐ Split VulkanRenderer::render method into VulkanRenderer::begin()/end() + renderObjectWithMaterial()
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add support for other platforms (Linux, MacOS, iOS, Android)
-        ☐ Move ImGui example code to the app & engine (glfw to app, vulkan to engine)
-    Stream 25:
         ☐ Extract IBL baker from VulkanRenderer
-        ☐ Add VulkanGraphicsProgram class
-        ☐ Make a simple VulkanRenderer interface with basic API (dip, binds, beginFrame / endFrame)
+        ☐ Create backend based ImGui implementation on App level
+        ☐ Add simple FileSystem with data root path for simplified content loading
+        ☐ Add pipeline registry class
+    Stream 26:
+        ☐ Finish with texture in Vulkan backend
+        ☐ Add render target API implementation to Vulkan backend
+        ☐ Add shader API implementation to Vulkan backend
+        ☐ Add swap chain API to backend
+        ☐ Add swap chain API implementation to Vulkan backend
+        ☐ Create separate cmake script for backend
+    Stream 25:
+        ✔ Replace swapchain map/unmap calls to raw ptrs + memcpy @done (3/29/2020, 4:13:31 AM)
+        ✘ Add VulkanGraphicsProgram class @cancelled (3/29/2020, 4:10:15 AM)
+        ✔ Make a simple VulkanRenderer interface with basic API (dip, binds, beginFrame / endFrame) @done (3/29/2020, 4:10:19 AM)
     Stream 24:
         ✔ Split application code from engine code @done (3/22/2020, 3:20:09 AM)
         ✔ Add separate cmakelists files for app & engine @done (3/22/2020, 3:20:10 AM)
