@@ -66,6 +66,15 @@ public:
 		VkDeviceMemory &memory
 	);
 
+	static void createDeviceLocalBuffer(
+		const VulkanContext *context,
+		VkDeviceSize size,
+		const void *data,
+		VkBufferUsageFlags usage,
+		VkBuffer &buffer,
+		VkDeviceMemory &memory
+	);
+
 	static void createImageCube(
 		const VulkanContext *context,
 		uint32_t width,
@@ -90,6 +99,21 @@ public:
 		VkImageTiling tiling,
 		VkImageUsageFlags usage,
 		VkMemoryPropertyFlags memoryProperties,
+		VkImage &image,
+		VkDeviceMemory &memory
+	);
+
+	static void createImage2D(
+		const VulkanContext *context,
+		uint32_t width,
+		uint32_t height,
+		uint32_t mipLevels,
+		uint32_t pixelSize,
+		const void *data,
+		uint32_t dataMipLevels,
+		VkSampleCountFlagBits numSamples,
+		VkFormat format,
+		VkImageTiling tiling,
 		VkImage &image,
 		VkDeviceMemory &memory
 	);
@@ -147,7 +171,11 @@ public:
 		VkBuffer src,
 		VkImage dst,
 		uint32_t width,
-		uint32_t height
+		uint32_t height,
+		uint32_t depth = 1,
+		uint32_t mipLevel = 0,
+		uint32_t layer = 0,
+		VkDeviceSize bufferOffset = 0
 	);
 
 	static void transitionImageLayout(

@@ -294,6 +294,54 @@ void VulkanUtils::createBuffer(
 		throw std::runtime_error("Can't bind buffer memory");
 }
 
+void VulkanUtils::createDeviceLocalBuffer(
+	const VulkanContext *context,
+	VkDeviceSize size,
+	const void *data,
+	VkBufferUsageFlags usage,
+	VkBuffer &buffer,
+	VkDeviceMemory &memory
+)
+{
+	// Create vertex buffer
+	createBuffer(
+		context,
+		size,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		buffer,
+		memory
+	);
+
+	// Create staging buffer
+	VkBuffer staging_buffer = VK_NULL_HANDLE;
+	VkDeviceMemory staging_memory = VK_NULL_HANDLE;
+
+	VulkanUtils::createBuffer(
+		context,
+		size,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		staging_buffer,
+		staging_memory
+	);
+
+	// Fill staging buffer
+	void *staging_data = nullptr;
+	vkMapMemory(context->getDevice(), staging_memory, 0, size, 0, &staging_data);
+	memcpy(staging_data, data, static_cast<size_t>(size));
+	vkUnmapMemory(context->getDevice(), staging_memory);
+
+	// Transfer to GPU local memory
+	copyBuffer(context, staging_buffer, buffer, size);
+
+	// Destroy staging buffer
+	vkDestroyBuffer(context->getDevice(), staging_buffer, nullptr);
+	vkFreeMemory(context->getDevice(), staging_memory, nullptr);
+}
+
+/*
+ */
 void VulkanUtils::createImageCube(
 	const VulkanContext *context,
 	uint32_t width,
@@ -392,6 +440,126 @@ void VulkanUtils::createImage2D(
 
 	if (vkBindImageMemory(context->getDevice(), image, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't bind image memory");
+}
+
+void VulkanUtils::createImage2D(
+	const VulkanContext *context,
+	uint32_t width,
+	uint32_t height,
+	uint32_t mipLevels,
+	uint32_t pixelSize,
+	const void *data,
+	uint32_t dataMipLevels,
+	VkSampleCountFlagBits numSamples,
+	VkFormat format,
+	VkImageTiling tiling,
+	VkImage &image,
+	VkDeviceMemory &memory
+)
+{
+	VkDeviceSize texture_size = 0;
+	uint32_t mip_width = width;
+	uint32_t mip_height = height;
+
+	for (uint32_t i = 0; i < dataMipLevels; i++)
+	{
+		texture_size += mip_width * mip_height * pixelSize;
+		mip_width /= 2;
+		mip_height /= 2;
+	}
+
+	// Create image
+	createImage2D(
+		context,
+		width,
+		height,
+		mipLevels,
+		numSamples,
+		format,
+		tiling,
+		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		image,
+		memory
+	);
+
+	// Create staging buffer
+	VkBuffer staging_buffer = VK_NULL_HANDLE;
+	VkDeviceMemory staging_memory = VK_NULL_HANDLE;
+
+	createBuffer(
+		context,
+		texture_size,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		staging_buffer,
+		staging_memory
+	);
+
+	// Fill staging buffer
+	void *staging_data = nullptr;
+	vkMapMemory(context->getDevice(), staging_memory, 0, texture_size, 0, &staging_data);
+	memcpy(staging_data, data, static_cast<size_t>(texture_size));
+	vkUnmapMemory(context->getDevice(), staging_memory);
+
+	// Prepare the image for transfer
+	transitionImageLayout(
+		context,
+		image,
+		format,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		0,
+		mipLevels
+	);
+
+	// Copy to the image memory on GPU
+	mip_width = width;
+	mip_height = height;
+	VkDeviceSize offset = 0;
+
+	VkCommandBuffer command_buffer = beginSingleTimeCommands(context);
+
+	for (uint32_t i = 0; i < dataMipLevels; i++)
+	{
+		VkBufferImageCopy region = {};
+		region.bufferOffset = offset;
+		region.bufferRowLength = 0;
+		region.bufferImageHeight = 0;
+
+		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		region.imageSubresource.mipLevel = i;
+		region.imageSubresource.baseArrayLayer = 0;
+		region.imageSubresource.layerCount = 1;
+
+		region.imageOffset = {0, 0, 0};
+		region.imageExtent.width = width;
+		region.imageExtent.height = height;
+		region.imageExtent.depth = 1;
+
+		vkCmdCopyBufferToImage(command_buffer, staging_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+		offset += mip_width * mip_height * pixelSize;
+		mip_width /= 2;
+		mip_height /= 2;
+	}
+
+	VulkanUtils::endSingleTimeCommands(context, command_buffer);
+
+	// Prepare the image for shader access
+	VulkanUtils::transitionImageLayout(
+		context,
+		image,
+		format,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		0,
+		mipLevels
+	);
+
+	// Destroy staging buffer
+	vkDestroyBuffer(context->getDevice(), staging_buffer, nullptr);
+	vkFreeMemory(context->getDevice(), staging_memory, nullptr);
 }
 
 VkImageView VulkanUtils::createImageView(
@@ -550,25 +718,29 @@ void VulkanUtils::copyBufferToImage(
 	VkBuffer src,
 	VkImage dst,
 	uint32_t width,
-	uint32_t height
+	uint32_t height,
+	uint32_t depth,
+	uint32_t mipLevel,
+	uint32_t layer,
+	VkDeviceSize bufferOffset
 )
 {
 	VkCommandBuffer commandBuffer = beginSingleTimeCommands(context);
 
 	VkBufferImageCopy region = {};
-	region.bufferOffset = 0;
+	region.bufferOffset = bufferOffset;
 	region.bufferRowLength = 0;
 	region.bufferImageHeight = 0;
 
 	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.mipLevel = mipLevel;
+	region.imageSubresource.baseArrayLayer = layer;
 	region.imageSubresource.layerCount = 1;
 
 	region.imageOffset = {0, 0, 0};
 	region.imageExtent.width = width;
 	region.imageExtent.height = height;
-	region.imageExtent.depth = 1;
+	region.imageExtent.depth = depth;
 
 	vkCmdCopyBufferToImage(commandBuffer, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
