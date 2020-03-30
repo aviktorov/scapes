@@ -342,6 +342,62 @@ void VulkanUtils::createDeviceLocalBuffer(
 
 /*
  */
+void VulkanUtils::createImage(
+	const VulkanContext *context,
+	VkImageType type,
+	uint32_t width,
+	uint32_t height,
+	uint32_t depth,
+	uint32_t mipLevels,
+	uint32_t arrayLayers,
+	VkSampleCountFlagBits numSamples,
+	VkFormat format,
+	VkImageTiling tiling,
+	VkImageUsageFlags usage,
+	VkMemoryPropertyFlags memoryProperties,
+	VkImageCreateFlags flags,
+	VkImage &image,
+	VkDeviceMemory &memory
+)
+{
+	// Create buffer
+	VkImageCreateInfo imageInfo = {};
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.imageType = type;
+	imageInfo.extent.width = width;
+	imageInfo.extent.height = height;
+	imageInfo.extent.depth = depth;
+	imageInfo.mipLevels = mipLevels;
+	imageInfo.arrayLayers = arrayLayers;
+	imageInfo.format = format;
+	imageInfo.tiling = tiling;
+	imageInfo.usage = usage;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.samples = numSamples;
+	imageInfo.flags = flags;
+
+	if (vkCreateImage(context->getDevice(), &imageInfo, nullptr, &image) != VK_SUCCESS)
+		throw std::runtime_error("Can't create image");
+
+	// Allocate memory for the buffer
+	VkMemoryRequirements memoryRequirements = {};
+	vkGetImageMemoryRequirements(context->getDevice(), image, &memoryRequirements);
+
+	VkMemoryAllocateInfo memoryAllocateInfo = {};
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
+
+	if (vkAllocateMemory(context->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+		throw std::runtime_error("Can't allocate image memory");
+
+	if (vkBindImageMemory(context->getDevice(), image, memory, 0) != VK_SUCCESS)
+		throw std::runtime_error("Can't bind image memory");
+}
+
+/*
+ */
 void VulkanUtils::createImageCube(
 	const VulkanContext *context,
 	uint32_t width,
@@ -356,40 +412,16 @@ void VulkanUtils::createImageCube(
 	VkDeviceMemory &memory
 )
 {
-	// Create buffer
-	VkImageCreateInfo imageInfo = {};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = width;
-	imageInfo.extent.height = height;
-	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = mipLevels;
-	imageInfo.arrayLayers = 6;
-	imageInfo.format = format;
-	imageInfo.tiling = tiling;
-	imageInfo.usage = usage;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.samples = numSamples;
-	imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-
-	if (vkCreateImage(context->getDevice(), &imageInfo, nullptr, &image) != VK_SUCCESS)
-		throw std::runtime_error("Can't create image");
-
-	// Allocate memory for the buffer
-	VkMemoryRequirements memoryRequirements = {};
-	vkGetImageMemoryRequirements(context->getDevice(), image, &memoryRequirements);
-
-	VkMemoryAllocateInfo memoryAllocateInfo = {};
-	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
-
-	if (vkAllocateMemory(context->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
-		throw std::runtime_error("Can't allocate image memory");
-
-	if (vkBindImageMemory(context->getDevice(), image, memory, 0) != VK_SUCCESS)
-		throw std::runtime_error("Can't bind image memory");
+	createImage(
+		context,
+		VK_IMAGE_TYPE_2D,
+		width, height, 1,
+		mipLevels, 6, numSamples,
+		format, tiling,
+		usage, memoryProperties,
+		VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT,
+		image, memory
+	);
 }
 
 void VulkanUtils::createImage2D(
@@ -406,101 +438,45 @@ void VulkanUtils::createImage2D(
 	VkDeviceMemory &memory
 )
 {
-	// Create buffer
-	VkImageCreateInfo imageInfo = {};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = width;
-	imageInfo.extent.height = height;
-	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = mipLevels;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = format;
-	imageInfo.tiling = tiling;
-	imageInfo.usage = usage;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.samples = numSamples;
-	imageInfo.flags = 0; // Optional
-
-	if (vkCreateImage(context->getDevice(), &imageInfo, nullptr, &image) != VK_SUCCESS)
-		throw std::runtime_error("Can't create image");
-
-	// Allocate memory for the buffer
-	VkMemoryRequirements memoryRequirements = {};
-	vkGetImageMemoryRequirements(context->getDevice(), image, &memoryRequirements);
-
-	VkMemoryAllocateInfo memoryAllocateInfo = {};
-	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
-
-	if (vkAllocateMemory(context->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
-		throw std::runtime_error("Can't allocate image memory");
-
-	if (vkBindImageMemory(context->getDevice(), image, memory, 0) != VK_SUCCESS)
-		throw std::runtime_error("Can't bind image memory");
+	createImage(
+		context,
+		VK_IMAGE_TYPE_2D,
+		width, height, 1,
+		mipLevels, 1, numSamples,
+		format, tiling,
+		usage, memoryProperties,
+		0,
+		image, memory
+	);
 }
 
-void VulkanUtils::createImage2D(
+void VulkanUtils::fillImage(
 	const VulkanContext *context,
+	VkImage image,
 	uint32_t width,
 	uint32_t height,
+	uint32_t depth,
 	uint32_t mipLevels,
+	uint32_t arrayLayers,
 	uint32_t pixelSize,
+	VkFormat format,
 	const void *data,
 	uint32_t dataMipLevels,
-	VkSampleCountFlagBits numSamples,
-	VkFormat format,
-	VkImageTiling tiling,
-	VkImage &image,
-	VkDeviceMemory &memory
+	uint32_t dataArrayLayers
 )
 {
-	VkDeviceSize texture_size = 0;
+	VkDeviceSize resource_size = 0;
 	uint32_t mip_width = width;
 	uint32_t mip_height = height;
+	uint32_t mip_depth = depth;
 
 	for (uint32_t i = 0; i < dataMipLevels; i++)
 	{
-		texture_size += mip_width * mip_height * pixelSize;
-		mip_width /= 2;
-		mip_height /= 2;
+		resource_size += mip_width * mip_height * pixelSize;
+		mip_width = std::max<int>(mip_width / 2, 1);
+		mip_height = std::max<int>(mip_height / 2, 1);
+		mip_depth = std::max<int>(mip_depth / 2, 1);
 	}
-
-	// Create image
-	createImage2D(
-		context,
-		width,
-		height,
-		mipLevels,
-		numSamples,
-		format,
-		tiling,
-		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		image,
-		memory
-	);
-
-	// Create staging buffer
-	VkBuffer staging_buffer = VK_NULL_HANDLE;
-	VkDeviceMemory staging_memory = VK_NULL_HANDLE;
-
-	createBuffer(
-		context,
-		texture_size,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		staging_buffer,
-		staging_memory
-	);
-
-	// Fill staging buffer
-	void *staging_data = nullptr;
-	vkMapMemory(context->getDevice(), staging_memory, 0, texture_size, 0, &staging_data);
-	memcpy(staging_data, data, static_cast<size_t>(texture_size));
-	vkUnmapMemory(context->getDevice(), staging_memory);
 
 	// Prepare the image for transfer
 	transitionImageLayout(
@@ -510,38 +486,64 @@ void VulkanUtils::createImage2D(
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		0,
-		mipLevels
+		mipLevels,
+		0,
+		arrayLayers
 	);
 
+	// Create staging buffer
+	VkBuffer staging_buffer = VK_NULL_HANDLE;
+	VkDeviceMemory staging_memory = VK_NULL_HANDLE;
+
+	createBuffer(
+		context,
+		resource_size * dataArrayLayers,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		staging_buffer,
+		staging_memory
+	);
+
+	// Fill staging buffer
+	void *staging_data = nullptr;
+	vkMapMemory(context->getDevice(), staging_memory, 0, resource_size * dataArrayLayers, 0, &staging_data);
+	memcpy(staging_data, data, static_cast<size_t>(resource_size * dataArrayLayers));
+	vkUnmapMemory(context->getDevice(), staging_memory);
+
 	// Copy to the image memory on GPU
-	mip_width = width;
-	mip_height = height;
 	VkDeviceSize offset = 0;
 
 	VkCommandBuffer command_buffer = beginSingleTimeCommands(context);
 
-	for (uint32_t i = 0; i < dataMipLevels; i++)
+	for (uint32_t i = 0; i < dataArrayLayers; i++)
 	{
-		VkBufferImageCopy region = {};
-		region.bufferOffset = offset;
-		region.bufferRowLength = 0;
-		region.bufferImageHeight = 0;
+		mip_width = width;
+		mip_height = height;
+		mip_depth = depth;
 
-		region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		region.imageSubresource.mipLevel = i;
-		region.imageSubresource.baseArrayLayer = 0;
-		region.imageSubresource.layerCount = 1;
+		for (uint32_t j = 0; j < dataMipLevels; j++)
+		{
+			VkBufferImageCopy region = {};
+			region.bufferOffset = offset;
+			region.bufferRowLength = 0;
+			region.bufferImageHeight = 0;
 
-		region.imageOffset = {0, 0, 0};
-		region.imageExtent.width = width;
-		region.imageExtent.height = height;
-		region.imageExtent.depth = 1;
+			region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			region.imageSubresource.mipLevel = j;
+			region.imageSubresource.baseArrayLayer = i;
+			region.imageSubresource.layerCount = 1;
 
-		vkCmdCopyBufferToImage(command_buffer, staging_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+			region.imageOffset = {0, 0, 0};
+			region.imageExtent.width = width;
+			region.imageExtent.height = height;
+			region.imageExtent.depth = 1;
 
-		offset += mip_width * mip_height * pixelSize;
-		mip_width /= 2;
-		mip_height /= 2;
+			vkCmdCopyBufferToImage(command_buffer, staging_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+			offset += mip_width * mip_height * mip_depth * pixelSize;
+			mip_width /= 2;
+			mip_height /= 2;
+		}
 	}
 
 	VulkanUtils::endSingleTimeCommands(context, command_buffer);
@@ -554,7 +556,9 @@ void VulkanUtils::createImage2D(
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		0,
-		mipLevels
+		mipLevels,
+		0,
+		arrayLayers
 	);
 
 	// Destroy staging buffer

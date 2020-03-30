@@ -110,6 +110,59 @@ namespace render::backend
 			return supported_types[static_cast<int>(type)];
 		}
 
+		static void createTextureData(const VulkanContext *context, Texture *texture, Format format, const void *data, int num_data_mipmaps, int num_data_layers)
+		{
+			VulkanUtils::createImage(
+				context,
+				texture->type,
+				texture->width,
+				texture->height,
+				texture->depth,
+				texture->num_mipmaps,
+				texture->num_layers,
+				texture->samples,
+				texture->format,
+				texture->tiling,
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				texture->flags,
+				texture->image,
+				texture->memory
+			);
+
+			if (data != nullptr)
+			{
+				VulkanUtils::fillImage(
+					context,
+					texture->image,
+					texture->width,
+					texture->height,
+					texture->depth,
+					texture->num_mipmaps,
+					texture->num_layers,
+					vulkan::toPixelSize(format),
+					texture->format,
+					data,
+					num_data_mipmaps,
+					num_data_layers
+				);
+			}
+			else
+			{
+				// Prepare the image to be used as a color attachment
+				VulkanUtils::transitionImageLayout(
+					context,
+					texture->image,
+					texture->format,
+					VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+					0,
+					texture->num_mipmaps,
+					0,
+					texture->num_layers
+				);
+			}
+		}
 	}
 
 	VertexBuffer *VulkanDriver::createVertexBuffer(
@@ -208,32 +261,115 @@ namespace render::backend
 		assert(num_mipmaps != 0 && "Invalid mipmap count");
 		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
 
-		uint32_t pixel_size = vulkan::toPixelSize(format);
-		
 		vulkan::Texture *result = new vulkan::Texture();
 		result->type = VK_IMAGE_TYPE_2D;
 		result->format = vulkan::toFormat(format);
 		result->width = width;
 		result->height = height;
+		result->depth = 1;
 		result->num_mipmaps = num_mipmaps;
 		result->num_layers = 1;
 		result->samples = VK_SAMPLE_COUNT_1_BIT;
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
+		result->flags = 0;
 
-		VulkanUtils::createImage2D(
-			context,
-			result->width,
-			result->height,
-			result->num_mipmaps,
-			pixel_size,
-			data,
-			num_data_mipmaps,
-			result->samples,
-			result->format,
-			result->tiling,
-			result->image,
-			result->memory
-		);
+		vulkan::createTextureData(context, result, format, data, num_data_mipmaps, 1);
+
+		return result;
+	}
+
+	Texture *VulkanDriver::createTexture2DArray(
+		uint32_t width,
+		uint32_t height,
+		uint32_t num_mipmaps,
+		uint32_t num_layers,
+		Format format,
+		const void *data,
+		uint32_t num_data_mipmaps,
+		uint32_t num_data_layers
+	)
+	{
+		assert(width != 0 && height != 0 && "Invalid texture size");
+		assert(num_layers != 0 && "Invalid layer count");
+		assert(num_mipmaps != 0 && "Invalid mipmap count");
+		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
+		assert((data == nullptr) || (data != nullptr && num_data_layers != 0) && "Invalid data layers");
+
+		vulkan::Texture *result = new vulkan::Texture();
+		result->type = VK_IMAGE_TYPE_2D;
+		result->format = vulkan::toFormat(format);
+		result->width = width;
+		result->height = height;
+		result->depth = 1;
+		result->num_mipmaps = num_mipmaps;
+		result->num_layers = num_layers;
+		result->samples = VK_SAMPLE_COUNT_1_BIT;
+		result->tiling = VK_IMAGE_TILING_OPTIMAL;
+		result->flags = 0;
+
+		vulkan::createTextureData(context, result, format, data, num_data_mipmaps, num_data_layers);
+
+		return result;
+	}
+
+	Texture *VulkanDriver::createTexture3D(
+		uint32_t width,
+		uint32_t height,
+		uint32_t depth,
+		uint32_t num_mipmaps,
+		Format format,
+		const void *data,
+		uint32_t num_data_mipmaps
+	)
+	{
+		assert(width != 0 && height != 0 && depth != 0 && "Invalid texture size");
+		assert(num_mipmaps != 0 && "Invalid mipmap count");
+		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
+
+		vulkan::Texture *result = new vulkan::Texture();
+		result->type = VK_IMAGE_TYPE_3D;
+		result->format = vulkan::toFormat(format);
+		result->width = width;
+		result->height = height;
+		result->depth = depth;
+		result->num_mipmaps = num_mipmaps;
+		result->num_layers = 1;
+		result->samples = VK_SAMPLE_COUNT_1_BIT;
+		result->tiling = VK_IMAGE_TILING_OPTIMAL;
+		result->flags = 0;
+
+		vulkan::createTextureData(context, result, format, data, num_data_mipmaps, 1);
+
+		return result;
+	}
+
+	Texture *VulkanDriver::createTextureCube(
+		uint32_t width,
+		uint32_t height,
+		uint32_t num_mipmaps,
+		Format format,
+		const void *data,
+		uint32_t num_data_mipmaps
+	)
+	{
+		assert(width != 0 && height != 0 && "Invalid texture size");
+		assert(width == height && "Texture must be square");
+		assert(num_mipmaps != 0 && "Invalid mipmap count");
+		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
+
+		vulkan::Texture *result = new vulkan::Texture();
+		result->type = VK_IMAGE_TYPE_2D;
+		result->format = vulkan::toFormat(format);
+		result->width = width;
+		result->height = height;
+		result->depth = 1;
+		result->num_mipmaps = num_mipmaps;
+		result->num_layers = 6;
+		result->samples = VK_SAMPLE_COUNT_1_BIT;
+		result->tiling = VK_IMAGE_TILING_OPTIMAL;
+		result->flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+		vulkan::createTextureData(context, result, format, data, num_data_mipmaps, 1);
 
 		return result;
 	}
