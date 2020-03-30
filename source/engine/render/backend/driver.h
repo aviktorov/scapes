@@ -138,7 +138,8 @@ struct IndexBuffer {};
 struct RenderPrimitive {};
 
 struct Texture {};
-struct RenderTarget {};
+struct FrameBuffer {};
+// TODO: render pass?
 
 struct UniformBuffer {};
 // TODO: shader storage buffer?
@@ -152,10 +153,19 @@ struct VertexAttribute
 	unsigned int offset {0};
 };
 
-struct RenderTargetAttachment
+struct FrameBufferColorAttachment
 {
 	const Texture *attachment {nullptr};
-	// TODO: add more
+	// TODO: add support for load / store operations
+	// TODO: add clear values
+};
+
+struct FrameBufferDepthStencilAttachment
+{
+	const Texture *attachment {nullptr};
+	// TODO: add support for load / store operations
+	// TODO: add support for load / store stencil operations
+	// TODO: add clear values
 };
 
 // main backend class
@@ -196,11 +206,12 @@ public:
 	virtual Texture *createTexture2DArray(
 		uint32_t width,
 		uint32_t height,
-		uint32_t num_layers,
 		uint32_t num_mipmaps,
+		uint32_t num_layers,
 		Format format,
 		const void *data = nullptr,
-		uint32_t num_data_mipmaps = 1
+		uint32_t num_data_mipmaps = 1,
+		uint32_t num_data_layers = 1
 	) = 0;
 
 	virtual Texture *createTexture3D(
@@ -222,10 +233,10 @@ public:
 		uint32_t num_data_mipmaps = 1
 	) = 0;
 
-	virtual RenderTarget *createRenderTarget(
+	virtual FrameBuffer *createFrameBuffer(
 		uint8_t num_color_attachments,
-		const RenderTargetAttachment *color_attachments,
-		const RenderTargetAttachment *depthstencil_attachment = nullptr
+		const FrameBufferColorAttachment *color_attachments,
+		const FrameBufferDepthStencilAttachment *depthstencil_attachment = nullptr
 	) = 0;
 
 	virtual UniformBuffer *createUniformBuffer(
@@ -250,7 +261,7 @@ public:
 	virtual void destroyIndexBuffer(IndexBuffer *index_buffer) = 0;
 	virtual void destroyRenderPrimitive(RenderPrimitive *render_primitive) = 0;
 	virtual void destroyTexture(Texture *texture) = 0;
-	virtual void destroyRenderTarget(RenderTarget *render_target) = 0;
+	virtual void destroyFrameBuffer(FrameBuffer *frame_buffer) = 0;
 	virtual void destroyUniformBuffer(UniformBuffer *uniform_buffer) = 0;
 	virtual void destroyShader(Shader *shader) = 0;
 
@@ -258,7 +269,7 @@ public:
 
 	// sequence
 	virtual void beginRenderPass(
-		const RenderTarget *render_target
+		const FrameBuffer *frame_buffer
 	) = 0;
 
 	virtual void endRenderPass() = 0;

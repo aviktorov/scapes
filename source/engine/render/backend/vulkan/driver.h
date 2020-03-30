@@ -11,7 +11,8 @@ namespace render::backend
 	{
 		struct VertexBuffer : public render::backend::VertexBuffer
 		{
-			enum {
+			enum
+			{
 				MAX_ATTRIBUTES = 16,
 			};
 
@@ -52,9 +53,10 @@ namespace render::backend
 			uint32_t num_mipmaps {0};
 			VkImageTiling tiling {VK_IMAGE_TILING_OPTIMAL};
 			VkSampleCountFlagBits samples {VK_SAMPLE_COUNT_1_BIT};
+			VkImageCreateFlags flags {0};
 		};
 
-		struct RenderTarget : public render::backend::RenderTarget
+		struct FrameBuffer : public render::backend::FrameBuffer
 		{
 			enum
 			{
@@ -63,7 +65,7 @@ namespace render::backend
 
 			VkFramebuffer framebuffer {VK_NULL_HANDLE};
 			uint8_t num_color_attachments {0};
-			VkImageView color_attachments[RenderTarget::MAX_COLOR_ATTACHMENTS];
+			VkImageView color_attachments[FrameBuffer::MAX_COLOR_ATTACHMENTS];
 			VkImageView depthstencil_attachment {VK_NULL_HANDLE};
 		};
 
@@ -119,11 +121,12 @@ namespace render::backend
 		Texture *createTexture2DArray(
 			uint32_t width,
 			uint32_t height,
-			uint32_t num_layers,
 			uint32_t num_mipmaps,
+			uint32_t num_layers,
 			Format format,
 			const void *data = nullptr,
-			uint32_t num_data_mipmaps = 1
+			uint32_t num_data_mipmaps = 1,
+			uint32_t num_data_layers = 1
 		) override;
 
 		Texture *createTexture3D(
@@ -145,10 +148,10 @@ namespace render::backend
 			uint32_t num_data_mipmaps = 1
 		) override;
 
-		RenderTarget *createRenderTarget(
+		FrameBuffer *createFrameBuffer(
 			uint8_t num_color_attachments,
-			const RenderTargetAttachment *color_attachments,
-			const RenderTargetAttachment *depthstencil_attachment = nullptr
+			const FrameBufferColorAttachment *color_attachments,
+			const FrameBufferDepthStencilAttachment *depthstencil_attachment = nullptr
 		) override;
 
 		UniformBuffer *createUniformBuffer(
@@ -173,7 +176,7 @@ namespace render::backend
 		void destroyIndexBuffer(IndexBuffer *index_buffer) override;
 		void destroyRenderPrimitive(RenderPrimitive *render_primitive) override;
 		void destroyTexture(Texture *texture) override;
-		void destroyRenderTarget(RenderTarget *render_target) override;
+		void destroyFrameBuffer(FrameBuffer *frame_buffer) override;
 		void destroyUniformBuffer(UniformBuffer *uniform_buffer) override;
 		void destroyShader(Shader *shader) override;
 
@@ -181,7 +184,7 @@ namespace render::backend
 
 		// sequence
 		void beginRenderPass(
-			const RenderTarget *render_target
+			const FrameBuffer *frame_buffer
 		) override;
 
 		void endRenderPass() override;
