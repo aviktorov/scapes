@@ -502,6 +502,7 @@ void VulkanSwapChain::initFrames(VkDeviceSize uboSize)
 
 		if (vkCreateFramebuffer(context->getDevice(), &framebufferInfo, nullptr, &frame.frameBuffer) != VK_SUCCESS)
 			throw std::runtime_error("Can't create framebuffer");
+
 		// Create commandbuffer
 		VkCommandBufferAllocateInfo allocateInfo = {};
 		allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
