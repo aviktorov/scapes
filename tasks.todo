@@ -10,6 +10,7 @@ PBR Sandbox:
         ☐ Debug slow shader render failure
         ☐ Create a pull request to ImGui (Vulkan + Volk)
         ☐ Figure out different probability density functions for different NDF
+        ☐ Figure out why context swap recreation is broken during resize event
     Online:
         ☐ Implement Oren-Nayar diffuse BRDF
         ☐ Implement microfacet Burley 12 diffuse BRDF
@@ -23,13 +24,14 @@ PBR Sandbox:
         ☐ Create backend based ImGui implementation on App level
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ Add pipeline registry class
-    Stream 26:
-        ☐ Finish with texture in Vulkan backend
+    Stream 27:
         ☐ Add render target API implementation to Vulkan backend
         ☐ Add shader API implementation to Vulkan backend
         ☐ Add swap chain API to backend
         ☐ Add swap chain API implementation to Vulkan backend
         ☐ Create separate cmake script for backend
+    Stream 26:
+        ✔ Finish with texture in Vulkan backend @done (3/31/2020, 2:48:56 AM)
     Stream 25:
         ✔ Replace swapchain map/unmap calls to raw ptrs + memcpy @done (3/29/2020, 4:13:31 AM)
         ✘ Add VulkanGraphicsProgram class @cancelled (3/29/2020, 4:10:15 AM)
