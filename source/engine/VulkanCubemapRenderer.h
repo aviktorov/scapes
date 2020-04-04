@@ -18,11 +18,7 @@ class VulkanContext;
 class VulkanCubemapRenderer
 {
 public:
-	VulkanCubemapRenderer(const VulkanContext *context, render::backend::Driver *driver)
-		: context(context)
-		, driver(driver)
-		, quad(driver)
-	{ }
+	VulkanCubemapRenderer(render::backend::Driver *driver);
 
 	void init(
 		const VulkanShader &vertex_shader,

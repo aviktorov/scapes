@@ -1,11 +1,9 @@
 #include <volk.h>
 
 #include "Application.h"
-#include "VulkanContext.h"
 #include "VulkanImGuiRenderer.h"
 #include "VulkanRenderer.h"
 #include "VulkanSwapChain.h"
-#include "VulkanUtils.h"
 
 #include "RenderScene.h"
 
@@ -290,11 +288,11 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	renderer = new VulkanRenderer(context, driver, swapChain->getExtent(), swapChain->getDescriptorSetLayout(), swapChain->getRenderPass());
+	renderer = new VulkanRenderer(driver, swapChain->getExtent(), swapChain->getDescriptorSetLayout(), swapChain->getRenderPass());
 	renderer->init(scene);
 	renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
 
-	imguiRenderer = new VulkanImGuiRenderer(context, ImGui::GetCurrentContext(), swapChain->getExtent(), swapChain->getNoClearRenderPass());
+	imguiRenderer = new VulkanImGuiRenderer(driver, ImGui::GetCurrentContext(), swapChain->getExtent(), swapChain->getNoClearRenderPass());
 	imguiRenderer->init(swapChain);
 }
 
@@ -329,14 +327,12 @@ void Application::shutdownImGui()
 void Application::initVulkan()
 {
 	driver = render::backend::createDriver("PBR Sandbox", "Scape");
-	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
 }
 
 void Application::shutdownVulkan()
 {
 	render::backend::destroyDriver(driver);
 	driver = nullptr;
-	context = nullptr;
 }
 
 /*
@@ -350,7 +346,7 @@ void Application::initVulkanSwapChain()
 #endif
 
 	if (!swapChain)
-		swapChain = new VulkanSwapChain(context, nativeWindow, sizeof(ApplicationState));
+		swapChain = new VulkanSwapChain(driver, nativeWindow, sizeof(ApplicationState));
 
 	int width, height;
 	glfwGetWindowSize(window, &width, &height);

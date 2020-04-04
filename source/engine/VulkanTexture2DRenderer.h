@@ -18,11 +18,7 @@ class VulkanContext;
 class VulkanTexture2DRenderer
 {
 public:
-	VulkanTexture2DRenderer(const VulkanContext *context, render::backend::Driver *driver)
-		: context(context)
-		, driver(driver)
-		, quad(driver)
-	{ }
+	VulkanTexture2DRenderer(render::backend::Driver *driver);
 
 	void init(
 		const VulkanShader &vertex_shader,

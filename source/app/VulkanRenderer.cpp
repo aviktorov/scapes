@@ -10,27 +10,28 @@
 
 #include "RenderScene.h"
 
+#include <render/backend/vulkan/driver.h>
+
 /*
  */
 VulkanRenderer::VulkanRenderer(
-	const VulkanContext *context,
 	render::backend::Driver *driver,
 	VkExtent2D extent,
 	VkDescriptorSetLayout descriptorSetLayout,
 	VkRenderPass renderPass
 )
-	: context(context)
-	, driver(driver)
+	: driver(driver)
 	, extent(extent)
 	, renderPass(renderPass)
 	, descriptorSetLayout(descriptorSetLayout)
-	, hdriToCubeRenderer(context, driver)
-	, diffuseIrradianceRenderer(context, driver)
+	, hdriToCubeRenderer(driver)
+	, diffuseIrradianceRenderer(driver)
 	, environmentCubemap(driver)
 	, diffuseIrradianceCubemap(driver)
 	, bakedBRDF(driver)
-	, bakedBRDFRenderer(context, driver)
+	, bakedBRDFRenderer(driver)
 {
+	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -143,7 +144,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 	cubeToPrefilteredRenderers.resize(environmentCubemap.getNumMipLevels() - 1);
 	for (int mip = 0; mip < environmentCubemap.getNumMipLevels() - 1; mip++)
 	{
-		VulkanCubemapRenderer *mipRenderer = new VulkanCubemapRenderer(context, driver);
+		VulkanCubemapRenderer *mipRenderer = new VulkanCubemapRenderer(driver);
 		mipRenderer->init(
 			*scene->getCubeVertexShader(),
 			*scene->getCubeToPrefilteredSpecularShader(),

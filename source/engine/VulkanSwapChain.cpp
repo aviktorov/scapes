@@ -9,11 +9,14 @@
 #include <algorithm>
 #include <cassert>
 
-VulkanSwapChain::VulkanSwapChain(const VulkanContext *context, void *nativeWindow, VkDeviceSize uboSize)
-	: context(context)
+#include <render/backend/vulkan/driver.h>
+
+VulkanSwapChain::VulkanSwapChain(render::backend::Driver *driver, void *nativeWindow, VkDeviceSize uboSize)
+	: driver(driver)
 	, nativeWindow(nativeWindow)
 	, uboSize(uboSize)
 {
+	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
 }
 
 VulkanSwapChain::~VulkanSwapChain()

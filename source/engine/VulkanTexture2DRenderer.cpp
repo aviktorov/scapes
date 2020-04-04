@@ -18,6 +18,15 @@
 
 /*
  */
+VulkanTexture2DRenderer::VulkanTexture2DRenderer(render::backend::Driver *driver)
+	: driver(driver)
+	, quad(driver)
+{
+	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
+}
+
+/*
+ */
 void VulkanTexture2DRenderer::init(
 	const VulkanShader &vertex_shader,
 	const VulkanShader &fragment_shader,

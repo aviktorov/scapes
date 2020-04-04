@@ -9,19 +9,22 @@
 
 #include <array>
 
+#include <render/backend/vulkan/driver.h>
+
 /*
  */
 VulkanImGuiRenderer::VulkanImGuiRenderer(
-	const VulkanContext *context,
+	render::backend::Driver *driver,
 	ImGuiContext *imguiContext,
 	VkExtent2D extent,
 	VkRenderPass renderPass
 )
-	: context(context)
+	: driver(driver)
 	, imguiContext(imguiContext)
 	, extent(extent)
 	, renderPass(renderPass)
 {
+	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
 	ImGui::SetCurrentContext(imguiContext);
 }
 

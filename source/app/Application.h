@@ -12,7 +12,6 @@ class RenderScene;
 class VulkanRenderer;
 class VulkanImGuiRenderer;
 class VulkanSwapChain;
-class VulkanContext;
 
 /*
  */
@@ -95,6 +94,5 @@ private:
 
 	VulkanSwapChain *swapChain {nullptr};
 
-	const VulkanContext *context {nullptr};
 	render::backend::Driver *driver {nullptr};
 };

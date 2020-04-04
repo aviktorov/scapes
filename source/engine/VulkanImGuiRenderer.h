@@ -1,6 +1,7 @@
 #pragma once
 
 #include <volk.h>
+#include <render/backend/driver.h>
 
 class RenderScene;
 class VulkanContext;
@@ -15,7 +16,7 @@ class VulkanImGuiRenderer
 {
 public:
 	VulkanImGuiRenderer(
-		const VulkanContext *context,
+		render::backend::Driver *driver,
 		ImGuiContext *imguiContext,
 		VkExtent2D extent,
 		VkRenderPass renderPass
@@ -31,6 +32,7 @@ public:
 	void render(const VulkanRenderFrame &frame);
 
 private:
+	render::backend::Driver *driver {nullptr};
 	const VulkanContext *context {nullptr};
 	ImGuiContext *imguiContext {nullptr};
 	VkExtent2D extent;

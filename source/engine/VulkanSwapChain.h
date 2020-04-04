@@ -3,6 +3,8 @@
 #include <volk.h>
 #include <vector>
 
+#include <render/backend/driver.h>
+
 class VulkanContext;
 
 /*
@@ -24,7 +26,7 @@ struct VulkanRenderFrame
 class VulkanSwapChain
 {
 public:
-	VulkanSwapChain(const VulkanContext *context, void *nativeWindow, VkDeviceSize uboSize);
+	VulkanSwapChain(render::backend::Driver *driver, void *nativeWindow, VkDeviceSize uboSize);
 	virtual ~VulkanSwapChain();
 
 	void init(int width, int height);
@@ -68,6 +70,7 @@ private:
 	void shutdownFrames();
 
 private:
+	render::backend::Driver *driver {nullptr};
 	const VulkanContext *context {nullptr};
 	std::vector<VulkanRenderFrame> frames;
 	VkDeviceSize uboSize;

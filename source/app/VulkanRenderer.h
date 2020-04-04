@@ -22,7 +22,6 @@ class VulkanRenderer
 {
 public:
 	VulkanRenderer(
-		const VulkanContext *context,
 		render::backend::Driver *driver,
 		VkExtent2D extent,
 		VkDescriptorSetLayout descriptorSetLayout,
