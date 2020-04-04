@@ -24,12 +24,17 @@ PBR Sandbox:
         ☐ Create backend based ImGui implementation on App level
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ Add pipeline registry class
-    Stream 27:
-        ☐ Add render target API implementation to Vulkan backend
-        ☐ Add shader API implementation to Vulkan backend
+    Stream 29:
+        ☐ Add pipeline layout cache to backend
+        ☐ Add pipeline cache to backend
+        ☐ Add render pass cache to backend
+    Stream 28:
         ☐ Add swap chain API to backend
         ☐ Add swap chain API implementation to Vulkan backend
         ☐ Create separate cmake script for backend
+    Stream 27:
+        ✔ Add render target API implementation to Vulkan backend @done (4/4/2020, 8:07:28 PM)
+        ✔ Add shader API implementation to Vulkan backend @done (4/4/2020, 8:07:27 PM)
     Stream 26:
         ✔ Finish with textures in Vulkan backend @done (3/31/2020, 2:48:56 AM)
     Stream 25:
