@@ -270,8 +270,22 @@ namespace render::backend
 				texture->memory
 			);
 
+			VkImageLayout source_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+
 			if (data != nullptr)
 			{
+				// prepare for transfer
+				VulkanUtils::transitionImageLayout(
+					context,
+					texture->image,
+					texture->format,
+					VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					0, texture->num_mipmaps,
+					0, texture->num_layers
+				);
+
+				// transfer data to GPU
 				VulkanUtils::fillImage(
 					context,
 					texture->image,
@@ -283,20 +297,22 @@ namespace render::backend
 					num_data_mipmaps,
 					num_data_layers
 				);
+
+				source_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 			}
 
-			// Prepare the image for shader access
+			// prepare for shader access
 			VulkanUtils::transitionImageLayout(
 				context,
 				texture->image,
 				texture->format,
-				VK_IMAGE_LAYOUT_UNDEFINED,
+				source_layout,
 				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 				0, texture->num_mipmaps,
 				0, texture->num_layers
 			);
 
-			// Create image view & sampler
+			// create base view & sampler
 			texture->view = VulkanUtils::createImageView(
 				context,
 				texture->image,
@@ -861,6 +877,18 @@ namespace render::backend
 
 		vulkan::Texture *vk_texture = static_cast<vulkan::Texture *>(texture);
 
+		// prepare for transfer
+		VulkanUtils::transitionImageLayout(
+			context,
+			vk_texture->image,
+			vk_texture->format,
+			VK_IMAGE_LAYOUT_UNDEFINED,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			0,
+			vk_texture->num_mipmaps
+		);
+
+		// generate 2D mipmaps with linear filter
 		VulkanUtils::generateImage2DMipmaps(
 			context,
 			vk_texture->image,
@@ -870,6 +898,17 @@ namespace render::backend
 			vk_texture->num_mipmaps,
 			vk_texture->format,
 			VK_FILTER_LINEAR
+		);
+
+		// prepare for shader access
+		VulkanUtils::transitionImageLayout(
+			context,
+			vk_texture->image,
+			vk_texture->format,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			0,
+			vk_texture->num_mipmaps
 		);
 	}
 

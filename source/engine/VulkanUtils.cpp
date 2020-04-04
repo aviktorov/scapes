@@ -478,17 +478,6 @@ void VulkanUtils::fillImage(
 		mip_depth = std::max<int>(mip_depth / 2, 1);
 	}
 
-	// Prepare the image for transfer
-	transitionImageLayout(
-		context,
-		image,
-		format,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		0, mipLevels,
-		0, arrayLayers
-	);
-
 	// Create staging buffer
 	VkBuffer staging_buffer = VK_NULL_HANDLE;
 	VkDeviceMemory staging_memory = VK_NULL_HANDLE;
@@ -888,17 +877,6 @@ void VulkanUtils::generateImage2DMipmaps(
 	if (filter == VK_FILTER_CUBIC_EXT && !supportsCubicFiltering)
 		throw std::runtime_error("Cubic filtering is not supported on this device");
 
-	// prepare the image for transfer
-	transitionImageLayout(
-		context,
-		image,
-		imageFormat,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		0,
-		mipLevels
-	);
-
 	// generate mips
 	VkCommandBuffer commandBuffer = beginSingleTimeCommands(context);
 
@@ -974,17 +952,6 @@ void VulkanUtils::generateImage2DMipmaps(
 	}
 
 	endSingleTimeCommands(context, commandBuffer);
-
-	// Prepare the image for shader access
-	VulkanUtils::transitionImageLayout(
-		context,
-		image,
-		imageFormat,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		0,
-		mipLevels
-	);
 }
 
 VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const VulkanContext *context)
