@@ -5,6 +5,12 @@
 namespace render::backend
 {
 
+enum class Api : unsigned char
+{
+	VULKAN = 0,
+	DEFAULT = VULKAN,
+};
+
 enum class BufferType : unsigned char
 {
 	STATIC = 0,
@@ -112,24 +118,22 @@ enum class Format : unsigned int
 enum class ShaderType : unsigned char
 {
 	// Graphics pipeline
-	Vertex = 0,
-	TessellationControl,
-	TessellationEvaulation,
-	Geometry,
-	Fragment,
+	VERTEX = 0,
+	TESSELLATION_CONTROL,
+	TESSELLATION_EVALUATION,
+	GEOMETRY,
+	FRAGMENT,
 
 	// Compute pipeline
-	Compute,
+	COMPUTE,
 
 	// Raytracing pipeline
-	RayGeneration,
-	Intersection,
-	AnyHit,
-	ClosestHit,
-	Miss,
-
-	// Misc
-	Callable,
+	RAY_GENERATION,
+	INTERSECTION,
+	ANY_HIT,
+	CLOSEST_HIT,
+	MISS,
+	CALLABLE,
 };
 
 // C opaque structs
@@ -155,14 +159,18 @@ struct VertexAttribute
 
 struct FrameBufferColorAttachment
 {
-	const Texture *attachment {nullptr};
+	const Texture *texture {nullptr};
+	int base_mip {0};
+	int num_mips {1};
+	int base_layer {0};
+	int num_layers {1};
 	// TODO: add support for load / store operations
 	// TODO: add clear values
 };
 
 struct FrameBufferDepthStencilAttachment
 {
-	const Texture *attachment {nullptr};
+	const Texture *texture {nullptr};
 	// TODO: add support for load / store operations
 	// TODO: add support for load / store stencil operations
 	// TODO: add clear values
@@ -242,13 +250,14 @@ public:
 	virtual UniformBuffer *createUniformBuffer(
 		BufferType type,
 		uint32_t size,
-		const void *data
+		const void *data = nullptr
 	) = 0;
 
 	virtual Shader *createShaderFromSource(
 		ShaderType type,
-		uint32_t length,
-		const char *source
+		uint32_t size,
+		const char *data,
+		const char *path = nullptr
 	) = 0;
 
 	virtual Shader *createShaderFromBytecode(
@@ -264,6 +273,14 @@ public:
 	virtual void destroyFrameBuffer(FrameBuffer *frame_buffer) = 0;
 	virtual void destroyUniformBuffer(UniformBuffer *uniform_buffer) = 0;
 	virtual void destroyShader(Shader *shader) = 0;
+
+public:
+	virtual void generateTexture2DMipmaps(Texture *texture) = 0;
+
+	virtual void *map(UniformBuffer *uniform_buffer) = 0;
+	virtual void unmap(UniformBuffer *uniform_buffer) = 0;
+
+	virtual void wait() = 0;
 
 public:
 
@@ -301,5 +318,8 @@ public:
 		uint32_t offset
 	) = 0;
 };
+
+extern Driver *createDriver(const char *application_name, const char *engine_name, Api api = Api::DEFAULT);
+extern void destroyDriver(Driver *driver);
 
 }

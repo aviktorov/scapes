@@ -226,6 +226,7 @@ public:
 	static void generateImage2DMipmaps(
 		const VulkanContext *context,
 		VkImage image,
+		VkFormat imageFormat,
 		uint32_t width,
 		uint32_t height,
 		uint32_t mipLevels,

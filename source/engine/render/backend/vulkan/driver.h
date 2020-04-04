@@ -43,6 +43,8 @@ namespace render::backend
 		struct Texture : public render::backend::Texture
 		{
 			VkImage image {VK_NULL_HANDLE};
+			VkImageView view {VK_NULL_HANDLE};
+			VkSampler sampler {VK_NULL_HANDLE};
 			VkDeviceMemory memory {VK_NULL_HANDLE}; // TODO: replace by VMA later
 			VkImageType type {VK_IMAGE_TYPE_2D};
 			VkFormat format {VK_FORMAT_R8G8B8A8_UNORM};
@@ -56,6 +58,16 @@ namespace render::backend
 			VkImageCreateFlags flags {0};
 		};
 
+		struct FrameBufferColorAttachment
+		{
+			VkImageView view {VK_NULL_HANDLE};
+		};
+
+		struct FrameBufferDepthStencilAttachment
+		{
+			VkImageView view {VK_NULL_HANDLE};
+		};
+
 		struct FrameBuffer : public render::backend::FrameBuffer
 		{
 			enum
@@ -64,9 +76,10 @@ namespace render::backend
 			};
 
 			VkFramebuffer framebuffer {VK_NULL_HANDLE};
+			VkRenderPass dummy_render_pass {VK_NULL_HANDLE}; // TODO: move to render pass cache
 			uint8_t num_color_attachments {0};
-			VkImageView color_attachments[FrameBuffer::MAX_COLOR_ATTACHMENTS];
-			VkImageView depthstencil_attachment {VK_NULL_HANDLE};
+			FrameBufferColorAttachment color_attachments[FrameBuffer::MAX_COLOR_ATTACHMENTS];
+			FrameBufferDepthStencilAttachment depthstencil_attachment;
 		};
 
 		struct UniformBuffer : public render::backend::UniformBuffer
@@ -74,18 +87,25 @@ namespace render::backend
 			VkBuffer buffer {VK_NULL_HANDLE};
 			VkDeviceMemory memory {VK_NULL_HANDLE}; // TODO: replace by VMA later
 			uint32_t size {0};
+			void *pointer {nullptr};
 			// TODO: static / dynamic fields
 		};
 
 		struct Shader : public render::backend::Shader
 		{
-			ShaderType type {ShaderType::Fragment};
-			VkShaderModule shaderModule {VK_NULL_HANDLE};
+			ShaderType type {ShaderType::FRAGMENT};
+			VkShaderModule module {VK_NULL_HANDLE};
 		};
 	}
 
 	class VulkanDriver : public Driver
 	{
+	public:
+		VulkanDriver(const char *application_name, const char *engine_name);
+		virtual ~VulkanDriver();
+
+		inline const VulkanContext *getContext() const { return context; }
+
 	public:
 		VertexBuffer *createVertexBuffer(
 			BufferType type,
@@ -157,13 +177,14 @@ namespace render::backend
 		UniformBuffer *createUniformBuffer(
 			BufferType type,
 			uint32_t size,
-			const void *data
+			const void *data = nullptr
 		) override;
 
 		Shader *createShaderFromSource(
 			ShaderType type,
-			uint32_t length,
-			const char *source
+			uint32_t size,
+			const char *data,
+			const char *path = nullptr
 		) override;
 
 		Shader *createShaderFromBytecode(
@@ -179,6 +200,14 @@ namespace render::backend
 		void destroyFrameBuffer(FrameBuffer *frame_buffer) override;
 		void destroyUniformBuffer(UniformBuffer *uniform_buffer) override;
 		void destroyShader(Shader *shader) override;
+
+	public:
+		void generateTexture2DMipmaps(Texture *texture) override;
+
+		void *map(UniformBuffer *uniform_buffer) override;
+		void unmap(UniformBuffer *uniform_buffer) override;
+
+		void wait() override;
 
 	public:
 
@@ -220,3 +249,4 @@ namespace render::backend
 		VulkanContext *context {nullptr};
 	};
 }
+

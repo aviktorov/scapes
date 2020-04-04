@@ -485,10 +485,8 @@ void VulkanUtils::fillImage(
 		format,
 		VK_IMAGE_LAYOUT_UNDEFINED,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		0,
-		mipLevels,
-		0,
-		arrayLayers
+		0, mipLevels,
+		0, arrayLayers
 	);
 
 	// Create staging buffer
@@ -548,19 +546,6 @@ void VulkanUtils::fillImage(
 
 	VulkanUtils::endSingleTimeCommands(context, command_buffer);
 
-	// Prepare the image for shader access
-	VulkanUtils::transitionImageLayout(
-		context,
-		image,
-		format,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		0,
-		mipLevels,
-		0,
-		arrayLayers
-	);
-
 	// Destroy staging buffer
 	vkDestroyBuffer(context->getDevice(), staging_buffer, nullptr);
 	vkFreeMemory(context->getDevice(), staging_memory, nullptr);
@@ -590,9 +575,9 @@ VkImageView VulkanUtils::createImageView(
 	viewInfo.subresourceRange.baseArrayLayer = baseLayer;
 	viewInfo.subresourceRange.layerCount = numLayers;
 
-	VkImageView imageView;
+	VkImageView imageView = VK_NULL_HANDLE;
 	if (vkCreateImageView(context->getDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS)
-		throw std::runtime_error("Can't create image view!");
+		return VK_NULL_HANDLE;
 
 	return imageView;
 }
@@ -622,7 +607,7 @@ VkSampler VulkanUtils::createSampler(
 
 	VkSampler sampler = VK_NULL_HANDLE;
 	if (vkCreateSampler(context->getDevice(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
-		throw std::runtime_error("Can't create texture sampler");
+		return VK_NULL_HANDLE;
 
 	return sampler;
 }
@@ -638,9 +623,9 @@ VkShaderModule VulkanUtils::createShaderModule(
 	shaderInfo.codeSize = bytecodeSize;
 	shaderInfo.pCode = bytecode;
 
-	VkShaderModule shader;
+	VkShaderModule shader = VK_NULL_HANDLE;
 	if (vkCreateShaderModule(context->getDevice(), &shaderInfo, nullptr, &shader) != VK_SUCCESS)
-		throw std::runtime_error("Can't create shader module");
+		return VK_NULL_HANDLE;
 
 	return shader;
 }
@@ -880,6 +865,7 @@ void VulkanUtils::transitionImageLayout(
 void VulkanUtils::generateImage2DMipmaps(
 	const VulkanContext *context,
 	VkImage image,
+	VkFormat imageFormat,
 	uint32_t width,
 	uint32_t height,
 	uint32_t mipLevels,
@@ -902,6 +888,18 @@ void VulkanUtils::generateImage2DMipmaps(
 	if (filter == VK_FILTER_CUBIC_EXT && !supportsCubicFiltering)
 		throw std::runtime_error("Cubic filtering is not supported on this device");
 
+	// prepare the image for transfer
+	transitionImageLayout(
+		context,
+		image,
+		imageFormat,
+		VK_IMAGE_LAYOUT_UNDEFINED,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		0,
+		mipLevels
+	);
+
+	// generate mips
 	VkCommandBuffer commandBuffer = beginSingleTimeCommands(context);
 
 	VkImageMemoryBarrier barrier = {};
@@ -976,6 +974,17 @@ void VulkanUtils::generateImage2DMipmaps(
 	}
 
 	endSingleTimeCommands(context, commandBuffer);
+
+	// Prepare the image for shader access
+	VulkanUtils::transitionImageLayout(
+		context,
+		image,
+		imageFormat,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+		0,
+		mipLevels
+	);
 }
 
 VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const VulkanContext *context)
