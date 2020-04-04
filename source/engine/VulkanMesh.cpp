@@ -1,12 +1,13 @@
+// TODO: remove Vulkan dependencies
 #include "VulkanMesh.h"
-#include "VulkanContext.h"
-#include "VulkanUtils.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
 #include <iostream>
+
+#include <render/backend/vulkan/driver.h>
 
 /*
  */
@@ -188,82 +189,48 @@ void VulkanMesh::createQuad(float size)
  */
 void VulkanMesh::createVertexBuffer()
 {
-	VkDeviceSize bufferSize = sizeof(Vertex) * vertices.size();
+	static render::backend::VertexAttribute attributes[] =
+	{
+		{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, position) },
+		{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, tangent) },
+		{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, binormal) },
+		{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, normal) },
+		{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, color) },
+		{ render::backend::Format::R32G32_SFLOAT, offsetof(Vertex, uv) },
+	};
 
-	VkBuffer stagingBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
-
-	VulkanUtils::createBuffer(
-		context,
-		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		vertexBuffer,
-		vertexBufferMemory
+	vertex_buffer = driver->createVertexBuffer(
+		render::backend::BufferType::STATIC,
+		sizeof(Vertex), static_cast<uint32_t>(vertices.size()),
+		6, attributes,
+		vertices.data()
 	);
-
-	// Create staging buffer
-	VulkanUtils::createBuffer(
-		context,
-		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		stagingBuffer,
-		stagingBufferMemory
-	);
-
-	// Fill staging buffer
-	void *data = nullptr;
-	vkMapMemory(context->getDevice(), stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, vertices.data(), static_cast<size_t>(bufferSize));
-	vkUnmapMemory(context->getDevice(), stagingBufferMemory);
-
-	// Transfer to GPU local memory
-	VulkanUtils::copyBuffer(context, stagingBuffer, vertexBuffer, bufferSize);
-
-	// Destroy staging buffer
-	vkDestroyBuffer(context->getDevice(), stagingBuffer, nullptr);
-	vkFreeMemory(context->getDevice(), stagingBufferMemory, nullptr);
 }
 
 void VulkanMesh::createIndexBuffer()
 {
-	VkDeviceSize bufferSize = sizeof(uint32_t) * indices.size();
-
-	VkBuffer stagingBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
-
-	VulkanUtils::createBuffer(
-		context,
-		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		indexBuffer,
-		indexBufferMemory
+	index_buffer = driver->createIndexBuffer(
+		render::backend::BufferType::STATIC,
+		render::backend::IndexSize::UINT32,
+		static_cast<uint32_t>(indices.size()),
+		indices.data()
 	);
+}
 
-	// Create staging buffer
-	VulkanUtils::createBuffer(
-		context,
-		bufferSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		stagingBuffer,
-		stagingBufferMemory
-	);
+VkBuffer VulkanMesh::getVertexBuffer() const
+{
+	if (vertex_buffer == nullptr)
+		return VK_NULL_HANDLE;
+	
+	return static_cast<const render::backend::vulkan::VertexBuffer *>(vertex_buffer)->buffer;
+}
 
-	// Fill staging buffer
-	void *data = nullptr;
-	vkMapMemory(context->getDevice(), stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, indices.data(), static_cast<size_t>(bufferSize));
-	vkUnmapMemory(context->getDevice(), stagingBufferMemory);
-
-	// Transfer to GPU local memory
-	VulkanUtils::copyBuffer(context, stagingBuffer, indexBuffer, bufferSize);
-
-	// Destroy staging buffer
-	vkDestroyBuffer(context->getDevice(), stagingBuffer, nullptr);
-	vkFreeMemory(context->getDevice(), stagingBufferMemory, nullptr);
+VkBuffer VulkanMesh::getIndexBuffer() const
+{
+	if (index_buffer == nullptr)
+		return VK_NULL_HANDLE;
+	
+	return static_cast<const render::backend::vulkan::IndexBuffer *>(index_buffer)->buffer;
 }
 
 /*
@@ -276,17 +243,11 @@ void VulkanMesh::uploadToGPU()
 
 void VulkanMesh::clearGPUData()
 {
-	vkDestroyBuffer(context->getDevice(), vertexBuffer, nullptr);
-	vertexBuffer = VK_NULL_HANDLE;
+	driver->destroyVertexBuffer(vertex_buffer);
+	vertex_buffer = nullptr;
 
-	vkFreeMemory(context->getDevice(), vertexBufferMemory, nullptr);
-	vertexBufferMemory = VK_NULL_HANDLE;
-
-	vkDestroyBuffer(context->getDevice(), indexBuffer, nullptr);
-	indexBuffer = VK_NULL_HANDLE;
-
-	vkFreeMemory(context->getDevice(), indexBufferMemory, nullptr);
-	indexBufferMemory = VK_NULL_HANDLE;
+	driver->destroyIndexBuffer(index_buffer);
+	index_buffer = nullptr;
 }
 
 void VulkanMesh::clearCPUData()

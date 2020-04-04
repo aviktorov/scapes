@@ -5,8 +5,6 @@
 
 #include "VulkanResourceManager.h"
 
-class VulkanContext;
-
 namespace config
 {
 	enum Meshes
@@ -45,7 +43,8 @@ namespace config
 class RenderScene
 {
 public:
-	RenderScene(const VulkanContext *context);
+	RenderScene(render::backend::Driver *driver)
+		: resources(driver) { }
 
 	void init();
 	void shutdown();

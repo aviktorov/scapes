@@ -1,6 +1,5 @@
+// TODO: remove Vulkan dependencies
 #include "VulkanTexture.h"
-#include "VulkanContext.h"
-#include "VulkanUtils.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -9,7 +8,9 @@
 #include <algorithm>
 #include <iostream>
 
-static VkFormat deduceFormat(size_t pixelSize, int channels)
+#include <render/backend/vulkan/driver.h>
+
+static render::backend::Format deduceFormat(size_t pixelSize, int channels)
 {
 	assert(channels > 0 && channels <= 4);
 
@@ -17,10 +18,10 @@ static VkFormat deduceFormat(size_t pixelSize, int channels)
 	{
 		switch (channels)
 		{
-			case 1: return VK_FORMAT_R8_UNORM;
-			case 2: return VK_FORMAT_R8G8_UNORM;
-			case 3: return VK_FORMAT_R8G8B8_UNORM;
-			case 4: return VK_FORMAT_R8G8B8A8_UNORM;
+			case 1: return render::backend::Format::R8_UNORM;
+			case 2: return render::backend::Format::R8G8_UNORM;
+			case 3: return render::backend::Format::R8G8B8_UNORM;
+			case 4: return render::backend::Format::R8G8B8A8_UNORM;
 		}
 	}
 
@@ -28,36 +29,14 @@ static VkFormat deduceFormat(size_t pixelSize, int channels)
 	{
 		switch (channels)
 		{
-			case 1: return VK_FORMAT_R32_SFLOAT;
-			case 2: return VK_FORMAT_R32G32_SFLOAT;
-			case 3: return VK_FORMAT_R32G32B32_SFLOAT;
-			case 4: return VK_FORMAT_R32G32B32A32_SFLOAT;
+			case 1: return render::backend::Format::R32_SFLOAT;
+			case 2: return render::backend::Format::R32G32_SFLOAT;
+			case 3: return render::backend::Format::R32G32B32_SFLOAT;
+			case 4: return render::backend::Format::R32G32B32A32_SFLOAT;
 		}
 	}
 
-	return VK_FORMAT_UNDEFINED;
-}
-
-static int deduceChannels(VkFormat format)
-{
-	assert(format != VK_FORMAT_UNDEFINED);
-
-	switch(format)
-	{
-		case VK_FORMAT_R8_UNORM: return 1;
-		case VK_FORMAT_R8G8_UNORM: return 2;
-		case VK_FORMAT_R8G8B8_UNORM: return 3;
-		case VK_FORMAT_R8G8B8A8_UNORM: return 4;
-		case VK_FORMAT_R16_SFLOAT: return 1;
-		case VK_FORMAT_R16G16_SFLOAT: return 2;
-		case VK_FORMAT_R16G16B16_SFLOAT: return 3;
-		case VK_FORMAT_R16G16B16A16_SFLOAT: return 4;
-		case VK_FORMAT_R32_SFLOAT: return 1;
-		case VK_FORMAT_R32G32_SFLOAT: return 2;
-		case VK_FORMAT_R32G32B32_SFLOAT: return 3;
-		case VK_FORMAT_R32G32B32A32_SFLOAT: return 4;
-		default: throw std::runtime_error("Format is not supported");
-	}
+	return render::backend::Format::UNDEFINED;
 }
 
 /*
@@ -68,140 +47,60 @@ VulkanTexture::~VulkanTexture()
 	clearCPUData();
 }
 
-/*
- */
-void VulkanTexture::create2D(VkFormat format, int w, int h, int mips)
+VkImage VulkanTexture::getImage() const
 {
-	width = w;
-	height = h;
-	mipLevels = mips;
-	layers = 1;
-	imageFormat = format;
+	if (texture == nullptr)
+		return VK_NULL_HANDLE;
+	
+	return static_cast<render::backend::vulkan::Texture *>(texture)->image;
+}
 
-	channels = deduceChannels(format);
-	VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
+VkFormat VulkanTexture::getImageFormat() const
+{
+	if (texture == nullptr)
+		return VK_FORMAT_UNDEFINED;
+	
+	return static_cast<render::backend::vulkan::Texture *>(texture)->format;
+}
 
-	VulkanUtils::createImage2D(
-		context,
-		width,
-		height,
-		mipLevels,
-		VK_SAMPLE_COUNT_1_BIT,
-		imageFormat,
-		tiling,
-		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		image,
-		imageMemory
-	);
+VkImageView VulkanTexture::getImageView() const
+{
+	if (texture == nullptr)
+		return VK_NULL_HANDLE;
+	
+	return static_cast<render::backend::vulkan::Texture *>(texture)->view;
+}
 
-	// Prepare the image for shader access
-	VulkanUtils::transitionImageLayout(
-		context,
-		image,
-		imageFormat,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		0,
-		mipLevels,
-		0,
-		layers
-	);
-
-	// Create image view & sampler
-	imageView = VulkanUtils::createImageView(
-		context,
-		image,
-		imageFormat,
-		VK_IMAGE_ASPECT_COLOR_BIT,
-		VK_IMAGE_VIEW_TYPE_2D,
-		0, mipLevels,
-		0, layers
-	);
-	imageSampler = VulkanUtils::createSampler(context, 0, mipLevels);
-
-	// Create mip image views
-	mipViews.resize(mipLevels);
-	for (int i = 0; i < mipLevels; i++)
-	{
-		mipViews[i] = VulkanUtils::createImageView(
-			context,
-			image,
-			imageFormat,
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			VK_IMAGE_VIEW_TYPE_2D,
-			i, 1,
-			0, layers
-		);
-	}
+VkSampler VulkanTexture::getSampler() const
+{
+	if (texture == nullptr)
+		return VK_NULL_HANDLE;
+	
+	return static_cast<render::backend::vulkan::Texture *>(texture)->sampler;
 }
 
 /*
  */
-void VulkanTexture::createCube(VkFormat format, int w, int h, int mips)
+void VulkanTexture::create2D(render::backend::Format format, int w, int h, int mips)
 {
 	width = w;
 	height = h;
-	mipLevels = mips;
+	mip_levels = mips;
+	layers = 1;
+
+	texture = driver->createTexture2D(w, h, mips, format);
+}
+
+/*
+ */
+void VulkanTexture::createCube(render::backend::Format format, int w, int h, int mips)
+{
+	width = w;
+	height = h;
+	mip_levels = mips;
 	layers = 6;
-	imageFormat = format;
 
-	channels = deduceChannels(format);
-	VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
-
-	VulkanUtils::createImageCube(
-		context,
-		width,
-		height,
-		mipLevels,
-		VK_SAMPLE_COUNT_1_BIT,
-		imageFormat,
-		tiling,
-		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		image,
-		imageMemory
-	);
-
-	// Prepare the image for shader access
-	VulkanUtils::transitionImageLayout(
-		context,
-		image,
-		imageFormat,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		0,
-		mipLevels,
-		0,
-		layers
-	);
-
-	// Create image view & sampler
-	imageView = VulkanUtils::createImageView(
-		context,
-		image,
-		imageFormat,
-		VK_IMAGE_ASPECT_COLOR_BIT,
-		VK_IMAGE_VIEW_TYPE_CUBE,
-		0, mipLevels,
-		0, layers
-	);
-	imageSampler = VulkanUtils::createSampler(context, 0, mipLevels);
-
-	// Create mip image views
-	mipViews.resize(mipLevels);
-	for (int i = 0; i < mipLevels; i++)
-	{
-		mipViews[i] = VulkanUtils::createImageView(
-			context,
-			image,
-			imageFormat,
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			VK_IMAGE_VIEW_TYPE_CUBE,
-			i, 1,
-			0, layers
-		);
-	}
+	texture = driver->createTextureCube(w, h, mips, format);
 }
 
 /*
@@ -214,28 +113,29 @@ bool VulkanTexture::loadFromFile(const char *path)
 		return false;
 	}
 
-	void *stbPixels = nullptr;
-	size_t pixelSize = 0;
+	void *stb_pixels = nullptr;
+	size_t pixel_size = 0;
+	int channels = 0;
 
 	if (stbi_is_hdr(path))
 	{
-		stbPixels = stbi_loadf(path, &width, &height, &channels, STBI_default);
-		pixelSize = sizeof(float);
+		stb_pixels = stbi_loadf(path, &width, &height, &channels, STBI_default);
+		pixel_size = sizeof(float);
 	}
 	else
 	{
-		stbPixels = stbi_load(path, &width, &height, &channels, STBI_default);
-		pixelSize = sizeof(stbi_uc);
+		stb_pixels = stbi_load(path, &width, &height, &channels, STBI_default);
+		pixel_size = sizeof(stbi_uc);
 	}
 
-	if (!stbPixels)
+	if (!stb_pixels)
 	{
 		std::cerr << "VulkanTexture::loadFromFile(): " << stbi_failure_reason() << std::endl;
 		return false;
 	}
 
 	layers = 1;
-	mipLevels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
+	mip_levels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
 
 	bool convert = false;
 	if (channels == 3)
@@ -244,20 +144,20 @@ bool VulkanTexture::loadFromFile(const char *path)
 		convert = true;
 	}
 
-	size_t imageSize = width * height * channels * pixelSize;
+	size_t image_size = width * height * channels * pixel_size;
 	if (pixels != nullptr)
 		delete[] pixels;
 
-	pixels = new unsigned char[imageSize];
+	pixels = new unsigned char[image_size];
 
 	// As most hardware doesn't support rgb textures, convert it to rgba
 	if (convert)
 	{
 		size_t numPixels = width * height;
-		size_t stride = pixelSize * 3;
+		size_t stride = pixel_size * 3;
 
 		unsigned char *d = pixels;
-		unsigned char *s = reinterpret_cast<unsigned char *>(stbPixels);
+		unsigned char *s = reinterpret_cast<unsigned char *>(stb_pixels);
 
 		for (size_t i = 0; i < numPixels; i++)
 		{
@@ -265,159 +165,33 @@ bool VulkanTexture::loadFromFile(const char *path)
 			s += stride;
 			d += stride;
 
-			memset(d, 0, pixelSize);
-			d+= pixelSize;
+			memset(d, 0, pixel_size);
+			d+= pixel_size;
 		}
 	}
 	else
-		memcpy(pixels, stbPixels, imageSize);
+		memcpy(pixels, stb_pixels, image_size);
 
-	stbi_image_free(stbPixels);
-	stbPixels = nullptr;
+	stbi_image_free(stb_pixels);
+	stb_pixels = nullptr;
 
-	VkFormat format = deduceFormat(pixelSize, channels);
+	render::backend::Format format = deduceFormat(pixel_size, channels);
 
 	// Upload CPU data to GPU
 	clearGPUData();
-	uploadToGPU(format, VK_IMAGE_TILING_OPTIMAL, imageSize);
+
+	texture = driver->createTexture2D(width, height, mip_levels, format, pixels);
+	driver->generateTexture2DMipmaps(texture);
 
 	// TODO: should we clear CPU data after uploading it to the GPU?
 
 	return true;
 }
 
-/*
- */
-void VulkanTexture::uploadToGPU(VkFormat format, VkImageTiling tiling, size_t imageSize)
-{
-	imageFormat = format;
-
-	VkBuffer stagingBuffer = VK_NULL_HANDLE;
-	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
-
-	VulkanUtils::createBuffer(
-		context,
-		static_cast<VkDeviceSize>(imageSize),
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		stagingBuffer,
-		stagingBufferMemory
-	);
-
-	// Fill staging buffer
-	void *data = nullptr;
-	vkMapMemory(context->getDevice(), stagingBufferMemory, 0, static_cast<VkDeviceSize>(imageSize), 0, &data);
-	memcpy(data, pixels, imageSize);
-	vkUnmapMemory(context->getDevice(), stagingBufferMemory);
-
-	VulkanUtils::createImage2D(
-		context,
-		width,
-		height,
-		mipLevels,
-		VK_SAMPLE_COUNT_1_BIT,
-		imageFormat,
-		tiling,
-		VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		image,
-		imageMemory
-	);
-
-	// Prepare the image for transfer
-	VulkanUtils::transitionImageLayout(
-		context,
-		image,
-		imageFormat,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		0,
-		mipLevels
-	);
-
-	// Copy to the image memory on GPU
-	VulkanUtils::copyBufferToImage(
-		context,
-		stagingBuffer,
-		image,
-		width,
-		height
-	);
-
-	// Generate mipmaps on GPU with linear filtering
-	VulkanUtils::generateImage2DMipmaps(
-		context,
-		image,
-		width,
-		height,
-		mipLevels,
-		imageFormat,
-		VK_FILTER_LINEAR
-	);
-
-	// Prepare the image for shader access
-	VulkanUtils::transitionImageLayout(
-		context,
-		image,
-		imageFormat,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-		0,
-		mipLevels
-	);
-
-	// Destroy staging buffer
-	vkDestroyBuffer(context->getDevice(), stagingBuffer, nullptr);
-	vkFreeMemory(context->getDevice(), stagingBufferMemory, nullptr);
-
-	// Create image view & sampler
-	imageView = VulkanUtils::createImageView(
-		context,
-		image,
-		imageFormat,
-		VK_IMAGE_ASPECT_COLOR_BIT,
-		VK_IMAGE_VIEW_TYPE_2D,
-		0, mipLevels,
-		0, layers
-	);
-
-	imageSampler = VulkanUtils::createSampler(context, 0, mipLevels);
-
-	// Create mip image views
-	mipViews.resize(mipLevels);
-	for (int i = 0; i < mipLevels; i++)
-	{
-		mipViews[i] = VulkanUtils::createImageView(
-			context,
-			image,
-			imageFormat,
-			VK_IMAGE_ASPECT_COLOR_BIT,
-			VK_IMAGE_VIEW_TYPE_2D,
-			i, 1,
-			0, layers
-		);
-	}
-}
-
 void VulkanTexture::clearGPUData()
 {
-	vkDestroySampler(context->getDevice(), imageSampler, nullptr);
-	imageSampler = VK_NULL_HANDLE;
-
-	vkDestroyImageView(context->getDevice(), imageView, nullptr);
-	imageView = VK_NULL_HANDLE;
-
-	for (VkImageView mipView : mipViews)
-		vkDestroyImageView(context->getDevice(), mipView, nullptr);
-	mipViews.clear();
-
-	vkDestroyImage(context->getDevice(), image, nullptr);
-	image = VK_NULL_HANDLE;
-
-	vkFreeMemory(context->getDevice(), imageMemory, nullptr);
-	imageMemory = VK_NULL_HANDLE;
-
-	imageFormat = VK_FORMAT_UNDEFINED;
+	driver->destroyTexture(texture);
+	texture = nullptr;
 }
 
 void VulkanTexture::clearCPUData()
@@ -425,5 +199,5 @@ void VulkanTexture::clearCPUData()
 	delete[] pixels;
 	pixels = nullptr;
 
-	width = height = channels = 0;
+	width = height = 0;
 }

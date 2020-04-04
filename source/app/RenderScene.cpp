@@ -25,6 +25,19 @@ namespace config
 		"shaders/bakedBRDF.frag",
 	};
 
+	static std::vector<render::backend::ShaderType> shaderTypes = {
+		render::backend::ShaderType::VERTEX,
+		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::VERTEX,
+		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::VERTEX,
+		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::VERTEX,
+		render::backend::ShaderType::FRAGMENT,
+	};
+
 	// Textures
 	static std::vector<const char *> textures = {
 		"textures/SciFiHelmet_BaseColor.png",
@@ -40,12 +53,6 @@ namespace config
 		"textures/environment/shanghai_bund_4k.hdr",
 	};
 }
-
-/*
- */
-RenderScene::RenderScene(const VulkanContext *context)
-	: resources(context)
-{ }
 
 /*
  */
@@ -70,7 +77,7 @@ void RenderScene::init()
 	resources.createCubeMesh(config::Meshes::Skybox, 10000.0f);
 
 	for (int i = 0; i < config::shaders.size(); i++)
-		resources.loadShader(i, config::shaders[i]);
+		resources.loadShader(i, config::shaderTypes[i], config::shaders[i]);
 
 	for (int i = 0; i < config::textures.size(); i++)
 		resources.loadTexture(i, config::textures[i]);

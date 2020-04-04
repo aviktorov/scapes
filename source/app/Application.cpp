@@ -18,6 +18,8 @@
 #include <iostream>
 #include <chrono>
 
+#include <render/backend/vulkan/driver.h>
+
 /*
  */
 void Application::run()
@@ -196,7 +198,7 @@ void Application::mainloop()
 		glfwPollEvents();
 	}
 
-	context->wait();
+	driver->wait();
 }
 
 /*
@@ -272,7 +274,7 @@ void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
  */
 void Application::initRenderScene()
 {
-	scene = new RenderScene(context);
+	scene = new RenderScene(driver);
 	scene->init();
 }
 
@@ -288,7 +290,7 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	renderer = new VulkanRenderer(context, swapChain->getExtent(), swapChain->getDescriptorSetLayout(), swapChain->getRenderPass());
+	renderer = new VulkanRenderer(context, driver, swapChain->getExtent(), swapChain->getDescriptorSetLayout(), swapChain->getRenderPass());
 	renderer->init(scene);
 	renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
 
@@ -326,18 +328,14 @@ void Application::shutdownImGui()
  */
 void Application::initVulkan()
 {
-	if (!context)
-		context = new VulkanContext();
-	
-	context->init("PBR Sandbox", "Scape");
+	driver = render::backend::createDriver("PBR Sandbox", "Scape");
+	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
 }
 
 void Application::shutdownVulkan()
 {
-	if (context)
-		context->shutdown();
-
-	delete context;
+	render::backend::destroyDriver(driver);
+	driver = nullptr;
 	context = nullptr;
 }
 
@@ -374,7 +372,7 @@ void Application::recreateVulkanSwapChain()
 		glfwGetFramebufferSize(window, &width, &height);
 		glfwWaitEvents();
 	}
-	context->wait();
+	driver->wait();
 
 	glfwGetWindowSize(window, &width, &height);
 	swapChain->reinit(width, height);

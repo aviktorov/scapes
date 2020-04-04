@@ -1,3 +1,4 @@
+// TODO: remove Vulkan dependencies
 #pragma once
 
 #include <volk.h>
@@ -8,6 +9,8 @@
 #include "VulkanTexture.h"
 #include "VulkanMesh.h"
 
+#include <render/backend/driver.h>
+
 class VulkanContext;
 
 /*
@@ -15,15 +18,16 @@ class VulkanContext;
 class VulkanTexture2DRenderer
 {
 public:
-	VulkanTexture2DRenderer(const VulkanContext *context)
+	VulkanTexture2DRenderer(const VulkanContext *context, render::backend::Driver *driver)
 		: context(context)
-		, rendererQuad(context)
+		, driver(driver)
+		, quad(driver)
 	{ }
 
 	void init(
-		const VulkanShader &vertexShader,
-		const VulkanShader &fragmentShader,
-		const VulkanTexture &targetTexture
+		const VulkanShader &vertex_shader,
+		const VulkanShader &fragment_shader,
+		const VulkanTexture &target_texture
 	);
 
 	void shutdown();
@@ -31,14 +35,17 @@ public:
 
 private:
 	const VulkanContext *context {nullptr};
-	VulkanMesh rendererQuad;
-	VkExtent2D targetExtent;
+	render::backend::Driver *driver {nullptr};
 
-	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
-	VkRenderPass renderPass {VK_NULL_HANDLE};
+	VulkanMesh quad;
+	VkExtent2D target_extent;
+
+	VkPipelineLayout pipeline_layout {VK_NULL_HANDLE};
+	VkRenderPass render_pass {VK_NULL_HANDLE};
 	VkPipeline pipeline {VK_NULL_HANDLE};
 
-	VkFramebuffer frameBuffer {VK_NULL_HANDLE};
 	VkCommandBuffer commandBuffer {VK_NULL_HANDLE};
 	VkFence fence {VK_NULL_HANDLE};
+
+	render::backend::FrameBuffer *framebuffer {nullptr};
 };

@@ -9,14 +9,6 @@
 
 /*
  */
-VulkanResourceManager::VulkanResourceManager(const VulkanContext *context)
-: context(context)
-{
-
-}
-
-/*
- */
 VulkanMesh *VulkanResourceManager::getMesh(int id) const
 {
 	auto it = meshes.find(id);
@@ -35,7 +27,7 @@ VulkanMesh *VulkanResourceManager::createCubeMesh(int id, float size)
 		return nullptr;
 	}
 
-	VulkanMesh *mesh = new VulkanMesh(context);
+	VulkanMesh *mesh = new VulkanMesh(driver);
 	mesh->createSkybox(size);
 
 	meshes.insert(std::make_pair(id, mesh));
@@ -51,7 +43,7 @@ VulkanMesh *VulkanResourceManager::loadMesh(int id, const char *path)
 		return nullptr;
 	}
 
-	VulkanMesh *mesh = new VulkanMesh(context);
+	VulkanMesh *mesh = new VulkanMesh(driver);
 	if (!mesh->loadFromFile(path))
 		return nullptr;
 
@@ -80,7 +72,7 @@ VulkanShader *VulkanResourceManager::getShader(int id) const
 	return nullptr;
 }
 
-VulkanShader *VulkanResourceManager::loadShader(int id, const char *path)
+VulkanShader *VulkanResourceManager::loadShader(int id, render::backend::ShaderType type, const char *path)
 {
 	auto it = shaders.find(id);
 	if (it != shaders.end())
@@ -89,25 +81,8 @@ VulkanShader *VulkanResourceManager::loadShader(int id, const char *path)
 		return nullptr;
 	}
 
-	VulkanShader *shader = new VulkanShader(context);
-	if (!shader->compileFromFile(path))
-		return nullptr;
-
-	shaders.insert(std::make_pair(id, shader));
-	return shader;
-}
-
-VulkanShader *VulkanResourceManager::loadShader(int id, VulkanShaderKind kind, const char *path)
-{
-	auto it = shaders.find(id);
-	if (it != shaders.end())
-	{
-		std::cerr << "VulkanResourceManager::loadShader(): " << id << " is already taken by another shader" << std::endl;
-		return nullptr;
-	}
-
-	VulkanShader *shader = new VulkanShader(context);
-	if (!shader->compileFromFile(path, kind))
+	VulkanShader *shader = new VulkanShader(driver);
+	if (!shader->compileFromFile(path, type))
 		return nullptr;
 
 	shaders.insert(std::make_pair(id, shader));
@@ -153,7 +128,7 @@ VulkanTexture *VulkanResourceManager::loadTexture(int id, const char *path)
 		return nullptr;
 	}
 
-	VulkanTexture *texture = new VulkanTexture(context);
+	VulkanTexture *texture = new VulkanTexture(driver);
 	if (!texture->loadFromFile(path))
 		return nullptr;
 

@@ -1,6 +1,8 @@
+// TODO: remove Vulkan dependencies
 #pragma once
 
 #include <volk.h>
+#include <render/backend/driver.h>
 
 #include <GLM/glm.hpp>
 
@@ -15,13 +17,14 @@ class VulkanContext;
 class VulkanMesh
 {
 public:
-	VulkanMesh(const VulkanContext *context)
-		: context(context) { }
+	VulkanMesh(render::backend::Driver *driver)
+		: driver(driver) { }
 
 	~VulkanMesh();
 
-	inline VkBuffer getVertexBuffer() const { return vertexBuffer; }
-	inline VkBuffer getIndexBuffer() const { return indexBuffer; }
+	VkBuffer getVertexBuffer() const;
+	VkBuffer getIndexBuffer() const;
+
 	inline uint32_t getNumIndices() const { return static_cast<uint32_t>(indices.size()); }
 
 	static VkVertexInputBindingDescription getVertexInputBindingDescription();
@@ -41,7 +44,7 @@ private:
 	void createIndexBuffer();
 
 private:
-	const VulkanContext *context {nullptr};
+	render::backend::Driver *driver {nullptr};
 
 	struct Vertex
 	{
@@ -56,9 +59,6 @@ private:
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 
-	VkBuffer vertexBuffer {VK_NULL_HANDLE};
-	VkDeviceMemory vertexBufferMemory {VK_NULL_HANDLE};
-
-	VkBuffer indexBuffer {VK_NULL_HANDLE};
-	VkDeviceMemory indexBufferMemory {VK_NULL_HANDLE};
+	render::backend::VertexBuffer *vertex_buffer {nullptr};
+	render::backend::IndexBuffer *index_buffer {nullptr};
 };

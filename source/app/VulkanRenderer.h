@@ -9,6 +9,8 @@
 #include "VulkanTexture.h"
 #include "VulkanShader.h"
 
+#include <render/backend/driver.h>
+
 class RenderScene;
 class VulkanContext;
 class VulkanSwapChain;
@@ -21,6 +23,7 @@ class VulkanRenderer
 public:
 	VulkanRenderer(
 		const VulkanContext *context,
+		render::backend::Driver *driver,
 		VkExtent2D extent,
 		VkDescriptorSetLayout descriptorSetLayout,
 		VkRenderPass renderPass
@@ -38,6 +41,7 @@ public:
 
 private:
 	const VulkanContext *context {nullptr};
+	render::backend::Driver *driver {nullptr};
 	VkExtent2D extent;
 	VkRenderPass renderPass {VK_NULL_HANDLE};
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};

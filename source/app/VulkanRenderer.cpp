@@ -14,20 +14,22 @@
  */
 VulkanRenderer::VulkanRenderer(
 	const VulkanContext *context,
+	render::backend::Driver *driver,
 	VkExtent2D extent,
 	VkDescriptorSetLayout descriptorSetLayout,
 	VkRenderPass renderPass
 )
 	: context(context)
+	, driver(driver)
 	, extent(extent)
 	, renderPass(renderPass)
 	, descriptorSetLayout(descriptorSetLayout)
-	, hdriToCubeRenderer(context)
-	, diffuseIrradianceRenderer(context)
-	, environmentCubemap(context)
-	, diffuseIrradianceCubemap(context)
-	, bakedBRDF(context)
-	, bakedBRDFRenderer(context)
+	, hdriToCubeRenderer(context, driver)
+	, diffuseIrradianceRenderer(context, driver)
+	, environmentCubemap(driver)
+	, diffuseIrradianceCubemap(driver)
+	, bakedBRDF(driver)
+	, bakedBRDFRenderer(context, driver)
 {
 }
 
@@ -97,9 +99,9 @@ void VulkanRenderer::init(const RenderScene *scene)
 		.addBlendColorAttachment()
 		.build();
 
-	bakedBRDF.create2D(VK_FORMAT_R16G16_SFLOAT, 256, 256, 1);
-	environmentCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 8);
-	diffuseIrradianceCubemap.createCube(VK_FORMAT_R32G32B32A32_SFLOAT, 256, 256, 1);
+	bakedBRDF.create2D(render::backend::Format::R16G16_SFLOAT, 256, 256, 1);
+	environmentCubemap.createCube(render::backend::Format::R32G32B32A32_SFLOAT, 256, 256, 8);
+	diffuseIrradianceCubemap.createCube(render::backend::Format::R32G32B32A32_SFLOAT, 256, 256, 1);
 
 	bakedBRDFRenderer.init(
 		*scene->getBakedBRDFVertexShader(),
@@ -141,7 +143,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 	cubeToPrefilteredRenderers.resize(environmentCubemap.getNumMipLevels() - 1);
 	for (int mip = 0; mip < environmentCubemap.getNumMipLevels() - 1; mip++)
 	{
-		VulkanCubemapRenderer *mipRenderer = new VulkanCubemapRenderer(context);
+		VulkanCubemapRenderer *mipRenderer = new VulkanCubemapRenderer(context, driver);
 		mipRenderer->init(
 			*scene->getCubeVertexShader(),
 			*scene->getCubeToPrefilteredSpecularShader(),

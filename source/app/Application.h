@@ -1,5 +1,7 @@
 #pragma once
 
+#include <render/backend/driver.h>
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLM/glm.hpp>
@@ -92,5 +94,7 @@ private:
 	VulkanImGuiRenderer *imguiRenderer {nullptr};
 
 	VulkanSwapChain *swapChain {nullptr};
-	VulkanContext *context {nullptr};
+
+	const VulkanContext *context {nullptr};
+	render::backend::Driver *driver {nullptr};
 };

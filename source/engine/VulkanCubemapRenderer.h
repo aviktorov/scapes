@@ -1,3 +1,4 @@
+// TODO: remove Vulkan dependencies
 #pragma once
 
 #include <volk.h>
@@ -8,6 +9,8 @@
 #include "VulkanTexture.h"
 #include "VulkanMesh.h"
 
+#include <render/backend/driver.h>
+
 class VulkanContext;
 
 /*
@@ -15,43 +18,42 @@ class VulkanContext;
 class VulkanCubemapRenderer
 {
 public:
-	VulkanCubemapRenderer(const VulkanContext *context)
+	VulkanCubemapRenderer(const VulkanContext *context, render::backend::Driver *driver)
 		: context(context)
-		, rendererQuad(context)
+		, driver(driver)
+		, quad(driver)
 	{ }
 
 	void init(
-		const VulkanShader &vertexShader,
-		const VulkanShader &fragmentShader,
-		const VulkanTexture &targetTexture,
-		int mip,
-		uint32_t pushConstantsSize = 0
+		const VulkanShader &vertex_shader,
+		const VulkanShader &fragment_shader,
+		const VulkanTexture &target_texture,
+		int target_mip,
+		uint32_t push_constants_size = 0
 	);
 
 	void shutdown();
 
-	void render(const VulkanTexture &inputTexture, float *pushConstants = nullptr, int inputMip = -1);
+	void render(const VulkanTexture &input_texture, float *push_constants = nullptr, int input_mip = -1);
 
 private:
 	const VulkanContext *context {nullptr};
-	VulkanMesh rendererQuad;
-	VkExtent2D targetExtent;
+	render::backend::Driver *driver {nullptr};
 
-	VkImageView faceViews[6] {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
+	VulkanMesh quad;
+	VkExtent2D target_extent;
 
-	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
-	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
-	VkRenderPass renderPass {VK_NULL_HANDLE};
+	VkPipelineLayout pipeline_layout {VK_NULL_HANDLE};
+	VkDescriptorSetLayout descriptor_set_layout {VK_NULL_HANDLE};
+	VkRenderPass render_pass {VK_NULL_HANDLE};
 	VkPipeline pipeline {VK_NULL_HANDLE};
 
-	VkFramebuffer frameBuffer {VK_NULL_HANDLE};
-	VkCommandBuffer commandBuffer {VK_NULL_HANDLE};
-	VkDescriptorSet descriptorSet {VK_NULL_HANDLE};
+	VkCommandBuffer command_buffer {VK_NULL_HANDLE};
+	VkDescriptorSet descriptor_set {VK_NULL_HANDLE};
 	VkFence fence {VK_NULL_HANDLE};
 
-	// TODO: move to VkUniformBuffer<T>;
-	VkBuffer uniformBuffer {VK_NULL_HANDLE};
-	VkDeviceMemory uniformBufferMemory {VK_NULL_HANDLE};
+	render::backend::FrameBuffer *framebuffer {nullptr};
+	render::backend::UniformBuffer *uniform_buffer {nullptr};
 
-	uint32_t pushConstantsSize {0};
+	uint32_t push_constants_size {0};
 };

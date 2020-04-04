@@ -1,10 +1,8 @@
 #pragma once
 
 #include <unordered_map>
+#include <render/backend/driver.h>
 
-enum class VulkanShaderKind;
-
-class VulkanContext;
 class VulkanMesh;
 class VulkanShader;
 class VulkanTexture;
@@ -14,7 +12,8 @@ class VulkanTexture;
 class VulkanResourceManager
 {
 public:
-	VulkanResourceManager(const VulkanContext *context);
+	VulkanResourceManager(render::backend::Driver *driver)
+		: driver(driver) {}
 
 	VulkanMesh *getMesh(int id) const;
 	VulkanMesh *createCubeMesh(int id, float size);
@@ -22,8 +21,7 @@ public:
 	void unloadMesh(int id);
 
 	VulkanShader *getShader(int id) const;
-	VulkanShader *loadShader(int id, const char *path);
-	VulkanShader *loadShader(int id, VulkanShaderKind kind, const char *path);
+	VulkanShader *loadShader(int id, render::backend::ShaderType type, const char *path);
 	bool reloadShader(int id);
 	void unloadShader(int id);
 
@@ -32,7 +30,7 @@ public:
 	void unloadTexture(int id);
 
 private:
-	const VulkanContext *context {nullptr};
+	render::backend::Driver *driver {nullptr};
 
 	std::unordered_map<int, VulkanMesh *> meshes;
 	std::unordered_map<int, VulkanShader *> shaders;
