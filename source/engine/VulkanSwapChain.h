@@ -114,7 +114,6 @@ private:
 	uint32_t imageIndex {0};
 	uint32_t currentFrame {0};
 
-	bool framebufferResized {false};
 	enum
 	{
 		MAX_FRAMES_IN_FLIGHT = 2,
