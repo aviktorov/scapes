@@ -326,12 +326,12 @@ void Application::shutdownImGui()
  */
 void Application::initVulkan()
 {
-	driver = render::backend::createDriver("PBR Sandbox", "Scape");
+	driver = render::backend::Driver::create("PBR Sandbox", "Scape");
 }
 
 void Application::shutdownVulkan()
 {
-	render::backend::destroyDriver(driver);
+	delete driver;
 	driver = nullptr;
 }
 

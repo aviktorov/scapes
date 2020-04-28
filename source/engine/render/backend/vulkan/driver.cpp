@@ -325,6 +325,72 @@ namespace render::backend
 
 			texture->sampler = VulkanUtils::createSampler(context, 0, texture->num_mipmaps);
 		}
+
+		static void selectOptimalSwapChainSettings(const VulkanContext *context, SwapChain *swap_chain)
+		{
+			// Get surface capabilities
+			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->getPhysicalDevice(), swap_chain->surface, &swap_chain->surface_capabilities);
+
+			// Select the best surface format
+			uint32_t num_surface_formats = 0;
+			vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), swap_chain->surface, &num_surface_formats, nullptr);
+			assert(num_surface_formats != 0);
+
+			std::vector<VkSurfaceFormatKHR> surface_formats(num_surface_formats);
+			vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), swap_chain->surface, &num_surface_formats, surface_formats.data());
+
+			// Select the best format if the surface has no preferred format
+			if (surface_formats.size() == 1 && surface_formats[0].format == VK_FORMAT_UNDEFINED)
+			{
+				swap_chain->surface_format = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+			}
+			// Otherwise, select one of the available formats
+			else
+			{
+				swap_chain->surface_format = surface_formats[0];
+				for (const auto &surface_format : surface_formats)
+				{
+					if (surface_format.format == VK_FORMAT_B8G8R8A8_UNORM && surface_format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+					{
+						swap_chain->surface_format = surface_format;
+						break;
+					}
+				}
+			}
+
+			// Select the best present mode
+			uint32_t num_present_modes = 0;
+			vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), swap_chain->surface, &num_present_modes, nullptr);
+			assert(num_present_modes != 0);
+
+			std::vector<VkPresentModeKHR> present_modes(num_present_modes);
+			vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), swap_chain->surface, &num_present_modes, present_modes.data());
+
+			swap_chain->present_mode = VK_PRESENT_MODE_FIFO_KHR;
+			for (const auto &present_mode : present_modes)
+			{
+				// Some drivers currently don't properly support FIFO present mode,
+				// so we should prefer IMMEDIATE mode if MAILBOX mode is not available
+				if (present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+					swap_chain->present_mode = present_mode;
+
+				if (present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
+				{
+					swap_chain->present_mode = present_mode;
+					break;
+				}
+			}
+		}
+
+		static void createTransientSwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
+		{
+			// TODO: swap chain
+		}
+
+		static void destroyTransientSwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
+		{
+			// TODO: swap chain
+		}
 	}
 
 	VulkanDriver::VulkanDriver(const char *application_name, const char *engine_name)
@@ -746,6 +812,72 @@ namespace render::backend
 		return result;
 	}
 
+	SwapChain *VulkanDriver::createSwapChain(
+		void *native_window
+	)
+	{
+		assert(native_window != nullptr && "Invalid window");
+
+		vulkan::SwapChain *result = new vulkan::SwapChain();
+
+		// TODO: swap chain
+		// result->surface = vulkan::Platform::createSurface(native_window);
+
+		// Fetch present queue family
+		result->present_queue_family = VulkanUtils::getPresentQueueFamily(
+			context->getPhysicalDevice(),
+			result->surface,
+			context->getGraphicsQueueFamily()
+		);
+
+		// Get present queue
+		vkGetDeviceQueue(context->getDevice(), result->present_queue_family, 0, &result->present_queue);
+		if (result->present_queue == VK_NULL_HANDLE)
+		{
+			std::cerr << "VulkanDriver::createSwapChain(): can't get present queue from logical device" << std::endl;
+			destroySwapChain(result);
+			return false;
+		}
+
+		vulkan::selectOptimalSwapChainSettings(context, result);
+		vulkan::createTransientSwapChainObjects(context, result);
+
+		// Create persistent per-frame objects
+		for (size_t i = 0; i < result->num_images; i++)
+		{
+			// semaphores
+			VkSemaphoreCreateInfo semaphore_info = {};
+			semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+			if (vkCreateSemaphore(context->getDevice(), &semaphore_info, nullptr, &result->image_available_gpu[i]) != VK_SUCCESS)
+			{
+				std::cerr << "VulkanDriver::createSwapChain(): can't create 'image available' semaphore" << std::endl;
+				destroySwapChain(result);
+				return nullptr;
+			}
+			
+			if (vkCreateSemaphore(context->getDevice(), &semaphore_info, nullptr, &result->rendering_finished_gpu[i]) != VK_SUCCESS)
+			{
+				std::cerr << "VulkanDriver::createSwapChain(): can't create 'rendering finished' semaphore" << std::endl;
+				destroySwapChain(result);
+				return nullptr;
+			}
+
+			// fences
+			VkFenceCreateInfo fence_info = {};
+			fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+			if (vkCreateFence(context->getDevice(), &fence_info, nullptr, &result->rendering_finished_cpu[i]) != VK_SUCCESS)
+			{
+				std::cerr << "VulkanDriver::createSwapChain(): can't create 'rendering finished' fence" << std::endl;
+				destroySwapChain(result);
+				return nullptr;
+			}
+		}
+
+		return result;
+	}
 
 	void VulkanDriver::destroyVertexBuffer(VertexBuffer *vertex_buffer)
 	{
@@ -871,6 +1003,19 @@ namespace render::backend
 		shader = nullptr;
 	}
 
+	void VulkanDriver::destroySwapChain(SwapChain *swap_chain)
+	{
+		if (swap_chain == nullptr)
+			return;
+
+		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
+
+		// TODO: swap chain
+
+		delete swap_chain;
+		swap_chain = nullptr;
+	}
+
 	void VulkanDriver::generateTexture2DMipmaps(Texture *texture)
 	{
 		assert(texture != nullptr && "Invalid texture");
@@ -938,6 +1083,24 @@ namespace render::backend
 		assert(context != nullptr && "Invalid context");
 
 		context->wait();
+	}
+
+	bool VulkanDriver::acquire(SwapChain *swap_chain)
+	{
+		// TODO: swap chain
+		return false;
+	}
+
+	bool VulkanDriver::present(SwapChain *swap_chain)
+	{
+		// TODO: swap chain
+		return false;
+	}
+
+	bool VulkanDriver::resize(SwapChain *swap_chain, uint32_t width, uint32_t height)
+	{
+		// TODO: swap chain
+		return false;
 	}
 
 	void VulkanDriver::beginRenderPass(const FrameBuffer *frame_buffer)

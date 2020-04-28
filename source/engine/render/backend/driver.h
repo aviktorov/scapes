@@ -150,6 +150,8 @@ struct UniformBuffer {};
 
 struct Shader {};
 
+struct SwapChain {};
+
 // C structs
 struct VertexAttribute
 {
@@ -179,6 +181,9 @@ struct FrameBufferDepthStencilAttachment
 // main backend class
 class Driver
 {
+public:
+	static Driver *create(const char *application_name, const char *engine_name, Api api = Api::DEFAULT);
+
 public:
 	virtual VertexBuffer *createVertexBuffer(
 		BufferType type,
@@ -266,6 +271,10 @@ public:
 		const void *data
 	) = 0;
 
+	virtual SwapChain *createSwapChain(
+		void *native_window
+	) = 0;
+
 	virtual void destroyVertexBuffer(VertexBuffer *vertex_buffer) = 0;
 	virtual void destroyIndexBuffer(IndexBuffer *index_buffer) = 0;
 	virtual void destroyRenderPrimitive(RenderPrimitive *render_primitive) = 0;
@@ -273,6 +282,7 @@ public:
 	virtual void destroyFrameBuffer(FrameBuffer *frame_buffer) = 0;
 	virtual void destroyUniformBuffer(UniformBuffer *uniform_buffer) = 0;
 	virtual void destroyShader(Shader *shader) = 0;
+	virtual void destroySwapChain(SwapChain *swap_chain) = 0;
 
 public:
 	virtual void generateTexture2DMipmaps(Texture *texture) = 0;
@@ -281,6 +291,10 @@ public:
 	virtual void unmap(UniformBuffer *uniform_buffer) = 0;
 
 	virtual void wait() = 0;
+
+	virtual bool acquire(SwapChain *swap_chain) = 0;
+	virtual bool present(SwapChain *swap_chain) = 0;
+	virtual bool resize(SwapChain *swap_chain, uint32_t width, uint32_t height) = 0;
 
 public:
 
@@ -318,8 +332,5 @@ public:
 		uint32_t offset
 	) = 0;
 };
-
-extern Driver *createDriver(const char *application_name, const char *engine_name, Api api = Api::DEFAULT);
-extern void destroyDriver(Driver *driver);
 
 }

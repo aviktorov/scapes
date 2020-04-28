@@ -5,7 +5,7 @@
 
 namespace render::backend
 {
-	Driver *createDriver(const char *application_name, const char *engine_name, Api api)
+	Driver *Driver::create(const char *application_name, const char *engine_name, Api api)
 	{
 		switch (api)
 		{
@@ -13,13 +13,5 @@ namespace render::backend
 		}
 
 		return nullptr;
-	}
-
-	void destroyDriver(Driver *driver)
-	{
-		assert(driver != nullptr && "Invalid driver");
-
-		delete driver;
-		driver = nullptr;
 	}
 }

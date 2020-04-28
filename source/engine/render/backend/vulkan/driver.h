@@ -47,7 +47,7 @@ namespace render::backend
 			VkSampler sampler {VK_NULL_HANDLE};
 			VkDeviceMemory memory {VK_NULL_HANDLE}; // TODO: replace by VMA later
 			VkImageType type {VK_IMAGE_TYPE_2D};
-			VkFormat format {VK_FORMAT_R8G8B8A8_UNORM};
+			VkFormat format {VK_FORMAT_UNDEFINED};
 			uint32_t width {0};
 			uint32_t height {0};
 			uint32_t depth {0};
@@ -95,6 +95,37 @@ namespace render::backend
 		{
 			ShaderType type {ShaderType::FRAGMENT};
 			VkShaderModule module {VK_NULL_HANDLE};
+		};
+
+		struct SwapChain : public render::backend::SwapChain
+		{
+			enum
+			{
+				MAX_IMAGES = 8,
+			};
+
+			VkSurfaceKHR surface {nullptr};
+			VkSurfaceCapabilitiesKHR surface_capabilities;
+			VkSurfaceFormatKHR surface_format;
+
+			uint32_t present_queue_family {0xFFFF};
+			VkQueue present_queue {VK_NULL_HANDLE};
+			VkPresentModeKHR present_mode {VK_PRESENT_MODE_FIFO_KHR};
+
+			VkSemaphore image_available_gpu[SwapChain::MAX_IMAGES];
+			VkSemaphore rendering_finished_gpu[SwapChain::MAX_IMAGES];
+			VkFence rendering_finished_cpu[SwapChain::MAX_IMAGES];
+
+			VkSwapchainKHR swap_chain {nullptr};
+			VkFormat format {VK_FORMAT_UNDEFINED};
+			VkExtent2D sizes {0, 0};
+
+			uint32_t num_images {0};
+			uint32_t current_image {0};
+
+			VkImage images[SwapChain::MAX_IMAGES];
+			VkImageView views[SwapChain::MAX_IMAGES];
+			VkCommandBuffer command_buffers[SwapChain::MAX_IMAGES];
 		};
 	}
 
@@ -193,6 +224,10 @@ namespace render::backend
 			const void *data
 		) override;
 
+		SwapChain *createSwapChain(
+			void *native_window
+		) override;
+
 		void destroyVertexBuffer(VertexBuffer *vertex_buffer) override;
 		void destroyIndexBuffer(IndexBuffer *index_buffer) override;
 		void destroyRenderPrimitive(RenderPrimitive *render_primitive) override;
@@ -200,6 +235,7 @@ namespace render::backend
 		void destroyFrameBuffer(FrameBuffer *frame_buffer) override;
 		void destroyUniformBuffer(UniformBuffer *uniform_buffer) override;
 		void destroyShader(Shader *shader) override;
+		void destroySwapChain(SwapChain *swap_chain) override;
 
 	public:
 		void generateTexture2DMipmaps(Texture *texture) override;
@@ -208,6 +244,10 @@ namespace render::backend
 		void unmap(UniformBuffer *uniform_buffer) override;
 
 		void wait() override;
+
+		bool acquire(SwapChain *swap_chain) override;
+		bool present(SwapChain *swap_chain) override;
+		bool resize(SwapChain *swap_chain, uint32_t width, uint32_t height) override;
 
 	public:
 
@@ -249,4 +289,3 @@ namespace render::backend
 		VulkanContext *context {nullptr};
 	};
 }
-
