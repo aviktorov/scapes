@@ -346,7 +346,7 @@ void VulkanSwapChain::initPersistent()
 #endif
 
 	// Fetch present queue
-	presentQueueFamily = VulkanUtils::fetchPresentQueueFamily(
+	presentQueueFamily = VulkanUtils::getPresentQueueFamily(
 		context->getPhysicalDevice(),
 		surface,
 		context->getGraphicsQueueFamily()

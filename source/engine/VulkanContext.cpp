@@ -123,7 +123,7 @@ void VulkanContext::init(const char *applicationName, const char *engineName)
 		throw std::runtime_error("Failed to find a suitable GPU");
 
 	// Create logical device
-	graphicsQueueFamily = VulkanUtils::fetchGraphicsQueueFamily(physicalDevice);
+	graphicsQueueFamily = VulkanUtils::getGraphicsQueueFamily(physicalDevice);
 	const float queuePriority = 1.0f;
 
 	VkDeviceQueueCreateInfo graphicsQueueInfo = {};

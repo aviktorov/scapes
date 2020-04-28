@@ -47,11 +47,11 @@ public:
 		VkMemoryPropertyFlags properties
 	);
 
-	static uint32_t fetchGraphicsQueueFamily(
+	static uint32_t getGraphicsQueueFamily(
 		VkPhysicalDevice physicalDevice
 	);
 
-	static uint32_t fetchPresentQueueFamily(
+	static uint32_t getPresentQueueFamily(
 		VkPhysicalDevice physicalDevice,
 		VkSurfaceKHR surface,
 		uint32_t graphicsQueueFamily

@@ -205,7 +205,7 @@ uint32_t VulkanUtils::findMemoryType(
 
 /*
  */
-uint32_t VulkanUtils::fetchGraphicsQueueFamily(
+uint32_t VulkanUtils::getGraphicsQueueFamily(
 	VkPhysicalDevice physicalDevice
 )
 {
@@ -226,7 +226,7 @@ uint32_t VulkanUtils::fetchGraphicsQueueFamily(
 
 /*
  */
-uint32_t VulkanUtils::fetchPresentQueueFamily(
+uint32_t VulkanUtils::getPresentQueueFamily(
 	VkPhysicalDevice physicalDevice,
 	VkSurfaceKHR surface,
 	uint32_t graphicsQueueFamily
