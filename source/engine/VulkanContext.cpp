@@ -1,6 +1,8 @@
 #include "VulkanContext.h"
 #include "VulkanUtils.h"
 
+#include "render/backend/vulkan/platform.h"
+
 #include <array>
 #include <iostream>
 #include <set>
@@ -15,9 +17,6 @@ static int maxUniformBuffers = 32;
 static std::vector<const char*> requiredInstanceExtensions = {
 	VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 	VK_KHR_SURFACE_EXTENSION_NAME,
-#if defined(PBR_SANDBOX_WIN32)
-	"VK_KHR_win32_surface",
-#endif
 };
 
 /*
@@ -50,6 +49,7 @@ void VulkanContext::init(const char *applicationName, const char *engineName)
 		throw std::runtime_error("Can't initialize Vulkan helper library");
 
 	// Check required instance extensions
+	requiredInstanceExtensions.push_back(render::backend::vulkan::Platform::getInstanceExtension());
 	if (!VulkanUtils::checkInstanceExtensions(requiredInstanceExtensions, true))
 		throw std::runtime_error("This device doesn't have required Vulkan extensions");
 

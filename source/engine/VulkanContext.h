@@ -48,4 +48,7 @@ private:
 
 	VkSampleCountFlagBits maxMSAASamples {VK_SAMPLE_COUNT_1_BIT};
 	VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
+
+	// TODO: depth buffer
+	// TODO: msaa resolve buffer
 };
