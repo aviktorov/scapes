@@ -10,7 +10,7 @@ PBR Sandbox:
         ☐ Debug slow shader render failure
         ☐ Create a pull request to ImGui (Vulkan + Volk)
         ☐ Figure out different probability density functions for different NDF
-        ☐ Figure out why context swap recreation is broken during resize event
+        ✔ Figure out why context swap recreation is broken during resize event @done (6/5/2020, 10:54:32 PM)
     Online:
         ☐ Implement Oren-Nayar diffuse BRDF
         ☐ Implement microfacet Burley 12 diffuse BRDF
@@ -24,14 +24,21 @@ PBR Sandbox:
         ☐ Create backend based ImGui implementation on App level
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ Add pipeline registry class
-    Stream 30:
+        ☐ Create separate cmake script for backend
+    Stream 31:
         ☐ Add pipeline layout cache to backend
         ☐ Add pipeline cache to backend
         ☐ Add render pass cache to backend
+    Stream 30:
+        ☐ Figure out how to implement acquire / present in render backend for swap chain
+            ☐ Split frame rendering & presentation
+            ☐ Move presentation related stuff to swap chain backend
+            ☐ Migrate color / depth / frame to backend structures as much as possible
     Stream 29:
-        ☐ Finish swap chain implementation for Vulkan backend
-        ☐ Add platform specific code for surface creation in Vulkan backend
-        ☐ Create separate cmake script for backend
+        ✔ Finish swap chain implementation for Vulkan backend @done (6/5/2020, 10:34:16 PM)
+            ✔ Implement Driver::destroySwapChain method @done (6/5/2020, 8:43:47 PM)
+            ✔ Implement platform-dependent surface creation @done (6/5/2020, 9:27:25 PM)
+            ✔ Implement swap chain transient object creation @done (6/5/2020, 10:34:05 PM)
     Stream 28:
         ✔ Add swap chain API to backend @done (4/29/2020, 2:14:53 AM)
     Stream 27:
