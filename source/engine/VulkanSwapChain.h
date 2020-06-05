@@ -12,9 +12,10 @@ class VulkanContext;
 struct VulkanRenderFrame
 {
 	VkDescriptorSet descriptorSet {VK_NULL_HANDLE};
-
-	VkFramebuffer frameBuffer {VK_NULL_HANDLE};
 	VkCommandBuffer commandBuffer {VK_NULL_HANDLE};
+
+	// TODO: migrate to render::backend
+	VkFramebuffer frameBuffer {VK_NULL_HANDLE};
 
 	void *uniformBufferData {nullptr};
 	VkBuffer uniformBuffer {VK_NULL_HANDLE};
@@ -62,7 +63,13 @@ private:
 	std::vector<VulkanRenderFrame> frames;
 	VkDeviceSize uboSize;
 
-	//
+	VkFormat depthFormat;
+
+	VkRenderPass renderPass {VK_NULL_HANDLE};
+	VkRenderPass noClearRenderPass {VK_NULL_HANDLE};
+	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
+
+	// TODO: migrate to render::backend
 	VkImage colorImage {VK_NULL_HANDLE};
 	VkImageView colorImageView {VK_NULL_HANDLE};
 	VkDeviceMemory colorImageMemory {VK_NULL_HANDLE};
@@ -70,10 +77,4 @@ private:
 	VkImage depthImage {VK_NULL_HANDLE};
 	VkImageView depthImageView {VK_NULL_HANDLE};
 	VkDeviceMemory depthImageMemory {VK_NULL_HANDLE};
-
-	VkFormat depthFormat;
-
-	VkRenderPass renderPass {VK_NULL_HANDLE};
-	VkRenderPass noClearRenderPass {VK_NULL_HANDLE};
-	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
 };
