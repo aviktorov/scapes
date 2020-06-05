@@ -6,6 +6,7 @@ file(GLOB SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/driver.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/vulkan/driver.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/vulkan/platform.cpp
 	${THIRDPARTY_DIR}/volk/volk.c
 	${THIRDPARTY_DIR}/imgui/imgui.cpp
 	${THIRDPARTY_DIR}/imgui/imgui_draw.cpp

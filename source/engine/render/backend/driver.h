@@ -272,7 +272,9 @@ public:
 	) = 0;
 
 	virtual SwapChain *createSwapChain(
-		void *native_window
+		void *native_window,
+		uint32_t width,
+		uint32_t height
 	) = 0;
 
 	virtual void destroyVertexBuffer(VertexBuffer *vertex_buffer) = 0;

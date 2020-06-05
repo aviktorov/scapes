@@ -5,6 +5,7 @@
 #include <string>
 
 #include "render/backend/vulkan/driver.h"
+#include "render/backend/vulkan/platform.h"
 #include "shaderc/shaderc.h"
 
 #include "VulkanContext.h"
@@ -326,7 +327,7 @@ namespace render::backend
 			texture->sampler = VulkanUtils::createSampler(context, 0, texture->num_mipmaps);
 		}
 
-		static void selectOptimalSwapChainSettings(const VulkanContext *context, SwapChain *swap_chain)
+		static void selectOptimalSwapChainSettings(const VulkanContext *context, SwapChain *swap_chain, uint32_t width, uint32_t height)
 		{
 			// Get surface capabilities
 			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->getPhysicalDevice(), swap_chain->surface, &swap_chain->surface_capabilities);
@@ -380,16 +381,110 @@ namespace render::backend
 					break;
 				}
 			}
+
+			const VkSurfaceCapabilitiesKHR &capabilities = swap_chain->surface_capabilities;
+
+			// Select current swap extent if window manager doesn't allow to set custom extent
+			if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+			{
+				swap_chain->sizes = capabilities.currentExtent;
+			}
+			// Otherwise, manually set extent to match the min/max extent bounds
+			else
+			{
+				swap_chain->sizes.width = std::clamp(
+					width,
+					capabilities.minImageExtent.width,
+					capabilities.maxImageExtent.width
+				);
+
+				swap_chain->sizes.height = std::clamp(
+					height,
+					capabilities.minImageExtent.height,
+					capabilities.maxImageExtent.height
+				);
+			}
+
+			// Simply sticking to this minimum means that we may sometimes have to wait
+			// on the driver to complete internal operations before we can acquire another image to render to.
+			// Therefore it is recommended to request at least one more image than the minimum
+			swap_chain->num_images = capabilities.minImageCount + 1;
+
+			// We should also make sure to not exceed the maximum number of images while doing this,
+			// where 0 is a special value that means that there is no maximum
+			if(capabilities.maxImageCount > 0)
+				swap_chain->num_images = std::min(swap_chain->num_images, capabilities.maxImageCount);
 		}
 
-		static void createTransientSwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
+		static bool createTransientSwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
 		{
-			// TODO: swap chain
+			const VkSurfaceCapabilitiesKHR &capabilities = swap_chain->surface_capabilities;
+
+			VkSwapchainCreateInfoKHR info = {};
+			info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+			info.surface = swap_chain->surface;
+			info.minImageCount = swap_chain->num_images;
+			info.imageFormat = swap_chain->surface_format.format;
+			info.imageColorSpace = swap_chain->surface_format.colorSpace;
+			info.imageExtent = swap_chain->sizes;
+			info.imageArrayLayers = 1;
+			info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+			if (context->getGraphicsQueueFamily() != swap_chain->present_queue_family)
+			{
+				uint32_t families[] = { context->getGraphicsQueueFamily(), swap_chain->present_queue_family };
+				info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+				info.queueFamilyIndexCount = 2;
+				info.pQueueFamilyIndices = families;
+			}
+			else
+			{
+				info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+				info.queueFamilyIndexCount = 0;
+				info.pQueueFamilyIndices = nullptr;
+			}
+
+			info.preTransform = capabilities.currentTransform;
+			info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+			info.presentMode = swap_chain->present_mode;
+			info.clipped = VK_TRUE;
+			info.oldSwapchain = VK_NULL_HANDLE;
+
+			if (vkCreateSwapchainKHR(context->getDevice(), &info, nullptr, &swap_chain->swap_chain) != VK_SUCCESS)
+			{
+				std::cerr << "vulkan::createTransientSwapChainObjects(): vkCreateSwapchainKHR failed" << std::endl;
+				return false;
+			}
+
+			// Get surface images
+			vkGetSwapchainImagesKHR(context->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, nullptr);
+			assert(swap_chain->num_images != 0 && swap_chain->num_images < SwapChain::MAX_IMAGES);
+			vkGetSwapchainImagesKHR(context->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, swap_chain->images);
+
+			// Create image views
+			for (size_t i = 0; i < swap_chain->num_images; i++)
+				swap_chain->views[i] = VulkanUtils::createImageView(
+					context,
+					swap_chain->images[i],
+					swap_chain->surface_format.format,
+					VK_IMAGE_ASPECT_COLOR_BIT,
+					VK_IMAGE_VIEW_TYPE_2D
+				);
+
+			return true;
 		}
 
 		static void destroyTransientSwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
 		{
-			// TODO: swap chain
+			for (size_t i = 0; i < swap_chain->num_images; ++i)
+			{
+				vkDestroyImageView(context->getDevice(), swap_chain->views[i], nullptr);
+				swap_chain->images[i] = VK_NULL_HANDLE;
+				swap_chain->views[i] = VK_NULL_HANDLE;
+			}
+
+			vkDestroySwapchainKHR(context->getDevice(), swap_chain->swap_chain, nullptr);
+			swap_chain->swap_chain = VK_NULL_HANDLE;
 		}
 	}
 
@@ -813,15 +908,23 @@ namespace render::backend
 	}
 
 	SwapChain *VulkanDriver::createSwapChain(
-		void *native_window
+		void *native_window,
+		uint32_t width,
+		uint32_t height
 	)
 	{
 		assert(native_window != nullptr && "Invalid window");
 
 		vulkan::SwapChain *result = new vulkan::SwapChain();
 
-		// TODO: swap chain
-		// result->surface = vulkan::Platform::createSurface(native_window);
+		// Create platform surface
+		result->surface = vulkan::Platform::createSurface(context, native_window);
+		if (result->surface == VK_NULL_HANDLE)
+		{
+			std::cerr << "VulkanDriver::createSwapChain(): can't create platform surface" << std::endl;
+			destroySwapChain(result);
+			return false;
+		}
 
 		// Fetch present queue family
 		result->present_queue_family = VulkanUtils::getPresentQueueFamily(
@@ -839,8 +942,7 @@ namespace render::backend
 			return false;
 		}
 
-		vulkan::selectOptimalSwapChainSettings(context, result);
-		vulkan::createTransientSwapChainObjects(context, result);
+		vulkan::selectOptimalSwapChainSettings(context, result, width, height);
 
 		// Create persistent per-frame objects
 		for (size_t i = 0; i < result->num_images; i++)
@@ -855,7 +957,7 @@ namespace render::backend
 				destroySwapChain(result);
 				return nullptr;
 			}
-			
+
 			if (vkCreateSemaphore(context->getDevice(), &semaphore_info, nullptr, &result->rendering_finished_gpu[i]) != VK_SUCCESS)
 			{
 				std::cerr << "VulkanDriver::createSwapChain(): can't create 'rendering finished' semaphore" << std::endl;
@@ -875,6 +977,8 @@ namespace render::backend
 				return nullptr;
 			}
 		}
+
+		vulkan::createTransientSwapChainObjects(context, result);
 
 		return result;
 	}
@@ -1010,7 +1114,32 @@ namespace render::backend
 
 		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 
-		// TODO: swap chain
+		// Destroy persistent per-frame objects
+		for (size_t i = 0; i < vk_swap_chain->num_images; i++)
+		{
+			vkDestroySemaphore(context->getDevice(), vk_swap_chain->image_available_gpu[i], nullptr);
+			vk_swap_chain->image_available_gpu[i] = nullptr;
+
+			vkDestroySemaphore(context->getDevice(), vk_swap_chain->rendering_finished_gpu[i], nullptr);
+			vk_swap_chain->rendering_finished_gpu[i] = nullptr;
+
+			vkDestroyFence(context->getDevice(), vk_swap_chain->rendering_finished_cpu[i], nullptr);
+			vk_swap_chain->rendering_finished_cpu[i] = nullptr;
+		}
+
+		vulkan::destroyTransientSwapChainObjects(context, vk_swap_chain);
+
+		vk_swap_chain->present_queue_family = 0xFFFF;
+		vk_swap_chain->present_queue = VK_NULL_HANDLE;
+		vk_swap_chain->present_mode = VK_PRESENT_MODE_FIFO_KHR;
+		vk_swap_chain->sizes = {0, 0};
+
+		vk_swap_chain->num_images = 0;
+		vk_swap_chain->current_image = 0;
+
+		// Destroy platform surface
+		vulkan::Platform::destroySurface(context, vk_swap_chain->surface);
+		vk_swap_chain->surface = nullptr;
 
 		delete swap_chain;
 		swap_chain = nullptr;

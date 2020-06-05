@@ -117,7 +117,6 @@ namespace render::backend
 			VkFence rendering_finished_cpu[SwapChain::MAX_IMAGES];
 
 			VkSwapchainKHR swap_chain {nullptr};
-			VkFormat format {VK_FORMAT_UNDEFINED};
 			VkExtent2D sizes {0, 0};
 
 			uint32_t num_images {0};
@@ -125,7 +124,6 @@ namespace render::backend
 
 			VkImage images[SwapChain::MAX_IMAGES];
 			VkImageView views[SwapChain::MAX_IMAGES];
-			VkCommandBuffer command_buffers[SwapChain::MAX_IMAGES];
 		};
 	}
 
@@ -225,7 +223,9 @@ namespace render::backend
 		) override;
 
 		SwapChain *createSwapChain(
-			void *native_window
+			void *native_window,
+			uint32_t width,
+			uint32_t height
 		) override;
 
 		void destroyVertexBuffer(VertexBuffer *vertex_buffer) override;
