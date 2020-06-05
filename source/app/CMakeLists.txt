@@ -23,12 +23,12 @@ add_custom_command(
 	TARGET ${TARGET} POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
 		${THIRDPARTY_DIR}/assimp/lib/assimp-vc141-mt.dll
-		${CMAKE_CURRENT_BINARY_DIR}/assimp-vc141-mt.dll
+		${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/assimp-vc141-mt.dll
 )
 
 add_custom_command(
 	TARGET ${TARGET} POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
 		${THIRDPARTY_DIR}/shaderc/lib/shaderc_shared.dll
-		${CMAKE_CURRENT_BINARY_DIR}/shaderc_shared.dll
+		${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/shaderc_shared.dll
 )
