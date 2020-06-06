@@ -52,7 +52,7 @@ void VulkanImGuiRenderer::init(const VulkanSwapChain *swapChain)
 	init_info.QueueFamily = context->getGraphicsQueueFamily();
 	init_info.Queue = context->getGraphicsQueue();
 	init_info.DescriptorPool = context->getDescriptorPool();
-	init_info.MSAASamples = context->getMaxMSAASamples();
+	init_info.MSAASamples = context->getMaxSampleCount();
 	init_info.MinImageCount = static_cast<uint32_t>(swapChain->getNumImages());
 	init_info.ImageCount = static_cast<uint32_t>(swapChain->getNumImages());
 

@@ -245,4 +245,5 @@ public:
 
 private:
 	static bool hasStencilComponent(VkFormat format);
+	static bool isDepthFormat(VkFormat format);
 };

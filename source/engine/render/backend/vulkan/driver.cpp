@@ -130,7 +130,9 @@ namespace render::backend
 				VK_FORMAT_R8_UNORM, VK_FORMAT_R8_SNORM, VK_FORMAT_R8_UINT, VK_FORMAT_R8_SINT,
 				VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8_SNORM, VK_FORMAT_R8G8_UINT, VK_FORMAT_R8G8_SINT,
 				VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8_SNORM, VK_FORMAT_R8G8B8_UINT, VK_FORMAT_R8G8B8_SINT,
+				VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_B8G8R8_SNORM, VK_FORMAT_B8G8R8_UINT, VK_FORMAT_B8G8R8_SINT,
 				VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SNORM, VK_FORMAT_R8G8B8A8_UINT, VK_FORMAT_R8G8B8A8_SINT,
+				VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SNORM, VK_FORMAT_B8G8R8A8_UINT, VK_FORMAT_B8G8R8A8_SINT,
 
 				// 16-bit formats
 				VK_FORMAT_R16_UNORM, VK_FORMAT_R16_SNORM, VK_FORMAT_R16_UINT, VK_FORMAT_R16_SINT, VK_FORMAT_R16_SFLOAT,
@@ -149,6 +151,127 @@ namespace render::backend
 			};
 
 			return supported_formats[static_cast<int>(format)];
+		}
+
+		static Format fromFormat(VkFormat format)
+		{
+			switch (format)
+			{
+				case VK_FORMAT_UNDEFINED: return Format::UNDEFINED;
+
+				case VK_FORMAT_R8_UNORM: return Format::R8_UNORM;
+				case VK_FORMAT_R8_SNORM: return Format::R8_SNORM;
+				case VK_FORMAT_R8_UINT: return Format::R8_UINT;
+				case VK_FORMAT_R8_SINT: return Format::R8_SINT;
+				case VK_FORMAT_R8G8_UNORM: return Format::R8G8_UNORM;
+				case VK_FORMAT_R8G8_SNORM: return Format::R8G8_SNORM;
+				case VK_FORMAT_R8G8_UINT: return Format::R8G8_UINT;
+				case VK_FORMAT_R8G8_SINT: return Format::R8G8_SINT;
+				case VK_FORMAT_R8G8B8_UNORM: return Format::R8G8B8_UNORM;
+				case VK_FORMAT_R8G8B8_SNORM: return Format::R8G8B8_SNORM;
+				case VK_FORMAT_R8G8B8_UINT: return Format::R8G8B8_UINT;
+				case VK_FORMAT_R8G8B8_SINT: return Format::R8G8B8_SINT;
+				case VK_FORMAT_B8G8R8_UNORM: return Format::B8G8R8_UNORM;
+				case VK_FORMAT_B8G8R8_SNORM: return Format::B8G8R8_SNORM;
+				case VK_FORMAT_B8G8R8_UINT: return Format::B8G8R8_UINT;
+				case VK_FORMAT_B8G8R8_SINT: return Format::B8G8R8_SINT;
+				case VK_FORMAT_R8G8B8A8_UNORM: return Format::R8G8B8A8_UNORM;
+				case VK_FORMAT_R8G8B8A8_SNORM: return Format::R8G8B8A8_SNORM;
+				case VK_FORMAT_R8G8B8A8_UINT: return Format::R8G8B8A8_UINT;
+				case VK_FORMAT_R8G8B8A8_SINT: return Format::R8G8B8A8_SINT;
+				case VK_FORMAT_B8G8R8A8_UNORM: return Format::B8G8R8A8_UNORM;
+				case VK_FORMAT_B8G8R8A8_SNORM: return Format::B8G8R8A8_SNORM;
+				case VK_FORMAT_B8G8R8A8_UINT: return Format::B8G8R8A8_UINT;
+				case VK_FORMAT_B8G8R8A8_SINT: return Format::B8G8R8A8_SINT;
+
+				case VK_FORMAT_R16_UNORM: return Format::R16_UNORM;
+				case VK_FORMAT_R16_SNORM: return Format::R16_SNORM;
+				case VK_FORMAT_R16_UINT: return Format::R16_UINT;
+				case VK_FORMAT_R16_SINT: return Format::R16_SINT;
+				case VK_FORMAT_R16_SFLOAT: return Format::R16_SFLOAT;
+				case VK_FORMAT_R16G16_UNORM: return Format::R16G16_UNORM;
+				case VK_FORMAT_R16G16_SNORM: return Format::R16G16_SNORM;
+				case VK_FORMAT_R16G16_UINT: return Format::R16G16_UINT;
+				case VK_FORMAT_R16G16_SINT: return Format::R16G16_SINT;
+				case VK_FORMAT_R16G16_SFLOAT: return Format::R16G16_SFLOAT;
+				case VK_FORMAT_R16G16B16_UNORM: return Format::R16G16B16_UNORM;
+				case VK_FORMAT_R16G16B16_SNORM: return Format::R16G16B16_SNORM;
+				case VK_FORMAT_R16G16B16_UINT: return Format::R16G16B16_UINT;
+				case VK_FORMAT_R16G16B16_SINT: return Format::R16G16B16_SINT;
+				case VK_FORMAT_R16G16B16_SFLOAT: return Format::R16G16B16_SFLOAT;
+				case VK_FORMAT_R16G16B16A16_UNORM: return Format::R16G16B16A16_UNORM;
+				case VK_FORMAT_R16G16B16A16_SNORM: return Format::R16G16B16A16_SNORM;
+				case VK_FORMAT_R16G16B16A16_UINT: return Format::R16G16B16A16_UINT;
+				case VK_FORMAT_R16G16B16A16_SINT: return Format::R16G16B16A16_SINT;
+				case VK_FORMAT_R16G16B16A16_SFLOAT: return Format::R16G16B16A16_SFLOAT;
+
+				case VK_FORMAT_R32_UINT: return Format::R32_UINT;
+				case VK_FORMAT_R32_SINT: return Format::R32_SINT;
+				case VK_FORMAT_R32_SFLOAT: return Format::R32_SFLOAT;
+				case VK_FORMAT_R32G32_UINT: return Format::R32G32_UINT;
+				case VK_FORMAT_R32G32_SINT: return Format::R32G32_SINT;
+				case VK_FORMAT_R32G32_SFLOAT: return Format::R32G32_SFLOAT;
+				case VK_FORMAT_R32G32B32_UINT: return Format::R32G32B32_UINT;
+				case VK_FORMAT_R32G32B32_SINT: return Format::R32G32B32_SINT;
+				case VK_FORMAT_R32G32B32_SFLOAT: return Format::R32G32B32_SFLOAT;
+				case VK_FORMAT_R32G32B32A32_UINT: return Format::R32G32B32A32_UINT;
+				case VK_FORMAT_R32G32B32A32_SINT: return Format::R32G32B32A32_SINT;
+				case VK_FORMAT_R32G32B32A32_SFLOAT: return Format::R32G32B32A32_SFLOAT;
+
+				case VK_FORMAT_D16_UNORM: return Format::D16_UNORM;
+				case VK_FORMAT_D16_UNORM_S8_UINT: return Format::D16_UNORM_S8_UINT;
+				case VK_FORMAT_D24_UNORM_S8_UINT: return Format::D24_UNORM_S8_UINT;
+				case VK_FORMAT_D32_SFLOAT: return Format::D32_SFLOAT;
+				case VK_FORMAT_D32_SFLOAT_S8_UINT: return Format::D32_SFLOAT_S8_UINT;
+
+				default:
+				{
+					std::cerr << "vulkan::fromFormat(): unsupported format " << format << std::endl;
+					return Format::UNDEFINED;
+				}
+			}
+		}
+
+		static VkSampleCountFlagBits toSamples(Multisample samples)
+		{
+			static VkSampleCountFlagBits supported_samples[static_cast<int>(Multisample::MAX)] =
+			{
+				VK_SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_2_BIT,
+				VK_SAMPLE_COUNT_4_BIT, VK_SAMPLE_COUNT_8_BIT,
+				VK_SAMPLE_COUNT_16_BIT, VK_SAMPLE_COUNT_32_BIT,
+				VK_SAMPLE_COUNT_64_BIT,
+			};
+
+			return supported_samples[static_cast<int>(samples)];
+		}
+
+		static Multisample fromSamples(VkSampleCountFlagBits samples)
+		{
+			if (samples & VK_SAMPLE_COUNT_64_BIT) { return Multisample::COUNT_64; }
+			if (samples & VK_SAMPLE_COUNT_32_BIT) { return Multisample::COUNT_32; }
+			if (samples & VK_SAMPLE_COUNT_16_BIT) { return Multisample::COUNT_16; }
+			if (samples & VK_SAMPLE_COUNT_8_BIT) { return Multisample::COUNT_8; }
+			if (samples & VK_SAMPLE_COUNT_4_BIT) { return Multisample::COUNT_4; }
+			if (samples & VK_SAMPLE_COUNT_2_BIT) { return Multisample::COUNT_2; }
+
+			return Multisample::COUNT_1;
+		}
+
+		static VkImageUsageFlags toImageUsageFlags(VkFormat format)
+		{
+			if (format == VK_FORMAT_UNDEFINED)
+				return 0;
+
+			switch (format)
+			{
+				case VK_FORMAT_D16_UNORM:
+				case VK_FORMAT_D32_SFLOAT:
+				case VK_FORMAT_D16_UNORM_S8_UINT:
+				case VK_FORMAT_D24_UNORM_S8_UINT:
+				case VK_FORMAT_D32_SFLOAT_S8_UINT: return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			}
+
+			return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		}
 
 		static VkImageAspectFlags toImageAspectFlags(VkFormat format)
@@ -195,6 +318,8 @@ namespace render::backend
 				1, 1, 1, 1,
 				2, 2, 2, 2,
 				3, 3, 3, 3,
+				3, 3, 3, 3,
+				4, 4, 4, 4,
 				4, 4, 4, 4,
 
 				// 16-bit formats
@@ -258,13 +383,15 @@ namespace render::backend
 
 		static void createTextureData(const VulkanContext *context, Texture *texture, Format format, const void *data, int num_data_mipmaps, int num_data_layers)
 		{
+			VkImageUsageFlags usage_flags = toImageUsageFlags(texture->format);
+
 			VulkanUtils::createImage(
 				context,
 				texture->type,
 				texture->width, texture->height, texture->depth,
 				texture->num_mipmaps, texture->num_layers,
 				texture->samples, texture->format, texture->tiling,
-				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | usage_flags,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				texture->flags,
 				texture->image,
@@ -597,6 +724,7 @@ namespace render::backend
 		uint32_t height,
 		uint32_t num_mipmaps,
 		Format format,
+		Multisample samples,
 		const void *data,
 		uint32_t num_data_mipmaps
 	)
@@ -604,6 +732,7 @@ namespace render::backend
 		assert(width != 0 && height != 0 && "Invalid texture size");
 		assert(num_mipmaps != 0 && "Invalid mipmap count");
 		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
+		assert((samples == Multisample::COUNT_1) || (samples != Multisample::COUNT_1 && num_mipmaps == 1));
 
 		vulkan::Texture *result = new vulkan::Texture();
 		result->type = VK_IMAGE_TYPE_2D;
@@ -613,7 +742,7 @@ namespace render::backend
 		result->depth = 1;
 		result->num_mipmaps = num_mipmaps;
 		result->num_layers = 1;
-		result->samples = VK_SAMPLE_COUNT_1_BIT;
+		result->samples = vulkan::toSamples(samples);
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = 0;
 
@@ -1143,6 +1272,42 @@ namespace render::backend
 
 		delete swap_chain;
 		swap_chain = nullptr;
+	}
+
+	Multisample VulkanDriver::getMaxSampleCount()
+	{
+		assert(context != nullptr && "Invalid context");
+
+		VkSampleCountFlagBits samples = context->getMaxSampleCount();
+		return vulkan::fromSamples(samples);
+	}
+
+	Format VulkanDriver::getOptimalDepthFormat()
+	{
+		assert(context != nullptr && "Invalid context");
+
+		VkFormat format = VulkanUtils::selectOptimalDepthFormat(context->getPhysicalDevice());
+		return vulkan::fromFormat(format);
+	}
+
+	VkSampleCountFlagBits VulkanDriver::toMultisample(Multisample samples)
+	{
+		return vulkan::toSamples(samples);
+	}
+
+	Multisample VulkanDriver::fromMultisample(VkSampleCountFlagBits samples)
+	{
+		return vulkan::fromSamples(samples);
+	}
+
+	VkFormat VulkanDriver::toFormat(Format format)
+	{
+		return vulkan::toFormat(format);
+	}
+
+	Format VulkanDriver::fromFormat(VkFormat format)
+	{
+		return vulkan::fromFormat(format);
 	}
 
 	void VulkanDriver::generateTexture2DMipmaps(Texture *texture)

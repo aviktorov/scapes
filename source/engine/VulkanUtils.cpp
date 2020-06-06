@@ -732,6 +732,19 @@ bool VulkanUtils::hasStencilComponent(VkFormat format)
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
+bool VulkanUtils::isDepthFormat(VkFormat format)
+{
+	switch (format)
+	{
+		case VK_FORMAT_D16_UNORM: return true;
+		case VK_FORMAT_D16_UNORM_S8_UINT: return true;
+		case VK_FORMAT_D24_UNORM_S8_UINT: return true;
+		case VK_FORMAT_D32_SFLOAT: return true;
+		case VK_FORMAT_D32_SFLOAT_S8_UINT: return true;
+		default: return false;
+	}
+}
+
 void VulkanUtils::transitionImageLayout(
 	const VulkanContext *context,
 	VkImage image,
@@ -761,13 +774,12 @@ void VulkanUtils::transitionImageLayout(
 	barrier.subresourceRange.baseArrayLayer = baseLayer;
 	barrier.subresourceRange.layerCount = numLayers;
 
-	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+	if (isDepthFormat(format))
 	{
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 		if (hasStencilComponent(format))
 			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-	} else
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	}
 
 	VkPipelineStageFlags srcStage;
 	VkPipelineStageFlags dstStage;

@@ -27,7 +27,7 @@ struct VulkanRenderFrame
 class VulkanSwapChain
 {
 public:
-	VulkanSwapChain(render::backend::Driver *driver, void *nativeWindow, VkDeviceSize uboSize);
+	VulkanSwapChain(render::backend::Driver *driver, void *native_window, VkDeviceSize ubo_size);
 	virtual ~VulkanSwapChain();
 
 	void init(int width, int height);
@@ -39,9 +39,9 @@ public:
 
 	uint32_t getNumImages() const;
 	VkExtent2D getExtent() const;
-	inline VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout; }
-	inline VkRenderPass getRenderPass() const { return renderPass; }
-	inline VkRenderPass getNoClearRenderPass() const { return noClearRenderPass; }
+	inline VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptor_set_layout; }
+	inline VkRenderPass getRenderPass() const { return render_pass; }
+	inline VkRenderPass getNoClearRenderPass() const { return noclear_render_pass; }
 
 private:
 	void initTransient(int width, int height, VkFormat image_format);
@@ -61,20 +61,13 @@ private:
 	const VulkanContext *context {nullptr};
 
 	std::vector<VulkanRenderFrame> frames;
-	VkDeviceSize uboSize;
+	VkDeviceSize ubo_size;
 
-	VkFormat depthFormat;
+	VkRenderPass render_pass {VK_NULL_HANDLE};
+	VkRenderPass noclear_render_pass {VK_NULL_HANDLE};
+	VkDescriptorSetLayout descriptor_set_layout {VK_NULL_HANDLE};
 
-	VkRenderPass renderPass {VK_NULL_HANDLE};
-	VkRenderPass noClearRenderPass {VK_NULL_HANDLE};
-	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
-
-	// TODO: migrate to render::backend
-	VkImage colorImage {VK_NULL_HANDLE};
-	VkImageView colorImageView {VK_NULL_HANDLE};
-	VkDeviceMemory colorImageMemory {VK_NULL_HANDLE};
-
-	VkImage depthImage {VK_NULL_HANDLE};
-	VkImageView depthImageView {VK_NULL_HANDLE};
-	VkDeviceMemory depthImageMemory {VK_NULL_HANDLE};
+	render::backend::Texture *color {nullptr};
+	render::backend::Texture *depth {nullptr};
+	render::backend::Format depth_format {render::backend::Format::UNDEFINED};
 };

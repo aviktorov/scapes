@@ -11,9 +11,9 @@
 
 #include <render/backend/vulkan/driver.h>
 
-VulkanSwapChain::VulkanSwapChain(render::backend::Driver *driver, void *nativeWindow, VkDeviceSize uboSize)
+VulkanSwapChain::VulkanSwapChain(render::backend::Driver *driver, void *nativeWindow, VkDeviceSize ubo_size)
 	: driver(driver)
-	, uboSize(uboSize)
+	, ubo_size(ubo_size)
 	, native_window(nativeWindow)
 {
 	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
@@ -43,7 +43,7 @@ void VulkanSwapChain::init(int width, int height)
 
 	initPersistent(vk_swap_chain->surface_format.format);
 	initTransient(width, height, vk_swap_chain->surface_format.format);
-	initFrames(uboSize, width, height, vk_swap_chain->num_images, vk_swap_chain->views);
+	initFrames(ubo_size, width, height, vk_swap_chain->num_images, vk_swap_chain->views);
 }
 
 void VulkanSwapChain::reinit(int width, int height)
@@ -57,7 +57,7 @@ void VulkanSwapChain::reinit(int width, int height)
 	render::backend::vulkan::SwapChain *vk_swap_chain = reinterpret_cast<render::backend::vulkan::SwapChain *>(swap_chain);
 
 	initTransient(width, height, vk_swap_chain->surface_format.format);
-	initFrames(uboSize, width, height, vk_swap_chain->num_images, vk_swap_chain->views);
+	initFrames(ubo_size, width, height, vk_swap_chain->num_images, vk_swap_chain->views);
 }
 
 void VulkanSwapChain::shutdown()
@@ -99,7 +99,7 @@ bool VulkanSwapChain::acquire(void *state, VulkanRenderFrame &frame)
 	frame = frames[image_index];
 
 	// copy render state to ubo
-	memcpy(frame.uniformBufferData, state, static_cast<size_t>(uboSize));
+	memcpy(frame.uniformBufferData, state, static_cast<size_t>(ubo_size));
 
 	// reset command buffer
 	if (vkResetCommandBuffer(frame.commandBuffer, 0) != VK_SUCCESS)
@@ -172,88 +172,22 @@ bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
  */
 void VulkanSwapChain::initTransient(int width, int height, VkFormat image_format)
 {
-	// Create color buffer & image view
-	VulkanUtils::createImage2D(
-		context,
-		width,
-		height,
-		1,
-		context->getMaxMSAASamples(),
-		image_format,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		colorImage,
-		colorImageMemory
-	);
+	render::backend::VulkanDriver *vk_driver = reinterpret_cast<render::backend::VulkanDriver *>(driver);
 
-	colorImageView = VulkanUtils::createImageView(
-		context,
-		colorImage,
-		image_format,
-		VK_IMAGE_ASPECT_COLOR_BIT,
-		VK_IMAGE_VIEW_TYPE_2D
-	);
+	render::backend::Multisample max_samples = driver->getMaxSampleCount();
+	render::backend::Format format = vk_driver->fromFormat(image_format);
 
-	VulkanUtils::transitionImageLayout(
-		context,
-		colorImage,
-		image_format,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-	);
-
-	// Create depth buffer & image view
-	VulkanUtils::createImage2D(
-		context,
-		width,
-		height,
-		1,
-		context->getMaxMSAASamples(),
-		depthFormat,
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-		depthImage,
-		depthImageMemory
-	);
-
-	depthImageView = VulkanUtils::createImageView(
-		context,
-		depthImage,
-		depthFormat,
-		VK_IMAGE_ASPECT_DEPTH_BIT,
-		VK_IMAGE_VIEW_TYPE_2D
-	);
-
-	VulkanUtils::transitionImageLayout(
-		context,
-		depthImage,
-		depthFormat,
-		VK_IMAGE_LAYOUT_UNDEFINED,
-		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-	);
+	color = driver->createTexture2D(width, height, 1, format, max_samples);
+	depth = driver->createTexture2D(width, height, 1, depth_format, max_samples);
 }
 
 void VulkanSwapChain::shutdownTransient()
 {
-	vkDestroyImageView(context->getDevice(), colorImageView, nullptr);
-	colorImageView = VK_NULL_HANDLE;
+	driver->destroyTexture(color);
+	color = nullptr;
 
-	vkDestroyImage(context->getDevice(), colorImage, nullptr);
-	colorImage = VK_NULL_HANDLE;
-
-	vkFreeMemory(context->getDevice(), colorImageMemory, nullptr);
-	colorImageMemory = VK_NULL_HANDLE;
-
-	vkDestroyImageView(context->getDevice(), depthImageView, nullptr);
-	depthImageView = VK_NULL_HANDLE;
-
-	vkDestroyImage(context->getDevice(), depthImage, nullptr);
-	depthImage = VK_NULL_HANDLE;
-
-	vkFreeMemory(context->getDevice(), depthImageMemory, nullptr);
-	depthImageMemory = VK_NULL_HANDLE;
+	driver->destroyTexture(depth);
+	depth = nullptr;
 }
 
 /*
@@ -262,30 +196,35 @@ void VulkanSwapChain::initPersistent(VkFormat image_format)
 {
 	assert(native_window);
 
-	depthFormat = VulkanUtils::selectOptimalDepthFormat(context->getPhysicalDevice());
+	depth_format = driver->getOptimalDepthFormat();
+	render::backend::Multisample samples = driver->getMaxSampleCount();
+
+	render::backend::VulkanDriver *vk_driver = reinterpret_cast<render::backend::VulkanDriver *>(driver);
+	VkFormat vk_depth_format = vk_driver->toFormat(depth_format);
+	VkSampleCountFlagBits vk_samples = vk_driver->toMultisample(samples);
 
 	// Create descriptor set layout and render pass
-	VulkanDescriptorSetLayoutBuilder descriptorSetLayoutBuilder(context);
-	descriptorSetLayout = descriptorSetLayoutBuilder
+	VulkanDescriptorSetLayoutBuilder descriptor_set_layout_builder(context);
+	descriptor_set_layout = descriptor_set_layout_builder
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL)
 		.build();
 
-	VulkanRenderPassBuilder renderPassBuilder(context);
-	renderPass = renderPassBuilder
-		.addColorAttachment(image_format, context->getMaxMSAASamples(), VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
+	VulkanRenderPassBuilder render_pass_builder(context);
+	render_pass = render_pass_builder
+		.addColorAttachment(image_format, vk_samples, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
 		.addColorResolveAttachment(image_format, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE)
-		.addDepthStencilAttachment(depthFormat, context->getMaxMSAASamples(), VK_ATTACHMENT_LOAD_OP_CLEAR)
+		.addDepthStencilAttachment(vk_depth_format, vk_samples, VK_ATTACHMENT_LOAD_OP_CLEAR)
 		.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
 		.addColorAttachmentReference(0, 0)
 		.addColorResolveAttachmentReference(0, 1)
 		.setDepthStencilAttachmentReference(0, 2)
 		.build();
 
-	VulkanRenderPassBuilder noClearRenderPassBuilder(context);
-	noClearRenderPass = noClearRenderPassBuilder
-		.addColorAttachment(image_format, context->getMaxMSAASamples(), VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE)
+	VulkanRenderPassBuilder noclear_render_pass_builder(context);
+	noclear_render_pass = noclear_render_pass_builder
+		.addColorAttachment(image_format, vk_samples, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE)
 		.addColorResolveAttachment(image_format, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE)
-		.addDepthStencilAttachment(depthFormat, context->getMaxMSAASamples())
+		.addDepthStencilAttachment(vk_depth_format, vk_samples)
 		.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
 		.addColorAttachmentReference(0, 0)
 		.addColorResolveAttachmentReference(0, 1)
@@ -295,20 +234,23 @@ void VulkanSwapChain::initPersistent(VkFormat image_format)
 
 void VulkanSwapChain::shutdownPersistent()
 {
-	vkDestroyDescriptorSetLayout(context->getDevice(), descriptorSetLayout, nullptr);
-	descriptorSetLayout = VK_NULL_HANDLE;
+	vkDestroyDescriptorSetLayout(context->getDevice(), descriptor_set_layout, nullptr);
+	descriptor_set_layout = VK_NULL_HANDLE;
 
-	vkDestroyRenderPass(context->getDevice(), renderPass, nullptr);
-	renderPass = VK_NULL_HANDLE;
+	vkDestroyRenderPass(context->getDevice(), render_pass, nullptr);
+	render_pass = VK_NULL_HANDLE;
 
-	vkDestroyRenderPass(context->getDevice(), noClearRenderPass, nullptr);
-	noClearRenderPass = VK_NULL_HANDLE;
+	vkDestroyRenderPass(context->getDevice(), noclear_render_pass, nullptr);
+	noclear_render_pass = VK_NULL_HANDLE;
 }
 
 /*
  */
-void VulkanSwapChain::initFrames(VkDeviceSize uboSize, uint32_t width, uint32_t height, uint32_t num_images, VkImageView *views)
+void VulkanSwapChain::initFrames(VkDeviceSize ubo_size, uint32_t width, uint32_t height, uint32_t num_images, VkImageView *views)
 {
+	render::backend::vulkan::Texture *vk_depth = reinterpret_cast<render::backend::vulkan::Texture *>(depth);
+	render::backend::vulkan::Texture *vk_color = reinterpret_cast<render::backend::vulkan::Texture *>(color);
+
 	// Create uniform buffers
 	frames.resize(num_images);
 
@@ -319,21 +261,21 @@ void VulkanSwapChain::initFrames(VkDeviceSize uboSize, uint32_t width, uint32_t 
 		// Create uniform buffer object
 		VulkanUtils::createBuffer(
 			context,
-			uboSize,
+			ubo_size,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			frame.uniformBuffer,
 			frame.uniformBufferMemory
 		);
 
-		vkMapMemory(context->getDevice(), frame.uniformBufferMemory, 0, uboSize, 0, &frame.uniformBufferData);
+		vkMapMemory(context->getDevice(), frame.uniformBufferMemory, 0, ubo_size, 0, &frame.uniformBufferData);
 
 		// Create & fill descriptor set
 		VkDescriptorSetAllocateInfo descriptorSetAllocInfo = {};
 		descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		descriptorSetAllocInfo.descriptorPool = context->getDescriptorPool();
 		descriptorSetAllocInfo.descriptorSetCount = 1;
-		descriptorSetAllocInfo.pSetLayouts = &descriptorSetLayout;
+		descriptorSetAllocInfo.pSetLayouts = &descriptor_set_layout;
 
 		if (vkAllocateDescriptorSets(context->getDevice(), &descriptorSetAllocInfo, &frame.descriptorSet) != VK_SUCCESS)
 			throw std::runtime_error("Can't allocate swap chain descriptor sets");
@@ -344,19 +286,19 @@ void VulkanSwapChain::initFrames(VkDeviceSize uboSize, uint32_t width, uint32_t 
 			0,
 			frame.uniformBuffer,
 			0,
-			uboSize
+			ubo_size
 		);
 
 		// Create framebuffer
 		std::array<VkImageView, 3> attachments = {
-			colorImageView,
+			vk_color->view,
 			views[i],
-			depthImageView,
+			vk_depth->view,
 		};
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = renderPass;
+		framebufferInfo.renderPass = render_pass;
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = width;

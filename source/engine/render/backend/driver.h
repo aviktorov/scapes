@@ -9,12 +9,16 @@ enum class Api : unsigned char
 {
 	VULKAN = 0,
 	DEFAULT = VULKAN,
+
+	MAX,
 };
 
 enum class BufferType : unsigned char
 {
 	STATIC = 0,
 	DYNAMIC,
+
+	MAX,
 };
 
 enum class RenderPrimitiveType : unsigned char
@@ -28,14 +32,29 @@ enum class RenderPrimitiveType : unsigned char
 	TRIANGLE_STRIP,
 	TRIANGLE_FAN,
 	QUAD_PATCH,
-	MAX
+
+	MAX,
 };
 
 enum class IndexSize : unsigned char
 {
 	UINT16 = 0,
 	UINT32,
-	MAX
+
+	MAX,
+};
+
+enum class Multisample : unsigned char
+{
+	COUNT_1 = 0,
+	COUNT_2,
+	COUNT_4,
+	COUNT_8,
+	COUNT_16,
+	COUNT_32,
+	COUNT_64,
+
+	MAX,
 };
 
 enum class Format : unsigned int
@@ -58,10 +77,20 @@ enum class Format : unsigned int
 	R8G8B8_UINT,
 	R8G8B8_SINT,
 
+	B8G8R8_UNORM,
+	B8G8R8_SNORM,
+	B8G8R8_UINT,
+	B8G8R8_SINT,
+
 	R8G8B8A8_UNORM,
 	R8G8B8A8_SNORM,
 	R8G8B8A8_UINT,
 	R8G8B8A8_SINT,
+
+	B8G8R8A8_UNORM,
+	B8G8R8A8_SNORM,
+	B8G8R8A8_UINT,
+	B8G8R8A8_SINT,
 
 	// 16-bit formats
 	R16_UNORM,
@@ -134,6 +163,8 @@ enum class ShaderType : unsigned char
 	CLOSEST_HIT,
 	MISS,
 	CALLABLE,
+
+	MAX,
 };
 
 // C opaque structs
@@ -212,6 +243,7 @@ public:
 		uint32_t height,
 		uint32_t num_mipmaps,
 		Format format,
+		Multisample samples = Multisample::COUNT_1,
 		const void *data = nullptr,
 		uint32_t num_data_mipmaps = 1
 	) = 0;
@@ -285,6 +317,10 @@ public:
 	virtual void destroyUniformBuffer(UniformBuffer *uniform_buffer) = 0;
 	virtual void destroyShader(Shader *shader) = 0;
 	virtual void destroySwapChain(SwapChain *swap_chain) = 0;
+
+public:
+	virtual Multisample getMaxSampleCount() = 0;
+	virtual Format getOptimalDepthFormat() = 0;
 
 public:
 	virtual void generateTexture2DMipmaps(Texture *texture) = 0;

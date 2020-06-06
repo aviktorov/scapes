@@ -163,6 +163,7 @@ namespace render::backend
 			uint32_t height,
 			uint32_t num_mipmaps,
 			Format format,
+			Multisample samples = Multisample::COUNT_1,
 			const void *data = nullptr,
 			uint32_t num_data_mipmaps = 1
 		) override;
@@ -236,6 +237,17 @@ namespace render::backend
 		void destroyUniformBuffer(UniformBuffer *uniform_buffer) override;
 		void destroyShader(Shader *shader) override;
 		void destroySwapChain(SwapChain *swap_chain) override;
+
+	public:
+		Multisample getMaxSampleCount() override;
+		Format getOptimalDepthFormat() override;
+
+		// TODO: remove later
+		VkSampleCountFlagBits toMultisample(Multisample samples);
+		Multisample fromMultisample(VkSampleCountFlagBits samples);
+
+		VkFormat toFormat(Format format);
+		Format fromFormat(VkFormat format);
 
 	public:
 		void generateTexture2DMipmaps(Texture *texture) override;

@@ -16,7 +16,7 @@ public:
 	inline VkDescriptorPool getDescriptorPool() const { return descriptorPool; }
 	inline uint32_t getGraphicsQueueFamily() const { return graphicsQueueFamily; }
 	inline VkQueue getGraphicsQueue() const { return graphicsQueue; }
-	inline VkSampleCountFlagBits getMaxMSAASamples() const { return maxMSAASamples; }
+	inline VkSampleCountFlagBits getMaxSampleCount() const { return maxMSAASamples; }
 
 public:
 	void init(const char *applicationName, const char *engineName);
