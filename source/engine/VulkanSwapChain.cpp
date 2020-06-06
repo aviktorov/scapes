@@ -172,6 +172,7 @@ bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
  */
 void VulkanSwapChain::initTransient(int width, int height, VkFormat image_format)
 {
+	// TODO: remove vulkan specific stuff
 	render::backend::VulkanDriver *vk_driver = reinterpret_cast<render::backend::VulkanDriver *>(driver);
 
 	render::backend::Multisample max_samples = driver->getMaxSampleCount();
@@ -199,6 +200,7 @@ void VulkanSwapChain::initPersistent(VkFormat image_format)
 	depth_format = driver->getOptimalDepthFormat();
 	render::backend::Multisample samples = driver->getMaxSampleCount();
 
+	// TODO: remove vulkan specific stuff
 	render::backend::VulkanDriver *vk_driver = reinterpret_cast<render::backend::VulkanDriver *>(driver);
 	VkFormat vk_depth_format = vk_driver->toFormat(depth_format);
 	VkSampleCountFlagBits vk_samples = vk_driver->toMultisample(samples);

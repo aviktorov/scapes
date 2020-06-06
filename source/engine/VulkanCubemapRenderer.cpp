@@ -128,14 +128,15 @@ void VulkanCubemapRenderer::init(
 		throw std::runtime_error("Can't allocate descriptor sets");
 
 	// Create framebuffer
-	render::backend::FrameBufferColorAttachment attachments[6] =
+	render::backend::FrameBufferAttachmentType type = render::backend::FrameBufferAttachmentType::COLOR;
+	render::backend::FrameBufferAttachment attachments[6] =
 	{
-		{ target_texture.getBackend(), mip, 1, 0, 1 },
-		{ target_texture.getBackend(), mip, 1, 1, 1 },
-		{ target_texture.getBackend(), mip, 1, 2, 1 },
-		{ target_texture.getBackend(), mip, 1, 3, 1 },
-		{ target_texture.getBackend(), mip, 1, 4, 1 },
-		{ target_texture.getBackend(), mip, 1, 5, 1 },
+		{ type, target_texture.getBackend(), mip, 1, 0, 1 },
+		{ type, target_texture.getBackend(), mip, 1, 1, 1 },
+		{ type, target_texture.getBackend(), mip, 1, 2, 1 },
+		{ type, target_texture.getBackend(), mip, 1, 3, 1 },
+		{ type, target_texture.getBackend(), mip, 1, 4, 1 },
+		{ type, target_texture.getBackend(), mip, 1, 5, 1 },
 	};
 
 	framebuffer = driver->createFrameBuffer(6, attachments);

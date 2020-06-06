@@ -58,28 +58,18 @@ namespace render::backend
 			VkImageCreateFlags flags {0};
 		};
 
-		struct FrameBufferColorAttachment
-		{
-			VkImageView view {VK_NULL_HANDLE};
-		};
-
-		struct FrameBufferDepthStencilAttachment
-		{
-			VkImageView view {VK_NULL_HANDLE};
-		};
-
 		struct FrameBuffer : public render::backend::FrameBuffer
 		{
 			enum
 			{
-				MAX_COLOR_ATTACHMENTS = 16,
+				MAX_ATTACHMENTS = 16,
 			};
 
 			VkFramebuffer framebuffer {VK_NULL_HANDLE};
 			VkRenderPass dummy_render_pass {VK_NULL_HANDLE}; // TODO: move to render pass cache
-			uint8_t num_color_attachments {0};
-			FrameBufferColorAttachment color_attachments[FrameBuffer::MAX_COLOR_ATTACHMENTS];
-			FrameBufferDepthStencilAttachment depthstencil_attachment;
+			uint8_t num_attachments {0};
+			VkImageView attachments[FrameBuffer::MAX_ATTACHMENTS];
+			// TODO: add info about attachment type (color, color resolve, depth)
 		};
 
 		struct UniformBuffer : public render::backend::UniformBuffer
@@ -104,6 +94,9 @@ namespace render::backend
 				MAX_IMAGES = 8,
 			};
 
+			VkSwapchainKHR swap_chain {nullptr};
+			VkExtent2D sizes {0, 0};
+
 			VkSurfaceKHR surface {nullptr};
 			VkSurfaceCapabilitiesKHR surface_capabilities;
 			VkSurfaceFormatKHR surface_format;
@@ -112,16 +105,24 @@ namespace render::backend
 			VkQueue present_queue {VK_NULL_HANDLE};
 			VkPresentModeKHR present_mode {VK_PRESENT_MODE_FIFO_KHR};
 
-			VkSemaphore image_available_gpu[SwapChain::MAX_IMAGES];
-			VkSemaphore rendering_finished_gpu[SwapChain::MAX_IMAGES];
-			VkFence rendering_finished_cpu[SwapChain::MAX_IMAGES];
+			VkImage msaa_color_image {VK_NULL_HANDLE};
+			VkImageView msaa_color_view {VK_NULL_HANDLE};
+			VkDeviceMemory msaa_color_memory {VK_NULL_HANDLE};
 
-			VkSwapchainKHR swap_chain {nullptr};
-			VkExtent2D sizes {0, 0};
+			VkImage depth_image {VK_NULL_HANDLE};
+			VkImageView depth_view {VK_NULL_HANDLE};
+			VkDeviceMemory depth_memory {VK_NULL_HANDLE};
+
+			VkRenderPass dummy_render_pass {VK_NULL_HANDLE}; // TODO: move to render pass cache
 
 			uint32_t num_images {0};
 			uint32_t current_image {0};
 
+			VkSemaphore image_available_gpu[SwapChain::MAX_IMAGES];
+			VkSemaphore rendering_finished_gpu[SwapChain::MAX_IMAGES];
+			VkFence rendering_finished_cpu[SwapChain::MAX_IMAGES];
+
+			VkFramebuffer framebuffer[SwapChain::MAX_IMAGES];
 			VkImage images[SwapChain::MAX_IMAGES];
 			VkImageView views[SwapChain::MAX_IMAGES];
 		};
@@ -199,9 +200,8 @@ namespace render::backend
 		) override;
 
 		FrameBuffer *createFrameBuffer(
-			uint8_t num_color_attachments,
-			const FrameBufferColorAttachment *color_attachments,
-			const FrameBufferDepthStencilAttachment *depthstencil_attachment = nullptr
+			uint8_t num_attachments,
+			const FrameBufferAttachment *attachments
 		) override;
 
 		UniformBuffer *createUniformBuffer(

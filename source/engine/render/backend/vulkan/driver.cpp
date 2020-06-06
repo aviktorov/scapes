@@ -848,19 +848,14 @@ namespace render::backend
 	}
 
 	FrameBuffer *VulkanDriver::createFrameBuffer(
-		uint8_t num_color_attachments,
-		const FrameBufferColorAttachment *color_attachments,
-		const FrameBufferDepthStencilAttachment *depthstencil_attachment
+		uint8_t num_attachments,
+		const FrameBufferAttachment *attachments
 	)
 	{
-		assert((depthstencil_attachment != nullptr && num_color_attachments == 0) || (num_color_attachments != 0) && "Invalid attachments");
-
 		// TODO: check for equal sizes (color + depthstencil)
 
 		vulkan::FrameBuffer *result = new vulkan::FrameBuffer();
 
-		VkImageView attachments[vulkan::FrameBuffer::MAX_COLOR_ATTACHMENTS + 1];
-		uint8_t num_attachments = 0;
 		uint32_t width = 0;
 		uint32_t height = 0;
 		VulkanRenderPassBuilder builder = VulkanRenderPassBuilder(context);
@@ -868,49 +863,86 @@ namespace render::backend
 		builder.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
 
 		// add color attachments
-		result->num_color_attachments = num_color_attachments;
-		for (uint8_t i = 0; i < num_color_attachments; ++i)
+		result->num_attachments = 0;
+		for (uint8_t i = 0; i < num_attachments; ++i)
 		{
-			const FrameBufferColorAttachment &attachment = color_attachments[i];
-			const vulkan::Texture *texture = static_cast<const vulkan::Texture *>(attachment.texture);
+			const FrameBufferAttachment &attachment = attachments[i];
+			VkImageView view = VK_NULL_HANDLE;
 
-			VkImageView view = VulkanUtils::createImageView(
-				context,
-				texture->image, texture->format,
-				VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D,
-				attachment.base_mip, attachment.num_mips,
-				attachment.base_layer, attachment.num_layers
-			);
+			if (attachment.type == FrameBufferAttachmentType::COLOR)
+			{
+				const FrameBufferAttachment::Color &color = attachment.color;
+				const vulkan::Texture *color_texture = static_cast<const vulkan::Texture *>(color.texture);
+				VkImageAspectFlags flags = vulkan::toImageAspectFlags(color_texture->format);
 
-			result->color_attachments[i].view = view;
-			attachments[num_attachments++] = view;
+				view = VulkanUtils::createImageView(
+					context,
+					color_texture->image, color_texture->format,
+					flags, VK_IMAGE_VIEW_TYPE_2D,
+					color.base_mip, color.num_mips,
+					color.base_layer, color.num_layers
+				);
 
-			width = std::max<int>(1, texture->width / (1 << attachment.base_mip));
-			height = std::max<int>(1, texture->height / (1 << attachment.base_mip));
+				width = std::max<int>(1, color_texture->width / (1 << color.base_mip));
+				height = std::max<int>(1, color_texture->height / (1 << color.base_mip));
 
-			builder.addColorAttachment(texture->format, texture->samples);
-			builder.addColorAttachmentReference(0, i);
-		}
+				if (color.resolve_attachment)
+				{
+					builder.addColorResolveAttachment(color_texture->format);
+					builder.addColorResolveAttachmentReference(0, i);
+				}
+				else
+				{
+					builder.addColorAttachment(color_texture->format, color_texture->samples);
+					builder.addColorAttachmentReference(0, i);
+				}
+			}
+			else if (attachment.type == FrameBufferAttachmentType::DEPTH)
+			{
+				const FrameBufferAttachment::Depth &depth = attachment.depth;
+				const vulkan::Texture *depth_texture = static_cast<const vulkan::Texture *>(depth.texture);
+				VkImageAspectFlags flags = vulkan::toImageAspectFlags(depth_texture->format);
 
-		// add depthstencil attachment
-		if (depthstencil_attachment != nullptr)
-		{
-			const vulkan::Texture *texture = static_cast<const vulkan::Texture *>(depthstencil_attachment->texture);
+				view = VulkanUtils::createImageView(
+					context,
+					depth_texture->image, depth_texture->format,
+					flags, VK_IMAGE_VIEW_TYPE_2D
+				);
 
-			VkImageAspectFlags flags = vulkan::toImageAspectFlags(texture->format);
-			assert((flags & VK_IMAGE_ASPECT_DEPTH_BIT) && "Invalid depthstencil attachment format");
+				width = depth_texture->width;
+				height = depth_texture->height;
 
-			VkImageView view = VulkanUtils::createImageView(
-				context,
-				texture->image, texture->format,
-				flags, VK_IMAGE_VIEW_TYPE_2D
-			);
+				builder.addDepthStencilAttachment(depth_texture->format, depth_texture->samples);
+				builder.setDepthStencilAttachmentReference(0, i);
+			}
+			else if (attachment.type == FrameBufferAttachmentType::SWAP_CHAIN_COLOR)
+			{
+				const FrameBufferAttachment::SwapChainColor &swap_chain_color = attachment.swap_chain_color;
+				const vulkan::SwapChain *swap_chain = static_cast<const vulkan::SwapChain *>(swap_chain_color.swap_chain);
+				VkImageAspectFlags flags = vulkan::toImageAspectFlags(swap_chain->surface_format.format);
 
-			result->depthstencil_attachment.view = view;
-			attachments[num_attachments++] = view;
+				view = VulkanUtils::createImageView(
+					context,
+					swap_chain->images[swap_chain_color.num_image], swap_chain->surface_format.format,
+					flags, VK_IMAGE_VIEW_TYPE_2D
+				);
 
-			builder.addDepthStencilAttachment(texture->format, texture->samples);
-			builder.setDepthStencilAttachmentReference(0, num_color_attachments);
+				width = swap_chain->sizes.width;
+				height = swap_chain->sizes.height;
+
+				if (swap_chain_color.resolve_attachment)
+				{
+					builder.addColorResolveAttachment(swap_chain->surface_format.format);
+					builder.addColorResolveAttachmentReference(0, i);
+				}
+				else
+				{
+					builder.addColorAttachment(swap_chain->surface_format.format, VK_SAMPLE_COUNT_1_BIT);
+					builder.addColorAttachmentReference(0, i);
+				}
+			}
+
+			result->attachments[result->num_attachments++] = view;
 		}
 
 		// create dummy renderpass
@@ -920,8 +952,8 @@ namespace render::backend
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = result->dummy_render_pass;
-		framebufferInfo.attachmentCount = num_attachments;
-		framebufferInfo.pAttachments = attachments;
+		framebufferInfo.attachmentCount = result->num_attachments;
+		framebufferInfo.pAttachments = result->attachments;
 		framebufferInfo.width = width;
 		framebufferInfo.height = height;
 		framebufferInfo.layers = 1;
@@ -1186,14 +1218,11 @@ namespace render::backend
 
 		vulkan::FrameBuffer *vk_frame_buffer = static_cast<vulkan::FrameBuffer *>(frame_buffer);
 
-		for (uint8_t i = 0; i < vk_frame_buffer->num_color_attachments; ++i)
+		for (uint8_t i = 0; i < vk_frame_buffer->num_attachments; ++i)
 		{
-			vkDestroyImageView(context->getDevice(), vk_frame_buffer->color_attachments[i].view, nullptr);
-			vk_frame_buffer->color_attachments[i].view = VK_NULL_HANDLE;
+			vkDestroyImageView(context->getDevice(), vk_frame_buffer->attachments[i], nullptr);
+			vk_frame_buffer->attachments[i] = VK_NULL_HANDLE;
 		}
-
-		vkDestroyImageView(context->getDevice(), vk_frame_buffer->depthstencil_attachment.view, nullptr);
-		vk_frame_buffer->depthstencil_attachment.view = VK_NULL_HANDLE;
 
 		vkDestroyFramebuffer(context->getDevice(), vk_frame_buffer->framebuffer, nullptr);
 		vk_frame_buffer->framebuffer = VK_NULL_HANDLE;

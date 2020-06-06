@@ -190,23 +190,44 @@ struct VertexAttribute
 	unsigned int offset {0};
 };
 
-struct FrameBufferColorAttachment
+enum FrameBufferAttachmentType : unsigned char
 {
-	const Texture *texture {nullptr};
-	int base_mip {0};
-	int num_mips {1};
-	int base_layer {0};
-	int num_layers {1};
-	// TODO: add support for load / store operations
-	// TODO: add clear values
+	COLOR = 0,
+	DEPTH,
+	SWAP_CHAIN_COLOR,
 };
 
-struct FrameBufferDepthStencilAttachment
+struct FrameBufferAttachment
 {
-	const Texture *texture {nullptr};
-	// TODO: add support for load / store operations
-	// TODO: add support for load / store stencil operations
-	// TODO: add clear values
+	struct Color
+	{
+		const Texture *texture {nullptr};
+		int base_mip {0};
+		int num_mips {1};
+		int base_layer {0};
+		int num_layers {1};
+		bool resolve_attachment {false};
+	};
+
+	struct Depth
+	{
+		const Texture *texture {nullptr};
+	};
+
+	struct SwapChainColor
+	{
+		const SwapChain *swap_chain {nullptr};
+		int num_image {0};
+		bool resolve_attachment {false};
+	};
+
+	FrameBufferAttachmentType type {FrameBufferAttachmentType::COLOR};
+	union
+	{
+		Color color;
+		Depth depth;
+		SwapChainColor swap_chain_color;
+	};
 };
 
 // main backend class
@@ -279,9 +300,8 @@ public:
 	) = 0;
 
 	virtual FrameBuffer *createFrameBuffer(
-		uint8_t num_color_attachments,
-		const FrameBufferColorAttachment *color_attachments,
-		const FrameBufferDepthStencilAttachment *depthstencil_attachment = nullptr
+		uint8_t num_attachments,
+		const FrameBufferAttachment *attachments
 	) = 0;
 
 	virtual UniformBuffer *createUniformBuffer(

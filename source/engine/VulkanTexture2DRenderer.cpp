@@ -79,9 +79,10 @@ void VulkanTexture2DRenderer::init(
 		.build();
 
 	// Create framebuffer
-	render::backend::FrameBufferColorAttachment attachments[] =
+	render::backend::FrameBufferAttachmentType type = render::backend::FrameBufferAttachmentType::COLOR;
+	render::backend::FrameBufferAttachment attachments[] =
 	{
-		{ target_texture.getBackend(), 0, 1, 0, 1},
+		{ type, target_texture.getBackend(), 0, 1, 0, 1},
 	};
 
 	framebuffer = driver->createFrameBuffer(1, attachments);
