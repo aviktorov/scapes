@@ -73,43 +73,20 @@ void VulkanSwapChain::shutdown()
  */
 bool VulkanSwapChain::acquire(void *state, VulkanRenderFrame &frame)
 {
-	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
-	uint32_t current_frame = vk_swap_chain->current_image;
-
-	vkWaitForFences(
-		context->getDevice(),
-		1, &vk_swap_chain->rendering_finished_cpu[current_frame],
-		VK_TRUE, std::numeric_limits<uint64_t>::max()
-	);
-
 	uint32_t image_index = 0;
-	VkResult result = vkAcquireNextImageKHR(
-		context->getDevice(),
-		vk_swap_chain->swap_chain,
-		std::numeric_limits<uint64_t>::max(),
-		vk_swap_chain->image_available_gpu[current_frame],
-		VK_NULL_HANDLE,
-		&image_index
-	);
-
-	if (result == VK_ERROR_OUT_OF_DATE_KHR)
+	if (!driver->acquire(swap_chain, &image_index))
 		return false;
 
-	if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-		throw std::runtime_error("Can't acquire swap chain image");
-
 	frame = frames[image_index];
-
-	// copy render state to ubo
-	memcpy(frame.uniform_buffer_data, state, static_cast<size_t>(ubo_size));
-
-	beginFrame(frame);
+	beginFrame(state, frame);
 
 	return true;
 }
 
-void VulkanSwapChain::beginFrame(const VulkanRenderFrame &frame)
+void VulkanSwapChain::beginFrame(void *state, const VulkanRenderFrame &frame)
 {
+	memcpy(frame.uniform_buffer_data, state, static_cast<size_t>(ubo_size));
+
 	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 	VkFramebuffer framebuffer = static_cast<vulkan::FrameBuffer *>(frame.frame_buffer)->framebuffer;
 
@@ -172,38 +149,8 @@ void VulkanSwapChain::endFrame(const VulkanRenderFrame &frame)
 
 bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
 {
-	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
-	uint32_t current_frame = vk_swap_chain->current_image;
-
 	endFrame(frame);
-
-	VkPresentInfoKHR presentInfo = {};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &vk_swap_chain->rendering_finished_gpu[current_frame];
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &vk_swap_chain->swap_chain;
-	presentInfo.pImageIndices = &current_frame;
-
-	VulkanUtils::transitionImageLayout(
-		context,
-		vk_swap_chain->images[current_frame],
-		vk_swap_chain->surface_format.format,
-		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-	);
-
-	VkResult result = vkQueuePresentKHR(vk_swap_chain->present_queue, &presentInfo);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-		return false;
-
-	if (result != VK_SUCCESS)
-		throw std::runtime_error("Can't present swap chain image");
-
-	vk_swap_chain->current_image++;
-	vk_swap_chain->current_image %= vk_swap_chain->num_images;
-
-	return true;
+	return driver->present(swap_chain);
 }
 
 /*
@@ -315,7 +262,7 @@ void VulkanSwapChain::initFrames(VkDeviceSize ubo_size, uint32_t width, uint32_t
 		attachments[1].swap_chain_color.resolve_attachment = true;
 		attachments[2].type = FrameBufferAttachmentType::DEPTH;
 		attachments[2].depth.texture = depth;
-		
+
 		frame.frame_buffer = driver->createFrameBuffer(3, attachments);
 
 		// Create commandbuffer

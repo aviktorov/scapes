@@ -350,7 +350,7 @@ public:
 
 	virtual void wait() = 0;
 
-	virtual bool acquire(SwapChain *swap_chain) = 0;
+	virtual bool acquire(SwapChain *swap_chain, uint32_t *new_image) = 0;
 	virtual bool present(SwapChain *swap_chain) = 0;
 	virtual bool resize(SwapChain *swap_chain, uint32_t width, uint32_t height) = 0;
 

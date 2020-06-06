@@ -1408,16 +1408,75 @@ namespace render::backend
 		context->wait();
 	}
 
-	bool VulkanDriver::acquire(SwapChain *swap_chain)
+	bool VulkanDriver::acquire(SwapChain *swap_chain, uint32_t *new_image)
 	{
-		// TODO: swap chain
-		return false;
+		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
+		uint32_t current_image = vk_swap_chain->current_image;
+
+		vkWaitForFences(
+			context->getDevice(),
+			1, &vk_swap_chain->rendering_finished_cpu[current_image],
+			VK_TRUE, std::numeric_limits<uint64_t>::max()
+		);
+
+		VkResult result = vkAcquireNextImageKHR(
+			context->getDevice(),
+			vk_swap_chain->swap_chain,
+			std::numeric_limits<uint64_t>::max(),
+			vk_swap_chain->image_available_gpu[current_image],
+			VK_NULL_HANDLE,
+			new_image
+		);
+
+		if (result == VK_ERROR_OUT_OF_DATE_KHR)
+			return false;
+
+		if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		{
+			// TODO: log fatal
+			// runtime_error("Can't acquire swap chain image");
+			return false;
+		}
+
+		return true;
 	}
 
 	bool VulkanDriver::present(SwapChain *swap_chain)
 	{
-		// TODO: swap chain
-		return false;
+		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
+		uint32_t current_image = vk_swap_chain->current_image;
+
+		VkPresentInfoKHR info = {};
+		info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+		info.waitSemaphoreCount = 1;
+		info.pWaitSemaphores = &vk_swap_chain->rendering_finished_gpu[current_image]; // TODO: check if we need to wait for this
+		info.swapchainCount = 1;
+		info.pSwapchains = &vk_swap_chain->swap_chain;
+		info.pImageIndices = &current_image;
+
+		VulkanUtils::transitionImageLayout(
+			context,
+			vk_swap_chain->images[current_image],
+			vk_swap_chain->surface_format.format,
+			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		);
+
+		VkResult result = vkQueuePresentKHR(vk_swap_chain->present_queue, &info);
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+			return false;
+
+		if (result != VK_SUCCESS)
+		{
+			// TODO: log fatal
+			// runtime_error("Can't present swap chain image");
+			return false;
+		}
+
+		vk_swap_chain->current_image++;
+		vk_swap_chain->current_image %= vk_swap_chain->num_images;
+
+		return true;
 	}
 
 	bool VulkanDriver::resize(SwapChain *swap_chain, uint32_t width, uint32_t height)

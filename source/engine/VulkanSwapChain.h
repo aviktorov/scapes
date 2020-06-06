@@ -40,7 +40,7 @@ public:
 	inline VkRenderPass getRenderPass() const { return render_pass; }
 
 private:
-	void beginFrame(const VulkanRenderFrame &frame);
+	void beginFrame(void *state, const VulkanRenderFrame &frame);
 	void endFrame(const VulkanRenderFrame &frame);
 
 	void initTransient(int width, int height, VkFormat image_format);

@@ -257,7 +257,7 @@ namespace render::backend
 
 		void wait() override;
 
-		bool acquire(SwapChain *swap_chain) override;
+		bool acquire(SwapChain *swap_chain, uint32_t *new_image) override;
 		bool present(SwapChain *swap_chain) override;
 		bool resize(SwapChain *swap_chain, uint32_t width, uint32_t height) override;
 
