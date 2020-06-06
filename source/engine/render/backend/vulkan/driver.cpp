@@ -923,7 +923,7 @@ namespace render::backend
 
 				view = VulkanUtils::createImageView(
 					context,
-					swap_chain->images[swap_chain_color.num_image], swap_chain->surface_format.format,
+					swap_chain->images[swap_chain_color.base_image], swap_chain->surface_format.format,
 					flags, VK_IMAGE_VIEW_TYPE_2D
 				);
 

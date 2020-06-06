@@ -11,12 +11,14 @@
 
 #include <render/backend/vulkan/driver.h>
 
-VulkanSwapChain::VulkanSwapChain(render::backend::Driver *driver, void *nativeWindow, VkDeviceSize ubo_size)
+using namespace render::backend;
+
+VulkanSwapChain::VulkanSwapChain(Driver *driver, void *native_window, VkDeviceSize ubo_size)
 	: driver(driver)
 	, ubo_size(ubo_size)
-	, native_window(nativeWindow)
+	, native_window(native_window)
 {
-	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
+	context = static_cast<VulkanDriver *>(driver)->getContext();
 }
 
 VulkanSwapChain::~VulkanSwapChain()
@@ -26,24 +28,24 @@ VulkanSwapChain::~VulkanSwapChain()
 
 uint32_t VulkanSwapChain::getNumImages() const
 {
-	render::backend::vulkan::SwapChain *vk_swap_chain = reinterpret_cast<render::backend::vulkan::SwapChain *>(swap_chain);
+	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 	return vk_swap_chain->num_images;
 }
 
 VkExtent2D VulkanSwapChain::getExtent() const
 {
-	render::backend::vulkan::SwapChain *vk_swap_chain = reinterpret_cast<render::backend::vulkan::SwapChain *>(swap_chain);
+	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 	return vk_swap_chain->sizes;
 }
 
 void VulkanSwapChain::init(int width, int height)
 {
 	swap_chain = driver->createSwapChain(native_window, width, height);
-	render::backend::vulkan::SwapChain *vk_swap_chain = reinterpret_cast<render::backend::vulkan::SwapChain *>(swap_chain);
+	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 
 	initPersistent(vk_swap_chain->surface_format.format);
 	initTransient(width, height, vk_swap_chain->surface_format.format);
-	initFrames(ubo_size, width, height, vk_swap_chain->num_images, vk_swap_chain->views);
+	initFrames(ubo_size, width, height, vk_swap_chain->num_images);
 }
 
 void VulkanSwapChain::reinit(int width, int height)
@@ -54,10 +56,10 @@ void VulkanSwapChain::reinit(int width, int height)
 	driver->destroySwapChain(swap_chain);
 
 	swap_chain = driver->createSwapChain(native_window, width, height);
-	render::backend::vulkan::SwapChain *vk_swap_chain = reinterpret_cast<render::backend::vulkan::SwapChain *>(swap_chain);
+	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 
 	initTransient(width, height, vk_swap_chain->surface_format.format);
-	initFrames(ubo_size, width, height, vk_swap_chain->num_images, vk_swap_chain->views);
+	initFrames(ubo_size, width, height, vk_swap_chain->num_images);
 }
 
 void VulkanSwapChain::shutdown()
@@ -71,7 +73,7 @@ void VulkanSwapChain::shutdown()
  */
 bool VulkanSwapChain::acquire(void *state, VulkanRenderFrame &frame)
 {
-	render::backend::vulkan::SwapChain *vk_swap_chain = reinterpret_cast<render::backend::vulkan::SwapChain *>(swap_chain);
+	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 	uint32_t current_frame = vk_swap_chain->current_image;
 
 	vkWaitForFences(
@@ -99,17 +101,17 @@ bool VulkanSwapChain::acquire(void *state, VulkanRenderFrame &frame)
 	frame = frames[image_index];
 
 	// copy render state to ubo
-	memcpy(frame.uniformBufferData, state, static_cast<size_t>(ubo_size));
+	memcpy(frame.uniform_buffer_data, state, static_cast<size_t>(ubo_size));
 
 	// reset command buffer
-	if (vkResetCommandBuffer(frame.commandBuffer, 0) != VK_SUCCESS)
+	if (vkResetCommandBuffer(frame.command_buffer, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't reset command buffer");
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-	if (vkBeginCommandBuffer(frame.commandBuffer, &beginInfo) != VK_SUCCESS)
+	if (vkBeginCommandBuffer(frame.command_buffer, &beginInfo) != VK_SUCCESS)
 		throw std::runtime_error("Can't begin recording command buffer");
 
 	return true;
@@ -117,10 +119,10 @@ bool VulkanSwapChain::acquire(void *state, VulkanRenderFrame &frame)
 
 bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
 {
-	render::backend::vulkan::SwapChain *vk_swap_chain = reinterpret_cast<render::backend::vulkan::SwapChain *>(swap_chain);
+	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 	uint32_t current_frame = vk_swap_chain->current_image;
 
-	if (vkEndCommandBuffer(frame.commandBuffer) != VK_SUCCESS)
+	if (vkEndCommandBuffer(frame.command_buffer) != VK_SUCCESS)
 		throw std::runtime_error("Can't record command buffer");
 	
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -131,7 +133,7 @@ bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
 	submitInfo.pWaitSemaphores = &vk_swap_chain->image_available_gpu[current_frame];
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &frame.commandBuffer;
+	submitInfo.pCommandBuffers = &frame.command_buffer;
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &vk_swap_chain->rendering_finished_gpu[current_frame];
 
@@ -173,10 +175,10 @@ bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
 void VulkanSwapChain::initTransient(int width, int height, VkFormat image_format)
 {
 	// TODO: remove vulkan specific stuff
-	render::backend::VulkanDriver *vk_driver = reinterpret_cast<render::backend::VulkanDriver *>(driver);
+	VulkanDriver *vk_driver = static_cast<VulkanDriver *>(driver);
 
-	render::backend::Multisample max_samples = driver->getMaxSampleCount();
-	render::backend::Format format = vk_driver->fromFormat(image_format);
+	Multisample max_samples = driver->getMaxSampleCount();
+	Format format = vk_driver->fromFormat(image_format);
 
 	color = driver->createTexture2D(width, height, 1, format, max_samples);
 	depth = driver->createTexture2D(width, height, 1, depth_format, max_samples);
@@ -198,10 +200,10 @@ void VulkanSwapChain::initPersistent(VkFormat image_format)
 	assert(native_window);
 
 	depth_format = driver->getOptimalDepthFormat();
-	render::backend::Multisample samples = driver->getMaxSampleCount();
+	Multisample samples = driver->getMaxSampleCount();
 
 	// TODO: remove vulkan specific stuff
-	render::backend::VulkanDriver *vk_driver = reinterpret_cast<render::backend::VulkanDriver *>(driver);
+	VulkanDriver *vk_driver = static_cast<VulkanDriver *>(driver);
 	VkFormat vk_depth_format = vk_driver->toFormat(depth_format);
 	VkSampleCountFlagBits vk_samples = vk_driver->toMultisample(samples);
 
@@ -248,11 +250,8 @@ void VulkanSwapChain::shutdownPersistent()
 
 /*
  */
-void VulkanSwapChain::initFrames(VkDeviceSize ubo_size, uint32_t width, uint32_t height, uint32_t num_images, VkImageView *views)
+void VulkanSwapChain::initFrames(VkDeviceSize ubo_size, uint32_t width, uint32_t height, uint32_t num_images)
 {
-	render::backend::vulkan::Texture *vk_depth = reinterpret_cast<render::backend::vulkan::Texture *>(depth);
-	render::backend::vulkan::Texture *vk_color = reinterpret_cast<render::backend::vulkan::Texture *>(color);
-
 	// Create uniform buffers
 	frames.resize(num_images);
 
@@ -261,63 +260,50 @@ void VulkanSwapChain::initFrames(VkDeviceSize ubo_size, uint32_t width, uint32_t
 		VulkanRenderFrame &frame = frames[i];
 
 		// Create uniform buffer object
-		VulkanUtils::createBuffer(
-			context,
-			ubo_size,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			frame.uniformBuffer,
-			frame.uniformBufferMemory
-		);
-
-		vkMapMemory(context->getDevice(), frame.uniformBufferMemory, 0, ubo_size, 0, &frame.uniformBufferData);
+		frame.uniform_buffer = driver->createUniformBuffer(BufferType::DYNAMIC, static_cast<uint32_t>(ubo_size));
+		frame.uniform_buffer_data = driver->map(frame.uniform_buffer);
 
 		// Create & fill descriptor set
-		VkDescriptorSetAllocateInfo descriptorSetAllocInfo = {};
-		descriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		descriptorSetAllocInfo.descriptorPool = context->getDescriptorPool();
-		descriptorSetAllocInfo.descriptorSetCount = 1;
-		descriptorSetAllocInfo.pSetLayouts = &descriptor_set_layout;
+		VkDescriptorSetAllocateInfo ds_alloc_info = {};
+		ds_alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		ds_alloc_info.descriptorPool = context->getDescriptorPool();
+		ds_alloc_info.descriptorSetCount = 1;
+		ds_alloc_info.pSetLayouts = &descriptor_set_layout;
 
-		if (vkAllocateDescriptorSets(context->getDevice(), &descriptorSetAllocInfo, &frame.descriptorSet) != VK_SUCCESS)
+		if (vkAllocateDescriptorSets(context->getDevice(), &ds_alloc_info, &frame.descriptor_set) != VK_SUCCESS)
 			throw std::runtime_error("Can't allocate swap chain descriptor sets");
 
+		VkBuffer ubo = static_cast<vulkan::UniformBuffer *>(frame.uniform_buffer)->buffer;
 		VulkanUtils::bindUniformBuffer(
 			context,
-			frame.descriptorSet,
+			frame.descriptor_set,
 			0,
-			frame.uniformBuffer,
+			ubo,
 			0,
 			ubo_size
 		);
 
 		// Create framebuffer
-		std::array<VkImageView, 3> attachments = {
-			vk_color->view,
-			views[i],
-			vk_depth->view,
-		};
-
-		VkFramebufferCreateInfo framebufferInfo = {};
-		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = render_pass;
-		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = width;
-		framebufferInfo.height = height;
-		framebufferInfo.layers = 1;
-
-		if (vkCreateFramebuffer(context->getDevice(), &framebufferInfo, nullptr, &frame.frameBuffer) != VK_SUCCESS)
-			throw std::runtime_error("Can't create framebuffer");
+		FrameBufferAttachment attachments[3] = { {}, {}, {} };
+		attachments[0].type = FrameBufferAttachmentType::COLOR;
+		attachments[0].color.texture = color;
+		attachments[1].type = FrameBufferAttachmentType::SWAP_CHAIN_COLOR;
+		attachments[1].swap_chain_color.swap_chain = swap_chain;
+		attachments[1].swap_chain_color.base_image = i;
+		attachments[1].swap_chain_color.resolve_attachment = true;
+		attachments[2].type = FrameBufferAttachmentType::DEPTH;
+		attachments[2].depth.texture = depth;
+		
+		frame.frame_buffer = driver->createFrameBuffer(3, attachments);
 
 		// Create commandbuffer
-		VkCommandBufferAllocateInfo allocateInfo = {};
-		allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocateInfo.commandPool = context->getCommandPool();
-		allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocateInfo.commandBufferCount = 1;
+		VkCommandBufferAllocateInfo cb_alloc_info = {};
+		cb_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		cb_alloc_info.commandPool = context->getCommandPool();
+		cb_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		cb_alloc_info.commandBufferCount = 1;
 
-		if (vkAllocateCommandBuffers(context->getDevice(), &allocateInfo, &frame.commandBuffer) != VK_SUCCESS)
+		if (vkAllocateCommandBuffers(context->getDevice(), &cb_alloc_info, &frame.command_buffer) != VK_SUCCESS)
 			throw std::runtime_error("Can't create command buffers");
 	}
 }
@@ -326,12 +312,12 @@ void VulkanSwapChain::shutdownFrames()
 {
 	for (VulkanRenderFrame &frame : frames)
 	{
-		vkFreeCommandBuffers(context->getDevice(), context->getCommandPool(), 1, &frame.commandBuffer);
-		vkFreeDescriptorSets(context->getDevice(), context->getDescriptorPool(), 1, &frame.descriptorSet);
-		vkUnmapMemory(context->getDevice(), frame.uniformBufferMemory);
-		vkDestroyBuffer(context->getDevice(), frame.uniformBuffer, nullptr);
-		vkFreeMemory(context->getDevice(), frame.uniformBufferMemory, nullptr);
-		vkDestroyFramebuffer(context->getDevice(), frame.frameBuffer, nullptr);
+		vkFreeCommandBuffers(context->getDevice(), context->getCommandPool(), 1, &frame.command_buffer);
+		vkFreeDescriptorSets(context->getDevice(), context->getDescriptorPool(), 1, &frame.descriptor_set);
+
+		driver->unmap(frame.uniform_buffer);
+		driver->destroyUniformBuffer(frame.uniform_buffer);
+		driver->destroyFrameBuffer(frame.frame_buffer);
 	}
 	frames.clear();
 }

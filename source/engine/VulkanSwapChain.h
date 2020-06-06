@@ -11,15 +11,12 @@ class VulkanContext;
  */
 struct VulkanRenderFrame
 {
-	VkDescriptorSet descriptorSet {VK_NULL_HANDLE};
-	VkCommandBuffer commandBuffer {VK_NULL_HANDLE};
+	VkDescriptorSet descriptor_set {VK_NULL_HANDLE};
+	VkCommandBuffer command_buffer {VK_NULL_HANDLE};
 
-	// TODO: migrate to render::backend
-	VkFramebuffer frameBuffer {VK_NULL_HANDLE};
-
-	void *uniformBufferData {nullptr};
-	VkBuffer uniformBuffer {VK_NULL_HANDLE};
-	VkDeviceMemory uniformBufferMemory {VK_NULL_HANDLE};
+	render::backend::FrameBuffer *frame_buffer {nullptr};
+	render::backend::UniformBuffer *uniform_buffer {nullptr};
+	void *uniform_buffer_data {nullptr};
 };
 
 /*
@@ -50,7 +47,7 @@ private:
 	void initPersistent(VkFormat image_format);
 	void shutdownPersistent();
 
-	void initFrames(VkDeviceSize uboSize, uint32_t width, uint32_t height, uint32_t num_images, VkImageView *views);
+	void initFrames(VkDeviceSize uboSize, uint32_t width, uint32_t height, uint32_t num_images);
 	void shutdownFrames();
 
 private:

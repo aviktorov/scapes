@@ -12,6 +12,8 @@
 
 #include <render/backend/vulkan/driver.h>
 
+using namespace render::backend;
+
 /*
  */
 VulkanRenderer::VulkanRenderer(
@@ -237,9 +239,9 @@ void VulkanRenderer::resize(const VulkanSwapChain *swapChain)
 
 void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &frame)
 {
-	VkCommandBuffer commandBuffer = frame.commandBuffer;
-	VkFramebuffer frameBuffer = frame.frameBuffer;
-	VkDescriptorSet descriptorSet = frame.descriptorSet;
+	VkCommandBuffer command_buffer = frame.command_buffer;
+	VkFramebuffer frameBuffer = static_cast<vulkan::FrameBuffer *>(frame.frame_buffer)->framebuffer;
+	VkDescriptorSet descriptor_set = frame.descriptor_set;
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -255,7 +257,7 @@ void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &f
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
-	std::array<VkDescriptorSet, 2> sets = {descriptorSet, sceneDescriptorSet};
+	std::array<VkDescriptorSet, 2> sets = {descriptor_set, sceneDescriptorSet};
 
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
@@ -269,39 +271,39 @@ void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &f
 	scissor.offset = {0, 0};
 	scissor.extent = extent;
 
-	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
-	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(command_buffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline);
+	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
+	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline);
 	{
 		const VulkanMesh *skybox = scene->getSkybox();
 
 		VkBuffer vertexBuffers[] = { skybox->getVertexBuffer() };
 		VkBuffer indexBuffer = skybox->getIndexBuffer();
 		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(command_buffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(commandBuffer, skybox->getNumIndices(), 1, 0, 0, 0);
+		vkCmdDrawIndexed(command_buffer, skybox->getNumIndices(), 1, 0, 0, 0);
 	}
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrPipeline);
+	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrPipeline);
 	{
 		const VulkanMesh *mesh = scene->getMesh();
 
 		VkBuffer vertexBuffers[] = { mesh->getVertexBuffer() };
 		VkBuffer indexBuffer = mesh->getIndexBuffer();
 		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(command_buffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(commandBuffer, mesh->getNumIndices(), 1, 0, 0, 0);
+		vkCmdDrawIndexed(command_buffer, mesh->getNumIndices(), 1, 0, 0, 0);
 	}
 
-	vkCmdEndRenderPass(commandBuffer);
+	vkCmdEndRenderPass(command_buffer);
 }
 
 /*

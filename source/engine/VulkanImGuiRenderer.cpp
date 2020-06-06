@@ -11,6 +11,8 @@
 
 #include <render/backend/vulkan/driver.h>
 
+using namespace render::backend;
+
 /*
  */
 VulkanImGuiRenderer::VulkanImGuiRenderer(
@@ -79,19 +81,17 @@ void VulkanImGuiRenderer::resize(const VulkanSwapChain *swapChain)
 
 void VulkanImGuiRenderer::render(const VulkanRenderFrame &frame)
 {
-	VkCommandBuffer commandBuffer = frame.commandBuffer;
-	VkFramebuffer frameBuffer = frame.frameBuffer;
-	VkDeviceMemory uniformBufferMemory = frame.uniformBufferMemory;
-	VkDescriptorSet descriptorSet = frame.descriptorSet;
+	VkCommandBuffer command_buffer = frame.command_buffer;
+	VkFramebuffer frame_buffer = static_cast<vulkan::FrameBuffer *>(frame.frame_buffer)->framebuffer;
 
-	VkRenderPassBeginInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = renderPass;
-	renderPassInfo.framebuffer = frameBuffer;
-	renderPassInfo.renderArea.offset = {0, 0};
-	renderPassInfo.renderArea.extent = extent;
+	VkRenderPassBeginInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	info.renderPass = renderPass;
+	info.framebuffer = frame_buffer;
+	info.renderArea.offset = {0, 0};
+	info.renderArea.extent = extent;
 
-	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), frame.commandBuffer);
-	vkCmdEndRenderPass(commandBuffer);
+	vkCmdBeginRenderPass(command_buffer, &info, VK_SUBPASS_CONTENTS_INLINE);
+	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
+	vkCmdEndRenderPass(command_buffer);
 }
