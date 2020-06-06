@@ -38,9 +38,11 @@ public:
 	VkExtent2D getExtent() const;
 	inline VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptor_set_layout; }
 	inline VkRenderPass getRenderPass() const { return render_pass; }
-	inline VkRenderPass getNoClearRenderPass() const { return noclear_render_pass; }
 
 private:
+	void beginFrame(const VulkanRenderFrame &frame);
+	void endFrame(const VulkanRenderFrame &frame);
+
 	void initTransient(int width, int height, VkFormat image_format);
 	void shutdownTransient();
 
@@ -61,7 +63,6 @@ private:
 	VkDeviceSize ubo_size;
 
 	VkRenderPass render_pass {VK_NULL_HANDLE};
-	VkRenderPass noclear_render_pass {VK_NULL_HANDLE};
 	VkDescriptorSetLayout descriptor_set_layout {VK_NULL_HANDLE};
 
 	render::backend::Texture *color {nullptr};

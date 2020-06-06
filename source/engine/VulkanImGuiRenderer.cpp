@@ -91,7 +91,5 @@ void VulkanImGuiRenderer::render(const VulkanRenderFrame &frame)
 	info.renderArea.offset = {0, 0};
 	info.renderArea.extent = extent;
 
-	vkCmdBeginRenderPass(command_buffer, &info, VK_SUBPASS_CONTENTS_INLINE);
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
-	vkCmdEndRenderPass(command_buffer);
 }

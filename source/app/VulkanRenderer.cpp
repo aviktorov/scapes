@@ -240,22 +240,7 @@ void VulkanRenderer::resize(const VulkanSwapChain *swapChain)
 void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &frame)
 {
 	VkCommandBuffer command_buffer = frame.command_buffer;
-	VkFramebuffer frameBuffer = static_cast<vulkan::FrameBuffer *>(frame.frame_buffer)->framebuffer;
 	VkDescriptorSet descriptor_set = frame.descriptor_set;
-
-	VkRenderPassBeginInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = renderPass;
-	renderPassInfo.framebuffer = frameBuffer;
-	renderPassInfo.renderArea.offset = {0, 0};
-	renderPassInfo.renderArea.extent = extent;
-
-	std::array<VkClearValue, 3> clearValues = {};
-	clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
-	clearValues[1].color = {0.0f, 0.0f, 0.0f, 1.0f};
-	clearValues[2].depthStencil = {1.0f, 0};
-	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-	renderPassInfo.pClearValues = clearValues.data();
 
 	std::array<VkDescriptorSet, 2> sets = {descriptor_set, sceneDescriptorSet};
 
@@ -273,8 +258,6 @@ void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &f
 
 	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
-
-	vkCmdBeginRenderPass(command_buffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
 	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline);
@@ -302,8 +285,6 @@ void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &f
 
 		vkCmdDrawIndexed(command_buffer, mesh->getNumIndices(), 1, 0, 0, 0);
 	}
-
-	vkCmdEndRenderPass(command_buffer);
 }
 
 /*

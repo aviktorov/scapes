@@ -103,6 +103,16 @@ bool VulkanSwapChain::acquire(void *state, VulkanRenderFrame &frame)
 	// copy render state to ubo
 	memcpy(frame.uniform_buffer_data, state, static_cast<size_t>(ubo_size));
 
+	beginFrame(frame);
+
+	return true;
+}
+
+void VulkanSwapChain::beginFrame(const VulkanRenderFrame &frame)
+{
+	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
+	VkFramebuffer framebuffer = static_cast<vulkan::FrameBuffer *>(frame.frame_buffer)->framebuffer;
+
 	// reset command buffer
 	if (vkResetCommandBuffer(frame.command_buffer, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't reset command buffer");
@@ -114,17 +124,35 @@ bool VulkanSwapChain::acquire(void *state, VulkanRenderFrame &frame)
 	if (vkBeginCommandBuffer(frame.command_buffer, &beginInfo) != VK_SUCCESS)
 		throw std::runtime_error("Can't begin recording command buffer");
 
-	return true;
+	VkRenderPassBeginInfo render_pass_info = {};
+	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	render_pass_info.renderPass = render_pass;
+	render_pass_info.framebuffer = framebuffer;
+	render_pass_info.renderArea.offset = {0, 0};
+	render_pass_info.renderArea.extent = vk_swap_chain->sizes;
+
+	std::array<VkClearValue, 3> clear_values = {};
+	clear_values[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+	clear_values[1].color = {0.0f, 0.0f, 0.0f, 1.0f};
+	clear_values[2].depthStencil = {1.0f, 0};
+	render_pass_info.clearValueCount = static_cast<uint32_t>(clear_values.size());
+	render_pass_info.pClearValues = clear_values.data();
+
+	vkCmdBeginRenderPass(frame.command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
+void VulkanSwapChain::endFrame(const VulkanRenderFrame &frame)
 {
 	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 	uint32_t current_frame = vk_swap_chain->current_image;
 
+	// driver->endRenderPass();
+	vkCmdEndRenderPass(frame.command_buffer);
+
 	if (vkEndCommandBuffer(frame.command_buffer) != VK_SUCCESS)
 		throw std::runtime_error("Can't record command buffer");
-	
+
+	// driver->submit(command_buffer);
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	VkSubmitInfo submitInfo = {};
@@ -140,6 +168,14 @@ bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
 	vkResetFences(context->getDevice(), 1, &vk_swap_chain->rendering_finished_cpu[current_frame]);
 	if (vkQueueSubmit(context->getGraphicsQueue(), 1, &submitInfo, vk_swap_chain->rendering_finished_cpu[current_frame]) != VK_SUCCESS)
 		throw std::runtime_error("Can't submit command buffer");
+}
+
+bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
+{
+	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
+	uint32_t current_frame = vk_swap_chain->current_image;
+
+	endFrame(frame);
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -223,17 +259,6 @@ void VulkanSwapChain::initPersistent(VkFormat image_format)
 		.addColorResolveAttachmentReference(0, 1)
 		.setDepthStencilAttachmentReference(0, 2)
 		.build();
-
-	VulkanRenderPassBuilder noclear_render_pass_builder(context);
-	noclear_render_pass = noclear_render_pass_builder
-		.addColorAttachment(image_format, vk_samples, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE)
-		.addColorResolveAttachment(image_format, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE)
-		.addDepthStencilAttachment(vk_depth_format, vk_samples)
-		.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
-		.addColorAttachmentReference(0, 0)
-		.addColorResolveAttachmentReference(0, 1)
-		.setDepthStencilAttachmentReference(0, 2)
-		.build();
 }
 
 void VulkanSwapChain::shutdownPersistent()
@@ -243,9 +268,6 @@ void VulkanSwapChain::shutdownPersistent()
 
 	vkDestroyRenderPass(context->getDevice(), render_pass, nullptr);
 	render_pass = VK_NULL_HANDLE;
-
-	vkDestroyRenderPass(context->getDevice(), noclear_render_pass, nullptr);
-	noclear_render_pass = VK_NULL_HANDLE;
 }
 
 /*

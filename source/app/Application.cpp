@@ -292,7 +292,7 @@ void Application::initRenderers()
 	renderer->init(scene);
 	renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
 
-	imguiRenderer = new VulkanImGuiRenderer(driver, ImGui::GetCurrentContext(), swapChain->getExtent(), swapChain->getNoClearRenderPass());
+	imguiRenderer = new VulkanImGuiRenderer(driver, ImGui::GetCurrentContext(), swapChain->getExtent(), swapChain->getRenderPass());
 	imguiRenderer->init(swapChain);
 }
 
