@@ -25,15 +25,21 @@ PBR Sandbox:
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ Add pipeline registry class
         ☐ Create separate cmake script for backend
-    Stream 31:
         ☐ Add pipeline layout cache to backend
         ☐ Add pipeline cache to backend
-        ☐ Add render pass cache to backend
+        ☐ Add descriptor set layout cache (if it's possible, try to use only one)
+    Stream 31:
+        ☐ Start drafting backend drawing methods
+            ☐ Add CommandBuffer implementation to Vulkan backend
+            ☐ Add render pass cache to backend
+            ☐ Implement beginRenderPass / endRenderPass
+        ☐ Start drafing binding methods
     Stream 30:
-        ☐ Figure out how to implement acquire / present in render backend for swap chain
-            ☐ Split frame rendering & presentation
-            ☐ Move presentation related stuff to swap chain backend
-            ☐ Migrate color / depth / frame to backend structures as much as possible
+        ✔ Figure out how to implement acquire / present in render backend for swap chain @done (6/6/2020, 11:48:35 PM)
+            ✔ Migrate color / depth to backend structures @done (6/6/2020, 9:10:25 PM)
+            ✔ Migrate frames to backend structures @done (6/6/2020, 11:13:56 PM)
+            ✔ Split frame rendering & presentation @done (6/6/2020, 11:33:57 PM)
+            ✔ Move presentation related stuff to swap chain backend @done (6/6/2020, 11:48:34 PM)
     Stream 29:
         ✔ Finish swap chain implementation for Vulkan backend @done (6/5/2020, 10:34:16 PM)
             ✔ Implement Driver::destroySwapChain method @done (6/5/2020, 8:43:47 PM)
