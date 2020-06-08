@@ -81,7 +81,7 @@ void VulkanImGuiRenderer::resize(const VulkanSwapChain *swapChain)
 
 void VulkanImGuiRenderer::render(const VulkanRenderFrame &frame)
 {
-	VkCommandBuffer command_buffer = frame.command_buffer;
+	VkCommandBuffer command_buffer = static_cast<vulkan::CommandBuffer *>(frame.command_buffer)->command_buffer;
 	VkFramebuffer frame_buffer = static_cast<vulkan::FrameBuffer *>(frame.frame_buffer)->framebuffer;
 
 	VkRenderPassBeginInfo info = {};

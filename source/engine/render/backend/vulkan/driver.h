@@ -72,6 +72,14 @@ namespace render::backend
 			// TODO: add info about attachment type (color, color resolve, depth)
 		};
 
+		struct CommandBuffer : public render::backend::CommandBuffer
+		{
+			VkCommandBuffer command_buffer {VK_NULL_HANDLE};
+			VkCommandBufferLevel level {VK_COMMAND_BUFFER_LEVEL_PRIMARY};
+			VkSemaphore rendering_finished_gpu {VK_NULL_HANDLE};
+			VkFence rendering_finished_cpu {VK_NULL_HANDLE};
+		};
+
 		struct UniformBuffer : public render::backend::UniformBuffer
 		{
 			VkBuffer buffer {VK_NULL_HANDLE};
@@ -119,9 +127,6 @@ namespace render::backend
 			uint32_t current_image {0};
 
 			VkSemaphore image_available_gpu[SwapChain::MAX_IMAGES];
-			VkSemaphore rendering_finished_gpu[SwapChain::MAX_IMAGES];
-			VkFence rendering_finished_cpu[SwapChain::MAX_IMAGES];
-
 			VkFramebuffer framebuffer[SwapChain::MAX_IMAGES];
 			VkImage images[SwapChain::MAX_IMAGES];
 			VkImageView views[SwapChain::MAX_IMAGES];
@@ -204,6 +209,10 @@ namespace render::backend
 			const FrameBufferAttachment *attachments
 		) override;
 
+		CommandBuffer *createCommandBuffer(
+			CommandBufferType type
+		) override;
+
 		UniformBuffer *createUniformBuffer(
 			BufferType type,
 			uint32_t size,
@@ -234,6 +243,7 @@ namespace render::backend
 		void destroyRenderPrimitive(RenderPrimitive *render_primitive) override;
 		void destroyTexture(Texture *texture) override;
 		void destroyFrameBuffer(FrameBuffer *frame_buffer) override;
+		void destroyCommandBuffer(CommandBuffer *command_buffer) override;
 		void destroyUniformBuffer(UniformBuffer *uniform_buffer) override;
 		void destroyShader(Shader *shader) override;
 		void destroySwapChain(SwapChain *swap_chain) override;
@@ -257,20 +267,19 @@ namespace render::backend
 
 		void wait() override;
 
-		bool acquire(SwapChain *swap_chain, uint32_t *new_image) override;
-		bool present(SwapChain *swap_chain) override;
-		bool resize(SwapChain *swap_chain, uint32_t width, uint32_t height) override;
-
-	public:
-
-		// sequence
-		void beginRenderPass(
-			const FrameBuffer *frame_buffer
+		bool acquire(
+			SwapChain *swap_chain,
+			uint32_t *new_image
 		) override;
 
-		void endRenderPass() override;
+		bool present(
+			SwapChain *swap_chain,
+			uint32_t num_wait_command_buffers,
+			CommandBuffer * const *wait_command_buffers
+		) override;
 
-		// bind
+	public:
+		// bindings
 		void bindUniformBuffer(
 			uint32_t unit,
 			const UniformBuffer *uniform_buffer
@@ -285,12 +294,53 @@ namespace render::backend
 			const Shader *shader
 		) override;
 
-		// draw
+	public:
+		// command buffers
+		bool resetCommandBuffer(
+			CommandBuffer *command_buffer
+		) override;
+
+		bool beginCommandBuffer(
+			CommandBuffer *command_buffer
+		) override;
+
+		bool endCommandBuffer(
+			CommandBuffer *command_buffer
+		) override;
+
+		bool submit(
+			CommandBuffer *command_buffer
+		) override;
+
+		bool submitSyncked(
+			CommandBuffer *command_buffer,
+			const SwapChain *wait_swap_chain
+		) override;
+
+		bool submitSyncked(
+			CommandBuffer *command_buffer,
+			uint32_t num_wait_command_buffers,
+			CommandBuffer * const *wait_command_buffers
+		) override;
+
+	public:
+		// render commands
+		void beginRenderPass(
+			CommandBuffer *command_buffer,
+			const FrameBuffer *frame_buffer
+		) override;
+
+		void endRenderPass(
+			CommandBuffer *command_buffer
+		) override;
+
 		void drawIndexedPrimitive(
+			CommandBuffer *command_buffer,
 			const RenderPrimitive *render_primitive
 		) override;
 
 		void drawIndexedPrimitiveInstanced(
+			CommandBuffer *command_buffer,
 			const RenderPrimitive *primitive,
 			const VertexBuffer *instance_buffer,
 			uint32_t num_instances,

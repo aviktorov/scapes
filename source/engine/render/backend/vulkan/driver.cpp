@@ -381,6 +381,21 @@ namespace render::backend
 			return supported_types[static_cast<int>(type)];
 		}
 
+		static VkCommandBufferLevel toCommandBufferLevel(CommandBufferType type)
+		{
+			switch (type)
+			{
+				case CommandBufferType::PRIMARY: return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+				case CommandBufferType::SECONDARY: return VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+				default:
+				{
+					std::cerr << "vulkan::toCommandBufferLevel(): unsupported command buffer type" << std::endl;
+					// TODO: Log fatal?
+					return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+				}
+			}
+		}
+
 		static void createTextureData(const VulkanContext *context, Texture *texture, Format format, const void *data, int num_data_mipmaps, int num_data_layers)
 		{
 			VkImageUsageFlags usage_flags = toImageUsageFlags(texture->format);
@@ -543,7 +558,7 @@ namespace render::backend
 				swap_chain->num_images = std::min(swap_chain->num_images, capabilities.maxImageCount);
 		}
 
-		static bool createTransientSwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
+		static bool createSwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
 		{
 			const VkSurfaceCapabilitiesKHR &capabilities = swap_chain->surface_capabilities;
 
@@ -579,7 +594,7 @@ namespace render::backend
 
 			if (vkCreateSwapchainKHR(context->getDevice(), &info, nullptr, &swap_chain->swap_chain) != VK_SUCCESS)
 			{
-				std::cerr << "vulkan::createTransientSwapChainObjects(): vkCreateSwapchainKHR failed" << std::endl;
+				std::cerr << "vulkan::createSwapChainObjects(): vkCreateSwapchainKHR failed" << std::endl;
 				return false;
 			}
 
@@ -588,8 +603,9 @@ namespace render::backend
 			assert(swap_chain->num_images != 0 && swap_chain->num_images < SwapChain::MAX_IMAGES);
 			vkGetSwapchainImagesKHR(context->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, swap_chain->images);
 
-			// Create image views
+			// Create frame objects
 			for (size_t i = 0; i < swap_chain->num_images; i++)
+			{
 				swap_chain->views[i] = VulkanUtils::createImageView(
 					context,
 					swap_chain->images[i],
@@ -597,17 +613,30 @@ namespace render::backend
 					VK_IMAGE_ASPECT_COLOR_BIT,
 					VK_IMAGE_VIEW_TYPE_2D
 				);
+			
+				VkSemaphoreCreateInfo semaphore_info = {};
+				semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+				if (vkCreateSemaphore(context->getDevice(), &semaphore_info, nullptr, &swap_chain->image_available_gpu[i]) != VK_SUCCESS)
+				{
+					std::cerr << "vulkan::createSwapChainObjects(): can't create 'image available' semaphore" << std::endl;
+					return false;
+				}
+			}
 
 			return true;
 		}
 
-		static void destroyTransientSwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
+		static void destroySwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
 		{
 			for (size_t i = 0; i < swap_chain->num_images; ++i)
 			{
 				vkDestroyImageView(context->getDevice(), swap_chain->views[i], nullptr);
 				swap_chain->images[i] = VK_NULL_HANDLE;
 				swap_chain->views[i] = VK_NULL_HANDLE;
+
+				vkDestroySemaphore(context->getDevice(), swap_chain->image_available_gpu[i], nullptr);
+				swap_chain->image_available_gpu[i] = VK_NULL_HANDLE;
 			}
 
 			vkDestroySwapchainKHR(context->getDevice(), swap_chain->swap_chain, nullptr);
@@ -968,6 +997,53 @@ namespace render::backend
 		return result;
 	}
 
+	CommandBuffer *VulkanDriver::createCommandBuffer(
+		CommandBufferType type
+	)
+	{
+		vulkan::CommandBuffer *result = new vulkan::CommandBuffer();
+		result->level = vulkan::toCommandBufferLevel(type);
+
+		// Allocate commandbuffer
+		VkCommandBufferAllocateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		info.commandPool = context->getCommandPool();
+		info.level = result->level;
+		info.commandBufferCount = 1;
+
+		if (vkAllocateCommandBuffers(context->getDevice(), &info, &result->command_buffer) != VK_SUCCESS)
+		{
+			std::cerr << "VulkanDriver::createCommandBuffer(): can't allocate command buffer" << std::endl;
+			destroyCommandBuffer(result);
+			return nullptr;
+		}
+
+		// Create synchronization primitives
+		VkSemaphoreCreateInfo semaphore_info = {};
+		semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		if (vkCreateSemaphore(context->getDevice(), &semaphore_info, nullptr, &result->rendering_finished_gpu) != VK_SUCCESS)
+		{
+			std::cerr << "VulkanDriver::createCommandBuffer(): can't create 'rendering finished' semaphore" << std::endl;
+			destroyCommandBuffer(result);
+			return nullptr;
+		}
+
+		// fences
+		VkFenceCreateInfo fence_info = {};
+		fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+		if (vkCreateFence(context->getDevice(), &fence_info, nullptr, &result->rendering_finished_cpu) != VK_SUCCESS)
+		{
+			std::cerr << "VulkanDriver::createCommandBuffer(): can't create 'rendering finished' fence" << std::endl;
+			destroyCommandBuffer(result);
+			return nullptr;
+		}
+
+		return result;
+	}
+
 	UniformBuffer *VulkanDriver::createUniformBuffer(
 		BufferType type,
 		uint32_t size,
@@ -1104,42 +1180,7 @@ namespace render::backend
 		}
 
 		vulkan::selectOptimalSwapChainSettings(context, result, width, height);
-
-		// Create persistent per-frame objects
-		for (size_t i = 0; i < result->num_images; i++)
-		{
-			// semaphores
-			VkSemaphoreCreateInfo semaphore_info = {};
-			semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-			if (vkCreateSemaphore(context->getDevice(), &semaphore_info, nullptr, &result->image_available_gpu[i]) != VK_SUCCESS)
-			{
-				std::cerr << "VulkanDriver::createSwapChain(): can't create 'image available' semaphore" << std::endl;
-				destroySwapChain(result);
-				return nullptr;
-			}
-
-			if (vkCreateSemaphore(context->getDevice(), &semaphore_info, nullptr, &result->rendering_finished_gpu[i]) != VK_SUCCESS)
-			{
-				std::cerr << "VulkanDriver::createSwapChain(): can't create 'rendering finished' semaphore" << std::endl;
-				destroySwapChain(result);
-				return nullptr;
-			}
-
-			// fences
-			VkFenceCreateInfo fence_info = {};
-			fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-			fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-			if (vkCreateFence(context->getDevice(), &fence_info, nullptr, &result->rendering_finished_cpu[i]) != VK_SUCCESS)
-			{
-				std::cerr << "VulkanDriver::createSwapChain(): can't create 'rendering finished' fence" << std::endl;
-				destroySwapChain(result);
-				return nullptr;
-			}
-		}
-
-		vulkan::createTransientSwapChainObjects(context, result);
+		vulkan::createSwapChainObjects(context, result);
 
 		return result;
 	}
@@ -1148,7 +1189,6 @@ namespace render::backend
 	{
 		if (vertex_buffer == nullptr)
 			return;
-
 
 		vulkan::VertexBuffer *vk_vertex_buffer = static_cast<vulkan::VertexBuffer *>(vertex_buffer);
 
@@ -1234,6 +1274,26 @@ namespace render::backend
 		frame_buffer = nullptr;
 	}
 
+	void VulkanDriver::destroyCommandBuffer(CommandBuffer *command_buffer)
+	{
+		if (command_buffer == nullptr)
+			return;
+
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+
+		vkFreeCommandBuffers(context->getDevice(), context->getCommandPool(), 1, &vk_command_buffer->command_buffer);
+		vk_command_buffer->command_buffer = VK_NULL_HANDLE;
+
+		vkDestroySemaphore(context->getDevice(), vk_command_buffer->rendering_finished_gpu, nullptr);
+		vk_command_buffer->rendering_finished_gpu = VK_NULL_HANDLE;
+
+		vkDestroyFence(context->getDevice(), vk_command_buffer->rendering_finished_cpu, nullptr);
+		vk_command_buffer->rendering_finished_cpu = VK_NULL_HANDLE;
+
+		delete command_buffer;
+		command_buffer = nullptr;
+	}
+
 	void VulkanDriver::destroyUniformBuffer(UniformBuffer *uniform_buffer)
 	{
 		if (uniform_buffer == nullptr)
@@ -1272,20 +1332,7 @@ namespace render::backend
 
 		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 
-		// Destroy persistent per-frame objects
-		for (size_t i = 0; i < vk_swap_chain->num_images; i++)
-		{
-			vkDestroySemaphore(context->getDevice(), vk_swap_chain->image_available_gpu[i], nullptr);
-			vk_swap_chain->image_available_gpu[i] = nullptr;
-
-			vkDestroySemaphore(context->getDevice(), vk_swap_chain->rendering_finished_gpu[i], nullptr);
-			vk_swap_chain->rendering_finished_gpu[i] = nullptr;
-
-			vkDestroyFence(context->getDevice(), vk_swap_chain->rendering_finished_cpu[i], nullptr);
-			vk_swap_chain->rendering_finished_cpu[i] = nullptr;
-		}
-
-		vulkan::destroyTransientSwapChainObjects(context, vk_swap_chain);
+		vulkan::destroySwapChainObjects(context, vk_swap_chain);
 
 		vk_swap_chain->present_queue_family = 0xFFFF;
 		vk_swap_chain->present_queue = VK_NULL_HANDLE;
@@ -1413,12 +1460,6 @@ namespace render::backend
 		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 		uint32_t current_image = vk_swap_chain->current_image;
 
-		vkWaitForFences(
-			context->getDevice(),
-			1, &vk_swap_chain->rendering_finished_cpu[current_image],
-			VK_TRUE, std::numeric_limits<uint64_t>::max()
-		);
-
 		VkResult result = vkAcquireNextImageKHR(
 			context->getDevice(),
 			vk_swap_chain->swap_chain,
@@ -1441,18 +1482,36 @@ namespace render::backend
 		return true;
 	}
 
-	bool VulkanDriver::present(SwapChain *swap_chain)
+	bool VulkanDriver::present(SwapChain *swap_chain, uint32_t num_wait_command_buffers, CommandBuffer * const *wait_command_buffers)
 	{
 		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 		uint32_t current_image = vk_swap_chain->current_image;
 
+		std::vector<VkSemaphore> wait_semaphores(num_wait_command_buffers);
+		std::vector<VkFence> wait_fences(num_wait_command_buffers);
+
+		if (num_wait_command_buffers != 0 && wait_command_buffers != nullptr)
+		{
+
+			for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
+			{
+				const vulkan::CommandBuffer *vk_wait_command_buffer = static_cast<const vulkan::CommandBuffer *>(wait_command_buffers[i]);
+				wait_semaphores[i] = vk_wait_command_buffer->rendering_finished_gpu;
+				wait_fences[i] = vk_wait_command_buffer->rendering_finished_cpu;
+			}
+		}
+
 		VkPresentInfoKHR info = {};
 		info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		info.waitSemaphoreCount = 1;
-		info.pWaitSemaphores = &vk_swap_chain->rendering_finished_gpu[current_image]; // TODO: check if we need to wait for this
 		info.swapchainCount = 1;
 		info.pSwapchains = &vk_swap_chain->swap_chain;
 		info.pImageIndices = &current_image;
+
+		if (wait_semaphores.size())
+		{
+			info.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size());
+			info.pWaitSemaphores = wait_semaphores.data();
+		}
 
 		VulkanUtils::transitionImageLayout(
 			context,
@@ -1473,25 +1532,19 @@ namespace render::backend
 			return false;
 		}
 
+		if (wait_fences.size())
+			vkWaitForFences(
+				context->getDevice(),
+				static_cast<uint32_t>(wait_fences.size()),
+				wait_fences.data(),
+				VK_TRUE,
+				std::numeric_limits<uint64_t>::max()
+			);
+
 		vk_swap_chain->current_image++;
 		vk_swap_chain->current_image %= vk_swap_chain->num_images;
 
 		return true;
-	}
-
-	bool VulkanDriver::resize(SwapChain *swap_chain, uint32_t width, uint32_t height)
-	{
-		// TODO: swap chain
-		return false;
-	}
-
-	void VulkanDriver::beginRenderPass(const FrameBuffer *frame_buffer)
-	{
-
-	}
-
-	void VulkanDriver::endRenderPass()
-	{
 	}
 
 	void VulkanDriver::bindUniformBuffer(uint32_t unit, const UniformBuffer *uniform_buffer)
@@ -1509,18 +1562,196 @@ namespace render::backend
 
 	}
 
-	void VulkanDriver::drawIndexedPrimitive(const RenderPrimitive *render_primitive)
+	bool VulkanDriver::resetCommandBuffer(CommandBuffer *command_buffer)
 	{
+		if (command_buffer == nullptr)
+			return false;
 
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		if (vkResetCommandBuffer(vk_command_buffer->command_buffer, 0) != VK_SUCCESS)
+			return false;
+
+		return true;
+	}
+
+	bool VulkanDriver::beginCommandBuffer(CommandBuffer *command_buffer)
+	{
+		if (command_buffer == nullptr)
+			return false;
+
+		VkCommandBufferBeginInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		if (vkBeginCommandBuffer(vk_command_buffer->command_buffer, &info) != VK_SUCCESS)
+			return false;
+
+		return true;
+	}
+
+	bool VulkanDriver::endCommandBuffer(CommandBuffer *command_buffer)
+	{
+		if (command_buffer == nullptr)
+			return false;
+
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		if (vkEndCommandBuffer(vk_command_buffer->command_buffer) != VK_SUCCESS)
+			return false;
+
+		return true;
+	}
+
+	/*
+	 * SwapChain *swap_chain (image_ready_gpu[num_images])
+	 * CommandBuffer *cb0_1 (rendering_finished_gpu, rendering_finished_cpu)
+	 * CommandBuffer *cb0_2 (rendering_finished_gpu, rendering_finished_cpu)
+	 * CommandBuffer *cb1 (rendering_finished_gpu, rendering_finished_cpu)
+	 * CommandBuffer *cb2 (rendering_finished_gpu, rendering_finished_cpu)
+	 * 
+	 * driver->acquire(swap_chain); // presentation engine
+	 * driver->submitSyncked(cb0_1, swap_chain); // gpu-gpu sync + queue submit
+	 * driver->submitSyncked(cb0_2, swap_chain); // gpu-gpu sync + queue submit
+	 * driver->submitSyncked(cb1, swap_chain); // gpu-gpu sync + queue submit
+	 * driver->submitSyncked(cb2, 3, { cb1, cb0_1, cb0_2 }); // gpu-gpu sync + queue submit
+	 * driver->present(swap_chain, cb2); // gpu-gpu sync + gpu-cpu sync + presentation engine
+	 * 
+	 * driver->submit(cb1);
+	 * driver->wait(cb1, cb2);
+	 * 
+	 */
+
+	bool VulkanDriver::submit(CommandBuffer *command_buffer)
+	{
+		if (command_buffer == nullptr)
+			return false;
+		
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+
+		VkSubmitInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		info.commandBufferCount = 1;
+		info.pCommandBuffers = &vk_command_buffer->command_buffer;
+		info.signalSemaphoreCount = 1;
+		info.pSignalSemaphores = &vk_command_buffer->rendering_finished_gpu;
+
+		vkResetFences(context->getDevice(), 1, &vk_command_buffer->rendering_finished_cpu);
+		if (vkQueueSubmit(context->getGraphicsQueue(), 1, &info, vk_command_buffer->rendering_finished_cpu) != VK_SUCCESS)
+			return false;
+
+		return true;
+	}
+
+	bool VulkanDriver::submitSyncked(CommandBuffer *command_buffer, const SwapChain *wait_swap_chain)
+	{
+		if (command_buffer == nullptr)
+			return false;
+		
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+
+		VkSubmitInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		info.commandBufferCount = 1;
+		info.pCommandBuffers = &vk_command_buffer->command_buffer;
+		info.signalSemaphoreCount = 1;
+		info.pSignalSemaphores = &vk_command_buffer->rendering_finished_gpu;
+
+		if (wait_swap_chain != nullptr)
+		{
+			VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+			const vulkan::SwapChain *vk_wait_swap_chain = static_cast<const vulkan::SwapChain *>(wait_swap_chain);
+			uint32_t current_image = vk_wait_swap_chain->current_image;
+
+			info.waitSemaphoreCount = 1;
+			info.pWaitSemaphores = &vk_wait_swap_chain->image_available_gpu[current_image];
+			info.pWaitDstStageMask = &wait_stage;
+		}
+
+		vkResetFences(context->getDevice(), 1, &vk_command_buffer->rendering_finished_cpu);
+		if (vkQueueSubmit(context->getGraphicsQueue(), 1, &info, vk_command_buffer->rendering_finished_cpu) != VK_SUCCESS)
+			return false;
+
+		return true;
+	}
+
+	bool VulkanDriver::submitSyncked(CommandBuffer *command_buffer, uint32_t num_wait_command_buffers, CommandBuffer * const *wait_command_buffers)
+	{
+		if (command_buffer == nullptr)
+			return false;
+		
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+
+		VkSubmitInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		info.commandBufferCount = 1;
+		info.pCommandBuffers = &vk_command_buffer->command_buffer;
+		info.signalSemaphoreCount = 1;
+		info.pSignalSemaphores = &vk_command_buffer->rendering_finished_gpu;
+
+		if (num_wait_command_buffers != 0 && wait_command_buffers != nullptr)
+		{
+			std::vector<VkSemaphore> wait_semaphores(num_wait_command_buffers);
+			std::vector<VkPipelineStageFlags> wait_stages(num_wait_command_buffers, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
+			for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
+			{
+				const vulkan::CommandBuffer *vk_wait_command_buffer = static_cast<const vulkan::CommandBuffer *>(wait_command_buffers[i]);
+				wait_semaphores[i] = vk_wait_command_buffer->rendering_finished_gpu;
+			}
+
+			info.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size());
+			info.pWaitSemaphores = wait_semaphores.data();
+			info.pWaitDstStageMask = wait_stages.data();
+		}
+
+		vkResetFences(context->getDevice(), 1, &vk_command_buffer->rendering_finished_cpu);
+		if (vkQueueSubmit(context->getGraphicsQueue(), 1, &info, vk_command_buffer->rendering_finished_cpu) != VK_SUCCESS)
+			return false;
+
+		return true;
+	}
+
+	void VulkanDriver::beginRenderPass(CommandBuffer *command_buffer, const FrameBuffer *frame_buffer)
+	{
+		if (command_buffer == nullptr)
+			return;
+		
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		// TODO: create render pass from clear params & framebuffer
+		// vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+	}
+
+	void VulkanDriver::endRenderPass(CommandBuffer *command_buffer)
+	{
+		if (command_buffer == nullptr)
+			return;
+
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		vkCmdEndRenderPass(vk_command_buffer->command_buffer);
+	}
+
+	void VulkanDriver::drawIndexedPrimitive(CommandBuffer *command_buffer, const RenderPrimitive *render_primitive)
+	{
+		if (command_buffer == nullptr)
+			return;
+
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		const vulkan::RenderPrimitive *vk_render_primitive = static_cast<const vulkan::RenderPrimitive *>(render_primitive);
 	}
 
 	void VulkanDriver::drawIndexedPrimitiveInstanced(
+		CommandBuffer *command_buffer,
 		const RenderPrimitive *render_primitive,
 		const VertexBuffer *instance_buffer,
 		uint32_t num_instances,
 		uint32_t offset
 	)
 	{
+		if (command_buffer == nullptr)
+			return;
 
+		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		const vulkan::RenderPrimitive *vk_render_primitive = static_cast<const vulkan::RenderPrimitive *>(render_primitive);
 	}
 }

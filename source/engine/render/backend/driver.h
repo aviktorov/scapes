@@ -167,6 +167,12 @@ enum class ShaderType : unsigned char
 	MAX,
 };
 
+enum class CommandBufferType : unsigned char
+{
+	PRIMARY = 0,
+	SECONDARY,
+};
+
 // C opaque structs
 struct VertexBuffer {};
 struct IndexBuffer {};
@@ -175,6 +181,7 @@ struct RenderPrimitive {};
 struct Texture {};
 struct FrameBuffer {};
 // TODO: render pass?
+struct CommandBuffer {};
 
 struct UniformBuffer {};
 // TODO: shader storage buffer?
@@ -304,6 +311,10 @@ public:
 		const FrameBufferAttachment *attachments
 	) = 0;
 
+	virtual CommandBuffer *createCommandBuffer(
+		CommandBufferType type
+	) = 0;
+
 	virtual UniformBuffer *createUniformBuffer(
 		BufferType type,
 		uint32_t size,
@@ -334,6 +345,7 @@ public:
 	virtual void destroyRenderPrimitive(RenderPrimitive *render_primitive) = 0;
 	virtual void destroyTexture(Texture *texture) = 0;
 	virtual void destroyFrameBuffer(FrameBuffer *frame_buffer) = 0;
+	virtual void destroyCommandBuffer(CommandBuffer *command_buffer) = 0;
 	virtual void destroyUniformBuffer(UniformBuffer *uniform_buffer) = 0;
 	virtual void destroyShader(Shader *shader) = 0;
 	virtual void destroySwapChain(SwapChain *swap_chain) = 0;
@@ -350,20 +362,19 @@ public:
 
 	virtual void wait() = 0;
 
-	virtual bool acquire(SwapChain *swap_chain, uint32_t *new_image) = 0;
-	virtual bool present(SwapChain *swap_chain) = 0;
-	virtual bool resize(SwapChain *swap_chain, uint32_t width, uint32_t height) = 0;
-
-public:
-
-	// sequence
-	virtual void beginRenderPass(
-		const FrameBuffer *frame_buffer
+	virtual bool acquire(
+		SwapChain *swap_chain,
+		uint32_t *new_image
 	) = 0;
 
-	virtual void endRenderPass() = 0;
+	virtual bool present(
+		SwapChain *swap_chain,
+		uint32_t num_wait_command_buffers,
+		CommandBuffer * const *wait_command_buffers
+	) = 0;
 
-	// bind
+public:
+	// bindings
 	virtual void bindUniformBuffer(
 		uint32_t unit,
 		const UniformBuffer *uniform_buffer
@@ -378,12 +389,53 @@ public:
 		const Shader *shader
 	) = 0;
 
-	// draw
+public:
+	// command buffers
+	virtual bool resetCommandBuffer(
+		CommandBuffer *command_buffer
+	) = 0;
+
+	virtual bool beginCommandBuffer(
+		CommandBuffer *command_buffer
+	) = 0;
+
+	virtual bool endCommandBuffer(
+		CommandBuffer *command_buffer
+	) = 0;
+
+	virtual bool submit(
+		CommandBuffer *command_buffer
+	) = 0;
+
+	virtual bool submitSyncked(
+		CommandBuffer *command_buffer,
+		const SwapChain *wait_swap_chain
+	) = 0;
+
+	virtual bool submitSyncked(
+		CommandBuffer *command_buffer,
+		uint32_t num_wait_command_buffers,
+		CommandBuffer * const *wait_command_buffers
+	) = 0;
+public:
+	// render commands
+	virtual void beginRenderPass(
+		CommandBuffer *command_buffer,
+		const FrameBuffer *frame_buffer
+		// TODO: provide clear parameters
+	) = 0;
+
+	virtual void endRenderPass(
+		CommandBuffer *command_buffer
+	) = 0;
+
 	virtual void drawIndexedPrimitive(
+		CommandBuffer *command_buffer,
 		const RenderPrimitive *render_primitive
 	) = 0;
 
 	virtual void drawIndexedPrimitiveInstanced(
+		CommandBuffer *command_buffer,
 		const RenderPrimitive *primitive,
 		const VertexBuffer *instance_buffer,
 		uint32_t num_instances,

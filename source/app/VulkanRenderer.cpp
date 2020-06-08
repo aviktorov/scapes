@@ -239,7 +239,7 @@ void VulkanRenderer::resize(const VulkanSwapChain *swapChain)
 
 void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &frame)
 {
-	VkCommandBuffer command_buffer = frame.command_buffer;
+	VkCommandBuffer command_buffer = static_cast<vulkan::CommandBuffer *>(frame.command_buffer)->command_buffer;
 	VkDescriptorSet descriptor_set = frame.descriptor_set;
 
 	std::array<VkDescriptorSet, 2> sets = {descriptor_set, sceneDescriptorSet};

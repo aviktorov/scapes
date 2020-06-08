@@ -89,17 +89,10 @@ void VulkanSwapChain::beginFrame(void *state, const VulkanRenderFrame &frame)
 
 	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 	VkFramebuffer framebuffer = static_cast<vulkan::FrameBuffer *>(frame.frame_buffer)->framebuffer;
+	VkCommandBuffer command_buffer = static_cast<vulkan::CommandBuffer *>(frame.command_buffer)->command_buffer;
 
-	// reset command buffer
-	if (vkResetCommandBuffer(frame.command_buffer, 0) != VK_SUCCESS)
-		throw std::runtime_error("Can't reset command buffer");
-
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-
-	if (vkBeginCommandBuffer(frame.command_buffer, &beginInfo) != VK_SUCCESS)
-		throw std::runtime_error("Can't begin recording command buffer");
+	driver->resetCommandBuffer(frame.command_buffer);
+	driver->beginCommandBuffer(frame.command_buffer);
 
 	VkRenderPassBeginInfo render_pass_info = {};
 	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -115,42 +108,20 @@ void VulkanSwapChain::beginFrame(void *state, const VulkanRenderFrame &frame)
 	render_pass_info.clearValueCount = static_cast<uint32_t>(clear_values.size());
 	render_pass_info.pClearValues = clear_values.data();
 
-	vkCmdBeginRenderPass(frame.command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
 void VulkanSwapChain::endFrame(const VulkanRenderFrame &frame)
 {
-	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
-	uint32_t current_frame = vk_swap_chain->current_image;
-
-	// driver->endRenderPass();
-	vkCmdEndRenderPass(frame.command_buffer);
-
-	if (vkEndCommandBuffer(frame.command_buffer) != VK_SUCCESS)
-		throw std::runtime_error("Can't record command buffer");
-
-	// driver->submit(command_buffer);
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &vk_swap_chain->image_available_gpu[current_frame];
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &frame.command_buffer;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &vk_swap_chain->rendering_finished_gpu[current_frame];
-
-	vkResetFences(context->getDevice(), 1, &vk_swap_chain->rendering_finished_cpu[current_frame]);
-	if (vkQueueSubmit(context->getGraphicsQueue(), 1, &submitInfo, vk_swap_chain->rendering_finished_cpu[current_frame]) != VK_SUCCESS)
-		throw std::runtime_error("Can't submit command buffer");
+	driver->endRenderPass(frame.command_buffer);
+	driver->endCommandBuffer(frame.command_buffer);
+	driver->submitSyncked(frame.command_buffer, swap_chain);
 }
 
 bool VulkanSwapChain::present(const VulkanRenderFrame &frame)
 {
 	endFrame(frame);
-	return driver->present(swap_chain);
+	return driver->present(swap_chain, 1, &frame.command_buffer);
 }
 
 /*
@@ -266,14 +237,7 @@ void VulkanSwapChain::initFrames(VkDeviceSize ubo_size, uint32_t width, uint32_t
 		frame.frame_buffer = driver->createFrameBuffer(3, attachments);
 
 		// Create commandbuffer
-		VkCommandBufferAllocateInfo cb_alloc_info = {};
-		cb_alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		cb_alloc_info.commandPool = context->getCommandPool();
-		cb_alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		cb_alloc_info.commandBufferCount = 1;
-
-		if (vkAllocateCommandBuffers(context->getDevice(), &cb_alloc_info, &frame.command_buffer) != VK_SUCCESS)
-			throw std::runtime_error("Can't create command buffers");
+		frame.command_buffer = driver->createCommandBuffer(CommandBufferType::PRIMARY);
 	}
 }
 
@@ -281,12 +245,12 @@ void VulkanSwapChain::shutdownFrames()
 {
 	for (VulkanRenderFrame &frame : frames)
 	{
-		vkFreeCommandBuffers(context->getDevice(), context->getCommandPool(), 1, &frame.command_buffer);
 		vkFreeDescriptorSets(context->getDevice(), context->getDescriptorPool(), 1, &frame.descriptor_set);
 
 		driver->unmap(frame.uniform_buffer);
 		driver->destroyUniformBuffer(frame.uniform_buffer);
 		driver->destroyFrameBuffer(frame.frame_buffer);
+		driver->destroyCommandBuffer(frame.command_buffer);
 	}
 	frames.clear();
 }
