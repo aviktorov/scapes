@@ -1,3 +1,20 @@
+Useful Links:
+    - A platform independent layer: GLFW (https://github.com/glfw/glfw) / SDL2 (https://www.libsdl.org/download-2.0.php)
+    - A math library: GLM (https://github.com/g-truc/glm)
+    - An asset loader: assimp (https://github.com/assimp/assimp) / TinyGLTF (https://github.com/syoyo/tinygltf)
+    - An image loader: stb_image (https://github.com/nothings/stb)
+    - A DDS loader: nv_dds + manual patch (https://github.com/paroj/nv_dds) / gli (https://github.com/g-truc/gli)
+    - Crunch: advanced DXTn compression library (https://github.com/Unity-Technologies/crunch)
+
+Vulkan specific:
+    - Vulkan SDK: (https://vulkan.lunarg.com/sdk/home)
+    - A Vulkan loader: volk (https://github.com/zeux/volk)
+    - A Vulkan memory allocator: VMA https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+
+DX12 specific:
+    - DirectX 12 SDK: (https://www.microsoft.com/en-us/download/details.aspx?id=6812)
+        - D3D12 helper library: D3DX12 (https://github.com/Microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12)
+
 Vulkan backend challenges:
     ☐ Video memory allocation (VMA aka Vulkan Memory Allocator)
     ☐ Pipeline variety: either add *pipeline struct to backend or create pipeline cache internally
@@ -132,23 +149,3 @@ PBR Sandbox:
     Stream 1:
         ✔ Find a good shader language frontend with SPIR-V support @done (8/10/2019, 5:33:46 PM)
         ✔ Integrate SPIR-V shader language frontend it into the engine @done (8/10/2019, 6:40:41 PM)
-
-
-
-Useful Links:
-    - A platform independent layer: GLFW (https://github.com/glfw/glfw) / SDL2 (https://www.libsdl.org/download-2.0.php)
-    - A math library: GLM (https://github.com/g-truc/glm)
-    - An asset loader: assimp (https://github.com/assimp/assimp) / TinyGLTF (https://github.com/syoyo/tinygltf)
-    - An image loader: stb_image (https://github.com/nothings/stb)
-    - A DDS loader: nv_dds + manual patch (https://github.com/paroj/nv_dds) / gli (https://github.com/g-truc/gli)
-    - Crunch: advanced DXTn compression library (https://github.com/Unity-Technologies/crunch)
-
-Vulkan specific:
-    - Vulkan SDK: (https://vulkan.lunarg.com/sdk/home)
-    - A Vulkan loader: volk (https://github.com/zeux/volk)
-    - A Vulkan memory allocator: VMA https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-
-DX12 specific:
-    - DirectX 12 SDK: (https://www.microsoft.com/en-us/download/details.aspx?id=6812)
-        - D3D12 helper library: D3DX12 (https://github.com/Microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12)
-        
