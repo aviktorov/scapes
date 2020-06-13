@@ -8,6 +8,7 @@ namespace render::backend
 	namespace vulkan
 	{
 		class Device;
+		class RenderPassCache;
 
 		struct VertexBuffer : public render::backend::VertexBuffer
 		{
@@ -73,6 +74,9 @@ namespace render::backend
 			uint8_t num_attachments {0};
 			VkImageView attachments[FrameBuffer::MAX_ATTACHMENTS];
 			FrameBufferAttachmentType attachment_types[FrameBuffer::MAX_ATTACHMENTS];
+			VkFormat attachment_formats[FrameBuffer::MAX_ATTACHMENTS];
+			VkSampleCountFlagBits attachment_samples[FrameBuffer::MAX_ATTACHMENTS];
+			bool attachment_resolve[FrameBuffer::MAX_ATTACHMENTS];
 		};
 
 		struct CommandBuffer : public render::backend::CommandBuffer
@@ -353,5 +357,6 @@ namespace render::backend
 
 	private:
 		vulkan::Device *device {nullptr};
+		vulkan::RenderPassCache *render_pass_cache {nullptr};
 	};
 }

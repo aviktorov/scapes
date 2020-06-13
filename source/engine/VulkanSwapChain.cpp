@@ -8,7 +8,6 @@
 #include "render/backend/vulkan/device.h"
 #include "render/backend/vulkan/VulkanUtils.h"
 #include "render/backend/vulkan/VulkanDescriptorSetLayoutBuilder.h"
-#include "render/backend/vulkan/VulkanRenderPassBuilder.h"
 
 using namespace render::backend;
 
@@ -35,6 +34,12 @@ VkExtent2D VulkanSwapChain::getExtent() const
 {
 	vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 	return vk_swap_chain->sizes;
+}
+
+VkRenderPass VulkanSwapChain::getDummyRenderPass() const
+{
+	vulkan::FrameBuffer *vk_frame_buffer = static_cast<vulkan::FrameBuffer *>(frames[0].frame_buffer);
+	return vk_frame_buffer->dummy_render_pass;
 }
 
 void VulkanSwapChain::init(int width, int height)
@@ -93,21 +98,20 @@ void VulkanSwapChain::beginFrame(void *state, const VulkanRenderFrame &frame)
 	driver->resetCommandBuffer(frame.command_buffer);
 	driver->beginCommandBuffer(frame.command_buffer);
 
-	VkRenderPassBeginInfo render_pass_info = {};
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	render_pass_info.renderPass = render_pass;
-	render_pass_info.framebuffer = framebuffer;
-	render_pass_info.renderArea.offset = {0, 0};
-	render_pass_info.renderArea.extent = vk_swap_chain->sizes;
-
-	std::array<VkClearValue, 3> clear_values = {};
+	std::array<RenderPassClearValue, 3> clear_values = {};
 	clear_values[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
 	clear_values[1].color = {0.0f, 0.0f, 0.0f, 1.0f};
-	clear_values[2].depthStencil = {1.0f, 0};
-	render_pass_info.clearValueCount = static_cast<uint32_t>(clear_values.size());
-	render_pass_info.pClearValues = clear_values.data();
+	clear_values[2].depth_stencil = {1.0f, 0};
 
-	vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+	std::array<RenderPassLoadOp, 3> load_ops = { RenderPassLoadOp::CLEAR, RenderPassLoadOp::DONT_CARE, RenderPassLoadOp::CLEAR };
+	std::array<RenderPassStoreOp, 3> store_ops = { RenderPassStoreOp::STORE, RenderPassStoreOp::STORE, RenderPassStoreOp::DONT_CARE };
+
+	RenderPassInfo info;
+	info.load_ops = load_ops.data();
+	info.store_ops = store_ops.data();
+	info.clear_values = clear_values.data();
+
+	driver->beginRenderPass(frame.command_buffer, frame.frame_buffer, &info);
 }
 
 void VulkanSwapChain::endFrame(const VulkanRenderFrame &frame)
@@ -165,26 +169,12 @@ void VulkanSwapChain::initPersistent(VkFormat image_format)
 	descriptor_set_layout = descriptor_set_layout_builder
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL)
 		.build(device->getDevice());
-
-	VulkanRenderPassBuilder render_pass_builder;
-	render_pass = render_pass_builder
-		.addColorAttachment(image_format, vk_samples, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
-		.addColorResolveAttachment(image_format, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE)
-		.addDepthStencilAttachment(vk_depth_format, vk_samples, VK_ATTACHMENT_LOAD_OP_CLEAR)
-		.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
-		.addColorAttachmentReference(0, 0)
-		.addColorResolveAttachmentReference(0, 1)
-		.setDepthStencilAttachmentReference(0, 2)
-		.build(device->getDevice());
 }
 
 void VulkanSwapChain::shutdownPersistent()
 {
 	vkDestroyDescriptorSetLayout(device->getDevice(), descriptor_set_layout, nullptr);
 	descriptor_set_layout = VK_NULL_HANDLE;
-
-	vkDestroyRenderPass(device->getDevice(), render_pass, nullptr);
-	render_pass = VK_NULL_HANDLE;
 }
 
 /*

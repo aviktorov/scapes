@@ -288,11 +288,11 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	renderer = new VulkanRenderer(driver, swapChain->getExtent(), swapChain->getDescriptorSetLayout(), swapChain->getRenderPass());
+	renderer = new VulkanRenderer(driver, swapChain->getExtent(), swapChain->getDescriptorSetLayout(), swapChain->getDummyRenderPass());
 	renderer->init(scene);
 	renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
 
-	imguiRenderer = new VulkanImGuiRenderer(driver, ImGui::GetCurrentContext(), swapChain->getExtent(), swapChain->getRenderPass());
+	imguiRenderer = new VulkanImGuiRenderer(driver, ImGui::GetCurrentContext(), swapChain->getExtent(), swapChain->getDummyRenderPass());
 	imguiRenderer->init(swapChain);
 }
 

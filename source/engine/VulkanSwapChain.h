@@ -39,8 +39,11 @@ public:
 
 	uint32_t getNumImages() const;
 	VkExtent2D getExtent() const;
+
+	// TODO: remove this, it breaks main rendering
+	VkRenderPass getDummyRenderPass() const;
+
 	inline VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptor_set_layout; }
-	inline VkRenderPass getRenderPass() const { return render_pass; }
 
 private:
 	void beginFrame(void *state, const VulkanRenderFrame &frame);
@@ -65,7 +68,6 @@ private:
 	std::vector<VulkanRenderFrame> frames;
 	VkDeviceSize ubo_size;
 
-	VkRenderPass render_pass {VK_NULL_HANDLE};
 	VkDescriptorSetLayout descriptor_set_layout {VK_NULL_HANDLE};
 
 	render::backend::Texture *color {nullptr};

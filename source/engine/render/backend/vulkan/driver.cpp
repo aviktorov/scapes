@@ -8,6 +8,7 @@
 #include "render/backend/vulkan/device.h"
 #include "render/backend/vulkan/platform.h"
 #include "render/backend/vulkan/VulkanRenderPassBuilder.h"
+#include "render/backend/vulkan/RenderPassCache.h"
 #include "render/backend/vulkan/VulkanUtils.h"
 
 #include "shaderc/shaderc.h"
@@ -648,10 +649,15 @@ namespace render::backend
 	{
 		device = new vulkan::Device();
 		device->init(application_name, engine_name);
+
+		render_pass_cache = new vulkan::RenderPassCache(device);
 	}
 
 	VulkanDriver::~VulkanDriver()
 	{
+		delete render_pass_cache;
+		render_pass_cache = nullptr;
+
 		if (device)
 		{
 			device->wait();
@@ -897,6 +903,9 @@ namespace render::backend
 		{
 			const FrameBufferAttachment &attachment = attachments[i];
 			VkImageView view = VK_NULL_HANDLE;
+			VkFormat format = VK_FORMAT_UNDEFINED;
+			VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
+			bool resolve = false;
 
 			if (attachment.type == FrameBufferAttachmentType::COLOR)
 			{
@@ -914,6 +923,10 @@ namespace render::backend
 
 				width = std::max<int>(1, color_texture->width / (1 << color.base_mip));
 				height = std::max<int>(1, color_texture->height / (1 << color.base_mip));
+				format = color_texture->format;
+				samples = color_texture->samples;
+
+				resolve = color.resolve_attachment;
 
 				if (color.resolve_attachment)
 				{
@@ -940,6 +953,8 @@ namespace render::backend
 
 				width = depth_texture->width;
 				height = depth_texture->height;
+				format = depth_texture->format;
+				samples = depth_texture->samples;
 
 				builder.addDepthStencilAttachment(depth_texture->format, depth_texture->samples);
 				builder.setDepthStencilAttachmentReference(0, i);
@@ -958,6 +973,9 @@ namespace render::backend
 
 				width = swap_chain->sizes.width;
 				height = swap_chain->sizes.height;
+				format = swap_chain->surface_format.format;
+
+				resolve = swap_chain_color.resolve_attachment;
 
 				if (swap_chain_color.resolve_attachment)
 				{
@@ -973,6 +991,9 @@ namespace render::backend
 
 			result->attachments[result->num_attachments] = view;
 			result->attachment_types[result->num_attachments] = attachment.type;
+			result->attachment_formats[result->num_attachments] = format;
+			result->attachment_resolve[result->num_attachments] = resolve;
+			result->attachment_samples[result->num_attachments] = samples;
 			result->num_attachments++;
 		}
 
@@ -1705,16 +1726,9 @@ namespace render::backend
 		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
 		const vulkan::FrameBuffer *vk_frame_buffer = static_cast<const vulkan::FrameBuffer *>(frame_buffer);
 
-		// hash:
-		// 1. num_attachments
-		// 2. VkFormat[]
-		// 3. num_samples[] (for color attachments)
-		// 4. load op[]
-		// 5. store op[]
-
 		VkRenderPassBeginInfo render_pass_info = {};
 		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		// render_pass_info.renderPass = createFromCache(vk_frame_buffer, info); // vk_frame_buffer->dummy_render_pass; // ?
+		render_pass_info.renderPass = render_pass_cache->fetch(vk_frame_buffer, info);
 		render_pass_info.framebuffer = vk_frame_buffer->framebuffer;
 		render_pass_info.renderArea.offset = {0, 0};
 		render_pass_info.renderArea.extent = vk_frame_buffer->sizes;
