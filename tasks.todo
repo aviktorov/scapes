@@ -42,14 +42,17 @@ PBR Sandbox:
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ Add pipeline registry class
         ☐ Create separate cmake script for backend
-    Stream 32:
-        ☐ Start drafting backend drawing methods
-            ☐ Add render pass cache to backend
-            ☐ Implement beginRenderPass / endRenderPass
-            ☐ Add pipeline layout cache to backend
-            ☐ Add pipeline cache to backend
+    Stream 33:
         ☐ Start drafing binding methods
             ☐ Add descriptor set layout cache (if it's possible, try to use only one)
+        ☐ Continue drafting backend drawing methods
+            ☐ Add RenderPass struct to backend
+            ☐ Add pipeline layout cache to backend
+            ☐ Add pipeline cache to backend
+    Stream 32:
+        ✔ Start drafting backend drawing methods @done (6/14/2020, 1:09:03 AM)
+            ✔ Add render pass cache to backend @done (6/14/2020, 1:09:02 AM)
+            ✔ Implement beginRenderPass / endRenderPass @done (6/14/2020, 1:09:02 AM)
     Stream 31:
         ✔ Add CommandBuffer implementation to Vulkan backend @done (6/9/2020, 1:14:10 AM)
     Stream 30:
