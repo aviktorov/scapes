@@ -4,11 +4,16 @@
 #include <render/backend/driver.h>
 
 class RenderScene;
-class VulkanContext;
 class VulkanSwapChain;
 class VulkanTexture;
 struct VulkanRenderFrame;
 struct ImGuiContext;
+
+namespace render::backend::vulkan
+{
+	class Device;
+}
+
 
 /*
  */
@@ -33,7 +38,7 @@ public:
 
 private:
 	render::backend::Driver *driver {nullptr};
-	const VulkanContext *context {nullptr};
+	const render::backend::vulkan::Device *device {nullptr};
 	ImGuiContext *imguiContext {nullptr};
 	VkExtent2D extent;
 	VkRenderPass renderPass;

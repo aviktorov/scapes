@@ -5,7 +5,10 @@
 
 #include <render/backend/driver.h>
 
-class VulkanContext;
+namespace render::backend::vulkan
+{
+	class Device;
+}
 
 /*
  */
@@ -57,7 +60,7 @@ private:
 	render::backend::SwapChain *swap_chain {nullptr};
 	void *native_window {nullptr};
 
-	const VulkanContext *context {nullptr};
+	const render::backend::vulkan::Device *device {nullptr};
 
 	std::vector<VulkanRenderFrame> frames;
 	VkDeviceSize ubo_size;

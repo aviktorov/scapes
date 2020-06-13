@@ -1,5 +1,4 @@
 #include "VulkanSwapChain.h"
-#include "VulkanContext.h"
 #include "VulkanUtils.h"
 
 #include "VulkanDescriptorSetLayoutBuilder.h"
@@ -10,6 +9,7 @@
 #include <cassert>
 
 #include <render/backend/vulkan/driver.h>
+#include "render/backend/vulkan/device.h"
 
 using namespace render::backend;
 
@@ -18,7 +18,7 @@ VulkanSwapChain::VulkanSwapChain(Driver *driver, void *native_window, VkDeviceSi
 	, ubo_size(ubo_size)
 	, native_window(native_window)
 {
-	context = static_cast<VulkanDriver *>(driver)->getContext();
+	device = static_cast<VulkanDriver *>(driver)->getDevice();
 }
 
 VulkanSwapChain::~VulkanSwapChain()
@@ -162,12 +162,12 @@ void VulkanSwapChain::initPersistent(VkFormat image_format)
 	VkSampleCountFlagBits vk_samples = vk_driver->toMultisample(samples);
 
 	// Create descriptor set layout and render pass
-	VulkanDescriptorSetLayoutBuilder descriptor_set_layout_builder(context);
+	VulkanDescriptorSetLayoutBuilder descriptor_set_layout_builder;
 	descriptor_set_layout = descriptor_set_layout_builder
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL)
-		.build();
+		.build(device->getDevice());
 
-	VulkanRenderPassBuilder render_pass_builder(context);
+	VulkanRenderPassBuilder render_pass_builder;
 	render_pass = render_pass_builder
 		.addColorAttachment(image_format, vk_samples, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
 		.addColorResolveAttachment(image_format, VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE)
@@ -176,15 +176,15 @@ void VulkanSwapChain::initPersistent(VkFormat image_format)
 		.addColorAttachmentReference(0, 0)
 		.addColorResolveAttachmentReference(0, 1)
 		.setDepthStencilAttachmentReference(0, 2)
-		.build();
+		.build(device->getDevice());
 }
 
 void VulkanSwapChain::shutdownPersistent()
 {
-	vkDestroyDescriptorSetLayout(context->getDevice(), descriptor_set_layout, nullptr);
+	vkDestroyDescriptorSetLayout(device->getDevice(), descriptor_set_layout, nullptr);
 	descriptor_set_layout = VK_NULL_HANDLE;
 
-	vkDestroyRenderPass(context->getDevice(), render_pass, nullptr);
+	vkDestroyRenderPass(device->getDevice(), render_pass, nullptr);
 	render_pass = VK_NULL_HANDLE;
 }
 
@@ -206,16 +206,16 @@ void VulkanSwapChain::initFrames(VkDeviceSize ubo_size, uint32_t width, uint32_t
 		// Create & fill descriptor set
 		VkDescriptorSetAllocateInfo ds_alloc_info = {};
 		ds_alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		ds_alloc_info.descriptorPool = context->getDescriptorPool();
+		ds_alloc_info.descriptorPool = device->getDescriptorPool();
 		ds_alloc_info.descriptorSetCount = 1;
 		ds_alloc_info.pSetLayouts = &descriptor_set_layout;
 
-		if (vkAllocateDescriptorSets(context->getDevice(), &ds_alloc_info, &frame.descriptor_set) != VK_SUCCESS)
+		if (vkAllocateDescriptorSets(device->getDevice(), &ds_alloc_info, &frame.descriptor_set) != VK_SUCCESS)
 			throw std::runtime_error("Can't allocate swap chain descriptor sets");
 
 		VkBuffer ubo = static_cast<vulkan::UniformBuffer *>(frame.uniform_buffer)->buffer;
 		VulkanUtils::bindUniformBuffer(
-			context,
+			device,
 			frame.descriptor_set,
 			0,
 			ubo,
@@ -245,7 +245,7 @@ void VulkanSwapChain::shutdownFrames()
 {
 	for (VulkanRenderFrame &frame : frames)
 	{
-		vkFreeDescriptorSets(context->getDevice(), context->getDescriptorPool(), 1, &frame.descriptor_set);
+		vkFreeDescriptorSets(device->getDevice(), device->getDescriptorPool(), 1, &frame.descriptor_set);
 
 		driver->unmap(frame.uniform_buffer);
 		driver->destroyUniformBuffer(frame.uniform_buffer);

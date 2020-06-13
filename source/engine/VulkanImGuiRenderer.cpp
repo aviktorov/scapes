@@ -1,5 +1,4 @@
 #include "VulkanImGuiRenderer.h"
-#include "VulkanContext.h"
 #include "VulkanSwapChain.h"
 #include "VulkanTexture.h"
 #include "VulkanUtils.h"
@@ -10,6 +9,7 @@
 #include <array>
 
 #include <render/backend/vulkan/driver.h>
+#include "render/backend/vulkan/device.h"
 
 using namespace render::backend;
 
@@ -26,7 +26,7 @@ VulkanImGuiRenderer::VulkanImGuiRenderer(
 	, extent(extent)
 	, renderPass(renderPass)
 {
-	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
+	device = static_cast<render::backend::VulkanDriver *>(driver)->getDevice();
 	ImGui::SetCurrentContext(imguiContext);
 }
 
@@ -48,21 +48,21 @@ void VulkanImGuiRenderer::init(const VulkanSwapChain *swapChain)
 {
 	// Init ImGui bindings for Vulkan
 	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = context->getInstance();
-	init_info.PhysicalDevice = context->getPhysicalDevice();
-	init_info.Device = context->getDevice();
-	init_info.QueueFamily = context->getGraphicsQueueFamily();
-	init_info.Queue = context->getGraphicsQueue();
-	init_info.DescriptorPool = context->getDescriptorPool();
-	init_info.MSAASamples = context->getMaxSampleCount();
+	init_info.Instance = device->getInstance();
+	init_info.PhysicalDevice = device->getPhysicalDevice();
+	init_info.Device = device->getDevice();
+	init_info.QueueFamily = device->getGraphicsQueueFamily();
+	init_info.Queue = device->getGraphicsQueue();
+	init_info.DescriptorPool = device->getDescriptorPool();
+	init_info.MSAASamples = device->getMaxSampleCount();
 	init_info.MinImageCount = static_cast<uint32_t>(swapChain->getNumImages());
 	init_info.ImageCount = static_cast<uint32_t>(swapChain->getNumImages());
 
 	ImGui_ImplVulkan_Init(&init_info, renderPass);
 
-	VkCommandBuffer imGuiCommandBuffer = VulkanUtils::beginSingleTimeCommands(context);
+	VkCommandBuffer imGuiCommandBuffer = VulkanUtils::beginSingleTimeCommands(device);
 	ImGui_ImplVulkan_CreateFontsTexture(imGuiCommandBuffer);
-	VulkanUtils::endSingleTimeCommands(context, imGuiCommandBuffer);
+	VulkanUtils::endSingleTimeCommands(device, imGuiCommandBuffer);
 }
 
 void VulkanImGuiRenderer::shutdown()

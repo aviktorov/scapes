@@ -11,8 +11,12 @@
 
 #include <render/backend/driver.h>
 
+namespace render::backend::vulkan
+{
+	class Device;
+}
+
 class RenderScene;
-class VulkanContext;
 class VulkanSwapChain;
 struct VulkanRenderFrame;
 
@@ -39,7 +43,7 @@ public:
 	void setEnvironment(const VulkanTexture *texture);
 
 private:
-	const VulkanContext *context {nullptr};
+	const render::backend::vulkan::Device *device {nullptr};
 	render::backend::Driver *driver {nullptr};
 	VkExtent2D extent;
 	VkRenderPass renderPass {VK_NULL_HANDLE};

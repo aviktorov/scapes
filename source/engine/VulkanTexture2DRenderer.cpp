@@ -1,6 +1,5 @@
 // TODO: remove Vulkan dependencies
 #include "VulkanTexture2DRenderer.h"
-#include "VulkanContext.h"
 
 #include "VulkanDescriptorSetLayoutBuilder.h"
 #include "VulkanGraphicsPipelineBuilder.h"
@@ -15,6 +14,7 @@
 #include <GLM/gtc/matrix_transform.hpp>
 
 #include <render/backend/vulkan/driver.h>
+#include <render/backend/vulkan/device.h>
 
 /*
  */
@@ -22,7 +22,7 @@ VulkanTexture2DRenderer::VulkanTexture2DRenderer(render::backend::Driver *driver
 	: driver(driver)
 	, quad(driver)
 {
-	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
+	device = static_cast<render::backend::VulkanDriver *>(driver)->getDevice();
 }
 
 /*
@@ -53,18 +53,18 @@ void VulkanTexture2DRenderer::init(
 
 	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VulkanRenderPassBuilder render_pass_builder(context);
+	VulkanRenderPassBuilder render_pass_builder;
 	render_pass = render_pass_builder
 		.addColorAttachment(target_texture.getImageFormat(), VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE)
 		.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
 		.addColorAttachmentReference(0, 0)
-		.build();
+		.build(device->getDevice());
 
-	VulkanPipelineLayoutBuilder pipeline_layout_builder(context);
+	VulkanPipelineLayoutBuilder pipeline_layout_builder;
 	pipeline_layout = pipeline_layout_builder
-		.build();
+		.build(device->getDevice());
 
-	VulkanGraphicsPipelineBuilder pipeline_builder(context, pipeline_layout, render_pass);
+	VulkanGraphicsPipelineBuilder pipeline_builder(pipeline_layout, render_pass);
 	pipeline = pipeline_builder
 		.addShaderStage(vertex_shader.getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
 		.addShaderStage(fragment_shader.getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -76,7 +76,7 @@ void VulkanTexture2DRenderer::init(
 		.setMultisampleState(VK_SAMPLE_COUNT_1_BIT)
 		.setDepthStencilState(false, false, VK_COMPARE_OP_LESS)
 		.addBlendColorAttachment()
-		.build();
+		.build(device->getDevice());
 
 	// Create framebuffer
 	render::backend::FrameBufferAttachmentType type = render::backend::FrameBufferAttachmentType::COLOR;
@@ -90,11 +90,11 @@ void VulkanTexture2DRenderer::init(
 	// Create command buffer
 	VkCommandBufferAllocateInfo allocate_info = {};
 	allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocate_info.commandPool = context->getCommandPool();
+	allocate_info.commandPool = device->getCommandPool();
 	allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocate_info.commandBufferCount = 1;
 
-	if (vkAllocateCommandBuffers(context->getDevice(), &allocate_info, &commandBuffer) != VK_SUCCESS)
+	if (vkAllocateCommandBuffers(device->getDevice(), &allocate_info, &commandBuffer) != VK_SUCCESS)
 		throw std::runtime_error("Can't create command buffers");
 
 	// Create fence
@@ -102,7 +102,7 @@ void VulkanTexture2DRenderer::init(
 	fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fence_info.flags = 0;
 
-	if (vkCreateFence(context->getDevice(), &fence_info, nullptr, &fence) != VK_SUCCESS)
+	if (vkCreateFence(device->getDevice(), &fence_info, nullptr, &fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't create fence");
 }
 
@@ -111,19 +111,19 @@ void VulkanTexture2DRenderer::shutdown()
 	driver->destroyFrameBuffer(framebuffer);
 	framebuffer = nullptr;
 
-	vkDestroyPipeline(context->getDevice(), pipeline, nullptr);
+	vkDestroyPipeline(device->getDevice(), pipeline, nullptr);
 	pipeline = VK_NULL_HANDLE;
 
-	vkDestroyPipelineLayout(context->getDevice(), pipeline_layout, nullptr);
+	vkDestroyPipelineLayout(device->getDevice(), pipeline_layout, nullptr);
 	pipeline_layout = VK_NULL_HANDLE;
 
-	vkDestroyRenderPass(context->getDevice(), render_pass, nullptr);
+	vkDestroyRenderPass(device->getDevice(), render_pass, nullptr);
 	render_pass = VK_NULL_HANDLE;
 
-	vkFreeCommandBuffers(context->getDevice(), context->getCommandPool(), 1, &commandBuffer);
+	vkFreeCommandBuffers(device->getDevice(), device->getCommandPool(), 1, &commandBuffer);
 	commandBuffer = VK_NULL_HANDLE;
 
-	vkDestroyFence(context->getDevice(), fence, nullptr);
+	vkDestroyFence(device->getDevice(), fence, nullptr);
 	fence = VK_NULL_HANDLE;
 
 	quad.clearGPUData();
@@ -180,12 +180,12 @@ void VulkanTexture2DRenderer::render()
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	if (vkResetFences(context->getDevice(), 1, &fence) != VK_SUCCESS)
+	if (vkResetFences(device->getDevice(), 1, &fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't reset fence");
 
-	if (vkQueueSubmit(context->getGraphicsQueue(), 1, &submitInfo, fence) != VK_SUCCESS)
+	if (vkQueueSubmit(device->getGraphicsQueue(), 1, &submitInfo, fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't submit command buffer");
 
-	if (vkWaitForFences(context->getDevice(), 1, &fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS)
+	if (vkWaitForFences(device->getDevice(), 1, &fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS)
 		throw std::runtime_error("Can't wait for a fence");
 }

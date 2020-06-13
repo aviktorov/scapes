@@ -1,5 +1,4 @@
 #include "VulkanRenderer.h"
-#include "VulkanContext.h"
 #include "VulkanMesh.h"
 #include "VulkanUtils.h"
 #include "VulkanDescriptorSetLayoutBuilder.h"
@@ -11,6 +10,7 @@
 #include "RenderScene.h"
 
 #include <render/backend/vulkan/driver.h>
+#include <render/backend/vulkan/device.h>
 
 using namespace render::backend;
 
@@ -33,7 +33,7 @@ VulkanRenderer::VulkanRenderer(
 	, bakedBRDF(driver)
 	, bakedBRDFRenderer(driver)
 {
-	context = static_cast<render::backend::VulkanDriver *>(driver)->getContext();
+	device = static_cast<render::backend::VulkanDriver *>(driver)->getDevice();
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -52,7 +52,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 
 	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VulkanDescriptorSetLayoutBuilder sceneDescriptorSetLayoutBuilder(context);
+	VulkanDescriptorSetLayoutBuilder sceneDescriptorSetLayoutBuilder;
 	sceneDescriptorSetLayout = sceneDescriptorSetLayoutBuilder
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
@@ -62,15 +62,15 @@ void VulkanRenderer::init(const RenderScene *scene)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
 		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
-		.build();
+		.build(device->getDevice());
 
-	VulkanPipelineLayoutBuilder pipelineLayoutBuilder(context);
+	VulkanPipelineLayoutBuilder pipelineLayoutBuilder;
 	pipelineLayout = pipelineLayoutBuilder
 		.addDescriptorSetLayout(descriptorSetLayout)
 		.addDescriptorSetLayout(sceneDescriptorSetLayout)
-		.build();
+		.build(device->getDevice());
 
-	VulkanGraphicsPipelineBuilder pbrPipelineBuilder(context, pipelineLayout, renderPass);
+	VulkanGraphicsPipelineBuilder pbrPipelineBuilder(pipelineLayout, renderPass);
 	pbrPipeline = pbrPipelineBuilder
 		.addShaderStage(pbrVertexShader->getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
 		.addShaderStage(pbrFragmentShader->getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -81,12 +81,12 @@ void VulkanRenderer::init(const RenderScene *scene)
 		.addDynamicState(VK_DYNAMIC_STATE_SCISSOR)
 		.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT)
 		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
-		.setMultisampleState(context->getMaxSampleCount(), true)
+		.setMultisampleState(device->getMaxSampleCount(), true)
 		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
 		.addBlendColorAttachment()
-		.build();
+		.build(device->getDevice());
 
-	VulkanGraphicsPipelineBuilder skyboxPipelineBuilder(context, pipelineLayout, renderPass);
+	VulkanGraphicsPipelineBuilder skyboxPipelineBuilder(pipelineLayout, renderPass);
 	skyboxPipeline = skyboxPipelineBuilder
 		.addShaderStage(skyboxVertexShader->getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
 		.addShaderStage(skyboxFragmentShader->getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -97,10 +97,10 @@ void VulkanRenderer::init(const RenderScene *scene)
 		.addDynamicState(VK_DYNAMIC_STATE_SCISSOR)
 		.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT)
 		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
-		.setMultisampleState(context->getMaxSampleCount(), true)
+		.setMultisampleState(device->getMaxSampleCount(), true)
 		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
 		.addBlendColorAttachment()
-		.build();
+		.build(device->getDevice());
 
 	bakedBRDF.create2D(render::backend::Format::R16G16_SFLOAT, 256, 256, 1);
 	environmentCubemap.createCube(render::backend::Format::R32G32B32A32_SFLOAT, 256, 256, 8);
@@ -114,7 +114,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 
 	{
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			bakedBRDF.getImage(),
 			bakedBRDF.getImageFormat(),
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -126,7 +126,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 		bakedBRDFRenderer.render();
 
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			bakedBRDF.getImage(),
 			bakedBRDF.getImageFormat(),
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -168,11 +168,11 @@ void VulkanRenderer::init(const RenderScene *scene)
 	// Create scene descriptor set
 	VkDescriptorSetAllocateInfo sceneDescriptorSetAllocInfo = {};
 	sceneDescriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	sceneDescriptorSetAllocInfo.descriptorPool = context->getDescriptorPool();
+	sceneDescriptorSetAllocInfo.descriptorPool = device->getDescriptorPool();
 	sceneDescriptorSetAllocInfo.descriptorSetCount = 1;
 	sceneDescriptorSetAllocInfo.pSetLayouts = &sceneDescriptorSetLayout;
 
-	if (vkAllocateDescriptorSets(context->getDevice(), &sceneDescriptorSetAllocInfo, &sceneDescriptorSet) != VK_SUCCESS)
+	if (vkAllocateDescriptorSets(device->getDevice(), &sceneDescriptorSetAllocInfo, &sceneDescriptorSet) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate scene descriptor set");
 
 	std::array<const VulkanTexture *, 8> textures =
@@ -189,7 +189,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 
 	for (int k = 0; k < textures.size(); k++)
 		VulkanUtils::bindCombinedImageSampler(
-			context,
+			device,
 			sceneDescriptorSet,
 			k,
 			textures[k]->getImageView(),
@@ -199,19 +199,19 @@ void VulkanRenderer::init(const RenderScene *scene)
 
 void VulkanRenderer::shutdown()
 {
-	vkDestroyPipeline(context->getDevice(), pbrPipeline, nullptr);
+	vkDestroyPipeline(device->getDevice(), pbrPipeline, nullptr);
 	pbrPipeline = VK_NULL_HANDLE;
 
-	vkDestroyPipeline(context->getDevice(), skyboxPipeline, nullptr);
+	vkDestroyPipeline(device->getDevice(), skyboxPipeline, nullptr);
 	skyboxPipeline = VK_NULL_HANDLE;
 
-	vkDestroyPipelineLayout(context->getDevice(), pipelineLayout, nullptr);
+	vkDestroyPipelineLayout(device->getDevice(), pipelineLayout, nullptr);
 	pipelineLayout = VK_NULL_HANDLE;
 
-	vkDestroyDescriptorSetLayout(context->getDevice(), sceneDescriptorSetLayout, nullptr);
+	vkDestroyDescriptorSetLayout(device->getDevice(), sceneDescriptorSetLayout, nullptr);
 	sceneDescriptorSetLayout = VK_NULL_HANDLE;
 
-	vkFreeDescriptorSets(context->getDevice(), context->getDescriptorPool(), 1, &sceneDescriptorSet);
+	vkFreeDescriptorSets(device->getDevice(), device->getDescriptorPool(), 1, &sceneDescriptorSet);
 	sceneDescriptorSet = VK_NULL_HANDLE;
 
 	for (VulkanCubemapRenderer *renderer : cubeToPrefilteredRenderers)
@@ -299,7 +299,7 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 {
 	{
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			environmentCubemap.getImage(),
 			environmentCubemap.getImageFormat(),
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -311,7 +311,7 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 		hdriToCubeRenderer.render(*texture);
 
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			environmentCubemap.getImage(),
 			environmentCubemap.getImageFormat(),
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -324,7 +324,7 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 	for (uint32_t i = 0; i < cubeToPrefilteredRenderers.size(); i++)
 	{
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			environmentCubemap.getImage(),
 			environmentCubemap.getImageFormat(),
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -341,7 +341,7 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 		cubeToPrefilteredRenderers[i]->render(environmentCubemap, data, i);
 
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			environmentCubemap.getImage(),
 			environmentCubemap.getImageFormat(),
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -353,7 +353,7 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 
 	{
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			diffuseIrradianceCubemap.getImage(),
 			diffuseIrradianceCubemap.getImageFormat(),
 			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -365,7 +365,7 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 		diffuseIrradianceRenderer.render(environmentCubemap);
 
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			diffuseIrradianceCubemap.getImage(),
 			diffuseIrradianceCubemap.getImageFormat(),
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -383,7 +383,7 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 
 	for (int k = 0; k < textures.size(); k++)
 		VulkanUtils::bindCombinedImageSampler(
-			context,
+			device,
 			sceneDescriptorSet,
 			k + 5,
 			textures[k]->getImageView(),

@@ -3,15 +3,13 @@
 #include <vector>
 #include <volk.h>
 
-class VulkanContext;
-
 /*
  */
 class VulkanGraphicsPipelineBuilder
 {
 public:
-	VulkanGraphicsPipelineBuilder(const VulkanContext *context, VkPipelineLayout pipelineLayout, VkRenderPass renderPass)
-		: context(context), renderPass(renderPass), pipelineLayout(pipelineLayout) { }
+	VulkanGraphicsPipelineBuilder(VkPipelineLayout pipelineLayout, VkRenderPass renderPass)
+		: renderPass(renderPass), pipelineLayout(pipelineLayout) { }
 
 	inline VkPipeline getPipeline() const { return pipeline; }
 
@@ -79,10 +77,9 @@ public:
 		VkCompareOp depthCompareOp
 	);
 
-	VkPipeline build();
+	VkPipeline build(VkDevice device);
 
 private:
-	const VulkanContext *context {nullptr};
 	VkRenderPass renderPass {VK_NULL_HANDLE};
 	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 

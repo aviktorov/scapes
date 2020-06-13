@@ -3,12 +3,12 @@
 #include "render/backend/driver.h"
 #include <volk.h>
 
-class VulkanContext;
-
 namespace render::backend
 {
 	namespace vulkan
 	{
+		class Device;
+
 		struct VertexBuffer : public render::backend::VertexBuffer
 		{
 			enum
@@ -66,10 +66,13 @@ namespace render::backend
 			};
 
 			VkFramebuffer framebuffer {VK_NULL_HANDLE};
+			VkExtent2D sizes {0, 0};
+
 			VkRenderPass dummy_render_pass {VK_NULL_HANDLE}; // TODO: move to render pass cache
+
 			uint8_t num_attachments {0};
 			VkImageView attachments[FrameBuffer::MAX_ATTACHMENTS];
-			// TODO: add info about attachment type (color, color resolve, depth)
+			FrameBufferAttachmentType attachment_types[FrameBuffer::MAX_ATTACHMENTS];
 		};
 
 		struct CommandBuffer : public render::backend::CommandBuffer
@@ -139,7 +142,7 @@ namespace render::backend
 		VulkanDriver(const char *application_name, const char *engine_name);
 		virtual ~VulkanDriver();
 
-		inline const VulkanContext *getContext() const { return context; }
+		inline const vulkan::Device *getDevice() const { return device; }
 
 	public:
 		VertexBuffer *createVertexBuffer(
@@ -327,7 +330,8 @@ namespace render::backend
 		// render commands
 		void beginRenderPass(
 			CommandBuffer *command_buffer,
-			const FrameBuffer *frame_buffer
+			const FrameBuffer *frame_buffer,
+			const RenderPassInfo *info
 		) override;
 
 		void endRenderPass(
@@ -348,6 +352,6 @@ namespace render::backend
 		) override;
 
 	private:
-		VulkanContext *context {nullptr};
+		vulkan::Device *device {nullptr};
 	};
 }

@@ -1,5 +1,6 @@
 #include "VulkanUtils.h"
-#include "VulkanContext.h"
+
+#include "render/backend/vulkan/device.h"
 
 #include <algorithm>
 #include <iostream>
@@ -260,7 +261,7 @@ uint32_t VulkanUtils::getPresentQueueFamily(
 /*
  */
 void VulkanUtils::createBuffer(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkDeviceSize size,
 	VkBufferUsageFlags usage,
 	VkMemoryPropertyFlags memoryProperties,
@@ -275,27 +276,27 @@ void VulkanUtils::createBuffer(
 	bufferInfo.usage = usage;
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	if (vkCreateBuffer(context->getDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+	if (vkCreateBuffer(device->getDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
 		throw std::runtime_error("Can't create buffer");
 
 	// Allocate memory for the buffer
 	VkMemoryRequirements memoryRequirements = {};
-	vkGetBufferMemoryRequirements(context->getDevice(), buffer, &memoryRequirements);
+	vkGetBufferMemoryRequirements(device->getDevice(), buffer, &memoryRequirements);
 
 	VkMemoryAllocateInfo memoryAllocateInfo = {};
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(device->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
 
-	if (vkAllocateMemory(context->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+	if (vkAllocateMemory(device->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate buffer memory");
 
-	if (vkBindBufferMemory(context->getDevice(), buffer, memory, 0) != VK_SUCCESS)
+	if (vkBindBufferMemory(device->getDevice(), buffer, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't bind buffer memory");
 }
 
 void VulkanUtils::createDeviceLocalBuffer(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkDeviceSize size,
 	const void *data,
 	VkBufferUsageFlags usage,
@@ -305,7 +306,7 @@ void VulkanUtils::createDeviceLocalBuffer(
 {
 	// Create vertex buffer
 	createBuffer(
-		context,
+		device,
 		size,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | usage,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -318,7 +319,7 @@ void VulkanUtils::createDeviceLocalBuffer(
 	VkDeviceMemory staging_memory = VK_NULL_HANDLE;
 
 	VulkanUtils::createBuffer(
-		context,
+		device,
 		size,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -328,22 +329,22 @@ void VulkanUtils::createDeviceLocalBuffer(
 
 	// Fill staging buffer
 	void *staging_data = nullptr;
-	vkMapMemory(context->getDevice(), staging_memory, 0, size, 0, &staging_data);
+	vkMapMemory(device->getDevice(), staging_memory, 0, size, 0, &staging_data);
 	memcpy(staging_data, data, static_cast<size_t>(size));
-	vkUnmapMemory(context->getDevice(), staging_memory);
+	vkUnmapMemory(device->getDevice(), staging_memory);
 
 	// Transfer to GPU local memory
-	copyBuffer(context, staging_buffer, buffer, size);
+	copyBuffer(device, staging_buffer, buffer, size);
 
 	// Destroy staging buffer
-	vkDestroyBuffer(context->getDevice(), staging_buffer, nullptr);
-	vkFreeMemory(context->getDevice(), staging_memory, nullptr);
+	vkDestroyBuffer(device->getDevice(), staging_buffer, nullptr);
+	vkFreeMemory(device->getDevice(), staging_memory, nullptr);
 }
 
 /*
  */
 void VulkanUtils::createImage(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkImageType type,
 	uint32_t width,
 	uint32_t height,
@@ -377,29 +378,29 @@ void VulkanUtils::createImage(
 	imageInfo.samples = numSamples;
 	imageInfo.flags = flags;
 
-	if (vkCreateImage(context->getDevice(), &imageInfo, nullptr, &image) != VK_SUCCESS)
+	if (vkCreateImage(device->getDevice(), &imageInfo, nullptr, &image) != VK_SUCCESS)
 		throw std::runtime_error("Can't create image");
 
 	// Allocate memory for the buffer
 	VkMemoryRequirements memoryRequirements = {};
-	vkGetImageMemoryRequirements(context->getDevice(), image, &memoryRequirements);
+	vkGetImageMemoryRequirements(device->getDevice(), image, &memoryRequirements);
 
 	VkMemoryAllocateInfo memoryAllocateInfo = {};
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(context->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
+	memoryAllocateInfo.memoryTypeIndex = findMemoryType(device->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
 
-	if (vkAllocateMemory(context->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
+	if (vkAllocateMemory(device->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
 		throw std::runtime_error("Can't allocate image memory");
 
-	if (vkBindImageMemory(context->getDevice(), image, memory, 0) != VK_SUCCESS)
+	if (vkBindImageMemory(device->getDevice(), image, memory, 0) != VK_SUCCESS)
 		throw std::runtime_error("Can't bind image memory");
 }
 
 /*
  */
 void VulkanUtils::createImageCube(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	uint32_t width,
 	uint32_t height,
 	uint32_t mipLevels,
@@ -413,7 +414,7 @@ void VulkanUtils::createImageCube(
 )
 {
 	createImage(
-		context,
+		device,
 		VK_IMAGE_TYPE_2D,
 		width, height, 1,
 		mipLevels, 6, numSamples,
@@ -425,7 +426,7 @@ void VulkanUtils::createImageCube(
 }
 
 void VulkanUtils::createImage2D(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	uint32_t width,
 	uint32_t height,
 	uint32_t mipLevels,
@@ -439,7 +440,7 @@ void VulkanUtils::createImage2D(
 )
 {
 	createImage(
-		context,
+		device,
 		VK_IMAGE_TYPE_2D,
 		width, height, 1,
 		mipLevels, 1, numSamples,
@@ -451,7 +452,7 @@ void VulkanUtils::createImage2D(
 }
 
 void VulkanUtils::fillImage(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkImage image,
 	uint32_t width,
 	uint32_t height,
@@ -483,7 +484,7 @@ void VulkanUtils::fillImage(
 	VkDeviceMemory staging_memory = VK_NULL_HANDLE;
 
 	createBuffer(
-		context,
+		device,
 		resource_size * dataArrayLayers,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -493,14 +494,14 @@ void VulkanUtils::fillImage(
 
 	// Fill staging buffer
 	void *staging_data = nullptr;
-	vkMapMemory(context->getDevice(), staging_memory, 0, resource_size * dataArrayLayers, 0, &staging_data);
+	vkMapMemory(device->getDevice(), staging_memory, 0, resource_size * dataArrayLayers, 0, &staging_data);
 	memcpy(staging_data, data, static_cast<size_t>(resource_size * dataArrayLayers));
-	vkUnmapMemory(context->getDevice(), staging_memory);
+	vkUnmapMemory(device->getDevice(), staging_memory);
 
 	// Copy to the image memory on GPU
 	VkDeviceSize offset = 0;
 
-	VkCommandBuffer command_buffer = beginSingleTimeCommands(context);
+	VkCommandBuffer command_buffer = beginSingleTimeCommands(device);
 
 	for (uint32_t i = 0; i < dataArrayLayers; i++)
 	{
@@ -533,15 +534,15 @@ void VulkanUtils::fillImage(
 		}
 	}
 
-	VulkanUtils::endSingleTimeCommands(context, command_buffer);
+	VulkanUtils::endSingleTimeCommands(device, command_buffer);
 
 	// Destroy staging buffer
-	vkDestroyBuffer(context->getDevice(), staging_buffer, nullptr);
-	vkFreeMemory(context->getDevice(), staging_memory, nullptr);
+	vkDestroyBuffer(device->getDevice(), staging_buffer, nullptr);
+	vkFreeMemory(device->getDevice(), staging_memory, nullptr);
 }
 
 VkImageView VulkanUtils::createImageView(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkImage image,
 	VkFormat format,
 	VkImageAspectFlags aspectFlags,
@@ -565,14 +566,14 @@ VkImageView VulkanUtils::createImageView(
 	viewInfo.subresourceRange.layerCount = numLayers;
 
 	VkImageView imageView = VK_NULL_HANDLE;
-	if (vkCreateImageView(context->getDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+	if (vkCreateImageView(device->getDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS)
 		return VK_NULL_HANDLE;
 
 	return imageView;
 }
 
 VkSampler VulkanUtils::createSampler(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	uint32_t minMipLevel,
 	uint32_t maxMipLevel
 )
@@ -595,14 +596,14 @@ VkSampler VulkanUtils::createSampler(
 	samplerInfo.maxLod = static_cast<float>(maxMipLevel);
 
 	VkSampler sampler = VK_NULL_HANDLE;
-	if (vkCreateSampler(context->getDevice(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
+	if (vkCreateSampler(device->getDevice(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
 		return VK_NULL_HANDLE;
 
 	return sampler;
 }
 
 VkShaderModule VulkanUtils::createShaderModule(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	const uint32_t *bytecode,
 	size_t bytecodeSize
 )
@@ -613,14 +614,14 @@ VkShaderModule VulkanUtils::createShaderModule(
 	shaderInfo.pCode = bytecode;
 
 	VkShaderModule shader = VK_NULL_HANDLE;
-	if (vkCreateShaderModule(context->getDevice(), &shaderInfo, nullptr, &shader) != VK_SUCCESS)
+	if (vkCreateShaderModule(device->getDevice(), &shaderInfo, nullptr, &shader) != VK_SUCCESS)
 		return VK_NULL_HANDLE;
 
 	return shader;
 }
 
 void VulkanUtils::bindUniformBuffer(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkDescriptorSet descriptorSet,
 	int binding,
 	VkBuffer buffer,
@@ -644,11 +645,11 @@ void VulkanUtils::bindUniformBuffer(
 
 	// TODO: not optimal, probably should be refactored to a Binder class,
 	// i.e. it's better to collect all descriptor writes before the call
-	vkUpdateDescriptorSets(context->getDevice(), 1, &descriptorWrite, 0, nullptr);
+	vkUpdateDescriptorSets(device->getDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanUtils::bindCombinedImageSampler(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkDescriptorSet descriptorSet,
 	int binding,
 	VkImageView imageView,
@@ -671,28 +672,28 @@ void VulkanUtils::bindCombinedImageSampler(
 
 	// TODO: not optimal, probably should be refactored to a Binder class,
 	// i.e. it's better to collect all descriptor writes before the call
-	vkUpdateDescriptorSets(context->getDevice(), 1, &descriptorWrite, 0, nullptr);
+	vkUpdateDescriptorSets(device->getDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanUtils::copyBuffer(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkBuffer src,
 	VkBuffer dst,
 	VkDeviceSize size
 )
 {
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands(context);
+	VkCommandBuffer commandBuffer = beginSingleTimeCommands(device);
 
 	VkBufferCopy copyRegion = {};
 	copyRegion.size = size;
 	vkCmdCopyBuffer(commandBuffer, src, dst, 1, &copyRegion);
 
-	endSingleTimeCommands(context, commandBuffer);
+	endSingleTimeCommands(device, commandBuffer);
 }
 
 
 void VulkanUtils::copyBufferToImage(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkBuffer src,
 	VkImage dst,
 	uint32_t width,
@@ -703,7 +704,7 @@ void VulkanUtils::copyBufferToImage(
 	VkDeviceSize bufferOffset
 )
 {
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands(context);
+	VkCommandBuffer commandBuffer = beginSingleTimeCommands(device);
 
 	VkBufferImageCopy region = {};
 	region.bufferOffset = bufferOffset;
@@ -722,7 +723,7 @@ void VulkanUtils::copyBufferToImage(
 
 	vkCmdCopyBufferToImage(commandBuffer, src, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-	endSingleTimeCommands(context, commandBuffer);
+	endSingleTimeCommands(device, commandBuffer);
 }
 
 /*
@@ -746,7 +747,7 @@ bool VulkanUtils::isDepthFormat(VkFormat format)
 }
 
 void VulkanUtils::transitionImageLayout(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkImage image,
 	VkFormat format,
 	VkImageLayout oldLayout,
@@ -757,7 +758,7 @@ void VulkanUtils::transitionImageLayout(
 	uint32_t numLayers
 )
 {
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands(context);
+	VkCommandBuffer commandBuffer = beginSingleTimeCommands(device);
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -860,11 +861,11 @@ void VulkanUtils::transitionImageLayout(
 		1, &barrier
 	);
 
-	endSingleTimeCommands(context, commandBuffer);
+	endSingleTimeCommands(device, commandBuffer);
 }
 
 void VulkanUtils::generateImage2DMipmaps(
-	const VulkanContext *context,
+	const render::backend::vulkan::Device *device,
 	VkImage image,
 	VkFormat imageFormat,
 	uint32_t width,
@@ -878,7 +879,7 @@ void VulkanUtils::generateImage2DMipmaps(
 		return;
 
 	VkFormatProperties formatProperties;
-	vkGetPhysicalDeviceFormatProperties(context->getPhysicalDevice(), format, &formatProperties);
+	vkGetPhysicalDeviceFormatProperties(device->getPhysicalDevice(), format, &formatProperties);
 
 	bool supportsLinearFiltering = (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) != 0;
 	bool supportsCubicFiltering = (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT) != 0;
@@ -890,7 +891,7 @@ void VulkanUtils::generateImage2DMipmaps(
 		throw std::runtime_error("Cubic filtering is not supported on this device");
 
 	// generate mips
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands(context);
+	VkCommandBuffer commandBuffer = beginSingleTimeCommands(device);
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -963,19 +964,19 @@ void VulkanUtils::generateImage2DMipmaps(
 		mipHeight = std::max(1, mipHeight / 2);
 	}
 
-	endSingleTimeCommands(context, commandBuffer);
+	endSingleTimeCommands(device, commandBuffer);
 }
 
-VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const VulkanContext *context)
+VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const render::backend::vulkan::Device *device)
 {
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = context->getCommandPool();
+	allocInfo.commandPool = device->getCommandPool();
 	allocInfo.commandBufferCount = 1;
 
 	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(context->getDevice(), &allocInfo, &commandBuffer);
+	vkAllocateCommandBuffers(device->getDevice(), &allocInfo, &commandBuffer);
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -986,7 +987,7 @@ VkCommandBuffer VulkanUtils::beginSingleTimeCommands(const VulkanContext *contex
 	return commandBuffer;
 }
 
-void VulkanUtils::endSingleTimeCommands(const VulkanContext *context, VkCommandBuffer commandBuffer)
+void VulkanUtils::endSingleTimeCommands(const render::backend::vulkan::Device *device, VkCommandBuffer commandBuffer)
 {
 	vkEndCommandBuffer(commandBuffer);
 
@@ -995,7 +996,7 @@ void VulkanUtils::endSingleTimeCommands(const VulkanContext *context, VkCommandB
 	fenceInfo.flags = 0;
 
 	VkFence fence;
-	if (vkCreateFence(context->getDevice(), &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+	if (vkCreateFence(device->getDevice(), &fenceInfo, nullptr, &fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't create fence");
 
 	VkSubmitInfo submitInfo = {};
@@ -1003,13 +1004,13 @@ void VulkanUtils::endSingleTimeCommands(const VulkanContext *context, VkCommandB
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	if (vkQueueSubmit(context->getGraphicsQueue(), 1, &submitInfo, fence) != VK_SUCCESS)
+	if (vkQueueSubmit(device->getGraphicsQueue(), 1, &submitInfo, fence) != VK_SUCCESS)
 		throw std::runtime_error("Can't submit command buffer");
 	
-	if (vkWaitForFences(context->getDevice(), 1, &fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS)
+	if (vkWaitForFences(device->getDevice(), 1, &fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS)
 		throw std::runtime_error("Can't wait for a fence");
 
-	vkDestroyFence(context->getDevice(), fence, nullptr);
+	vkDestroyFence(device->getDevice(), fence, nullptr);
 
-	vkFreeCommandBuffers(context->getDevice(), context->getCommandPool(), 1, &commandBuffer);
+	vkFreeCommandBuffers(device->getDevice(), device->getCommandPool(), 1, &commandBuffer);
 }

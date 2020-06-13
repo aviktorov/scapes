@@ -11,7 +11,10 @@
 
 #include <render/backend/driver.h>
 
-class VulkanContext;
+namespace render::backend::vulkan
+{
+	class Device;
+}
 
 /*
  */
@@ -33,7 +36,7 @@ public:
 	void render(const VulkanTexture &input_texture, float *push_constants = nullptr, int input_mip = -1);
 
 private:
-	const VulkanContext *context {nullptr};
+	const render::backend::vulkan::Device *device {nullptr};
 	render::backend::Driver *driver {nullptr};
 
 	VulkanMesh quad;

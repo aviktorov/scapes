@@ -1,5 +1,4 @@
 #include "RenderScene.h"
-#include "VulkanContext.h"
 #include "VulkanShader.h"
 
 #include <cassert>

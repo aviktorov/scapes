@@ -1,5 +1,4 @@
 #include "VulkanPipelineLayoutBuilder.h"
-#include "VulkanContext.h"
 #include "VulkanUtils.h"
 
 VulkanPipelineLayoutBuilder &VulkanPipelineLayoutBuilder::addDescriptorSetLayout(
@@ -27,7 +26,7 @@ VulkanPipelineLayoutBuilder &VulkanPipelineLayoutBuilder::addPushConstantRange(
 
 /*
  */
-VkPipelineLayout VulkanPipelineLayoutBuilder::build()
+VkPipelineLayout VulkanPipelineLayoutBuilder::build(VkDevice device)
 {
 	// Create pipeline layout
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
@@ -37,7 +36,8 @@ VkPipelineLayout VulkanPipelineLayoutBuilder::build()
 	pipelineLayoutInfo.pushConstantRangeCount = static_cast<uint32_t>(pushConstants.size());
 	pipelineLayoutInfo.pPushConstantRanges = pushConstants.data();
 
-	if (vkCreatePipelineLayout(context->getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+	VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 		throw std::runtime_error("Can't create pipeline layout");
 
 	return pipelineLayout;

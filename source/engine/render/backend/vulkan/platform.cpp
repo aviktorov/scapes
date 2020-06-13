@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "VulkanContext.h"
+#include "render/backend/vulkan/device.h"
 #include "render/backend/vulkan/platform.h"
 
 namespace render::backend::vulkan
@@ -14,7 +14,7 @@ namespace render::backend::vulkan
 		#endif
 	}
 
-	VkSurfaceKHR Platform::createSurface(const VulkanContext *context, void *native_window)
+	VkSurfaceKHR Platform::createSurface(const render::backend::vulkan::Device *device, void *native_window)
 	{
 		VkSurfaceKHR surface = VK_NULL_HANDLE;
 
@@ -24,7 +24,7 @@ namespace render::backend::vulkan
 			surfaceInfo.hwnd = reinterpret_cast<HWND>(native_window);
 			surfaceInfo.hinstance = GetModuleHandle(nullptr);
 
-			if (vkCreateWin32SurfaceKHR(context->getInstance(), &surfaceInfo, nullptr, &surface) != VK_SUCCESS)
+			if (vkCreateWin32SurfaceKHR(device->getInstance(), &surfaceInfo, nullptr, &surface) != VK_SUCCESS)
 				std::cerr << "Platform::createSurface(): vkCreateWin32SurfaceKHR failed" << std::endl;
 
 		#else
@@ -34,8 +34,8 @@ namespace render::backend::vulkan
 		return surface;
 	}
 
-	void Platform::destroySurface(const VulkanContext *context, VkSurfaceKHR surface)
+	void Platform::destroySurface(const render::backend::vulkan::Device *device, VkSurfaceKHR surface)
 	{
-		vkDestroySurfaceKHR(context->getInstance(), surface, nullptr);
+		vkDestroySurfaceKHR(device->getInstance(), surface, nullptr);
 	}
 }

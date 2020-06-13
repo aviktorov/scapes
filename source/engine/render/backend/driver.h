@@ -5,7 +5,7 @@
 namespace render::backend
 {
 
-enum class Api : unsigned char
+enum class Api : uint8_t
 {
 	VULKAN = 0,
 	DEFAULT = VULKAN,
@@ -13,7 +13,7 @@ enum class Api : unsigned char
 	MAX,
 };
 
-enum class BufferType : unsigned char
+enum class BufferType : uint8_t
 {
 	STATIC = 0,
 	DYNAMIC,
@@ -21,7 +21,7 @@ enum class BufferType : unsigned char
 	MAX,
 };
 
-enum class RenderPrimitiveType : unsigned char
+enum class RenderPrimitiveType : uint8_t
 {
 	POINT_LIST = 0,
 	LINE_LIST,
@@ -36,7 +36,7 @@ enum class RenderPrimitiveType : unsigned char
 	MAX,
 };
 
-enum class IndexSize : unsigned char
+enum class IndexSize : uint8_t
 {
 	UINT16 = 0,
 	UINT32,
@@ -44,7 +44,7 @@ enum class IndexSize : unsigned char
 	MAX,
 };
 
-enum class Multisample : unsigned char
+enum class Multisample : uint8_t
 {
 	COUNT_1 = 0,
 	COUNT_2,
@@ -57,7 +57,7 @@ enum class Multisample : unsigned char
 	MAX,
 };
 
-enum class Format : unsigned int
+enum class Format : uint16_t
 {
 	UNDEFINED = 0,
 
@@ -144,7 +144,20 @@ enum class Format : unsigned int
 	MAX,
 };
 
-enum class ShaderType : unsigned char
+enum class RenderPassLoadOp : uint8_t
+{
+	LOAD = 0,
+	CLEAR,
+	DONT_CARE,
+};
+
+enum class RenderPassStoreOp : uint8_t
+{
+	STORE = 0,
+	DONT_CARE,
+};
+
+enum class ShaderType : uint8_t
 {
 	// Graphics pipeline
 	VERTEX = 0,
@@ -167,7 +180,7 @@ enum class ShaderType : unsigned char
 	MAX,
 };
 
-enum class CommandBufferType : unsigned char
+enum class CommandBufferType : uint8_t
 {
 	PRIMARY = 0,
 	SECONDARY,
@@ -180,7 +193,6 @@ struct RenderPrimitive {};
 
 struct Texture {};
 struct FrameBuffer {};
-// TODO: render pass?
 struct CommandBuffer {};
 
 struct UniformBuffer {};
@@ -197,7 +209,7 @@ struct VertexAttribute
 	unsigned int offset {0};
 };
 
-enum FrameBufferAttachmentType : unsigned char
+enum FrameBufferAttachmentType : uint8_t
 {
 	COLOR = 0,
 	DEPTH,
@@ -235,6 +247,32 @@ struct FrameBufferAttachment
 		Depth depth;
 		SwapChainColor swap_chain_color;
 	};
+};
+
+union RenderPassClearColor
+{
+	float float32[4];
+	int32_t int32[4];
+	uint32_t uint32[4];
+};
+
+struct RenderPassClearDepthStencil
+{
+	float depth;
+	uint32_t stencil;
+};
+
+union RenderPassClearValue
+{
+	RenderPassClearColor color;
+	RenderPassClearDepthStencil depth_stencil;
+};
+
+struct RenderPassInfo
+{
+	RenderPassLoadOp *load_ops {nullptr};
+	RenderPassStoreOp *store_ops {nullptr};
+	RenderPassClearValue *clear_values {nullptr};
 };
 
 // main backend class
@@ -421,8 +459,8 @@ public:
 	// render commands
 	virtual void beginRenderPass(
 		CommandBuffer *command_buffer,
-		const FrameBuffer *frame_buffer
-		// TODO: provide clear parameters
+		const FrameBuffer *frame_buffer,
+		const RenderPassInfo *info
 	) = 0;
 
 	virtual void endRenderPass(

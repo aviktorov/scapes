@@ -10,8 +10,6 @@
 #include <vector>
 #include <string>
 
-class VulkanContext;
-
 /*
  */
 class VulkanMesh

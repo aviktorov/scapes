@@ -1,5 +1,4 @@
 #include "VulkanGraphicsPipelineBuilder.h"
-#include "VulkanContext.h"
 #include "VulkanUtils.h"
 
 VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addShaderStage(
@@ -174,7 +173,7 @@ VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::setDepthStencilSta
 
 /*
  */
-VkPipeline VulkanGraphicsPipelineBuilder::build()
+VkPipeline VulkanGraphicsPipelineBuilder::build(VkDevice device)
 {
 	VkPipelineVertexInputStateCreateInfo vertexInputState = {};
 	vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -223,7 +222,7 @@ VkPipeline VulkanGraphicsPipelineBuilder::build()
 	pipelineInfo.renderPass = renderPass;
 	pipelineInfo.subpass = 0;
 
-	if (vkCreateGraphicsPipelines(context->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		throw std::runtime_error("Can't create graphics pipeline");
 
 	return pipeline;

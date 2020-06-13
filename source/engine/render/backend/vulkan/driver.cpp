@@ -5,10 +5,10 @@
 #include <string>
 
 #include "render/backend/vulkan/driver.h"
+#include "render/backend/vulkan/device.h"
 #include "render/backend/vulkan/platform.h"
 #include "shaderc/shaderc.h"
 
-#include "VulkanContext.h"
 #include "VulkanRenderPassBuilder.h"
 #include "VulkanUtils.h"
 
@@ -396,12 +396,12 @@ namespace render::backend
 			}
 		}
 
-		static void createTextureData(const VulkanContext *context, Texture *texture, Format format, const void *data, int num_data_mipmaps, int num_data_layers)
+		static void createTextureData(const Device *device, Texture *texture, Format format, const void *data, int num_data_mipmaps, int num_data_layers)
 		{
 			VkImageUsageFlags usage_flags = toImageUsageFlags(texture->format);
 
 			VulkanUtils::createImage(
-				context,
+				device,
 				texture->type,
 				texture->width, texture->height, texture->depth,
 				texture->num_mipmaps, texture->num_layers,
@@ -419,7 +419,7 @@ namespace render::backend
 			{
 				// prepare for transfer
 				VulkanUtils::transitionImageLayout(
-					context,
+					device,
 					texture->image,
 					texture->format,
 					VK_IMAGE_LAYOUT_UNDEFINED,
@@ -430,7 +430,7 @@ namespace render::backend
 
 				// transfer data to GPU
 				VulkanUtils::fillImage(
-					context,
+					device,
 					texture->image,
 					texture->width, texture->height, texture->depth,
 					texture->num_mipmaps, texture->num_layers,
@@ -446,7 +446,7 @@ namespace render::backend
 
 			// prepare for shader access
 			VulkanUtils::transitionImageLayout(
-				context,
+				device,
 				texture->image,
 				texture->format,
 				source_layout,
@@ -457,7 +457,7 @@ namespace render::backend
 
 			// create base view & sampler
 			texture->view = VulkanUtils::createImageView(
-				context,
+				device,
 				texture->image,
 				texture->format,
 				toImageAspectFlags(texture->format),
@@ -466,21 +466,21 @@ namespace render::backend
 				0, texture->num_layers
 			);
 
-			texture->sampler = VulkanUtils::createSampler(context, 0, texture->num_mipmaps);
+			texture->sampler = VulkanUtils::createSampler(device, 0, texture->num_mipmaps);
 		}
 
-		static void selectOptimalSwapChainSettings(const VulkanContext *context, SwapChain *swap_chain, uint32_t width, uint32_t height)
+		static void selectOptimalSwapChainSettings(const Device *device, SwapChain *swap_chain, uint32_t width, uint32_t height)
 		{
 			// Get surface capabilities
-			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context->getPhysicalDevice(), swap_chain->surface, &swap_chain->surface_capabilities);
+			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->getPhysicalDevice(), swap_chain->surface, &swap_chain->surface_capabilities);
 
 			// Select the best surface format
 			uint32_t num_surface_formats = 0;
-			vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), swap_chain->surface, &num_surface_formats, nullptr);
+			vkGetPhysicalDeviceSurfaceFormatsKHR(device->getPhysicalDevice(), swap_chain->surface, &num_surface_formats, nullptr);
 			assert(num_surface_formats != 0);
 
 			std::vector<VkSurfaceFormatKHR> surface_formats(num_surface_formats);
-			vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), swap_chain->surface, &num_surface_formats, surface_formats.data());
+			vkGetPhysicalDeviceSurfaceFormatsKHR(device->getPhysicalDevice(), swap_chain->surface, &num_surface_formats, surface_formats.data());
 
 			// Select the best format if the surface has no preferred format
 			if (surface_formats.size() == 1 && surface_formats[0].format == VK_FORMAT_UNDEFINED)
@@ -503,11 +503,11 @@ namespace render::backend
 
 			// Select the best present mode
 			uint32_t num_present_modes = 0;
-			vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), swap_chain->surface, &num_present_modes, nullptr);
+			vkGetPhysicalDeviceSurfacePresentModesKHR(device->getPhysicalDevice(), swap_chain->surface, &num_present_modes, nullptr);
 			assert(num_present_modes != 0);
 
 			std::vector<VkPresentModeKHR> present_modes(num_present_modes);
-			vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), swap_chain->surface, &num_present_modes, present_modes.data());
+			vkGetPhysicalDeviceSurfacePresentModesKHR(device->getPhysicalDevice(), swap_chain->surface, &num_present_modes, present_modes.data());
 
 			swap_chain->present_mode = VK_PRESENT_MODE_FIFO_KHR;
 			for (const auto &present_mode : present_modes)
@@ -558,7 +558,7 @@ namespace render::backend
 				swap_chain->num_images = std::min(swap_chain->num_images, capabilities.maxImageCount);
 		}
 
-		static bool createSwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
+		static bool createSwapChainObjects(const Device *device, SwapChain *swap_chain)
 		{
 			const VkSurfaceCapabilitiesKHR &capabilities = swap_chain->surface_capabilities;
 
@@ -572,9 +572,9 @@ namespace render::backend
 			info.imageArrayLayers = 1;
 			info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-			if (context->getGraphicsQueueFamily() != swap_chain->present_queue_family)
+			if (device->getGraphicsQueueFamily() != swap_chain->present_queue_family)
 			{
-				uint32_t families[] = { context->getGraphicsQueueFamily(), swap_chain->present_queue_family };
+				uint32_t families[] = { device->getGraphicsQueueFamily(), swap_chain->present_queue_family };
 				info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 				info.queueFamilyIndexCount = 2;
 				info.pQueueFamilyIndices = families;
@@ -592,22 +592,22 @@ namespace render::backend
 			info.clipped = VK_TRUE;
 			info.oldSwapchain = VK_NULL_HANDLE;
 
-			if (vkCreateSwapchainKHR(context->getDevice(), &info, nullptr, &swap_chain->swap_chain) != VK_SUCCESS)
+			if (vkCreateSwapchainKHR(device->getDevice(), &info, nullptr, &swap_chain->swap_chain) != VK_SUCCESS)
 			{
 				std::cerr << "vulkan::createSwapChainObjects(): vkCreateSwapchainKHR failed" << std::endl;
 				return false;
 			}
 
 			// Get surface images
-			vkGetSwapchainImagesKHR(context->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, nullptr);
+			vkGetSwapchainImagesKHR(device->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, nullptr);
 			assert(swap_chain->num_images != 0 && swap_chain->num_images < SwapChain::MAX_IMAGES);
-			vkGetSwapchainImagesKHR(context->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, swap_chain->images);
+			vkGetSwapchainImagesKHR(device->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, swap_chain->images);
 
 			// Create frame objects
 			for (size_t i = 0; i < swap_chain->num_images; i++)
 			{
 				swap_chain->views[i] = VulkanUtils::createImageView(
-					context,
+					device,
 					swap_chain->images[i],
 					swap_chain->surface_format.format,
 					VK_IMAGE_ASPECT_COLOR_BIT,
@@ -617,7 +617,7 @@ namespace render::backend
 				VkSemaphoreCreateInfo semaphore_info = {};
 				semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-				if (vkCreateSemaphore(context->getDevice(), &semaphore_info, nullptr, &swap_chain->image_available_gpu[i]) != VK_SUCCESS)
+				if (vkCreateSemaphore(device->getDevice(), &semaphore_info, nullptr, &swap_chain->image_available_gpu[i]) != VK_SUCCESS)
 				{
 					std::cerr << "vulkan::createSwapChainObjects(): can't create 'image available' semaphore" << std::endl;
 					return false;
@@ -627,39 +627,39 @@ namespace render::backend
 			return true;
 		}
 
-		static void destroySwapChainObjects(const VulkanContext *context, SwapChain *swap_chain)
+		static void destroySwapChainObjects(const Device *device, SwapChain *swap_chain)
 		{
 			for (size_t i = 0; i < swap_chain->num_images; ++i)
 			{
-				vkDestroyImageView(context->getDevice(), swap_chain->views[i], nullptr);
+				vkDestroyImageView(device->getDevice(), swap_chain->views[i], nullptr);
 				swap_chain->images[i] = VK_NULL_HANDLE;
 				swap_chain->views[i] = VK_NULL_HANDLE;
 
-				vkDestroySemaphore(context->getDevice(), swap_chain->image_available_gpu[i], nullptr);
+				vkDestroySemaphore(device->getDevice(), swap_chain->image_available_gpu[i], nullptr);
 				swap_chain->image_available_gpu[i] = VK_NULL_HANDLE;
 			}
 
-			vkDestroySwapchainKHR(context->getDevice(), swap_chain->swap_chain, nullptr);
+			vkDestroySwapchainKHR(device->getDevice(), swap_chain->swap_chain, nullptr);
 			swap_chain->swap_chain = VK_NULL_HANDLE;
 		}
 	}
 
 	VulkanDriver::VulkanDriver(const char *application_name, const char *engine_name)
 	{
-		context = new VulkanContext();
-		context->init(application_name, engine_name);
+		device = new vulkan::Device();
+		device->init(application_name, engine_name);
 	}
 
 	VulkanDriver::~VulkanDriver()
 	{
-		if (context)
+		if (device)
 		{
-			context->wait();
-			context->shutdown();
+			device->wait();
+			device->shutdown();
 		}
 
-		delete context;
-		context = nullptr;
+		delete device;
+		device = nullptr;
 	}
 
 	VertexBuffer *VulkanDriver::createVertexBuffer(
@@ -689,7 +689,7 @@ namespace render::backend
 
 		// create vertex buffer
 		VulkanUtils::createDeviceLocalBuffer(
-			context,
+			device,
 			buffer_size,
 			data,
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -719,7 +719,7 @@ namespace render::backend
 
 		// create index buffer
 		VulkanUtils::createDeviceLocalBuffer(
-			context,
+			device,
 			buffer_size,
 			data,
 			VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -775,7 +775,7 @@ namespace render::backend
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = 0;
 
-		vulkan::createTextureData(context, result, format, data, num_data_mipmaps, 1);
+		vulkan::createTextureData(device, result, format, data, num_data_mipmaps, 1);
 
 		return result;
 	}
@@ -809,7 +809,7 @@ namespace render::backend
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = 0;
 
-		vulkan::createTextureData(context, result, format, data, num_data_mipmaps, num_data_layers);
+		vulkan::createTextureData(device, result, format, data, num_data_mipmaps, num_data_layers);
 
 		return result;
 	}
@@ -840,7 +840,7 @@ namespace render::backend
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = 0;
 
-		vulkan::createTextureData(context, result, format, data, num_data_mipmaps, 1);
+		vulkan::createTextureData(device, result, format, data, num_data_mipmaps, 1);
 
 		return result;
 	}
@@ -871,7 +871,7 @@ namespace render::backend
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-		vulkan::createTextureData(context, result, format, data, num_data_mipmaps, 1);
+		vulkan::createTextureData(device, result, format, data, num_data_mipmaps, 1);
 
 		return result;
 	}
@@ -887,7 +887,7 @@ namespace render::backend
 
 		uint32_t width = 0;
 		uint32_t height = 0;
-		VulkanRenderPassBuilder builder = VulkanRenderPassBuilder(context);
+		VulkanRenderPassBuilder builder;
 
 		builder.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
 
@@ -905,7 +905,7 @@ namespace render::backend
 				VkImageAspectFlags flags = vulkan::toImageAspectFlags(color_texture->format);
 
 				view = VulkanUtils::createImageView(
-					context,
+					device,
 					color_texture->image, color_texture->format,
 					flags, VK_IMAGE_VIEW_TYPE_2D,
 					color.base_mip, color.num_mips,
@@ -933,7 +933,7 @@ namespace render::backend
 				VkImageAspectFlags flags = vulkan::toImageAspectFlags(depth_texture->format);
 
 				view = VulkanUtils::createImageView(
-					context,
+					device,
 					depth_texture->image, depth_texture->format,
 					flags, VK_IMAGE_VIEW_TYPE_2D
 				);
@@ -951,7 +951,7 @@ namespace render::backend
 				VkImageAspectFlags flags = vulkan::toImageAspectFlags(swap_chain->surface_format.format);
 
 				view = VulkanUtils::createImageView(
-					context,
+					device,
 					swap_chain->images[swap_chain_color.base_image], swap_chain->surface_format.format,
 					flags, VK_IMAGE_VIEW_TYPE_2D
 				);
@@ -971,11 +971,15 @@ namespace render::backend
 				}
 			}
 
-			result->attachments[result->num_attachments++] = view;
+			result->attachments[result->num_attachments] = view;
+			result->attachment_types[result->num_attachments] = attachment.type;
+			result->num_attachments++;
 		}
 
 		// create dummy renderpass
-		result->dummy_render_pass = builder.build(); // TODO: move to render pass cache
+		result->dummy_render_pass = builder.build(device->getDevice()); // TODO: move to render pass cache
+		result->sizes.width = width;
+		result->sizes.height = height;
 
 		// create framebuffer
 		VkFramebufferCreateInfo framebufferInfo = {};
@@ -987,7 +991,7 @@ namespace render::backend
 		framebufferInfo.height = height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer(context->getDevice(), &framebufferInfo, nullptr, &result->framebuffer) != VK_SUCCESS)
+		if (vkCreateFramebuffer(device->getDevice(), &framebufferInfo, nullptr, &result->framebuffer) != VK_SUCCESS)
 		{
 			// TODO: log error
 			delete result;
@@ -1007,11 +1011,11 @@ namespace render::backend
 		// Allocate commandbuffer
 		VkCommandBufferAllocateInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		info.commandPool = context->getCommandPool();
+		info.commandPool = device->getCommandPool();
 		info.level = result->level;
 		info.commandBufferCount = 1;
 
-		if (vkAllocateCommandBuffers(context->getDevice(), &info, &result->command_buffer) != VK_SUCCESS)
+		if (vkAllocateCommandBuffers(device->getDevice(), &info, &result->command_buffer) != VK_SUCCESS)
 		{
 			std::cerr << "VulkanDriver::createCommandBuffer(): can't allocate command buffer" << std::endl;
 			destroyCommandBuffer(result);
@@ -1022,7 +1026,7 @@ namespace render::backend
 		VkSemaphoreCreateInfo semaphore_info = {};
 		semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-		if (vkCreateSemaphore(context->getDevice(), &semaphore_info, nullptr, &result->rendering_finished_gpu) != VK_SUCCESS)
+		if (vkCreateSemaphore(device->getDevice(), &semaphore_info, nullptr, &result->rendering_finished_gpu) != VK_SUCCESS)
 		{
 			std::cerr << "VulkanDriver::createCommandBuffer(): can't create 'rendering finished' semaphore" << std::endl;
 			destroyCommandBuffer(result);
@@ -1034,7 +1038,7 @@ namespace render::backend
 		fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		if (vkCreateFence(context->getDevice(), &fence_info, nullptr, &result->rendering_finished_cpu) != VK_SUCCESS)
+		if (vkCreateFence(device->getDevice(), &fence_info, nullptr, &result->rendering_finished_cpu) != VK_SUCCESS)
 		{
 			std::cerr << "VulkanDriver::createCommandBuffer(): can't create 'rendering finished' fence" << std::endl;
 			destroyCommandBuffer(result);
@@ -1057,7 +1061,7 @@ namespace render::backend
 		result->size = size;
 
 		VulkanUtils::createBuffer(
-			context,
+			device,
 			size,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -1065,7 +1069,7 @@ namespace render::backend
 			result->memory
 		);
 
-		if (vkMapMemory(context->getDevice(), result->memory, 0, size, 0, &result->pointer) != VK_SUCCESS)
+		if (vkMapMemory(device->getDevice(), result->memory, 0, size, 0, &result->pointer) != VK_SUCCESS)
 		{
 			// TODO: log error
 			delete result;
@@ -1119,7 +1123,7 @@ namespace render::backend
 
 		vulkan::Shader *result = new vulkan::Shader();
 		result->type = type;
-		result->module = VulkanUtils::createShaderModule(context, bytecode_data, bytecode_size);
+		result->module = VulkanUtils::createShaderModule(device, bytecode_data, bytecode_size);
 
 		shaderc_result_release(compilation_result);
 		shaderc_compile_options_release(options);
@@ -1139,7 +1143,7 @@ namespace render::backend
 
 		vulkan::Shader *result = new vulkan::Shader();
 		result->type = type;
-		result->module = VulkanUtils::createShaderModule(context, reinterpret_cast<const uint32_t *>(data), size);
+		result->module = VulkanUtils::createShaderModule(device, reinterpret_cast<const uint32_t *>(data), size);
 
 		return result;
 	}
@@ -1155,7 +1159,7 @@ namespace render::backend
 		vulkan::SwapChain *result = new vulkan::SwapChain();
 
 		// Create platform surface
-		result->surface = vulkan::Platform::createSurface(context, native_window);
+		result->surface = vulkan::Platform::createSurface(device, native_window);
 		if (result->surface == VK_NULL_HANDLE)
 		{
 			std::cerr << "VulkanDriver::createSwapChain(): can't create platform surface" << std::endl;
@@ -1165,13 +1169,13 @@ namespace render::backend
 
 		// Fetch present queue family
 		result->present_queue_family = VulkanUtils::getPresentQueueFamily(
-			context->getPhysicalDevice(),
+			device->getPhysicalDevice(),
 			result->surface,
-			context->getGraphicsQueueFamily()
+			device->getGraphicsQueueFamily()
 		);
 
 		// Get present queue
-		vkGetDeviceQueue(context->getDevice(), result->present_queue_family, 0, &result->present_queue);
+		vkGetDeviceQueue(device->getDevice(), result->present_queue_family, 0, &result->present_queue);
 		if (result->present_queue == VK_NULL_HANDLE)
 		{
 			std::cerr << "VulkanDriver::createSwapChain(): can't get present queue from logical device" << std::endl;
@@ -1179,8 +1183,8 @@ namespace render::backend
 			return false;
 		}
 
-		vulkan::selectOptimalSwapChainSettings(context, result, width, height);
-		vulkan::createSwapChainObjects(context, result);
+		vulkan::selectOptimalSwapChainSettings(device, result, width, height);
+		vulkan::createSwapChainObjects(device, result);
 
 		return result;
 	}
@@ -1192,8 +1196,8 @@ namespace render::backend
 
 		vulkan::VertexBuffer *vk_vertex_buffer = static_cast<vulkan::VertexBuffer *>(vertex_buffer);
 
-		vkDestroyBuffer(context->getDevice(), vk_vertex_buffer->buffer, nullptr);
-		vkFreeMemory(context->getDevice(), vk_vertex_buffer->memory, nullptr);
+		vkDestroyBuffer(device->getDevice(), vk_vertex_buffer->buffer, nullptr);
+		vkFreeMemory(device->getDevice(), vk_vertex_buffer->memory, nullptr);
 
 		vk_vertex_buffer->buffer = VK_NULL_HANDLE;
 		vk_vertex_buffer->memory = VK_NULL_HANDLE;
@@ -1209,8 +1213,8 @@ namespace render::backend
 
 		vulkan::IndexBuffer *vk_index_buffer = static_cast<vulkan::IndexBuffer *>(index_buffer);
 
-		vkDestroyBuffer(context->getDevice(), vk_index_buffer->buffer, nullptr);
-		vkFreeMemory(context->getDevice(), vk_index_buffer->memory, nullptr);
+		vkDestroyBuffer(device->getDevice(), vk_index_buffer->buffer, nullptr);
+		vkFreeMemory(device->getDevice(), vk_index_buffer->memory, nullptr);
 
 		vk_index_buffer->buffer = VK_NULL_HANDLE;
 		vk_index_buffer->memory = VK_NULL_HANDLE;
@@ -1240,8 +1244,8 @@ namespace render::backend
 
 		vulkan::Texture *vk_texture = static_cast<vulkan::Texture *>(texture);
 
-		vkDestroyImage(context->getDevice(), vk_texture->image, nullptr);
-		vkFreeMemory(context->getDevice(), vk_texture->memory, nullptr);
+		vkDestroyImage(device->getDevice(), vk_texture->image, nullptr);
+		vkFreeMemory(device->getDevice(), vk_texture->memory, nullptr);
 
 		vk_texture->image = VK_NULL_HANDLE;
 		vk_texture->memory = VK_NULL_HANDLE;
@@ -1260,14 +1264,14 @@ namespace render::backend
 
 		for (uint8_t i = 0; i < vk_frame_buffer->num_attachments; ++i)
 		{
-			vkDestroyImageView(context->getDevice(), vk_frame_buffer->attachments[i], nullptr);
+			vkDestroyImageView(device->getDevice(), vk_frame_buffer->attachments[i], nullptr);
 			vk_frame_buffer->attachments[i] = VK_NULL_HANDLE;
 		}
 
-		vkDestroyFramebuffer(context->getDevice(), vk_frame_buffer->framebuffer, nullptr);
+		vkDestroyFramebuffer(device->getDevice(), vk_frame_buffer->framebuffer, nullptr);
 		vk_frame_buffer->framebuffer = VK_NULL_HANDLE;
 
-		vkDestroyRenderPass(context->getDevice(), vk_frame_buffer->dummy_render_pass, nullptr);
+		vkDestroyRenderPass(device->getDevice(), vk_frame_buffer->dummy_render_pass, nullptr);
 		vk_frame_buffer->dummy_render_pass = VK_NULL_HANDLE;
 
 		delete frame_buffer;
@@ -1281,13 +1285,13 @@ namespace render::backend
 
 		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
 
-		vkFreeCommandBuffers(context->getDevice(), context->getCommandPool(), 1, &vk_command_buffer->command_buffer);
+		vkFreeCommandBuffers(device->getDevice(), device->getCommandPool(), 1, &vk_command_buffer->command_buffer);
 		vk_command_buffer->command_buffer = VK_NULL_HANDLE;
 
-		vkDestroySemaphore(context->getDevice(), vk_command_buffer->rendering_finished_gpu, nullptr);
+		vkDestroySemaphore(device->getDevice(), vk_command_buffer->rendering_finished_gpu, nullptr);
 		vk_command_buffer->rendering_finished_gpu = VK_NULL_HANDLE;
 
-		vkDestroyFence(context->getDevice(), vk_command_buffer->rendering_finished_cpu, nullptr);
+		vkDestroyFence(device->getDevice(), vk_command_buffer->rendering_finished_cpu, nullptr);
 		vk_command_buffer->rendering_finished_cpu = VK_NULL_HANDLE;
 
 		delete command_buffer;
@@ -1301,8 +1305,8 @@ namespace render::backend
 
 		vulkan::UniformBuffer *vk_uniform_buffer = static_cast<vulkan::UniformBuffer *>(uniform_buffer);
 
-		vkDestroyBuffer(context->getDevice(), vk_uniform_buffer->buffer, nullptr);
-		vkFreeMemory(context->getDevice(), vk_uniform_buffer->memory, nullptr);
+		vkDestroyBuffer(device->getDevice(), vk_uniform_buffer->buffer, nullptr);
+		vkFreeMemory(device->getDevice(), vk_uniform_buffer->memory, nullptr);
 
 		vk_uniform_buffer->buffer = VK_NULL_HANDLE;
 		vk_uniform_buffer->memory = VK_NULL_HANDLE;
@@ -1318,7 +1322,7 @@ namespace render::backend
 
 		vulkan::Shader *vk_shader = static_cast<vulkan::Shader *>(shader);
 
-		vkDestroyShaderModule(context->getDevice(), vk_shader->module, nullptr);
+		vkDestroyShaderModule(device->getDevice(), vk_shader->module, nullptr);
 		vk_shader->module = VK_NULL_HANDLE;
 
 		delete shader;
@@ -1332,7 +1336,7 @@ namespace render::backend
 
 		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
 
-		vulkan::destroySwapChainObjects(context, vk_swap_chain);
+		vulkan::destroySwapChainObjects(device, vk_swap_chain);
 
 		vk_swap_chain->present_queue_family = 0xFFFF;
 		vk_swap_chain->present_queue = VK_NULL_HANDLE;
@@ -1343,7 +1347,7 @@ namespace render::backend
 		vk_swap_chain->current_image = 0;
 
 		// Destroy platform surface
-		vulkan::Platform::destroySurface(context, vk_swap_chain->surface);
+		vulkan::Platform::destroySurface(device, vk_swap_chain->surface);
 		vk_swap_chain->surface = nullptr;
 
 		delete swap_chain;
@@ -1352,17 +1356,17 @@ namespace render::backend
 
 	Multisample VulkanDriver::getMaxSampleCount()
 	{
-		assert(context != nullptr && "Invalid context");
+		assert(device != nullptr && "Invalid device");
 
-		VkSampleCountFlagBits samples = context->getMaxSampleCount();
+		VkSampleCountFlagBits samples = device->getMaxSampleCount();
 		return vulkan::fromSamples(samples);
 	}
 
 	Format VulkanDriver::getOptimalDepthFormat()
 	{
-		assert(context != nullptr && "Invalid context");
+		assert(device != nullptr && "Invalid device");
 
-		VkFormat format = VulkanUtils::selectOptimalDepthFormat(context->getPhysicalDevice());
+		VkFormat format = VulkanUtils::selectOptimalDepthFormat(device->getPhysicalDevice());
 		return vulkan::fromFormat(format);
 	}
 
@@ -1394,7 +1398,7 @@ namespace render::backend
 
 		// prepare for transfer
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			vk_texture->image,
 			vk_texture->format,
 			VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1405,7 +1409,7 @@ namespace render::backend
 
 		// generate 2D mipmaps with linear filter
 		VulkanUtils::generateImage2DMipmaps(
-			context,
+			device,
 			vk_texture->image,
 			vk_texture->format,
 			vk_texture->width,
@@ -1417,7 +1421,7 @@ namespace render::backend
 
 		// prepare for shader access
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			vk_texture->image,
 			vk_texture->format,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -1450,9 +1454,9 @@ namespace render::backend
 
 	void VulkanDriver::wait()
 	{
-		assert(context != nullptr && "Invalid context");
+		assert(device != nullptr && "Invalid device");
 
-		context->wait();
+		device->wait();
 	}
 
 	bool VulkanDriver::acquire(SwapChain *swap_chain, uint32_t *new_image)
@@ -1461,7 +1465,7 @@ namespace render::backend
 		uint32_t current_image = vk_swap_chain->current_image;
 
 		VkResult result = vkAcquireNextImageKHR(
-			context->getDevice(),
+			device->getDevice(),
 			vk_swap_chain->swap_chain,
 			std::numeric_limits<uint64_t>::max(),
 			vk_swap_chain->image_available_gpu[current_image],
@@ -1514,7 +1518,7 @@ namespace render::backend
 		}
 
 		VulkanUtils::transitionImageLayout(
-			context,
+			device,
 			vk_swap_chain->images[current_image],
 			vk_swap_chain->surface_format.format,
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -1534,7 +1538,7 @@ namespace render::backend
 
 		if (wait_fences.size())
 			vkWaitForFences(
-				context->getDevice(),
+				device->getDevice(),
 				static_cast<uint32_t>(wait_fences.size()),
 				wait_fences.data(),
 				VK_TRUE,
@@ -1602,25 +1606,6 @@ namespace render::backend
 		return true;
 	}
 
-	/*
-	 * SwapChain *swap_chain (image_ready_gpu[num_images])
-	 * CommandBuffer *cb0_1 (rendering_finished_gpu, rendering_finished_cpu)
-	 * CommandBuffer *cb0_2 (rendering_finished_gpu, rendering_finished_cpu)
-	 * CommandBuffer *cb1 (rendering_finished_gpu, rendering_finished_cpu)
-	 * CommandBuffer *cb2 (rendering_finished_gpu, rendering_finished_cpu)
-	 * 
-	 * driver->acquire(swap_chain); // presentation engine
-	 * driver->submitSyncked(cb0_1, swap_chain); // gpu-gpu sync + queue submit
-	 * driver->submitSyncked(cb0_2, swap_chain); // gpu-gpu sync + queue submit
-	 * driver->submitSyncked(cb1, swap_chain); // gpu-gpu sync + queue submit
-	 * driver->submitSyncked(cb2, 3, { cb1, cb0_1, cb0_2 }); // gpu-gpu sync + queue submit
-	 * driver->present(swap_chain, cb2); // gpu-gpu sync + gpu-cpu sync + presentation engine
-	 * 
-	 * driver->submit(cb1);
-	 * driver->wait(cb1, cb2);
-	 * 
-	 */
-
 	bool VulkanDriver::submit(CommandBuffer *command_buffer)
 	{
 		if (command_buffer == nullptr)
@@ -1635,8 +1620,8 @@ namespace render::backend
 		info.signalSemaphoreCount = 1;
 		info.pSignalSemaphores = &vk_command_buffer->rendering_finished_gpu;
 
-		vkResetFences(context->getDevice(), 1, &vk_command_buffer->rendering_finished_cpu);
-		if (vkQueueSubmit(context->getGraphicsQueue(), 1, &info, vk_command_buffer->rendering_finished_cpu) != VK_SUCCESS)
+		vkResetFences(device->getDevice(), 1, &vk_command_buffer->rendering_finished_cpu);
+		if (vkQueueSubmit(device->getGraphicsQueue(), 1, &info, vk_command_buffer->rendering_finished_cpu) != VK_SUCCESS)
 			return false;
 
 		return true;
@@ -1668,8 +1653,8 @@ namespace render::backend
 			info.pWaitDstStageMask = &wait_stage;
 		}
 
-		vkResetFences(context->getDevice(), 1, &vk_command_buffer->rendering_finished_cpu);
-		if (vkQueueSubmit(context->getGraphicsQueue(), 1, &info, vk_command_buffer->rendering_finished_cpu) != VK_SUCCESS)
+		vkResetFences(device->getDevice(), 1, &vk_command_buffer->rendering_finished_cpu);
+		if (vkQueueSubmit(device->getGraphicsQueue(), 1, &info, vk_command_buffer->rendering_finished_cpu) != VK_SUCCESS)
 			return false;
 
 		return true;
@@ -1705,21 +1690,38 @@ namespace render::backend
 			info.pWaitDstStageMask = wait_stages.data();
 		}
 
-		vkResetFences(context->getDevice(), 1, &vk_command_buffer->rendering_finished_cpu);
-		if (vkQueueSubmit(context->getGraphicsQueue(), 1, &info, vk_command_buffer->rendering_finished_cpu) != VK_SUCCESS)
+		vkResetFences(device->getDevice(), 1, &vk_command_buffer->rendering_finished_cpu);
+		if (vkQueueSubmit(device->getGraphicsQueue(), 1, &info, vk_command_buffer->rendering_finished_cpu) != VK_SUCCESS)
 			return false;
 
 		return true;
 	}
 
-	void VulkanDriver::beginRenderPass(CommandBuffer *command_buffer, const FrameBuffer *frame_buffer)
+	void VulkanDriver::beginRenderPass(CommandBuffer *command_buffer, const FrameBuffer *frame_buffer, const RenderPassInfo *info)
 	{
 		if (command_buffer == nullptr)
 			return;
 		
 		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
-		// TODO: create render pass from clear params & framebuffer
-		// vkCmdBeginRenderPass(command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+		const vulkan::FrameBuffer *vk_frame_buffer = static_cast<const vulkan::FrameBuffer *>(frame_buffer);
+
+		// hash:
+		// 1. num_attachments
+		// 2. VkFormat[]
+		// 3. num_samples[] (for color attachments)
+		// 4. load op[]
+		// 5. store op[]
+
+		VkRenderPassBeginInfo render_pass_info = {};
+		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		// render_pass_info.renderPass = createFromCache(vk_frame_buffer, info); // vk_frame_buffer->dummy_render_pass; // ?
+		render_pass_info.framebuffer = vk_frame_buffer->framebuffer;
+		render_pass_info.renderArea.offset = {0, 0};
+		render_pass_info.renderArea.extent = vk_frame_buffer->sizes;
+		render_pass_info.clearValueCount = vk_frame_buffer->num_attachments;
+		render_pass_info.pClearValues = reinterpret_cast<const VkClearValue *>(info->clear_values);
+
+		vkCmdBeginRenderPass(vk_command_buffer->command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
 
 	void VulkanDriver::endRenderPass(CommandBuffer *command_buffer)

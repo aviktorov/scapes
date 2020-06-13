@@ -3,18 +3,13 @@
 #include <vector>
 #include <volk.h>
 
-class VulkanContext;
-
 /*
  */
 class VulkanRenderPassBuilder
 {
 public:
-	VulkanRenderPassBuilder(const VulkanContext *context)
-		: context(context) { }
+	VulkanRenderPassBuilder() { }
 	~VulkanRenderPassBuilder();
-
-	inline VkRenderPass getRenderPass() const { return renderPass; }
 
 	VulkanRenderPassBuilder &VulkanRenderPassBuilder::addColorAttachment(
 		VkFormat format,
@@ -61,7 +56,7 @@ public:
 		int attachmentIndex
 	);
 
-	VkRenderPass build();
+	VkRenderPass build(VkDevice device);
 
 private:
 	struct SubpassData
@@ -71,11 +66,7 @@ private:
 		VkAttachmentReference *depthStencilAttachmentReference {nullptr};
 	};
 
-	const VulkanContext *context {nullptr};
-
 	std::vector<VkAttachmentDescription> attachments;
 	std::vector<VkSubpassDescription> subpassInfos;
 	std::vector<SubpassData> subpassDatas;
-
-	VkRenderPass renderPass {VK_NULL_HANDLE};
 };
