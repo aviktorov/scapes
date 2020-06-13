@@ -1,5 +1,5 @@
-#include "VulkanGraphicsPipelineBuilder.h"
-#include "VulkanUtils.h"
+#include "render/backend/vulkan/VulkanGraphicsPipelineBuilder.h"
+#include "render/backend/vulkan/VulkanUtils.h"
 
 VulkanGraphicsPipelineBuilder &VulkanGraphicsPipelineBuilder::addShaderStage(
 	VkShaderModule shader,

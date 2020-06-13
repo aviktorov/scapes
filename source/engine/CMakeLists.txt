@@ -2,12 +2,17 @@ cmake_minimum_required(VERSION 3.10)
 project(scapes)
 set(TARGET scapes)
 
+file(GLOB VK_BACKEND_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/vulkan/*.cpp
+)
+
+file(GLOB VK_BACKEND_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/vulkan/*.h
+)
+
 file(GLOB SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/driver.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/vulkan/driver.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/vulkan/platform.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/vulkan/device.cpp
 	${THIRDPARTY_DIR}/volk/volk.c
 	${THIRDPARTY_DIR}/imgui/imgui.cpp
 	${THIRDPARTY_DIR}/imgui/imgui_draw.cpp
@@ -17,10 +22,9 @@ file(GLOB SOURCES
 
 file(GLOB HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/*.h
-	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/vulkan/device.h
 )
 
-add_library(${TARGET} STATIC ${SOURCES} ${HEADERS})
+add_library(${TARGET} STATIC ${SOURCES} ${HEADERS} ${VK_BACKEND_SOURCES} ${VK_BACKEND_HEADERS})
 
 target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

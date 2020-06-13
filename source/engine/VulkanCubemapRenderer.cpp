@@ -1,20 +1,18 @@
 // TODO: remove Vulkan dependencies
 #include "VulkanCubemapRenderer.h"
 
-#include "VulkanDescriptorSetLayoutBuilder.h"
-#include "VulkanGraphicsPipelineBuilder.h"
-#include "VulkanPipelineLayoutBuilder.h"
-#include "VulkanRenderPassBuilder.h"
-
-#include "VulkanUtils.h"
-
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLM/glm.hpp>
 #include <GLM/gtc/matrix_transform.hpp>
 
-#include <render/backend/vulkan/driver.h>
-#include <render/backend/vulkan/device.h>
+#include "render/backend/vulkan/driver.h"
+#include "render/backend/vulkan/device.h"
+#include "render/backend/vulkan/VulkanUtils.h"
+#include "render/backend/vulkan/VulkanDescriptorSetLayoutBuilder.h"
+#include "render/backend/vulkan/VulkanGraphicsPipelineBuilder.h"
+#include "render/backend/vulkan/VulkanPipelineLayoutBuilder.h"
+#include "render/backend/vulkan/VulkanRenderPassBuilder.h"
 
 /*
  */
