@@ -40,15 +40,17 @@ PBR Sandbox:
         ☐ Extract IBL baker from VulkanRenderer
         ☐ Create backend based ImGui implementation on App level
         ☐ Add simple FileSystem with data root path for simplified content loading
-        ☐ Add pipeline registry class
         ☐ Create separate cmake script for backend
-    Stream 33:
-        ☐ Start drafing binding methods
-            ☐ Add descriptor set layout cache (if it's possible, try to use only one)
+    Stream 34:
         ☐ Continue drafting backend drawing methods
-            ☐ Add RenderPass struct to backend
+            ☐ Add context to vulkan driver which will store current state & bind sets & shaders
             ☐ Add pipeline layout cache to backend
             ☐ Add pipeline cache to backend
+    Stream 33:
+        ✔ Start drafing binding methods @done (6/17/2020, 3:07:04 AM)
+            ✔ Add BindSet struct to backend @done (6/17/2020, 2:05:55 AM)
+            ✔ Add descriptor set layout cache @done (6/17/2020, 3:07:02 AM)
+            ✔ Add descriptor set cache @done (6/17/2020, 3:07:03 AM)
     Stream 32:
         ✔ Start drafting backend drawing methods @done (6/14/2020, 1:09:03 AM)
             ✔ Add render pass cache to backend @done (6/14/2020, 1:09:02 AM)
