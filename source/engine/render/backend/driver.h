@@ -194,11 +194,32 @@ struct RenderPrimitive {};
 struct Texture {};
 struct FrameBuffer {};
 struct CommandBuffer {};
+// TODO: render pass?
 
 struct UniformBuffer {};
 // TODO: shader storage buffer?
 
 struct Shader {};
+struct BindSet {};
+
+/*
+	// one time bind / per material / per smth
+	backend::BindSet *set0 = driver->createBindSet();
+	driver->bindTexture(set0, binding, texture, 0, 1, 0, 1);
+	driver->bindUniformBuffer(set0, binding, buffer);
+	...
+
+	// per frame
+	driver->clearShaders();
+	driver->clearBindSets();
+	driver->setBindSet(set0, binding);
+	driver->setBindSet(set0, binding);
+	driver->setShader(ShaderType::FRAGMENT, shader);
+	...
+	set render state
+	...
+	driver->drawIndexedPrimitive(primitive);
+ */
 
 struct SwapChain {};
 
@@ -221,10 +242,10 @@ struct FrameBufferAttachment
 	struct Color
 	{
 		const Texture *texture {nullptr};
-		int base_mip {0};
-		int num_mips {1};
-		int base_layer {0};
-		int num_layers {1};
+		uint32_t base_mip {0};
+		uint32_t num_mips {1};
+		uint32_t base_layer {0};
+		uint32_t num_layers {1};
 		bool resolve_attachment {false};
 	};
 
@@ -372,6 +393,9 @@ public:
 		const void *data
 	) = 0;
 
+	virtual BindSet *createBindSet(
+	) = 0;
+
 	virtual SwapChain *createSwapChain(
 		void *native_window,
 		uint32_t width,
@@ -386,6 +410,7 @@ public:
 	virtual void destroyCommandBuffer(CommandBuffer *command_buffer) = 0;
 	virtual void destroyUniformBuffer(UniformBuffer *uniform_buffer) = 0;
 	virtual void destroyShader(Shader *shader) = 0;
+	virtual void destroyBindSet(BindSet *bind_set) = 0;
 	virtual void destroySwapChain(SwapChain *swap_chain) = 0;
 
 public:
@@ -414,17 +439,37 @@ public:
 public:
 	// bindings
 	virtual void bindUniformBuffer(
-		uint32_t unit,
+		BindSet *bind_set,
+		uint32_t binding,
 		const UniformBuffer *uniform_buffer
 	) = 0;
 
 	virtual void bindTexture(
-		uint32_t unit,
-		const Texture *texture
+		BindSet *bind_set,
+		uint32_t binding,
+		const Texture *texture,
+		uint32_t base_mip = 0,
+		uint32_t num_mips = 1,
+		uint32_t base_layer = 0,
+		uint32_t num_layers = 1
 	) = 0;
 
-	virtual void bindShader(
+public:
+	// pipeline state
+	virtual void clearShaders(
+	) = 0;
+
+	virtual void clearBindSets(
+	) = 0;
+
+	virtual void setShader(
+		ShaderType type,
 		const Shader *shader
+	) = 0;
+
+	virtual void setBindSet(
+		uint32_t binding,
+		const BindSet *bind_set
 	) = 0;
 
 public:

@@ -7,8 +7,10 @@
 #include "render/backend/vulkan/driver.h"
 #include "render/backend/vulkan/device.h"
 #include "render/backend/vulkan/platform.h"
-#include "render/backend/vulkan/VulkanRenderPassBuilder.h"
+#include "render/backend/vulkan/DescriptorSetCache.h"
+#include "render/backend/vulkan/DescriptorSetLayoutCache.h"
 #include "render/backend/vulkan/RenderPassCache.h"
+#include "render/backend/vulkan/VulkanRenderPassBuilder.h"
 #include "render/backend/vulkan/VulkanUtils.h"
 
 #include "shaderc/shaderc.h"
@@ -614,7 +616,7 @@ namespace render::backend
 					VK_IMAGE_ASPECT_COLOR_BIT,
 					VK_IMAGE_VIEW_TYPE_2D
 				);
-			
+
 				VkSemaphoreCreateInfo semaphore_info = {};
 				semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -650,11 +652,19 @@ namespace render::backend
 		device = new vulkan::Device();
 		device->init(application_name, engine_name);
 
+		descriptor_set_layout_cache = new vulkan::DescriptorSetLayoutCache(device);
+		descriptor_set_cache = new vulkan::DescriptorSetCache(device, descriptor_set_layout_cache);
 		render_pass_cache = new vulkan::RenderPassCache(device);
 	}
 
 	VulkanDriver::~VulkanDriver()
 	{
+		delete descriptor_set_cache;
+		descriptor_set_cache = nullptr;
+
+		delete descriptor_set_layout_cache;
+		descriptor_set_layout_cache = nullptr;
+
 		delete render_pass_cache;
 		render_pass_cache = nullptr;
 
@@ -1169,6 +1179,14 @@ namespace render::backend
 		return result;
 	}
 
+	BindSet *VulkanDriver::createBindSet()
+	{
+		vulkan::BindSet *result = new vulkan::BindSet();
+		memset(result, 0, sizeof(vulkan::BindSet));
+
+		return result;
+	}
+
 	SwapChain *VulkanDriver::createSwapChain(
 		void *native_window,
 		uint32_t width,
@@ -1348,6 +1366,30 @@ namespace render::backend
 
 		delete shader;
 		shader = nullptr;
+	}
+
+	void VulkanDriver::destroyBindSet(BindSet *bind_set)
+	{
+		if (bind_set == nullptr)
+			return;
+
+		vulkan::BindSet *vk_bind_set = static_cast<vulkan::BindSet *>(bind_set);
+
+		for (uint32_t i = 0; i < vulkan::BindSet::MAX_BINDINGS; ++i)
+		{
+			if (!vk_bind_set->binding_used[i])
+				continue;
+
+			VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[i];
+			if (info.descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				continue;
+
+			vulkan::BindSet::Data &data = vk_bind_set->binding_data[i];
+			vkDestroyImageView(device->getDevice(), data.texture.view, nullptr);
+		}
+
+		delete bind_set;
+		bind_set = nullptr;
 	}
 
 	void VulkanDriver::destroySwapChain(SwapChain *swap_chain)
@@ -1572,21 +1614,126 @@ namespace render::backend
 		return true;
 	}
 
-	void VulkanDriver::bindUniformBuffer(uint32_t unit, const UniformBuffer *uniform_buffer)
+	/*
+	 */
+	void VulkanDriver::bindUniformBuffer(
+		BindSet *bind_set,
+		uint32_t binding,
+		const UniformBuffer *uniform_buffer
+	)
 	{
+		assert(binding < vulkan::BindSet::MAX_BINDINGS);
 
+		if (bind_set == nullptr)
+			return;
+
+		vulkan::BindSet *vk_bind_set = static_cast<vulkan::BindSet *>(bind_set);
+		const vulkan::UniformBuffer *vk_uniform_buffer = static_cast<const vulkan::UniformBuffer *>(uniform_buffer);
+		
+		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
+		vulkan::BindSet::Data &data = vk_bind_set->binding_data[binding];
+
+		if (vk_bind_set->binding_used[binding] && info.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+		{
+			vkDestroyImageView(device->getDevice(), data.texture.view, nullptr);
+			info = {};
+			data = {};
+		}
+
+		VkBuffer ubo = VK_NULL_HANDLE;
+		if (vk_uniform_buffer)
+			ubo = vk_uniform_buffer->buffer;
+
+		vk_bind_set->binding_used[binding] = (vk_uniform_buffer != nullptr);
+		data.ubo = ubo;
+
+		info.binding = binding;
+		info.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		info.descriptorCount = 1;
+		info.stageFlags = VK_SHADER_STAGE_ALL; // TODO: allow for different shader stages
+		info.pImmutableSamplers = nullptr;
 	}
 
-	void VulkanDriver::bindTexture(uint32_t unit, const Texture *texture)
+	void VulkanDriver::bindTexture(
+		BindSet *bind_set,
+		uint32_t binding,
+		const Texture *texture,
+		uint32_t base_mip,
+		uint32_t num_mipmaps,
+		uint32_t base_layer,
+		uint32_t num_layers
+	)
 	{
+		assert(binding < vulkan::BindSet::MAX_BINDINGS);
 
+		if (bind_set == nullptr)
+			return;
+
+		vulkan::BindSet *vk_bind_set = static_cast<vulkan::BindSet *>(bind_set);
+		const vulkan::Texture *vk_texture = static_cast<const vulkan::Texture *>(texture);
+
+		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
+		vulkan::BindSet::Data &data = vk_bind_set->binding_data[binding];
+
+		if (vk_bind_set->binding_used[binding] && info.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+		{
+			vkDestroyImageView(device->getDevice(), data.texture.view, nullptr);
+			info = {};
+			data = {};
+		}
+
+		VkImageView view = VK_NULL_HANDLE;
+		VkSampler sampler = VK_NULL_HANDLE;
+
+		if (vk_texture)
+		{
+			view = VulkanUtils::createImageView(
+				device,
+				vk_texture->image,
+				vk_texture->format,
+				vulkan::toImageAspectFlags(vk_texture->format),
+				vulkan::toImageBaseViewType(vk_texture->type, vk_texture->flags, num_layers),
+				base_mip, num_mipmaps,
+				base_layer, num_layers
+			);
+			sampler = vk_texture->sampler;
+		}
+
+		vk_bind_set->binding_used[binding] = (vk_texture != nullptr);
+		data.texture.view = view;
+		data.texture.sampler = sampler;
+
+		info.binding = binding;
+		info.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		info.descriptorCount = 1;
+		info.stageFlags = VK_SHADER_STAGE_ALL; // TODO: allow for different shader stages
+		info.pImmutableSamplers = nullptr;
 	}
 
-	void VulkanDriver::bindShader(const Shader *shader)
+	/*
+	 */
+	void VulkanDriver::clearShaders()
 	{
-
+		// ..
 	}
 
+	void VulkanDriver::clearBindSets()
+	{
+		// ..
+	}
+
+	void VulkanDriver::setShader(ShaderType type, const Shader *shader)
+	{
+		// ..
+	}
+
+	void VulkanDriver::setBindSet(uint32_t binding, const BindSet *set)
+	{
+		// ..
+	}
+
+	/*
+	 */
 	bool VulkanDriver::resetCommandBuffer(CommandBuffer *command_buffer)
 	{
 		if (command_buffer == nullptr)

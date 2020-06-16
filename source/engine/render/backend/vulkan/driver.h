@@ -8,6 +8,8 @@ namespace render::backend
 	namespace vulkan
 	{
 		class Device;
+		class DescriptorSetCache;
+		class DescriptorSetLayoutCache;
 		class RenderPassCache;
 
 		struct VertexBuffer : public render::backend::VertexBuffer
@@ -100,6 +102,28 @@ namespace render::backend
 		{
 			ShaderType type {ShaderType::FRAGMENT};
 			VkShaderModule module {VK_NULL_HANDLE};
+		};
+
+		struct BindSet : public render::backend::BindSet
+		{
+			enum
+			{
+				MAX_BINDINGS = 32,
+			};
+
+			union Data
+			{
+				struct Texture
+				{
+					VkImageView view;
+					VkSampler sampler;
+				} texture;
+				VkBuffer ubo;
+			};
+
+			VkDescriptorSetLayoutBinding bindings[MAX_BINDINGS];
+			Data binding_data[MAX_BINDINGS];
+			bool binding_used[MAX_BINDINGS];
 		};
 
 		struct SwapChain : public render::backend::SwapChain
@@ -239,6 +263,9 @@ namespace render::backend
 			const void *data
 		) override;
 
+		BindSet *createBindSet(
+		) override;
+
 		SwapChain *createSwapChain(
 			void *native_window,
 			uint32_t width,
@@ -253,6 +280,7 @@ namespace render::backend
 		void destroyCommandBuffer(CommandBuffer *command_buffer) override;
 		void destroyUniformBuffer(UniformBuffer *uniform_buffer) override;
 		void destroyShader(Shader *shader) override;
+		void destroyBindSet(BindSet *bind_set) override;
 		void destroySwapChain(SwapChain *swap_chain) override;
 
 	public:
@@ -288,17 +316,37 @@ namespace render::backend
 	public:
 		// bindings
 		void bindUniformBuffer(
-			uint32_t unit,
+			BindSet *bind_set,
+			uint32_t binding,
 			const UniformBuffer *uniform_buffer
 		) override;
 
 		void bindTexture(
-			uint32_t unit,
-			const Texture *texture
+			BindSet *bind_set,
+			uint32_t binding,
+			const Texture *texture,
+			uint32_t base_mip = 0,
+			uint32_t num_mips = 1,
+			uint32_t base_layer = 0,
+			uint32_t num_layers = 1
 		) override;
 
-		void bindShader(
+	public:
+		// pipeline state
+		void clearShaders(
+		) override;
+
+		void clearBindSets(
+		) override;
+
+		void setShader(
+			ShaderType type,
 			const Shader *shader
+		) override;
+
+		void setBindSet(
+			uint32_t binding,
+			const BindSet *bind_set
 		) override;
 
 	public:
@@ -357,6 +405,8 @@ namespace render::backend
 
 	private:
 		vulkan::Device *device {nullptr};
+		vulkan::DescriptorSetCache *descriptor_set_cache {nullptr};
+		vulkan::DescriptorSetLayoutCache *descriptor_set_layout_cache {nullptr};
 		vulkan::RenderPassCache *render_pass_cache {nullptr};
 	};
 }

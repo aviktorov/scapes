@@ -3,14 +3,13 @@
 #include "render/backend/vulkan/driver.h"
 #include "render/backend/vulkan/device.h"
 #include "render/backend/vulkan/VulkanRenderPassBuilder.h"
-#include "render/backend/vulkan/VulkanUtils.h"
 
 #include <cassert>
 
 namespace render::backend::vulkan
 {
 	template <class T>
-	static void hash_combine(uint64_t &s, const T &v)
+	static void hashCombine(uint64_t &s, const T &v)
 	{
 		std::hash<T> h;
 		s^= h(v) + 0x9e3779b9 + (s<< 6) + (s>> 2);
@@ -78,15 +77,15 @@ namespace render::backend::vulkan
 		assert(info->store_ops != nullptr);
 
 		uint64_t hash = 0;
-		hash_combine(hash, frame_buffer->num_attachments);
+		hashCombine(hash, frame_buffer->num_attachments);
 		
 		for (uint8_t i = 0; i < frame_buffer->num_attachments; ++i)
 		{
-			hash_combine(hash, frame_buffer->attachment_formats[i]);
-			hash_combine(hash, frame_buffer->attachment_samples[i]);
-			hash_combine(hash, frame_buffer->attachment_resolve[i]);
-			hash_combine(hash, info->load_ops[i]);
-			hash_combine(hash, info->store_ops[i]);
+			hashCombine(hash, frame_buffer->attachment_formats[i]);
+			hashCombine(hash, frame_buffer->attachment_samples[i]);
+			hashCombine(hash, frame_buffer->attachment_resolve[i]);
+			hashCombine(hash, info->load_ops[i]);
+			hashCombine(hash, info->store_ops[i]);
 		}
 
 		return hash;
