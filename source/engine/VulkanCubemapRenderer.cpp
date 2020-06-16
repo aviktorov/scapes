@@ -63,8 +63,8 @@ void VulkanCubemapRenderer::init(
 
 	VulkanDescriptorSetLayoutBuilder descriptor_set_layout_builder;
 	descriptor_set_layout = descriptor_set_layout_builder
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, stage)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, stage, 0)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage, 1)
 		.build(device->getDevice());
 
 	VulkanRenderPassBuilder render_pass_builder;
@@ -129,12 +129,12 @@ void VulkanCubemapRenderer::init(
 	render::backend::FrameBufferAttachmentType type = render::backend::FrameBufferAttachmentType::COLOR;
 	render::backend::FrameBufferAttachment attachments[6] =
 	{
-		{ type, target_texture.getBackend(), mip, 1, 0, 1 },
-		{ type, target_texture.getBackend(), mip, 1, 1, 1 },
-		{ type, target_texture.getBackend(), mip, 1, 2, 1 },
-		{ type, target_texture.getBackend(), mip, 1, 3, 1 },
-		{ type, target_texture.getBackend(), mip, 1, 4, 1 },
-		{ type, target_texture.getBackend(), mip, 1, 5, 1 },
+		{ type, target_texture.getBackend(), static_cast<uint32_t>(mip), 1, 0, 1 },
+		{ type, target_texture.getBackend(), static_cast<uint32_t>(mip), 1, 1, 1 },
+		{ type, target_texture.getBackend(), static_cast<uint32_t>(mip), 1, 2, 1 },
+		{ type, target_texture.getBackend(), static_cast<uint32_t>(mip), 1, 3, 1 },
+		{ type, target_texture.getBackend(), static_cast<uint32_t>(mip), 1, 4, 1 },
+		{ type, target_texture.getBackend(), static_cast<uint32_t>(mip), 1, 5, 1 },
 	};
 
 	framebuffer = driver->createFrameBuffer(6, attachments);

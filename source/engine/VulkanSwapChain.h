@@ -72,5 +72,4 @@ private:
 
 	render::backend::Texture *color {nullptr};
 	render::backend::Texture *depth {nullptr};
-	render::backend::Format depth_format {render::backend::Format::UNDEFINED};
 };

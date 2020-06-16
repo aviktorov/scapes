@@ -4,11 +4,12 @@
 VulkanDescriptorSetLayoutBuilder &VulkanDescriptorSetLayoutBuilder::addDescriptorBinding(
 	VkDescriptorType type,
 	VkShaderStageFlags shaderStageFlags,
+	uint32_t binding,
 	int descriptorCount
 )
 {
 	VkDescriptorSetLayoutBinding descriptorBinding = {};
-	descriptorBinding.binding = static_cast<uint32_t>(bindings.size());
+	descriptorBinding.binding = binding;
 	descriptorBinding.descriptorType = type;
 	descriptorBinding.descriptorCount = descriptorCount;
 	descriptorBinding.stageFlags = shaderStageFlags;

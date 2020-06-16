@@ -11,6 +11,7 @@ public:
 	VulkanDescriptorSetLayoutBuilder &addDescriptorBinding(
 		VkDescriptorType type,
 		VkShaderStageFlags shaderStageFlags,
+		uint32_t binding,
 		int descriptorCount = 1
 	);
 

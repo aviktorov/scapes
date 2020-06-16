@@ -136,6 +136,7 @@ void VulkanSwapChain::initTransient(int width, int height, VkFormat image_format
 
 	Multisample max_samples = driver->getMaxSampleCount();
 	Format format = vk_driver->fromFormat(image_format);
+	Format depth_format = driver->getOptimalDepthFormat();
 
 	color = driver->createTexture2D(width, height, 1, format, max_samples);
 	depth = driver->createTexture2D(width, height, 1, depth_format, max_samples);
@@ -156,18 +157,10 @@ void VulkanSwapChain::initPersistent(VkFormat image_format)
 {
 	assert(native_window);
 
-	depth_format = driver->getOptimalDepthFormat();
-	Multisample samples = driver->getMaxSampleCount();
-
-	// TODO: remove vulkan specific stuff
-	VulkanDriver *vk_driver = static_cast<VulkanDriver *>(driver);
-	VkFormat vk_depth_format = vk_driver->toFormat(depth_format);
-	VkSampleCountFlagBits vk_samples = vk_driver->toMultisample(samples);
-
 	// Create descriptor set layout and render pass
 	VulkanDescriptorSetLayoutBuilder descriptor_set_layout_builder;
 	descriptor_set_layout = descriptor_set_layout_builder
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL)
+		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL, 0)
 		.build(device->getDevice());
 }
 
