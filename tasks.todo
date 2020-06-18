@@ -41,11 +41,14 @@ PBR Sandbox:
         ☐ Create backend based ImGui implementation on App level
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ Create separate cmake script for backend
-    Stream 34:
-        ☐ Continue drafting backend drawing methods
-            ☐ Add context to vulkan driver which will store current state & bind sets & shaders
+    Stream 35:
+        ☐ Finish backend drawing methods
             ☐ Add pipeline layout cache to backend
             ☐ Add pipeline cache to backend
+    Stream 34:
+        ✔ Continue drafting backend drawing methods @done (6/19/2020, 1:36:23 AM)
+            ✔ Add context to vulkan driver which will store current state & bind sets & shaders @done (6/19/2020, 1:36:23 AM)
+            ✔ Add render state management @done (6/19/2020, 1:36:22 AM)
     Stream 33:
         ✔ Start drafing binding methods @done (6/17/2020, 3:07:04 AM)
             ✔ Add BindSet struct to backend @done (6/17/2020, 2:05:55 AM)
