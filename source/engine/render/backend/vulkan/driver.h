@@ -8,6 +8,7 @@ namespace render::backend
 	namespace vulkan
 	{
 		class Device;
+		class Context;
 		class DescriptorSetCache;
 		class DescriptorSetLayoutCache;
 		class RenderPassCache;
@@ -333,10 +334,19 @@ namespace render::backend
 
 	public:
 		// pipeline state
-		void clearShaders(
+		void clearBindSets(
 		) override;
 
-		void clearBindSets(
+		void pushBindSet(
+			const BindSet *bind_set
+		) override;
+
+		void setBindSet(
+			uint32_t binding,
+			const BindSet *bind_set
+		) override;
+
+		void clearShaders(
 		) override;
 
 		void setShader(
@@ -344,9 +354,31 @@ namespace render::backend
 			const Shader *shader
 		) override;
 
-		void setBindSet(
-			uint32_t binding,
-			const BindSet *bind_set
+	public:
+		// render state
+		void setCullMode(
+			CullMode mode
+		) override;
+
+		void setDepthTest(
+			bool enabled
+		) override;
+
+		void setDepthWrite(
+			bool enabled
+		) override;
+
+		void setDepthCompareFunc(
+			DepthCompareFunc func
+		) override;
+
+		void setBlending(
+			bool enabled
+		) override;
+
+		void setBlendFactors(
+			BlendFactor src_factor,
+			BlendFactor dest_factor
 		) override;
 
 	public:
@@ -405,6 +437,7 @@ namespace render::backend
 
 	private:
 		vulkan::Device *device {nullptr};
+		vulkan::Context *context {nullptr};
 		vulkan::DescriptorSetCache *descriptor_set_cache {nullptr};
 		vulkan::DescriptorSetLayoutCache *descriptor_set_layout_cache {nullptr};
 		vulkan::RenderPassCache *render_pass_cache {nullptr};

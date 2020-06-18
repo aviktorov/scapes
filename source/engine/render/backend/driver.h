@@ -186,6 +186,46 @@ enum class CommandBufferType : uint8_t
 	SECONDARY,
 };
 
+enum class CullMode : uint8_t
+{
+	NONE = 0,
+	FRONT,
+	BACK,
+	FRONT_AND_BACK,
+
+	MAX,
+};
+
+enum class DepthCompareFunc : uint8_t
+{
+	NEVER = 0,
+	LESS,
+	EQUAL,
+	LESS_OR_EQUAL,
+	GREATER,
+	NOT_EQUAL,
+	GREATER_OR_EQUAL,
+	ALWAYS,
+
+	MAX,
+};
+
+enum class BlendFactor : uint8_t
+{
+	ZERO = 0,
+	ONE,
+	SRC_COLOR,
+	ONE_MINUS_SRC_COLOR,
+	DST_COLOR,
+	ONE_MINUS_DST_COLOR,
+	SRC_ALPHA,
+	ONE_MINUS_SRC_ALPHA,
+	DST_ALPHA,
+	ONE_MINUS_DST_ALPHA,
+
+	MAX,
+};
+
 // C opaque structs
 struct VertexBuffer {};
 struct IndexBuffer {};
@@ -201,25 +241,6 @@ struct UniformBuffer {};
 
 struct Shader {};
 struct BindSet {};
-
-/*
-	// one time bind / per material / per smth
-	backend::BindSet *set0 = driver->createBindSet();
-	driver->bindTexture(set0, binding, texture, 0, 1, 0, 1);
-	driver->bindUniformBuffer(set0, binding, buffer);
-	...
-
-	// per frame
-	driver->clearShaders();
-	driver->clearBindSets();
-	driver->setBindSet(set0, binding);
-	driver->setBindSet(set0, binding);
-	driver->setShader(ShaderType::FRAGMENT, shader);
-	...
-	set render state
-	...
-	driver->drawIndexedPrimitive(primitive);
- */
 
 struct SwapChain {};
 
@@ -456,10 +477,19 @@ public:
 
 public:
 	// pipeline state
-	virtual void clearShaders(
+	virtual void clearBindSets(
 	) = 0;
 
-	virtual void clearBindSets(
+	virtual void pushBindSet(
+		const BindSet *bind_set
+	) = 0;
+
+	virtual void setBindSet(
+		uint32_t binding,
+		const BindSet *bind_set
+	) = 0;
+
+	virtual void clearShaders(
 	) = 0;
 
 	virtual void setShader(
@@ -467,9 +497,31 @@ public:
 		const Shader *shader
 	) = 0;
 
-	virtual void setBindSet(
-		uint32_t binding,
-		const BindSet *bind_set
+public:
+	// render state
+	virtual void setCullMode(
+		CullMode mode
+	) = 0;
+
+	virtual void setDepthTest(
+		bool enabled
+	) = 0;
+
+	virtual void setDepthWrite(
+		bool enabled
+	) = 0;
+
+	virtual void setDepthCompareFunc(
+		DepthCompareFunc func
+	) = 0;
+
+	virtual void setBlending(
+		bool enabled
+	) = 0;
+
+	virtual void setBlendFactors(
+		BlendFactor src_factor,
+		BlendFactor dest_factor
 	) = 0;
 
 public:

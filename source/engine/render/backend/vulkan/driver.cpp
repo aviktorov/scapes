@@ -5,6 +5,7 @@
 #include <string>
 
 #include "render/backend/vulkan/driver.h"
+#include "render/backend/vulkan/Context.h"
 #include "render/backend/vulkan/device.h"
 #include "render/backend/vulkan/platform.h"
 #include "render/backend/vulkan/DescriptorSetCache.h"
@@ -399,6 +400,55 @@ namespace render::backend
 			}
 		}
 
+		static VkCullModeFlags toCullMode(CullMode mode)
+		{
+			static VkCullModeFlags supported_cull_modes[static_cast<int>(CullMode::MAX)] =
+			{
+				VK_CULL_MODE_NONE,
+				VK_CULL_MODE_FRONT_BIT,
+				VK_CULL_MODE_BACK_BIT,
+				VK_CULL_MODE_FRONT_AND_BACK,
+			};
+
+			return supported_cull_modes[static_cast<int>(mode)];
+		}
+
+		static VkCompareOp toDepthCompareFunc(DepthCompareFunc func)
+		{
+			static VkCompareOp supported_depth_compare_funcs[static_cast<int>(DepthCompareFunc::MAX)] =
+			{
+				VK_COMPARE_OP_NEVER,
+				VK_COMPARE_OP_LESS,
+				VK_COMPARE_OP_EQUAL,
+				VK_COMPARE_OP_LESS_OR_EQUAL,
+				VK_COMPARE_OP_GREATER,
+				VK_COMPARE_OP_NOT_EQUAL,
+				VK_COMPARE_OP_GREATER_OR_EQUAL,
+				VK_COMPARE_OP_ALWAYS,
+			};
+
+			return supported_depth_compare_funcs[static_cast<int>(func)];
+		}
+
+		static VkBlendFactor toBlendFactor(BlendFactor factor)
+		{
+			static VkBlendFactor supported_blend_factors[static_cast<int>(BlendFactor::MAX)] =
+			{
+				VK_BLEND_FACTOR_ZERO,
+				VK_BLEND_FACTOR_ONE,
+				VK_BLEND_FACTOR_SRC_COLOR,
+				VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+				VK_BLEND_FACTOR_DST_COLOR,
+				VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+				VK_BLEND_FACTOR_SRC_ALPHA,
+				VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+				VK_BLEND_FACTOR_DST_ALPHA,
+				VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+			};
+
+			return supported_blend_factors[static_cast<int>(factor)];
+		}
+
 		static void createTextureData(const Device *device, Texture *texture, Format format, const void *data, int num_data_mipmaps, int num_data_layers)
 		{
 			VkImageUsageFlags usage_flags = toImageUsageFlags(texture->format);
@@ -652,6 +702,7 @@ namespace render::backend
 		device = new vulkan::Device();
 		device->init(application_name, engine_name);
 
+		context = new vulkan::Context();
 		descriptor_set_layout_cache = new vulkan::DescriptorSetLayoutCache(device);
 		descriptor_set_cache = new vulkan::DescriptorSetCache(device, descriptor_set_layout_cache);
 		render_pass_cache = new vulkan::RenderPassCache(device);
@@ -667,6 +718,9 @@ namespace render::backend
 
 		delete render_pass_cache;
 		render_pass_cache = nullptr;
+
+		delete context;
+		context = nullptr;
 
 		if (device)
 		{
@@ -1712,24 +1766,68 @@ namespace render::backend
 
 	/*
 	 */
-	void VulkanDriver::clearShaders()
-	{
-		// ..
-	}
-
 	void VulkanDriver::clearBindSets()
 	{
-		// ..
+		context->clearBindSets();
 	}
 
-	void VulkanDriver::setShader(ShaderType type, const Shader *shader)
+	void VulkanDriver::pushBindSet(const BindSet *set)
 	{
-		// ..
+		const vulkan::BindSet *vk_set = static_cast<const vulkan::BindSet *>(set);
+		context->pushBindSet(vk_set);
 	}
 
 	void VulkanDriver::setBindSet(uint32_t binding, const BindSet *set)
 	{
-		// ..
+		const vulkan::BindSet *vk_set = static_cast<const vulkan::BindSet *>(set);
+		context->setBindSet(binding, vk_set);
+	}
+
+	void VulkanDriver::clearShaders()
+	{
+		context->clearShaders();
+	}
+
+	void VulkanDriver::setShader(ShaderType type, const Shader *shader)
+	{
+		const vulkan::Shader *vk_shader = static_cast<const vulkan::Shader *>(shader);
+		context->setShader(type, vk_shader);
+	}
+
+	/*
+	 */
+	void VulkanDriver::setCullMode(CullMode mode)
+	{
+		VkCullModeFlags vk_mode = vulkan::toCullMode(mode);
+		context->setCullMode(vk_mode);
+	}
+
+	void VulkanDriver::setDepthTest(bool enabled)
+	{
+		context->setDepthTest(enabled);
+	}
+
+	void VulkanDriver::setDepthWrite(bool enabled)
+	{
+		context->setDepthWrite(enabled);
+	}
+
+	void VulkanDriver::setDepthCompareFunc(DepthCompareFunc func)
+	{
+		VkCompareOp vk_func = vulkan::toDepthCompareFunc(func);
+		context->setDepthCompareFunc(vk_func);
+	}
+
+	void VulkanDriver::setBlending(bool enabled)
+	{
+		context->setBlending(enabled);
+	}
+
+	void VulkanDriver::setBlendFactors(BlendFactor src_factor, BlendFactor dest_factor)
+	{
+		VkBlendFactor vk_src_factor = vulkan::toBlendFactor(src_factor);
+		VkBlendFactor vk_dest_factor = vulkan::toBlendFactor(dest_factor);
+		context->setBlendFactors(vk_src_factor, vk_dest_factor);
 	}
 
 	/*
@@ -1873,9 +1971,12 @@ namespace render::backend
 		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
 		const vulkan::FrameBuffer *vk_frame_buffer = static_cast<const vulkan::FrameBuffer *>(frame_buffer);
 
+		VkRenderPass render_pass = render_pass_cache->fetch(vk_frame_buffer, info);
+		context->setRenderPass(render_pass);
+
 		VkRenderPassBeginInfo render_pass_info = {};
 		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		render_pass_info.renderPass = render_pass_cache->fetch(vk_frame_buffer, info);
+		render_pass_info.renderPass = render_pass;
 		render_pass_info.framebuffer = vk_frame_buffer->framebuffer;
 		render_pass_info.renderArea.offset = {0, 0};
 		render_pass_info.renderArea.extent = vk_frame_buffer->sizes;
@@ -1892,6 +1993,8 @@ namespace render::backend
 
 		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
 		vkCmdEndRenderPass(vk_command_buffer->command_buffer);
+
+		context->setRenderPass(VK_NULL_HANDLE);
 	}
 
 	void VulkanDriver::drawIndexedPrimitive(CommandBuffer *command_buffer, const RenderPrimitive *render_primitive)
