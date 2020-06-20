@@ -74,7 +74,9 @@ namespace render::backend::vulkan
 			}
 			else if (info.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
 			{
-				hashCombine(hash, data.ubo);
+				hashCombine(hash, data.ubo.buffer);
+				hashCombine(hash, data.ubo.offset);
+				hashCombine(hash, data.ubo.size);
 			}
 		}
 

@@ -10,6 +10,8 @@
 #include "render/backend/vulkan/platform.h"
 #include "render/backend/vulkan/DescriptorSetCache.h"
 #include "render/backend/vulkan/DescriptorSetLayoutCache.h"
+#include "render/backend/vulkan/PipelineLayoutCache.h"
+#include "render/backend/vulkan/PipelineCache.h"
 #include "render/backend/vulkan/RenderPassCache.h"
 #include "render/backend/vulkan/VulkanRenderPassBuilder.h"
 #include "render/backend/vulkan/VulkanUtils.h"
@@ -705,11 +707,19 @@ namespace render::backend
 		context = new vulkan::Context();
 		descriptor_set_layout_cache = new vulkan::DescriptorSetLayoutCache(device);
 		descriptor_set_cache = new vulkan::DescriptorSetCache(device, descriptor_set_layout_cache);
+		pipeline_layout_cache = new vulkan::PipelineLayoutCache(device, descriptor_set_layout_cache);
+		pipeline_cache = new vulkan::PipelineCache(device, pipeline_layout_cache);
 		render_pass_cache = new vulkan::RenderPassCache(device);
 	}
 
 	VulkanDriver::~VulkanDriver()
 	{
+		delete pipeline_cache;
+		pipeline_cache = nullptr;
+
+		delete pipeline_layout_cache;
+		pipeline_layout_cache = nullptr;
+
 		delete descriptor_set_cache;
 		descriptor_set_cache = nullptr;
 
@@ -755,7 +765,11 @@ namespace render::backend
 		result->num_attributes = num_attributes;
 
 		// copy vertex attributes
-		memcpy(result->attributes, attributes, num_attributes * sizeof(VertexAttribute));
+		for (uint8_t i = 0; i < num_attributes; ++i)
+		{
+			result->attribute_formats[i] = vulkan::toFormat(attributes[i].format);
+			result->attribute_offsets[i] = attributes[i].offset;
+		}
 
 		// create vertex buffer
 		VulkanUtils::createDeviceLocalBuffer(
@@ -1694,18 +1708,38 @@ namespace render::backend
 			data = {};
 		}
 
-		VkBuffer ubo = VK_NULL_HANDLE;
-		if (vk_uniform_buffer)
-			ubo = vk_uniform_buffer->buffer;
-
 		vk_bind_set->binding_used[binding] = (vk_uniform_buffer != nullptr);
-		data.ubo = ubo;
+		vk_bind_set->binding_dirty[binding] = true;
+
+		if (vk_uniform_buffer == nullptr)
+			return;
+
+		data.ubo.buffer = vk_uniform_buffer->buffer;
+		data.ubo.size = vk_uniform_buffer->size;
+		data.ubo.offset = 0;
 
 		info.binding = binding;
 		info.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		info.descriptorCount = 1;
 		info.stageFlags = VK_SHADER_STAGE_ALL; // TODO: allow for different shader stages
 		info.pImmutableSamplers = nullptr;
+	}
+
+	void VulkanDriver::bindTexture(
+		BindSet *bind_set,
+		uint32_t binding,
+		const Texture *texture
+	)
+	{
+		assert(binding < vulkan::BindSet::MAX_BINDINGS);
+
+		if (bind_set == nullptr)
+			return;
+
+		vulkan::BindSet *vk_bind_set = static_cast<vulkan::BindSet *>(bind_set);
+		const vulkan::Texture *vk_texture = static_cast<const vulkan::Texture *>(texture);
+
+		bindTexture(bind_set, binding, texture, 0, vk_texture->num_mipmaps, 0, vk_texture->num_layers);
 	}
 
 	void VulkanDriver::bindTexture(
@@ -1754,6 +1788,8 @@ namespace render::backend
 		}
 
 		vk_bind_set->binding_used[binding] = (vk_texture != nullptr);
+		vk_bind_set->binding_dirty[binding] = true;
+
 		data.texture.view = view;
 		data.texture.sampler = sampler;
 
@@ -1771,15 +1807,15 @@ namespace render::backend
 		context->clearBindSets();
 	}
 
-	void VulkanDriver::pushBindSet(const BindSet *set)
+	void VulkanDriver::pushBindSet(BindSet *set)
 	{
-		const vulkan::BindSet *vk_set = static_cast<const vulkan::BindSet *>(set);
+		vulkan::BindSet *vk_set = static_cast<vulkan::BindSet *>(set);
 		context->pushBindSet(vk_set);
 	}
 
-	void VulkanDriver::setBindSet(uint32_t binding, const BindSet *set)
+	void VulkanDriver::setBindSet(uint32_t binding, BindSet *set)
 	{
-		const vulkan::BindSet *vk_set = static_cast<const vulkan::BindSet *>(set);
+		vulkan::BindSet *vk_set = static_cast<vulkan::BindSet *>(set);
 		context->setBindSet(binding, vk_set);
 	}
 
@@ -1973,6 +2009,7 @@ namespace render::backend
 
 		VkRenderPass render_pass = render_pass_cache->fetch(vk_frame_buffer, info);
 		context->setRenderPass(render_pass);
+		context->setFramebuffer(vk_frame_buffer);
 
 		VkRenderPassBeginInfo render_pass_info = {};
 		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2004,6 +2041,92 @@ namespace render::backend
 
 		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
 		const vulkan::RenderPrimitive *vk_render_primitive = static_cast<const vulkan::RenderPrimitive *>(render_primitive);
+
+		std::vector<VkDescriptorSet> sets(context->getNumBindSets());
+		std::vector<VkWriteDescriptorSet> writes;
+		std::vector<VkDescriptorImageInfo> image_infos;
+		std::vector<VkDescriptorBufferInfo> buffer_infos;
+
+		writes.reserve(vulkan::BindSet::MAX_BINDINGS * context->getNumBindSets());
+		image_infos.reserve(vulkan::BindSet::MAX_BINDINGS * context->getNumBindSets());
+		buffer_infos.reserve(vulkan::BindSet::MAX_BINDINGS * context->getNumBindSets());
+
+		for (uint8_t i = 0; i < context->getNumBindSets(); ++i)
+		{
+			vulkan::BindSet *bind_set = context->getBindSet(i);
+			sets[i] = descriptor_set_cache->fetch(bind_set);
+
+			for (uint8_t j = 0; j < vulkan::BindSet::MAX_BINDINGS; ++j)
+			{
+				if (!bind_set->binding_used[j])
+					continue;
+
+				if (!bind_set->binding_dirty[j])
+					continue;
+
+				VkDescriptorType descriptor_type = bind_set->bindings[j].descriptorType;
+				const vulkan::BindSet::Data &data = bind_set->binding_data[j];
+
+				VkWriteDescriptorSet write_set = {};
+				write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				write_set.dstSet = sets[i];
+				write_set.dstBinding = j;
+				write_set.dstArrayElement = 0;
+
+				if (descriptor_type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				{
+					VkDescriptorImageInfo info = {};
+					info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					info.imageView = data.texture.view;
+					info.sampler = data.texture.sampler;
+
+					image_infos.push_back(info);
+					write_set.pImageInfo = &image_infos[image_infos.size() - 1];
+				}
+				else if (descriptor_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+				{
+					VkDescriptorBufferInfo info = {};
+					info.buffer = data.ubo.buffer;
+					info.offset = data.ubo.offset;
+					info.range = data.ubo.size;
+
+					buffer_infos.push_back(info);
+					write_set.pBufferInfo = &buffer_infos[buffer_infos.size() - 1];
+				}
+				else
+					continue;
+
+				write_set.descriptorType = descriptor_type;
+				write_set.descriptorCount = 1;
+
+				writes.push_back(write_set);
+
+				bind_set->binding_dirty[j] = false;
+			}
+		}
+
+		if (writes.size() > 0)
+			vkUpdateDescriptorSets(device->getDevice(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+
+		VkPipelineLayout pipeline_layout = pipeline_layout_cache->fetch(context);
+		VkPipeline pipeline = pipeline_cache->fetch(context, vk_render_primitive);
+
+		vkCmdBindPipeline(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+		vkCmdBindDescriptorSets(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
+
+		VkViewport viewport = context->getViewport();
+		VkRect2D scissor = context->getScissor();
+
+		vkCmdSetViewport(vk_command_buffer->command_buffer, 0, 1, &viewport);
+		vkCmdSetScissor(vk_command_buffer->command_buffer, 0, 1, &scissor);
+
+		VkBuffer vertex_buffers[] = { vk_render_primitive->vertex_buffer->buffer };
+		VkDeviceSize offsets[] = { 0 };
+
+		vkCmdBindVertexBuffers(vk_command_buffer->command_buffer, 0, 1, vertex_buffers, offsets);
+		vkCmdBindIndexBuffer(vk_command_buffer->command_buffer, vk_render_primitive->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdDrawIndexed(vk_command_buffer->command_buffer, vk_render_primitive->index_buffer->num_indices, 1, 0, 0, 0);
 	}
 
 	void VulkanDriver::drawIndexedPrimitiveInstanced(

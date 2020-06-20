@@ -191,14 +191,8 @@ VkPipeline VulkanGraphicsPipelineBuilder::build(VkDevice device)
 
 	VkPipelineColorBlendStateCreateInfo colorBlendState = {};
 	colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	colorBlendState.logicOpEnable = VK_FALSE;
-	colorBlendState.logicOp = VK_LOGIC_OP_COPY;
 	colorBlendState.attachmentCount = static_cast<uint32_t>(colorBlendAttachments.size());
 	colorBlendState.pAttachments = colorBlendAttachments.data();
-	colorBlendState.blendConstants[0] = 0.0f;
-	colorBlendState.blendConstants[1] = 0.0f;
-	colorBlendState.blendConstants[2] = 0.0f;
-	colorBlendState.blendConstants[3] = 0.0f;
 
 	VkPipelineDynamicStateCreateInfo dynamicState = {};
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
@@ -220,7 +214,6 @@ VkPipeline VulkanGraphicsPipelineBuilder::build(VkDevice device)
 	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.layout = pipelineLayout;
 	pipelineInfo.renderPass = renderPass;
-	pipelineInfo.subpass = 0;
 
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS)
 		throw std::runtime_error("Can't create graphics pipeline");

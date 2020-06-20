@@ -21,6 +21,7 @@ public:
 	void clear();
 
 	VkShaderModule getShaderModule() const;
+	inline render::backend::Shader *getBackend() const { return shader; }
 
 private:
 	render::backend::Driver *driver {nullptr};

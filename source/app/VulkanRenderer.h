@@ -25,13 +25,7 @@ struct VulkanRenderFrame;
 class VulkanRenderer
 {
 public:
-	VulkanRenderer(
-		render::backend::Driver *driver,
-		VkExtent2D extent,
-		VkDescriptorSetLayout descriptorSetLayout,
-		VkRenderPass renderPass
-	);
-
+	VulkanRenderer(render::backend::Driver *driver,VkExtent2D extent);
 	virtual ~VulkanRenderer();
 
 	void init(const RenderScene *scene);
@@ -46,8 +40,6 @@ private:
 	const render::backend::vulkan::Device *device {nullptr};
 	render::backend::Driver *driver {nullptr};
 	VkExtent2D extent;
-	VkRenderPass renderPass {VK_NULL_HANDLE};
-	VkPipelineLayout pipelineLayout {VK_NULL_HANDLE};
 
 	VulkanTexture2DRenderer bakedBRDFRenderer;
 	VulkanCubemapRenderer hdriToCubeRenderer;
@@ -58,10 +50,5 @@ private:
 	VulkanTexture environmentCubemap;
 	VulkanTexture diffuseIrradianceCubemap;
 
-	VkPipeline skyboxPipeline {VK_NULL_HANDLE};
-	VkPipeline pbrPipeline {VK_NULL_HANDLE};
-
-	VkDescriptorSetLayout descriptorSetLayout {VK_NULL_HANDLE};
-	VkDescriptorSetLayout sceneDescriptorSetLayout {VK_NULL_HANDLE};
-	VkDescriptorSet sceneDescriptorSet {VK_NULL_HANDLE};
+	render::backend::BindSet *scene_bind_set {nullptr};
 };

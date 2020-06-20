@@ -24,6 +24,7 @@ public:
 	VkBuffer getIndexBuffer() const;
 
 	inline uint32_t getNumIndices() const { return static_cast<uint32_t>(indices.size()); }
+	inline render::backend::RenderPrimitive *getRenderPrimitive() const { return render_primitive; }
 
 	static VkVertexInputBindingDescription getVertexInputBindingDescription();
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
@@ -59,4 +60,5 @@ private:
 
 	render::backend::VertexBuffer *vertex_buffer {nullptr};
 	render::backend::IndexBuffer *index_buffer {nullptr};
+	render::backend::RenderPrimitive *render_primitive {nullptr};
 };

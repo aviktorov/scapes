@@ -18,14 +18,10 @@ using namespace render::backend;
  */
 VulkanRenderer::VulkanRenderer(
 	render::backend::Driver *driver,
-	VkExtent2D extent,
-	VkDescriptorSetLayout descriptorSetLayout,
-	VkRenderPass renderPass
+	VkExtent2D extent
 )
 	: driver(driver)
 	, extent(extent)
-	, renderPass(renderPass)
-	, descriptorSetLayout(descriptorSetLayout)
 	, hdriToCubeRenderer(driver)
 	, diffuseIrradianceRenderer(driver)
 	, environmentCubemap(driver)
@@ -45,63 +41,6 @@ VulkanRenderer::~VulkanRenderer()
  */
 void VulkanRenderer::init(const RenderScene *scene)
 {
-	const VulkanShader *pbrVertexShader = scene->getPBRVertexShader();
-	const VulkanShader *pbrFragmentShader = scene->getPBRFragmentShader();
-	const VulkanShader *skyboxVertexShader = scene->getSkyboxVertexShader();
-	const VulkanShader *skyboxFragmentShader = scene->getSkyboxFragmentShader();
-
-	VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	VulkanDescriptorSetLayoutBuilder sceneDescriptorSetLayoutBuilder;
-	sceneDescriptorSetLayout = sceneDescriptorSetLayoutBuilder
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage, 0)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage, 1)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage, 2)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage, 3)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage, 4)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage, 5)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage, 6)
-		.addDescriptorBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, stage, 7)
-		.build(device->getDevice());
-
-	VulkanPipelineLayoutBuilder pipelineLayoutBuilder;
-	pipelineLayout = pipelineLayoutBuilder
-		.addDescriptorSetLayout(descriptorSetLayout)
-		.addDescriptorSetLayout(sceneDescriptorSetLayout)
-		.build(device->getDevice());
-
-	VulkanGraphicsPipelineBuilder pbrPipelineBuilder(pipelineLayout, renderPass);
-	pbrPipeline = pbrPipelineBuilder
-		.addShaderStage(pbrVertexShader->getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
-		.addShaderStage(pbrFragmentShader->getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
-		.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions())
-		.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-		.addViewport(VkViewport())
-		.addScissor(VkRect2D())
-		.addDynamicState(VK_DYNAMIC_STATE_SCISSOR)
-		.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT)
-		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
-		.setMultisampleState(device->getMaxSampleCount(), true)
-		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
-		.addBlendColorAttachment()
-		.build(device->getDevice());
-
-	VulkanGraphicsPipelineBuilder skyboxPipelineBuilder(pipelineLayout, renderPass);
-	skyboxPipeline = skyboxPipelineBuilder
-		.addShaderStage(skyboxVertexShader->getShaderModule(), VK_SHADER_STAGE_VERTEX_BIT)
-		.addShaderStage(skyboxFragmentShader->getShaderModule(), VK_SHADER_STAGE_FRAGMENT_BIT)
-		.addVertexInput(VulkanMesh::getVertexInputBindingDescription(), VulkanMesh::getAttributeDescriptions())
-		.setInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-		.addViewport(VkViewport())
-		.addScissor(VkRect2D())
-		.addDynamicState(VK_DYNAMIC_STATE_SCISSOR)
-		.addDynamicState(VK_DYNAMIC_STATE_VIEWPORT)
-		.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE)
-		.setMultisampleState(device->getMaxSampleCount(), true)
-		.setDepthStencilState(true, true, VK_COMPARE_OP_LESS)
-		.addBlendColorAttachment()
-		.build(device->getDevice());
-
 	bakedBRDF.create2D(render::backend::Format::R16G16_SFLOAT, 256, 256, 1);
 	environmentCubemap.createCube(render::backend::Format::R32G32B32A32_SFLOAT, 256, 256, 8);
 	diffuseIrradianceCubemap.createCube(render::backend::Format::R32G32B32A32_SFLOAT, 256, 256, 1);
@@ -166,14 +105,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 	);
 
 	// Create scene descriptor set
-	VkDescriptorSetAllocateInfo sceneDescriptorSetAllocInfo = {};
-	sceneDescriptorSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	sceneDescriptorSetAllocInfo.descriptorPool = device->getDescriptorPool();
-	sceneDescriptorSetAllocInfo.descriptorSetCount = 1;
-	sceneDescriptorSetAllocInfo.pSetLayouts = &sceneDescriptorSetLayout;
-
-	if (vkAllocateDescriptorSets(device->getDevice(), &sceneDescriptorSetAllocInfo, &sceneDescriptorSet) != VK_SUCCESS)
-		throw std::runtime_error("Can't allocate scene descriptor set");
+	scene_bind_set = driver->createBindSet();
 
 	std::array<const VulkanTexture *, 8> textures =
 	{
@@ -188,32 +120,11 @@ void VulkanRenderer::init(const RenderScene *scene)
 	};
 
 	for (int k = 0; k < textures.size(); k++)
-		VulkanUtils::bindCombinedImageSampler(
-			device,
-			sceneDescriptorSet,
-			k,
-			textures[k]->getImageView(),
-			textures[k]->getSampler()
-		);
+		driver->bindTexture(scene_bind_set, k, textures[k]->getBackend());
 }
 
 void VulkanRenderer::shutdown()
 {
-	vkDestroyPipeline(device->getDevice(), pbrPipeline, nullptr);
-	pbrPipeline = VK_NULL_HANDLE;
-
-	vkDestroyPipeline(device->getDevice(), skyboxPipeline, nullptr);
-	skyboxPipeline = VK_NULL_HANDLE;
-
-	vkDestroyPipelineLayout(device->getDevice(), pipelineLayout, nullptr);
-	pipelineLayout = VK_NULL_HANDLE;
-
-	vkDestroyDescriptorSetLayout(device->getDevice(), sceneDescriptorSetLayout, nullptr);
-	sceneDescriptorSetLayout = VK_NULL_HANDLE;
-
-	vkFreeDescriptorSets(device->getDevice(), device->getDescriptorPool(), 1, &sceneDescriptorSet);
-	sceneDescriptorSet = VK_NULL_HANDLE;
-
 	for (VulkanCubemapRenderer *renderer : cubeToPrefilteredRenderers)
 	{
 		renderer->shutdown();
@@ -228,6 +139,9 @@ void VulkanRenderer::shutdown()
 	bakedBRDF.clearGPUData();
 	environmentCubemap.clearGPUData();
 	diffuseIrradianceCubemap.clearGPUData();
+
+	driver->destroyBindSet(scene_bind_set);
+	scene_bind_set = nullptr;
 }
 
 /*
@@ -239,52 +153,27 @@ void VulkanRenderer::resize(const VulkanSwapChain *swapChain)
 
 void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &frame)
 {
-	VkCommandBuffer command_buffer = static_cast<vulkan::CommandBuffer *>(frame.command_buffer)->command_buffer;
-	VkDescriptorSet descriptor_set = frame.descriptor_set;
+	const VulkanShader *pbrVertexShader = scene->getPBRVertexShader();
+	const VulkanShader *pbrFragmentShader = scene->getPBRFragmentShader();
+	const VulkanShader *skyboxVertexShader = scene->getSkyboxVertexShader();
+	const VulkanShader *skyboxFragmentShader = scene->getSkyboxFragmentShader();
 
-	std::array<VkDescriptorSet, 2> sets = {descriptor_set, sceneDescriptorSet};
+	const VulkanMesh *skybox = scene->getSkybox();
+	const VulkanMesh *mesh = scene->getMesh();
 
-	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width = static_cast<float>(extent.width);
-	viewport.height = static_cast<float>(extent.height);
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
+	driver->clearBindSets();
+	driver->pushBindSet(frame.bind_set);
+	driver->pushBindSet(scene_bind_set);
 
-	VkRect2D scissor = {};
-	scissor.offset = {0, 0};
-	scissor.extent = extent;
+	driver->clearShaders();
 
-	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
-	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+	driver->setShader(ShaderType::VERTEX, skyboxVertexShader->getBackend());
+	driver->setShader(ShaderType::FRAGMENT, skyboxFragmentShader->getBackend());
+	driver->drawIndexedPrimitive(frame.command_buffer, skybox->getRenderPrimitive());
 
-	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
-	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline);
-	{
-		const VulkanMesh *skybox = scene->getSkybox();
-
-		VkBuffer vertexBuffers[] = { skybox->getVertexBuffer() };
-		VkBuffer indexBuffer = skybox->getIndexBuffer();
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(command_buffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-		vkCmdDrawIndexed(command_buffer, skybox->getNumIndices(), 1, 0, 0, 0);
-	}
-
-	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrPipeline);
-	{
-		const VulkanMesh *mesh = scene->getMesh();
-
-		VkBuffer vertexBuffers[] = { mesh->getVertexBuffer() };
-		VkBuffer indexBuffer = mesh->getIndexBuffer();
-		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindVertexBuffers(command_buffer, 0, 1, vertexBuffers, offsets);
-		vkCmdBindIndexBuffer(command_buffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-		vkCmdDrawIndexed(command_buffer, mesh->getNumIndices(), 1, 0, 0, 0);
-	}
+	driver->setShader(ShaderType::VERTEX, pbrVertexShader->getBackend());
+	driver->setShader(ShaderType::FRAGMENT, pbrFragmentShader->getBackend());
+	driver->drawIndexedPrimitive(frame.command_buffer, mesh->getRenderPrimitive());
 }
 
 /*
@@ -381,12 +270,6 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 		&diffuseIrradianceCubemap,
 	};
 
-	for (int k = 0; k < textures.size(); k++)
-		VulkanUtils::bindCombinedImageSampler(
-			device,
-			sceneDescriptorSet,
-			k + 5,
-			textures[k]->getImageView(),
-			textures[k]->getSampler()
-		);
+	driver->bindTexture(scene_bind_set, 5, environmentCubemap.getBackend());
+	driver->bindTexture(scene_bind_set, 6, diffuseIrradianceCubemap.getBackend());
 }

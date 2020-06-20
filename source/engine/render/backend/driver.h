@@ -468,11 +468,17 @@ public:
 	virtual void bindTexture(
 		BindSet *bind_set,
 		uint32_t binding,
+		const Texture *texture
+	) = 0;
+
+	virtual void bindTexture(
+		BindSet *bind_set,
+		uint32_t binding,
 		const Texture *texture,
-		uint32_t base_mip = 0,
-		uint32_t num_mips = 1,
-		uint32_t base_layer = 0,
-		uint32_t num_layers = 1
+		uint32_t base_mip,
+		uint32_t num_mips,
+		uint32_t base_layer,
+		uint32_t num_layers
 	) = 0;
 
 public:
@@ -481,12 +487,12 @@ public:
 	) = 0;
 
 	virtual void pushBindSet(
-		const BindSet *bind_set
+		BindSet *bind_set
 	) = 0;
 
 	virtual void setBindSet(
 		uint32_t binding,
-		const BindSet *bind_set
+		BindSet *bind_set
 	) = 0;
 
 	virtual void clearShaders(

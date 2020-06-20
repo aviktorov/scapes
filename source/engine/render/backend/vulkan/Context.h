@@ -15,14 +15,24 @@ namespace render::backend::vulkan
 
 		inline void clearBindSets() { num_sets = 0; }
 		inline uint8_t getNumBindSets() const { return num_sets; }
+		inline const BindSet *getBindSet(uint8_t index) const { return sets[index]; }
+		inline BindSet *getBindSet(uint8_t index) { return sets[index]; }
 
-		void pushBindSet(const BindSet *set);
-		void setBindSet(uint32_t binding, const BindSet *set);
+		void pushBindSet(BindSet *set);
+		void setBindSet(uint32_t binding, BindSet *set);
 
 		void clearShaders();
 
 		inline VkShaderModule getShader(ShaderType type) const { return shaders[static_cast<uint32_t>(type)]; }
 		void setShader(ShaderType type, const Shader *shader);
+
+		void setFramebuffer(const FrameBuffer *frame_buffer);
+
+		inline VkViewport getViewport() const { return viewport; }
+		inline VkRect2D getScissor() const { return scissor; }
+
+		inline VkSampleCountFlagBits getMaxSampleCount() const { return samples; }
+		inline uint8_t getNumColorAttachments() const { return num_color_attachments; }
 
 		inline VkRenderPass getRenderPass() const { return render_pass; }
 		inline void setRenderPass(VkRenderPass pass) { render_pass = pass; }
@@ -71,11 +81,17 @@ namespace render::backend::vulkan
 			MAX_SETS = 16,
 		};
 
-		BindSet sets[MAX_SETS];
+		BindSet *sets[MAX_SETS]; // TODO: made this safer
 		uint8_t num_sets {0};
+
+		VkViewport viewport;
+		VkRect2D scissor;
 
 		VkShaderModule shaders[static_cast<uint32_t>(ShaderType::MAX)];
 		VkRenderPass render_pass { VK_NULL_HANDLE };
+
+		VkSampleCountFlagBits samples { VK_SAMPLE_COUNT_1_BIT };
+		uint8_t num_color_attachments {0};
 
 		RenderState state {};
 	};

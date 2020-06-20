@@ -239,10 +239,15 @@ void VulkanMesh::uploadToGPU()
 {
 	createVertexBuffer();
 	createIndexBuffer();
+
+	render_primitive = driver->createRenderPrimitive(render::backend::RenderPrimitiveType::TRIANGLE_LIST, vertex_buffer, index_buffer);
 }
 
 void VulkanMesh::clearGPUData()
 {
+	driver->destroyRenderPrimitive(render_primitive);
+	render_primitive = nullptr;
+
 	driver->destroyVertexBuffer(vertex_buffer);
 	vertex_buffer = nullptr;
 

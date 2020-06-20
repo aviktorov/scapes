@@ -11,6 +11,8 @@ namespace render::backend
 		class Context;
 		class DescriptorSetCache;
 		class DescriptorSetLayoutCache;
+		class PipelineLayoutCache;
+		class PipelineCache;
 		class RenderPassCache;
 
 		struct VertexBuffer : public render::backend::VertexBuffer
@@ -25,7 +27,8 @@ namespace render::backend
 			uint16_t vertex_size {0};
 			uint32_t num_vertices {0};
 			uint8_t num_attributes {0};
-			VertexAttribute attributes[VertexBuffer::MAX_ATTRIBUTES];
+			VkFormat attribute_formats[VertexBuffer::MAX_ATTRIBUTES];
+			uint32_t attribute_offsets[VertexBuffer::MAX_ATTRIBUTES];
 		};
 
 		struct IndexBuffer : public render::backend::IndexBuffer
@@ -119,12 +122,18 @@ namespace render::backend
 					VkImageView view;
 					VkSampler sampler;
 				} texture;
-				VkBuffer ubo;
+				struct UBO
+				{
+					VkBuffer buffer;
+					uint32_t offset;
+					uint32_t size;
+				} ubo;
 			};
 
 			VkDescriptorSetLayoutBinding bindings[MAX_BINDINGS];
 			Data binding_data[MAX_BINDINGS];
 			bool binding_used[MAX_BINDINGS];
+			bool binding_dirty[MAX_BINDINGS];
 		};
 
 		struct SwapChain : public render::backend::SwapChain
@@ -325,11 +334,17 @@ namespace render::backend
 		void bindTexture(
 			BindSet *bind_set,
 			uint32_t binding,
+			const Texture *texture
+		) override;
+
+		void bindTexture(
+			BindSet *bind_set,
+			uint32_t binding,
 			const Texture *texture,
-			uint32_t base_mip = 0,
-			uint32_t num_mips = 1,
-			uint32_t base_layer = 0,
-			uint32_t num_layers = 1
+			uint32_t base_mip,
+			uint32_t num_mips,
+			uint32_t base_layer,
+			uint32_t num_layers
 		) override;
 
 	public:
@@ -338,12 +353,12 @@ namespace render::backend
 		) override;
 
 		void pushBindSet(
-			const BindSet *bind_set
+			BindSet *bind_set
 		) override;
 
 		void setBindSet(
 			uint32_t binding,
-			const BindSet *bind_set
+			BindSet *bind_set
 		) override;
 
 		void clearShaders(
@@ -440,6 +455,8 @@ namespace render::backend
 		vulkan::Context *context {nullptr};
 		vulkan::DescriptorSetCache *descriptor_set_cache {nullptr};
 		vulkan::DescriptorSetLayoutCache *descriptor_set_layout_cache {nullptr};
+		vulkan::PipelineLayoutCache *pipeline_layout_cache {nullptr};
+		vulkan::PipelineCache *pipeline_cache {nullptr};
 		vulkan::RenderPassCache *render_pass_cache {nullptr};
 	};
 }
