@@ -130,6 +130,9 @@ namespace render::backend
 				} ubo;
 			};
 
+			VkDescriptorSetLayout set_layout {VK_NULL_HANDLE};
+			VkDescriptorSet set {VK_NULL_HANDLE};
+
 			VkDescriptorSetLayoutBinding bindings[MAX_BINDINGS];
 			Data binding_data[MAX_BINDINGS];
 			bool binding_used[MAX_BINDINGS];
@@ -453,7 +456,6 @@ namespace render::backend
 	private:
 		vulkan::Device *device {nullptr};
 		vulkan::Context *context {nullptr};
-		vulkan::DescriptorSetCache *descriptor_set_cache {nullptr};
 		vulkan::DescriptorSetLayoutCache *descriptor_set_layout_cache {nullptr};
 		vulkan::PipelineLayoutCache *pipeline_layout_cache {nullptr};
 		vulkan::PipelineCache *pipeline_cache {nullptr};

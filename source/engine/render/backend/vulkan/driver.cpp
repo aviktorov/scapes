@@ -8,7 +8,6 @@
 #include "render/backend/vulkan/Context.h"
 #include "render/backend/vulkan/device.h"
 #include "render/backend/vulkan/platform.h"
-#include "render/backend/vulkan/DescriptorSetCache.h"
 #include "render/backend/vulkan/DescriptorSetLayoutCache.h"
 #include "render/backend/vulkan/PipelineLayoutCache.h"
 #include "render/backend/vulkan/PipelineCache.h"
@@ -697,6 +696,34 @@ namespace render::backend
 			vkDestroySwapchainKHR(device->getDevice(), swap_chain->swap_chain, nullptr);
 			swap_chain->swap_chain = VK_NULL_HANDLE;
 		}
+
+		static void updateBindSetLayout(const Device *device, BindSet *bind_set, VkDescriptorSetLayout new_layout)
+		{
+			if (new_layout == bind_set->set_layout)
+				return;
+
+			bind_set->set_layout = new_layout;
+
+			if (bind_set->set != VK_NULL_HANDLE)
+				vkFreeDescriptorSets(device->getDevice(), device->getDescriptorPool(), 1, &bind_set->set);
+
+			VkDescriptorSetAllocateInfo info = {};
+			info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			info.descriptorPool = device->getDescriptorPool();
+			info.descriptorSetCount = 1;
+			info.pSetLayouts = &new_layout;
+
+			vkAllocateDescriptorSets(device->getDevice(), &info, &bind_set->set);
+			assert(bind_set->set);
+
+			for (uint8_t i = 0; i < vulkan::BindSet::MAX_BINDINGS; ++i)
+			{
+				if (!bind_set->binding_used[i])
+					continue;
+
+				bind_set->binding_dirty[i] = true;
+			}
+		}
 	}
 
 	VulkanDriver::VulkanDriver(const char *application_name, const char *engine_name)
@@ -706,7 +733,6 @@ namespace render::backend
 
 		context = new vulkan::Context();
 		descriptor_set_layout_cache = new vulkan::DescriptorSetLayoutCache(device);
-		descriptor_set_cache = new vulkan::DescriptorSetCache(device, descriptor_set_layout_cache);
 		pipeline_layout_cache = new vulkan::PipelineLayoutCache(device, descriptor_set_layout_cache);
 		pipeline_cache = new vulkan::PipelineCache(device, pipeline_layout_cache);
 		render_pass_cache = new vulkan::RenderPassCache(device);
@@ -719,9 +745,6 @@ namespace render::backend
 
 		delete pipeline_layout_cache;
 		pipeline_layout_cache = nullptr;
-
-		delete descriptor_set_cache;
-		descriptor_set_cache = nullptr;
 
 		delete descriptor_set_layout_cache;
 		descriptor_set_layout_cache = nullptr;
@@ -2001,6 +2024,8 @@ namespace render::backend
 
 	void VulkanDriver::beginRenderPass(CommandBuffer *command_buffer, const FrameBuffer *frame_buffer, const RenderPassInfo *info)
 	{
+		assert(frame_buffer);
+
 		if (command_buffer == nullptr)
 			return;
 		
@@ -2054,7 +2079,11 @@ namespace render::backend
 		for (uint8_t i = 0; i < context->getNumBindSets(); ++i)
 		{
 			vulkan::BindSet *bind_set = context->getBindSet(i);
-			sets[i] = descriptor_set_cache->fetch(bind_set);
+
+			VkDescriptorSetLayout new_layout = descriptor_set_layout_cache->fetch(bind_set);
+			vulkan::updateBindSetLayout(device, bind_set, new_layout);
+
+			sets[i] = bind_set->set;
 
 			for (uint8_t j = 0; j < vulkan::BindSet::MAX_BINDINGS; ++j)
 			{
@@ -2069,32 +2098,40 @@ namespace render::backend
 
 				VkWriteDescriptorSet write_set = {};
 				write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				write_set.dstSet = sets[i];
+				write_set.dstSet = bind_set->set;
 				write_set.dstBinding = j;
 				write_set.dstArrayElement = 0;
 
-				if (descriptor_type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				switch (descriptor_type)
 				{
-					VkDescriptorImageInfo info = {};
-					info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-					info.imageView = data.texture.view;
-					info.sampler = data.texture.sampler;
+					case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+					{
+						VkDescriptorImageInfo info = {};
+						info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+						info.imageView = data.texture.view;
+						info.sampler = data.texture.sampler;
 
-					image_infos.push_back(info);
-					write_set.pImageInfo = &image_infos[image_infos.size() - 1];
-				}
-				else if (descriptor_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-				{
-					VkDescriptorBufferInfo info = {};
-					info.buffer = data.ubo.buffer;
-					info.offset = data.ubo.offset;
-					info.range = data.ubo.size;
+						image_infos.push_back(info);
+						write_set.pImageInfo = &image_infos[image_infos.size() - 1];
+					}
+					break;
+					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+					{
+						VkDescriptorBufferInfo info = {};
+						info.buffer = data.ubo.buffer;
+						info.offset = data.ubo.offset;
+						info.range = data.ubo.size;
 
-					buffer_infos.push_back(info);
-					write_set.pBufferInfo = &buffer_infos[buffer_infos.size() - 1];
+						buffer_infos.push_back(info);
+						write_set.pBufferInfo = &buffer_infos[buffer_infos.size() - 1];
+					}
+					break;
+					default:
+					{
+						assert(false && "Unsupported descriptor type");
+					}
+					break;
 				}
-				else
-					continue;
 
 				write_set.descriptorType = descriptor_type;
 				write_set.descriptorCount = 1;
