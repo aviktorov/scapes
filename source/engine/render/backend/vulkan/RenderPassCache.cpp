@@ -42,7 +42,7 @@ namespace render::backend::vulkan
 
 			if (type == FrameBufferAttachmentType::DEPTH)
 			{
-				builder.addDepthStencilAttachment(format, samples);
+				builder.addDepthStencilAttachment(format, samples, load_op, store_op);
 				builder.setDepthStencilAttachmentReference(0, i);
 			}
 			else if(resolve)
