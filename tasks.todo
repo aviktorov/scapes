@@ -28,6 +28,7 @@ PBR Sandbox:
         ☐ Create a pull request to ImGui (Vulkan + Volk)
         ☐ Figure out different probability density functions for different NDF
         ✔ Figure out why context swap recreation is broken during resize event @done (6/5/2020, 10:54:32 PM)
+        ✔ Figure out why render pass doesn't clear depth correctly @done (6/27/2020, 5:47:13 PM)
     Online:
         ☐ Implement Oren-Nayar diffuse BRDF
         ☐ Implement microfacet Burley 12 diffuse BRDF
@@ -41,10 +42,14 @@ PBR Sandbox:
         ☐ Create backend based ImGui implementation on App level
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ Create separate cmake script for backend
+    Stream 36:
+        ☐ Migrate other renderers to backend
+        ☐ Organize, move & renames files in vulkan backend
+        ☐ Organize files in the engine
     Stream 35:
-        ☐ Finish backend drawing methods
-            ☐ Add pipeline layout cache to backend
-            ☐ Add pipeline cache to backend
+        ✔ Finish backend drawing methods @done (6/21/2020, 2:38:52 AM)
+            ✔ Add pipeline layout cache to backend @done (6/21/2020, 2:38:52 AM)
+            ✔ Add pipeline cache to backend @done (6/21/2020, 2:38:53 AM)
     Stream 34:
         ✔ Continue drafting backend drawing methods @done (6/19/2020, 1:36:23 AM)
             ✔ Add context to vulkan driver which will store current state & bind sets & shaders @done (6/19/2020, 1:36:23 AM)
