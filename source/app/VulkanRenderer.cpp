@@ -32,13 +32,12 @@ void VulkanRenderer::init(const RenderScene *scene)
 	environmentCubemap.createCube(render::backend::Format::R32G32B32A32_SFLOAT, 256, 256, 8);
 	diffuseIrradianceCubemap.createCube(render::backend::Format::R32G32B32A32_SFLOAT, 256, 256, 1);
 
-	bakedBRDFRenderer.init(
-		*scene->getBakedBRDFVertexShader(),
-		*scene->getBakedBRDFFragmentShader(),
-		bakedBRDF
-	);
 
-	bakedBRDFRenderer.render();
+	bakedBRDFRenderer.init(&bakedBRDF);
+	bakedBRDFRenderer.render(
+		scene->getBakedBRDFVertexShader(),
+		scene->getBakedBRDFFragmentShader()
+	);
 
 	hdriToCubeRenderer.init(
 		*scene->getCubeVertexShader(),

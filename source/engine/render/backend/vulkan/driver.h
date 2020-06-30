@@ -314,6 +314,10 @@ namespace render::backend
 		void unmap(UniformBuffer *uniform_buffer) override;
 
 		void wait() override;
+		bool wait(
+			uint32_t num_wait_command_buffers,
+			CommandBuffer * const *wait_command_buffers
+		) override;
 
 		bool acquire(
 			SwapChain *swap_chain,

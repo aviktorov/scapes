@@ -1613,6 +1613,27 @@ namespace render::backend
 		device->wait();
 	}
 
+	bool VulkanDriver::wait(
+		uint32_t num_wait_command_buffers,
+		CommandBuffer * const *wait_command_buffers
+	)
+	{
+		if (num_wait_command_buffers == 0)
+			return true;
+
+		std::vector<VkFence> wait_fences(num_wait_command_buffers);
+
+		for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
+		{
+			const vulkan::CommandBuffer *vk_wait_command_buffer = static_cast<const vulkan::CommandBuffer *>(wait_command_buffers[i]);
+			wait_fences[i] = vk_wait_command_buffer->rendering_finished_cpu;
+		}
+
+		VkResult result = vkWaitForFences(device->getDevice(), num_wait_command_buffers, wait_fences.data(), VK_TRUE, UINT64_MAX);
+
+		return result == VK_SUCCESS;
+	}
+
 	bool VulkanDriver::acquire(SwapChain *swap_chain, uint32_t *new_image)
 	{
 		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
@@ -2149,7 +2170,9 @@ namespace render::backend
 		VkPipeline pipeline = pipeline_cache->fetch(context, vk_render_primitive);
 
 		vkCmdBindPipeline(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-		vkCmdBindDescriptorSets(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
+
+		if (sets.size() > 0)
+			vkCmdBindDescriptorSets(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
 
 		VkViewport viewport = context->getViewport();
 		VkRect2D scissor = context->getScissor();

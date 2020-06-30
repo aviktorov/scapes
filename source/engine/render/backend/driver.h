@@ -445,6 +445,10 @@ public:
 	virtual void unmap(UniformBuffer *uniform_buffer) = 0;
 
 	virtual void wait() = 0;
+	virtual bool wait(
+		uint32_t num_wait_command_buffers,
+		CommandBuffer * const *wait_command_buffers
+	) = 0;
 
 	virtual bool acquire(
 		SwapChain *swap_chain,
