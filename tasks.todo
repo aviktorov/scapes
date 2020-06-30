@@ -32,20 +32,24 @@ PBR Sandbox:
     Online:
         ☐ Implement Oren-Nayar diffuse BRDF
         ☐ Implement microfacet Burley 12 diffuse BRDF
-        ☐ Improve microfacet BRDFs
-            ☐ Different impls for D/F/G specular factors
-            ☐ Multiscattering GGX + Shlick
         ☐ Create a material class (holds textures, shaders & UBO for material params)
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add support for other platforms (Linux, MacOS, iOS, Android)
-        ☐ Extract IBL baker from VulkanRenderer
-        ☐ Create backend based ImGui implementation on App level
         ☐ Add simple FileSystem with data root path for simplified content loading
-        ☐ Create separate cmake script for backend
-    Stream 36:
-        ☐ Migrate other renderers to backend
+    Next Up:
+        ☐ Remove vulkan dependencies from VulkanTexture
         ☐ Organize, move & renames files in vulkan backend
         ☐ Organize files in the engine
+        ☐ Migrate ImGui renderer to backend
+        ☐ Create separate cmake script for backend
+    Stream 37:
+        ☐ Extract IBL baker from VulkanRenderer
+        ☐ Improve microfacet BRDFs
+            ☐ Different impls for D/F/G specular factors
+            ☐ Multiscattering GGX + Shlick
+    Stream 36:
+        ✔ Move image layout transitions to backend @done (6/30/2020, 10:25:07 PM)
+        ✔ Migrate other renderers to backend @done (7/1/2020, 12:20:13 AM)
     Stream 35:
         ✔ Finish backend drawing methods @done (6/21/2020, 2:38:52 AM)
             ✔ Add pipeline layout cache to backend @done (6/21/2020, 2:38:52 AM)
