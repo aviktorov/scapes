@@ -76,7 +76,7 @@ void Application::update()
 	{
 		scene->reloadShaders();
 		renderer->reload(scene);
-		renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
+		renderer->setEnvironment(scene, scene->getHDRTexture(state.currentEnvironment));
 	}
 
 	int oldCurrentEnvironment = state.currentEnvironment;
@@ -88,7 +88,7 @@ void Application::update()
 			if (ImGui::Selectable(scene->getHDRTexturePath(i), &selected))
 			{
 				state.currentEnvironment = i;
-				renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
+				renderer->setEnvironment(scene, scene->getHDRTexture(state.currentEnvironment));
 			}
 			if (selected)
 				ImGui::SetItemDefaultFocus();
@@ -239,7 +239,7 @@ void Application::initRenderers()
 {
 	renderer = new VulkanRenderer(driver);
 	renderer->init(scene);
-	renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
+	renderer->setEnvironment(scene, scene->getHDRTexture(state.currentEnvironment));
 
 	imguiRenderer = new VulkanImGuiRenderer(driver, ImGui::GetCurrentContext(), swapChain->getExtent(), swapChain->getDummyRenderPass());
 	imguiRenderer->init(swapChain);

@@ -1,20 +1,11 @@
-// TODO: remove Vulkan dependencies
 #pragma once
 
-#include <volk.h>
-#include <string>
-#include <vector>
-
-#include "VulkanShader.h"
-#include "VulkanTexture.h"
 #include "VulkanMesh.h"
 
 #include <render/backend/driver.h>
 
-namespace render::backend::vulkan
-{
-	class Device;
-}
+class VulkanShader;
+class VulkanTexture;
 
 /*
  */
@@ -24,35 +15,27 @@ public:
 	VulkanCubemapRenderer(render::backend::Driver *driver);
 
 	void init(
-		const VulkanShader &vertex_shader,
-		const VulkanShader &fragment_shader,
-		const VulkanTexture &target_texture,
-		int target_mip,
-		uint32_t push_constants_size = 0
+		const VulkanTexture *target_texture,
+		uint32_t target_mip
 	);
 
 	void shutdown();
 
-	void render(const VulkanTexture &input_texture, float *push_constants = nullptr, int input_mip = -1);
+	void render(
+		const VulkanShader *vertex_shader,
+		const VulkanShader *fragment_shader,
+		const VulkanTexture *input_texture,
+		int input_mip = -1,
+		uint8_t push_constants_size = 0,
+		const uint8_t *push_constants_data = nullptr
+	);
 
 private:
-	const render::backend::vulkan::Device *device {nullptr};
 	render::backend::Driver *driver {nullptr};
-
-	VulkanMesh quad;
-	VkExtent2D target_extent;
-
-	VkPipelineLayout pipeline_layout {VK_NULL_HANDLE};
-	VkDescriptorSetLayout descriptor_set_layout {VK_NULL_HANDLE};
-	VkRenderPass render_pass {VK_NULL_HANDLE};
-	VkPipeline pipeline {VK_NULL_HANDLE};
-
-	VkCommandBuffer command_buffer {VK_NULL_HANDLE};
-	VkDescriptorSet descriptor_set {VK_NULL_HANDLE};
-	VkFence fence {VK_NULL_HANDLE};
-
+	render::backend::BindSet *bind_set {nullptr};
+	render::backend::CommandBuffer *command_buffer {nullptr};
 	render::backend::FrameBuffer *framebuffer {nullptr};
 	render::backend::UniformBuffer *uniform_buffer {nullptr};
 
-	uint32_t push_constants_size {0};
+	VulkanMesh quad;
 };

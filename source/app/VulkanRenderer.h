@@ -29,7 +29,7 @@ public:
 	void render(const RenderScene *scene, const VulkanRenderFrame &frame);
 
 	void reload(const RenderScene *scene);
-	void setEnvironment(const VulkanTexture *texture);
+	void setEnvironment(const RenderScene *scene, const VulkanTexture *texture);
 
 private:
 	render::backend::Driver *driver {nullptr};

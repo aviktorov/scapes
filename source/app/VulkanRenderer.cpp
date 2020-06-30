@@ -32,41 +32,24 @@ void VulkanRenderer::init(const RenderScene *scene)
 	environmentCubemap.createCube(render::backend::Format::R32G32B32A32_SFLOAT, 256, 256, 8);
 	diffuseIrradianceCubemap.createCube(render::backend::Format::R32G32B32A32_SFLOAT, 256, 256, 1);
 
-
 	bakedBRDFRenderer.init(&bakedBRDF);
 	bakedBRDFRenderer.render(
 		scene->getBakedBRDFVertexShader(),
 		scene->getBakedBRDFFragmentShader()
 	);
 
-	hdriToCubeRenderer.init(
-		*scene->getCubeVertexShader(),
-		*scene->getHDRIToFragmentShader(),
-		environmentCubemap,
-		0
-	);
+	hdriToCubeRenderer.init(&environmentCubemap, 0);
 
 	cubeToPrefilteredRenderers.resize(environmentCubemap.getNumMipLevels() - 1);
 	for (int mip = 0; mip < environmentCubemap.getNumMipLevels() - 1; mip++)
 	{
 		VulkanCubemapRenderer *mipRenderer = new VulkanCubemapRenderer(driver);
-		mipRenderer->init(
-			*scene->getCubeVertexShader(),
-			*scene->getCubeToPrefilteredSpecularShader(),
-			environmentCubemap,
-			mip + 1,
-			sizeof(float) * 4
-		);
+		mipRenderer->init(&environmentCubemap, mip + 1);
 
 		cubeToPrefilteredRenderers[mip] = mipRenderer;
 	}
 
-	diffuseIrradianceRenderer.init(
-		*scene->getCubeVertexShader(),
-		*scene->getDiffuseIrradianceFragmentShader(),
-		diffuseIrradianceCubemap,
-		0
-	);
+	diffuseIrradianceRenderer.init(&diffuseIrradianceCubemap, 0);
 
 	// Create scene descriptor set
 	scene_bind_set = driver->createBindSet();
@@ -118,6 +101,7 @@ void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &f
 	const VulkanMesh *skybox = scene->getSkybox();
 	const VulkanMesh *mesh = scene->getMesh();
 
+	driver->clearPushConstants();
 	driver->clearBindSets();
 	driver->pushBindSet(frame.bind_set);
 	driver->pushBindSet(scene_bind_set);
@@ -141,9 +125,13 @@ void VulkanRenderer::reload(const RenderScene *scene)
 	init(scene);
 }
 
-void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
+void VulkanRenderer::setEnvironment(const RenderScene *scene, const VulkanTexture *texture)
 {
-	hdriToCubeRenderer.render(*texture);
+	hdriToCubeRenderer.render(
+		scene->getCubeVertexShader(),
+		scene->getHDRIToFragmentShader(),
+		texture
+	);
 
 	for (uint32_t i = 0; i < cubeToPrefilteredRenderers.size(); i++)
 	{
@@ -152,10 +140,21 @@ void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 			0.0f, 0.0f, 0.0f
 		};
 
-		cubeToPrefilteredRenderers[i]->render(environmentCubemap, data, i);
+		cubeToPrefilteredRenderers[i]->render(
+			scene->getCubeVertexShader(),
+			scene->getCubeToPrefilteredSpecularShader(),
+			&environmentCubemap,
+			i,
+			static_cast<uint8_t>(sizeof(float)*4),
+			reinterpret_cast<const uint8_t *>(data)
+		);
 	}
 
-	diffuseIrradianceRenderer.render(environmentCubemap);
+	diffuseIrradianceRenderer.render(
+		scene->getCubeVertexShader(),
+		scene->getDiffuseIrradianceFragmentShader(),
+		&environmentCubemap
+	);
 
 	std::array<const VulkanTexture *, 2> textures =
 	{
