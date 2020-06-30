@@ -1,7 +1,4 @@
-// TODO: remove Vulkan dependencies
 #pragma once
-
-#include <volk.h>
 
 #include <string>
 #include <render/backend/driver.h>
@@ -20,7 +17,6 @@ public:
 	bool reload();
 	void clear();
 
-	VkShaderModule getShaderModule() const;
 	inline render::backend::Shader *getBackend() const { return shader; }
 
 private:

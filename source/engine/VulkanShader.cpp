@@ -1,11 +1,8 @@
-// TODO: remove Vulkan dependencies
 #include "VulkanShader.h"
 
 #include <fstream>
 #include <iostream>
 #include <vector>
-
-#include <render/backend/vulkan/driver.h>
 
 /*
  */
@@ -50,12 +47,4 @@ void VulkanShader::clear()
 {
 	driver->destroyShader(shader);
 	shader = nullptr;
-}
-
-VkShaderModule VulkanShader::getShaderModule() const
-{
-	if (shader == nullptr)
-		return VK_NULL_HANDLE;
-
-	return static_cast<render::backend::vulkan::Shader *>(shader)->module;
 }
