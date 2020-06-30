@@ -11,11 +11,6 @@
 
 #include <render/backend/driver.h>
 
-namespace render::backend::vulkan
-{
-	class Device;
-}
-
 class RenderScene;
 class VulkanSwapChain;
 struct VulkanRenderFrame;
@@ -25,7 +20,7 @@ struct VulkanRenderFrame;
 class VulkanRenderer
 {
 public:
-	VulkanRenderer(render::backend::Driver *driver,VkExtent2D extent);
+	VulkanRenderer(render::backend::Driver *driver);
 	virtual ~VulkanRenderer();
 
 	void init(const RenderScene *scene);
@@ -37,9 +32,7 @@ public:
 	void setEnvironment(const VulkanTexture *texture);
 
 private:
-	const render::backend::vulkan::Device *device {nullptr};
 	render::backend::Driver *driver {nullptr};
-	VkExtent2D extent;
 
 	VulkanTexture2DRenderer bakedBRDFRenderer;
 	VulkanCubemapRenderer hdriToCubeRenderer;

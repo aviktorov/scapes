@@ -237,7 +237,7 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	renderer = new VulkanRenderer(driver, swapChain->getExtent());
+	renderer = new VulkanRenderer(driver);
 	renderer->init(scene);
 	renderer->setEnvironment(scene->getHDRTexture(state.currentEnvironment));
 
@@ -321,6 +321,5 @@ void Application::recreateVulkanSwapChain()
 
 	glfwGetWindowSize(window, &width, &height);
 	swapChain->reinit(width, height);
-	renderer->resize(swapChain);
 	imguiRenderer->resize(swapChain);
 }

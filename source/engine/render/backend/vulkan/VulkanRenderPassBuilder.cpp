@@ -10,6 +10,7 @@ VulkanRenderPassBuilder::~VulkanRenderPassBuilder()
 VulkanRenderPassBuilder &VulkanRenderPassBuilder::addColorAttachment(
 	VkFormat format,
 	VkSampleCountFlagBits msaaSamples,
+	VkImageLayout finalLayout,
 	VkAttachmentLoadOp loadOp,
 	VkAttachmentStoreOp storeOp,
 	VkAttachmentLoadOp stencilLoadOp,
@@ -24,7 +25,7 @@ VulkanRenderPassBuilder &VulkanRenderPassBuilder::addColorAttachment(
 	colorAttachment.stencilLoadOp = stencilLoadOp;
 	colorAttachment.stencilStoreOp = stencilStoreOp;
 	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachment.finalLayout = finalLayout;
 
 	attachments.push_back(colorAttachment);
 
@@ -33,6 +34,7 @@ VulkanRenderPassBuilder &VulkanRenderPassBuilder::addColorAttachment(
 
 VulkanRenderPassBuilder &VulkanRenderPassBuilder::addColorResolveAttachment(
 	VkFormat format,
+	VkImageLayout finalLayout,
 	VkAttachmentLoadOp loadOp,
 	VkAttachmentStoreOp storeOp,
 	VkAttachmentLoadOp stencilLoadOp,
@@ -47,7 +49,7 @@ VulkanRenderPassBuilder &VulkanRenderPassBuilder::addColorResolveAttachment(
 	colorAttachmentResolve.stencilLoadOp = stencilLoadOp;
 	colorAttachmentResolve.stencilStoreOp = stencilStoreOp;
 	colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachmentResolve.finalLayout = finalLayout;
 
 	attachments.push_back(colorAttachmentResolve);
 
@@ -57,6 +59,7 @@ VulkanRenderPassBuilder &VulkanRenderPassBuilder::addColorResolveAttachment(
 VulkanRenderPassBuilder &VulkanRenderPassBuilder::addDepthStencilAttachment(
 	VkFormat format,
 	VkSampleCountFlagBits msaaSamples,
+	VkImageLayout finalLayout,
 	VkAttachmentLoadOp loadOp,
 	VkAttachmentStoreOp storeOp,
 	VkAttachmentLoadOp stencilLoadOp,
@@ -71,7 +74,7 @@ VulkanRenderPassBuilder &VulkanRenderPassBuilder::addDepthStencilAttachment(
 	depthAttachment.stencilLoadOp = stencilLoadOp;
 	depthAttachment.stencilStoreOp = stencilStoreOp;
 	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthAttachment.finalLayout = finalLayout;
 
 	attachments.push_back(depthAttachment);
 

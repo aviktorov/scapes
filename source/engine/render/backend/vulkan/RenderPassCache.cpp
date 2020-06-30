@@ -40,19 +40,24 @@ namespace render::backend::vulkan
 			VkAttachmentLoadOp load_op = (VkAttachmentLoadOp)info->load_ops[i];
 			VkAttachmentStoreOp store_op = (VkAttachmentStoreOp)info->store_ops[i];
 
+			VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+			if (type == FrameBufferAttachmentType::SWAP_CHAIN_COLOR)
+				layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
 			if (type == FrameBufferAttachmentType::DEPTH)
 			{
-				builder.addDepthStencilAttachment(format, samples, load_op, store_op);
+				builder.addDepthStencilAttachment(format, samples, layout, load_op, store_op);
 				builder.setDepthStencilAttachmentReference(0, i);
 			}
 			else if(resolve)
 			{
-				builder.addColorResolveAttachment(format, load_op, store_op);
+				builder.addColorResolveAttachment(format, layout, load_op, store_op);
 				builder.addColorResolveAttachmentReference(0, i);
 			}
 			else
 			{
-				builder.addColorAttachment(format, samples, load_op, store_op);
+				builder.addColorAttachment(format, samples, layout, load_op, store_op);
 				builder.addColorAttachmentReference(0, i);
 			}
 		}

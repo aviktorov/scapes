@@ -4,24 +4,12 @@
 
 #include "RenderScene.h"
 
-#include "render/backend/vulkan/driver.h"
-#include "render/backend/vulkan/device.h"
-#include "render/backend/vulkan/VulkanUtils.h"
-#include "render/backend/vulkan/VulkanDescriptorSetLayoutBuilder.h"
-#include "render/backend/vulkan/VulkanGraphicsPipelineBuilder.h"
-#include "render/backend/vulkan/VulkanPipelineLayoutBuilder.h"
-#include "render/backend/vulkan/VulkanRenderPassBuilder.h"
-
 using namespace render::backend;
 
 /*
  */
-VulkanRenderer::VulkanRenderer(
-	render::backend::Driver *driver,
-	VkExtent2D extent
-)
+VulkanRenderer::VulkanRenderer(render::backend::Driver *driver)
 	: driver(driver)
-	, extent(extent)
 	, hdriToCubeRenderer(driver)
 	, diffuseIrradianceRenderer(driver)
 	, environmentCubemap(driver)
@@ -29,7 +17,6 @@ VulkanRenderer::VulkanRenderer(
 	, bakedBRDF(driver)
 	, bakedBRDFRenderer(driver)
 {
-	device = static_cast<render::backend::VulkanDriver *>(driver)->getDevice();
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -51,29 +38,7 @@ void VulkanRenderer::init(const RenderScene *scene)
 		bakedBRDF
 	);
 
-	{
-		VulkanUtils::transitionImageLayout(
-			device,
-			bakedBRDF.getImage(),
-			bakedBRDF.getImageFormat(),
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			0, bakedBRDF.getNumMipLevels(),
-			0, bakedBRDF.getNumLayers()
-		);
-
-		bakedBRDFRenderer.render();
-
-		VulkanUtils::transitionImageLayout(
-			device,
-			bakedBRDF.getImage(),
-			bakedBRDF.getImageFormat(),
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			0, bakedBRDF.getNumMipLevels(),
-			0, bakedBRDF.getNumLayers()
-		);
-	}
+	bakedBRDFRenderer.render();
 
 	hdriToCubeRenderer.init(
 		*scene->getCubeVertexShader(),
@@ -144,13 +109,6 @@ void VulkanRenderer::shutdown()
 	scene_bind_set = nullptr;
 }
 
-/*
- */
-void VulkanRenderer::resize(const VulkanSwapChain *swapChain)
-{
-	extent = swapChain->getExtent();
-}
-
 void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &frame)
 {
 	const VulkanShader *pbrVertexShader = scene->getPBRVertexShader();
@@ -186,83 +144,19 @@ void VulkanRenderer::reload(const RenderScene *scene)
 
 void VulkanRenderer::setEnvironment(const VulkanTexture *texture)
 {
-	{
-		VulkanUtils::transitionImageLayout(
-			device,
-			environmentCubemap.getImage(),
-			environmentCubemap.getImageFormat(),
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			0, 1,
-			0, environmentCubemap.getNumLayers()
-		);
-
-		hdriToCubeRenderer.render(*texture);
-
-		VulkanUtils::transitionImageLayout(
-			device,
-			environmentCubemap.getImage(),
-			environmentCubemap.getImageFormat(),
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			0, 1,
-			0, environmentCubemap.getNumLayers()
-		);
-	}
+	hdriToCubeRenderer.render(*texture);
 
 	for (uint32_t i = 0; i < cubeToPrefilteredRenderers.size(); i++)
 	{
-		VulkanUtils::transitionImageLayout(
-			device,
-			environmentCubemap.getImage(),
-			environmentCubemap.getImageFormat(),
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			i + 1, 1,
-			0, environmentCubemap.getNumLayers()
-		);
-
 		float data[4] = {
 			static_cast<float>(i) / environmentCubemap.getNumMipLevels(),
 			0.0f, 0.0f, 0.0f
 		};
 
 		cubeToPrefilteredRenderers[i]->render(environmentCubemap, data, i);
-
-		VulkanUtils::transitionImageLayout(
-			device,
-			environmentCubemap.getImage(),
-			environmentCubemap.getImageFormat(),
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			i + 1, 1,
-			0, environmentCubemap.getNumLayers()
-		);
 	}
 
-	{
-		VulkanUtils::transitionImageLayout(
-			device,
-			diffuseIrradianceCubemap.getImage(),
-			diffuseIrradianceCubemap.getImageFormat(),
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			0, diffuseIrradianceCubemap.getNumMipLevels(),
-			0, diffuseIrradianceCubemap.getNumLayers()
-		);
-
-		diffuseIrradianceRenderer.render(environmentCubemap);
-
-		VulkanUtils::transitionImageLayout(
-			device,
-			diffuseIrradianceCubemap.getImage(),
-			diffuseIrradianceCubemap.getImageFormat(),
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			0, diffuseIrradianceCubemap.getNumMipLevels(),
-			0, diffuseIrradianceCubemap.getNumLayers()
-		);
-	}
+	diffuseIrradianceRenderer.render(environmentCubemap);
 
 	std::array<const VulkanTexture *, 2> textures =
 	{

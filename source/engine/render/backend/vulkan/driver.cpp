@@ -1080,12 +1080,12 @@ namespace render::backend
 
 				if (swap_chain_color.resolve_attachment)
 				{
-					builder.addColorResolveAttachment(swap_chain->surface_format.format);
+					builder.addColorResolveAttachment(swap_chain->surface_format.format, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 					builder.addColorResolveAttachmentReference(0, i);
 				}
 				else
 				{
-					builder.addColorAttachment(swap_chain->surface_format.format, VK_SAMPLE_COUNT_1_BIT);
+					builder.addColorAttachment(swap_chain->surface_format.format, VK_SAMPLE_COUNT_1_BIT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 					builder.addColorAttachmentReference(0, i);
 				}
 			}
