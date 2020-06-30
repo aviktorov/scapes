@@ -13,6 +13,11 @@ namespace render::backend::vulkan
 		Context() { clear(); }
 		~Context() { clear(); }
 
+		inline void clearPushConstants() { push_constants_size = 0; }
+		void setPushConstants(uint8_t size, const void *data);
+		inline const uint8_t *getPushConstants() const { return push_constants; }
+		inline uint8_t getPushConstantsSize() const { return push_constants_size; }
+
 		inline void clearBindSets() { num_sets = 0; }
 		inline uint8_t getNumBindSets() const { return num_sets; }
 		inline const BindSet *getBindSet(uint8_t index) const { return sets[index]; }
@@ -79,7 +84,11 @@ namespace render::backend::vulkan
 		enum
 		{
 			MAX_SETS = 16,
+			MAX_PUSH_CONSTANT_SIZE = 128, // TODO: use HW device capabilities for upper limit
 		};
+
+		uint8_t push_constants[MAX_PUSH_CONSTANT_SIZE];
+		uint8_t push_constants_size {0};
 
 		BindSet *sets[MAX_SETS]; // TODO: made this safer
 		uint8_t num_sets {0};

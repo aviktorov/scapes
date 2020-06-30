@@ -5,6 +5,14 @@
 
 namespace render::backend::vulkan
 {
+	void Context::setPushConstants(uint8_t size, const void *data)
+	{
+		assert(size < MAX_PUSH_CONSTANT_SIZE);
+
+		memcpy(push_constants, data, size);
+		push_constants_size = size;
+	}
+
 	void Context::pushBindSet(BindSet *set)
 	{
 		assert(num_sets < MAX_SETS);

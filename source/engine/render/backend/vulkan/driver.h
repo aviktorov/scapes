@@ -356,6 +356,14 @@ namespace render::backend
 
 	public:
 		// pipeline state
+		void clearPushConstants(
+		) override;
+
+		void setPushConstants(
+			uint8_t size,
+			const void *data
+		) override;
+
 		void clearBindSets(
 		) override;
 

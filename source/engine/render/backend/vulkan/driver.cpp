@@ -1846,6 +1846,20 @@ namespace render::backend
 
 	/*
 	 */
+	void VulkanDriver::clearPushConstants(
+	)
+	{
+		context->clearPushConstants();
+	}
+
+	void VulkanDriver::setPushConstants(
+		uint8_t size,
+		const void *data
+	)
+	{
+		context->setPushConstants(size, data);
+	}
+
 	void VulkanDriver::clearBindSets()
 	{
 		context->clearBindSets();
@@ -1963,8 +1977,6 @@ namespace render::backend
 		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		info.commandBufferCount = 1;
 		info.pCommandBuffers = &vk_command_buffer->command_buffer;
-		info.signalSemaphoreCount = 1;
-		info.pSignalSemaphores = &vk_command_buffer->rendering_finished_gpu;
 
 		vkResetFences(device->getDevice(), 1, &vk_command_buffer->rendering_finished_cpu);
 		if (vkQueueSubmit(device->getGraphicsQueue(), 1, &info, vk_command_buffer->rendering_finished_cpu) != VK_SUCCESS)
@@ -2170,6 +2182,9 @@ namespace render::backend
 		VkPipeline pipeline = pipeline_cache->fetch(context, vk_render_primitive);
 
 		vkCmdBindPipeline(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+		if (context->getPushConstantsSize() > 0)
+			vkCmdPushConstants(vk_command_buffer->command_buffer, pipeline_layout, VK_SHADER_STAGE_ALL, 0, context->getPushConstantsSize(), context->getPushConstants());
 
 		if (sets.size() > 0)
 			vkCmdBindDescriptorSets(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);

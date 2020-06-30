@@ -22,7 +22,7 @@ namespace render::backend::vulkan
 		void clear();
 
 	private:
-		uint64_t getHash(const uint8_t num_layouts, const VkDescriptorSetLayout *layouts) const;
+		uint64_t getHash(uint8_t num_layouts, const VkDescriptorSetLayout *layouts, uint8_t push_constants_size) const;
 
 	private:
 		const Device *device {nullptr};

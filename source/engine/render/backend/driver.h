@@ -487,6 +487,14 @@ public:
 
 public:
 	// pipeline state
+	virtual void clearPushConstants(
+	) = 0;
+
+	virtual void setPushConstants(
+		uint8_t size,
+		const void *data
+	) = 0;
+
 	virtual void clearBindSets(
 	) = 0;
 
