@@ -1,14 +1,10 @@
-// TODO: remove Vulkan dependencies
 #pragma once
 
-#include <volk.h>
 #include <render/backend/driver.h>
 
 #include <GLM/glm.hpp>
 
-#include <array>
 #include <vector>
-#include <string>
 
 /*
  */
@@ -20,14 +16,8 @@ public:
 
 	~VulkanMesh();
 
-	VkBuffer getVertexBuffer() const;
-	VkBuffer getIndexBuffer() const;
-
 	inline uint32_t getNumIndices() const { return static_cast<uint32_t>(indices.size()); }
 	inline render::backend::RenderPrimitive *getRenderPrimitive() const { return render_primitive; }
-
-	static VkVertexInputBindingDescription getVertexInputBindingDescription();
-	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
 
 	bool loadFromFile(const char *path);
 

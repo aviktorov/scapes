@@ -1,4 +1,3 @@
-// TODO: remove Vulkan dependencies
 #include "VulkanMesh.h"
 
 #include <assimp/Importer.hpp>
@@ -7,37 +6,12 @@
 
 #include <iostream>
 
-#include <render/backend/vulkan/driver.h>
-
 /*
  */
 VulkanMesh::~VulkanMesh()
 {
 	clearGPUData();
 	clearCPUData();
-}
-
-/*
- */
-VkVertexInputBindingDescription VulkanMesh::getVertexInputBindingDescription()
-{
-	static VkVertexInputBindingDescription bindingDescription = { 0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX };
-
-	return bindingDescription;
-}
-
-std::vector<VkVertexInputAttributeDescription> VulkanMesh::getAttributeDescriptions()
-{
-	static std::vector<VkVertexInputAttributeDescription> attributes = {
-		{ 0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, position) },
-		{ 1, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, tangent) },
-		{ 2, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, binormal) },
-		{ 3, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal) },
-		{ 4, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, color) },
-		{ 5, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv) },
-	};
-
-	return attributes;
 }
 
 /*
@@ -215,22 +189,6 @@ void VulkanMesh::createIndexBuffer()
 		static_cast<uint32_t>(indices.size()),
 		indices.data()
 	);
-}
-
-VkBuffer VulkanMesh::getVertexBuffer() const
-{
-	if (vertex_buffer == nullptr)
-		return VK_NULL_HANDLE;
-	
-	return static_cast<const render::backend::vulkan::VertexBuffer *>(vertex_buffer)->buffer;
-}
-
-VkBuffer VulkanMesh::getIndexBuffer() const
-{
-	if (index_buffer == nullptr)
-		return VK_NULL_HANDLE;
-	
-	return static_cast<const render::backend::vulkan::IndexBuffer *>(index_buffer)->buffer;
 }
 
 /*
