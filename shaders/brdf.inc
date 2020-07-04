@@ -17,6 +17,15 @@ struct Surface
 	float dotHV;
 };
 
+struct SurfaceMaterial
+{
+	vec3 albedo;
+	float ao;
+	float roughness;
+	float metalness;
+	vec3 f0;
+};
+
 float sqr(float a)
 {
 	return a * a;
@@ -115,6 +124,30 @@ vec3 F_Shlick(Surface surface, vec3 f0)
 vec3 F_Shlick(float cosTheta, vec3 f0, float roughness)
 {
 	return f0 + (max(vec3(1.0 - roughness), f0) - f0) * pow(1.0f - cosTheta, 5.0f);
+}
+
+vec3 Diffuse_Lambert(SurfaceMaterial material)
+{
+	return vec3(material.albedo * iPI);
+}
+
+vec3 Specular_CookTorrance(Surface surface, SurfaceMaterial material, out vec3 F)
+{
+	F = F_Shlick(surface, material.f0);
+
+	float D = D_GGX(surface, material.roughness);
+	float G = G_SmithGGX_Normalized(surface, material.roughness);
+
+	return D * F * G;
+}
+
+void GetBRDF(Surface surface, SurfaceMaterial material, out vec3 diffuse, out vec3 specular)
+{
+	vec3 F;
+	diffuse = Diffuse_Lambert(material);
+	specular = Specular_CookTorrance(surface, material, F);
+
+	diffuse *= lerp(vec3(1.0f) - F, vec3(0.0f), material.metalness);
 }
 
 #endif // BRDF_H_

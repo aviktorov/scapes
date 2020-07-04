@@ -14,15 +14,6 @@ layout(location = 5) in vec3 fragPositionWS;
 
 layout(location = 0) out vec4 outColor;
 
-struct MicrofacetMaterial
-{
-	vec3 albedo;
-	float ao;
-	float roughness;
-	float metalness;
-	vec3 f0;
-};
-
 vec3 ApproximateSpecularIBL(vec3 f0, vec3 view, vec3 normal, float roughness)
 {
 	float dotNV = max(0.0f, dot(normal, view));
@@ -35,19 +26,16 @@ vec3 ApproximateSpecularIBL(vec3 f0, vec3 view, vec3 normal, float roughness)
 	return prefilteredLi * (f0 * integratedBRDF.x + integratedBRDF.y);
 }
 
-vec3 DirectBRDF(Surface surface, MicrofacetMaterial material)
+vec3 DirectBRDF(Surface surface, SurfaceMaterial material)
 {
-	float D = D_GGX(surface, material.roughness);
-	vec3 F = F_Shlick(surface, material.f0);
-	float G = G_SmithGGX(surface, material.roughness);
+	vec3 diffuse;
+	vec3 specular;
+	GetBRDF(surface, material, diffuse, specular);
 
-	vec3 specular_reflection = D * F * G / (4.0f * surface.dotNV * surface.dotNL);
-	vec3 diffuse_reflection = material.albedo * lerp(vec3(1.0f) - F, vec3(0.0f), material.metalness);
-
-	return diffuse_reflection * iPI + specular_reflection;
+	return diffuse + specular;
 }
 
-vec3 IBLBRDF(Surface surface, MicrofacetMaterial material)
+vec3 IBLBRDF(Surface surface, SurfaceMaterial material)
 {
 	vec3 F = F_Shlick(surface.dotNV, material.f0, material.roughness);
 	vec3 irradiance = texture(diffuseIrradianceSampler, surface.normal).rgb * material.ao;
@@ -81,7 +69,7 @@ void main()
 	surface.dotNV = max(0.0f, dot(surface.normal, surface.view));
 	surface.dotHV = max(0.0f, dot(surface.halfVector, surface.view));
 
-	MicrofacetMaterial microfacet_material;
+	SurfaceMaterial microfacet_material;
 	microfacet_material.albedo = texture(albedoSampler, fragTexCoord).rgb;
 	microfacet_material.albedo = pow(microfacet_material.albedo, vec3(2.2f));
 	microfacet_material.roughness = texture(shadingSampler, fragTexCoord).g;
@@ -97,8 +85,10 @@ void main()
 
 	// Direct light
 	float attenuation = 1.0f / dot(lightPosWS - fragPositionWS, lightPosWS - fragPositionWS);
+	float Li = 2.0f * attenuation;
 
-	vec3 light = DirectBRDF(surface, microfacet_material) * attenuation * 2.0f * surface.dotNL;
+	vec3 direct_brdf = DirectBRDF(surface, microfacet_material);
+	vec3 light = direct_brdf * Li * surface.dotNL;
 
 	// Ambient light (diffuse & specular IBL)
 	vec3 ambient = IBLBRDF(surface, microfacet_material);
@@ -110,7 +100,7 @@ void main()
 
 	// TODO: move to separate pass
 	// Tonemapping + gamma correction
-	// color = color / (color + vec3(1.0));
+	color = color / (color + vec3(1.0));
 	color = pow(color, vec3(1.0f / 2.2f));
 
 	outColor = vec4(color, 1.0f);
