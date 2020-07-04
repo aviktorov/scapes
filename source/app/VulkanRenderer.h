@@ -1,7 +1,6 @@
 #pragma once
 
 #include <volk.h>
-#include <string>
 #include <vector>
 
 #include "VulkanCubemapRenderer.h"
@@ -28,7 +27,6 @@ public:
 	void resize(const VulkanSwapChain *swapChain);
 	void render(const RenderScene *scene, const VulkanRenderFrame &frame);
 
-	void reload(const RenderScene *scene);
 	void setEnvironment(const RenderScene *scene, const VulkanTexture *texture);
 
 private:

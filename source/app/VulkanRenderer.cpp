@@ -3,6 +3,7 @@
 #include "VulkanSwapChain.h"
 
 #include "RenderScene.h"
+#include <array>
 
 using namespace render::backend;
 
@@ -119,12 +120,6 @@ void VulkanRenderer::render(const RenderScene *scene, const VulkanRenderFrame &f
 
 /*
  */
-void VulkanRenderer::reload(const RenderScene *scene)
-{
-	shutdown();
-	init(scene);
-}
-
 void VulkanRenderer::setEnvironment(const RenderScene *scene, const VulkanTexture *texture)
 {
 	hdriToCubeRenderer.render(
