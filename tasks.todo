@@ -38,15 +38,20 @@ PBR Sandbox:
         ☐ Add simple FileSystem with data root path for simplified content loading
     Next Up:
         ☐ Remove vulkan dependencies from VulkanTexture
-        ☐ Organize, move & renames files in vulkan backend
-        ☐ Organize files in the engine
         ☐ Migrate ImGui renderer to backend
         ☐ Create separate cmake script for backend
-    Stream 37:
-        ☐ Extract IBL baker from VulkanRenderer
         ☐ Improve microfacet BRDFs
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
+        ☐ Split HDR, tonemapping & gamma correction to render passes
+        ☐ Organize, move & renames files in vulkan backend
+        ☐ Organize files in the engine
+    Stream 38:
+        ☐ Convert VulkanRenderer to IBL baker
+        ☐ Add lbuffer pass with IBL light
+    Stream 37:
+        ✔ Write simple scene importer @done (7/4/2020, 11:11:13 PM)
+        ✔ Add gbuffer pass @done (7/4/2020, 11:11:05 PM)
     Stream 36:
         ✔ Move image layout transitions to backend @done (6/30/2020, 10:25:07 PM)
         ✔ Migrate other renderers to backend @done (7/1/2020, 12:20:13 AM)
