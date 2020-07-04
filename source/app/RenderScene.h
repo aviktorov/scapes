@@ -25,6 +25,8 @@ namespace config
 		DiffuseIrradianceFragment,
 		BakedBRDFVertex,
 		BakedBRDFFragment,
+		GBufferVertex,
+		GBufferFragment,
 	};
 
 	enum Textures
@@ -61,6 +63,9 @@ public:
 
 	inline const VulkanShader *getBakedBRDFVertexShader() const { return resources.getShader(config::Shaders::BakedBRDFVertex); }
 	inline const VulkanShader *getBakedBRDFFragmentShader() const { return resources.getShader(config::Shaders::BakedBRDFFragment); }
+
+	inline const VulkanShader *getGBufferVertexShader() const { return resources.getShader(config::Shaders::GBufferVertex); }
+	inline const VulkanShader *getGBufferFragmentShader() const { return resources.getShader(config::Shaders::GBufferFragment); }
 
 	inline const VulkanTexture *getAlbedoTexture() const { return resources.getTexture(config::Textures::Albedo); }
 	inline const VulkanTexture *getNormalTexture() const { return resources.getTexture(config::Textures::Normal); }

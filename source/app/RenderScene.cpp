@@ -22,6 +22,8 @@ namespace config
 		"shaders/diffuseIrradiance.frag",
 		"shaders/bakedBRDF.vert",
 		"shaders/bakedBRDF.frag",
+		"shaders/gbuffer.vert",
+		"shaders/gbuffer.frag",
 	};
 
 	static std::vector<render::backend::ShaderType> shaderTypes = {
@@ -32,6 +34,8 @@ namespace config
 		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
