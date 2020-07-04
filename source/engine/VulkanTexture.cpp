@@ -105,11 +105,11 @@ void VulkanTexture::createCube(render::backend::Format format, int w, int h, int
 
 /*
  */
-bool VulkanTexture::loadFromFile(const char *path)
+bool VulkanTexture::import(const char *path)
 {
 	if (stbi_info(path, nullptr, nullptr, nullptr) == 0)
 	{
-		std::cerr << "VulkanTexture::loadFromFile(): unsupported image format for \"" << path << "\" file" << std::endl;
+		std::cerr << "VulkanTexture::import(): unsupported image format for \"" << path << "\" file" << std::endl;
 		return false;
 	}
 
@@ -130,7 +130,7 @@ bool VulkanTexture::loadFromFile(const char *path)
 
 	if (!stb_pixels)
 	{
-		std::cerr << "VulkanTexture::loadFromFile(): " << stbi_failure_reason() << std::endl;
+		std::cerr << "VulkanTexture::import(): " << stbi_failure_reason() << std::endl;
 		return false;
 	}
 

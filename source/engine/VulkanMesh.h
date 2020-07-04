@@ -6,6 +6,8 @@
 
 #include <vector>
 
+struct aiMesh;
+
 /*
  */
 class VulkanMesh
@@ -19,7 +21,8 @@ public:
 	inline uint32_t getNumIndices() const { return static_cast<uint32_t>(indices.size()); }
 	inline render::backend::RenderPrimitive *getRenderPrimitive() const { return render_primitive; }
 
-	bool loadFromFile(const char *path);
+	bool import(const char *path);
+	bool import(const aiMesh *mesh);
 
 	void createSkybox(float size);
 	void createQuad(float size);

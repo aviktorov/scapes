@@ -43,7 +43,7 @@ VulkanMesh *VulkanResourceManager::loadMesh(int id, const char *path)
 	}
 
 	VulkanMesh *mesh = new VulkanMesh(driver);
-	if (!mesh->loadFromFile(path))
+	if (!mesh->import(path))
 		return nullptr;
 
 	meshes.insert(std::make_pair(id, mesh));
@@ -128,7 +128,7 @@ VulkanTexture *VulkanResourceManager::loadTexture(int id, const char *path)
 	}
 
 	VulkanTexture *texture = new VulkanTexture(driver);
-	if (!texture->loadFromFile(path))
+	if (!texture->import(path))
 		return nullptr;
 
 	textures.insert(std::make_pair(id, texture));

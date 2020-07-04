@@ -16,7 +16,7 @@ VulkanMesh::~VulkanMesh()
 
 /*
  */
-bool VulkanMesh::loadFromFile(const char *path)
+bool VulkanMesh::import(const char *path)
 {
 	Assimp::Importer importer;
 
@@ -24,17 +24,21 @@ bool VulkanMesh::loadFromFile(const char *path)
 
 	if (!scene)
 	{
-		std::cerr << "VulkanMesh::loadFromFile(): " << importer.GetErrorString() << std::endl;
+		std::cerr << "VulkanMesh::import(): " << importer.GetErrorString() << std::endl;
 		return false;
 	}
 
 	if (!scene->HasMeshes())
 	{
-		std::cerr << "VulkanMesh::loadFromFile(): model has no meshes" << std::endl;
+		std::cerr << "VulkanMesh::import(): model has no meshes" << std::endl;
 		return false;
 	}
 
-	aiMesh *mesh = scene->mMeshes[0];
+	return import(scene->mMeshes[0]);
+}
+
+bool VulkanMesh::import(const aiMesh *mesh)
+{
 	assert(mesh != nullptr);
 
 	// Fill CPU data

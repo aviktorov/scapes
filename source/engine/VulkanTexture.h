@@ -36,7 +36,7 @@ public:
 	void create2D(render::backend::Format format, int width, int height, int num_mips);
 	void createCube(render::backend::Format format, int width, int height, int num_mips);
 
-	bool loadFromFile(const char *path);
+	bool import(const char *path);
 
 	void clearGPUData();
 	void clearCPUData();
