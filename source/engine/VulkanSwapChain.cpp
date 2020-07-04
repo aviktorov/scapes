@@ -91,26 +91,10 @@ void VulkanSwapChain::beginFrame(void *state, const VulkanRenderFrame &frame)
 
 	driver->resetCommandBuffer(frame.command_buffer);
 	driver->beginCommandBuffer(frame.command_buffer);
-
-	std::array<RenderPassClearValue, 3> clear_values = {};
-	clear_values[0].color = {0.2f, 0.2f, 0.2f, 1.0f};
-	clear_values[1].color = {0.0f, 0.0f, 0.0f, 1.0f};
-	clear_values[2].depth_stencil = {1.0f, 0};
-
-	std::array<RenderPassLoadOp, 3> load_ops = { RenderPassLoadOp::CLEAR, RenderPassLoadOp::DONT_CARE, RenderPassLoadOp::CLEAR };
-	std::array<RenderPassStoreOp, 3> store_ops = { RenderPassStoreOp::STORE, RenderPassStoreOp::STORE, RenderPassStoreOp::DONT_CARE };
-
-	RenderPassInfo info;
-	info.load_ops = load_ops.data();
-	info.store_ops = store_ops.data();
-	info.clear_values = clear_values.data();
-
-	driver->beginRenderPass(frame.command_buffer, frame.frame_buffer, &info);
 }
 
 void VulkanSwapChain::endFrame(const VulkanRenderFrame &frame)
 {
-	driver->endRenderPass(frame.command_buffer);
 	driver->endCommandBuffer(frame.command_buffer);
 	driver->submitSyncked(frame.command_buffer, swap_chain);
 }

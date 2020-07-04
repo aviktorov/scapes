@@ -9,9 +9,11 @@
 
 struct GLFWwindow;
 class RenderScene;
+class RenderGraph;
 class VulkanRenderer;
 class VulkanImGuiRenderer;
 class VulkanSwapChain;
+class Scene;
 
 /*
  */
@@ -38,7 +40,7 @@ struct CameraState
 struct InputState
 {
 	const double rotationSpeed {0.01};
-	const double scrollSpeed {1.5};
+	const double scrollSpeed {5.0};
 	bool rotating {false};
 	double lastMouseX {0.0};
 	double lastMouseY {0.0};
@@ -84,6 +86,8 @@ private:
 	GLFWwindow *window {nullptr};
 	bool windowResized {false};
 
+	Scene *sponza {nullptr};
+	RenderGraph *render_graph {nullptr};
 	RenderScene *scene {nullptr};
 	ApplicationState state;
 	CameraState camera;

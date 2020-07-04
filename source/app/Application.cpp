@@ -5,7 +5,9 @@
 #include "VulkanRenderer.h"
 #include "VulkanSwapChain.h"
 
+#include "RenderGraph.h"
 #include "RenderScene.h"
+#include "Scene.h"
 
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
@@ -16,7 +18,7 @@
 #include <iostream>
 #include <chrono>
 
-#include <render/backend/vulkan/driver.h>
+using namespace render::backend;
 
 /*
  */
@@ -44,7 +46,6 @@ void Application::update()
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
 
-	const float rotationSpeed = 0.1f;
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
 	const glm::vec3 &up = {0.0f, 0.0f, 1.0f};
@@ -75,7 +76,6 @@ void Application::update()
 	if (ImGui::Button("Reload Shaders"))
 	{
 		scene->reloadShaders();
-		renderer->reload(scene);
 		renderer->setEnvironment(scene, scene->getHDRTexture(state.currentEnvironment));
 	}
 
@@ -115,8 +115,27 @@ void Application::render()
 		return;
 	}
 
-	renderer->render(scene, frame);
+	render_graph->render(sponza, frame);
+
+	RenderPassClearValue clear_values[3];
+	clear_values[0].color = {0.2f, 0.2f, 0.2f, 1.0f};
+	clear_values[1].color = {0.0f, 0.0f, 0.0f, 1.0f};
+	clear_values[2].depth_stencil = {1.0f, 0};
+
+	RenderPassLoadOp load_ops[3] = { RenderPassLoadOp::CLEAR, RenderPassLoadOp::DONT_CARE, RenderPassLoadOp::CLEAR };
+	RenderPassStoreOp store_ops[3] = { RenderPassStoreOp::STORE, RenderPassStoreOp::STORE, RenderPassStoreOp::DONT_CARE };
+
+	RenderPassInfo info;
+	info.load_ops = load_ops;
+	info.store_ops = store_ops;
+	info.clear_values = clear_values;
+
+	driver->beginRenderPass(frame.command_buffer, frame.frame_buffer, &info);
+
+	// renderer->render(scene, frame);
 	imguiRenderer->render(frame);
+
+	driver->endRenderPass(frame.command_buffer);
 
 	if (!swapChain->present(frame) || windowResized)
 	{
@@ -223,6 +242,9 @@ void Application::initRenderScene()
 {
 	scene = new RenderScene(driver);
 	scene->init();
+
+	sponza = new Scene(driver);
+	sponza->import("scenes/pbr_sponza/sponza.obj");
 }
 
 void Application::shutdownRenderScene()
@@ -237,12 +259,18 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
+	int width, height;
+	glfwGetWindowSize(window, &width, &height);
+
 	renderer = new VulkanRenderer(driver);
 	renderer->init(scene);
 	renderer->setEnvironment(scene, scene->getHDRTexture(state.currentEnvironment));
 
 	imguiRenderer = new VulkanImGuiRenderer(driver, ImGui::GetCurrentContext(), swapChain->getExtent(), swapChain->getDummyRenderPass());
 	imguiRenderer->init(swapChain);
+
+	render_graph = new RenderGraph(driver);
+	render_graph->init(scene, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 }
 
 void Application::shutdownRenderers()
@@ -252,6 +280,9 @@ void Application::shutdownRenderers()
 
 	delete imguiRenderer;
 	imguiRenderer = nullptr;
+
+	delete render_graph;
+	render_graph = nullptr;
 }
 
 /*
@@ -322,4 +353,5 @@ void Application::recreateVulkanSwapChain()
 	glfwGetWindowSize(window, &width, &height);
 	swapChain->reinit(width, height);
 	imguiRenderer->resize(swapChain);
+	render_graph->resize(width, height);
 }
