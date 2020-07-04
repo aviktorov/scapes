@@ -1783,7 +1783,10 @@ namespace render::backend
 		vulkan::BindSet *vk_bind_set = static_cast<vulkan::BindSet *>(bind_set);
 		const vulkan::Texture *vk_texture = static_cast<const vulkan::Texture *>(texture);
 
-		bindTexture(bind_set, binding, texture, 0, vk_texture->num_mipmaps, 0, vk_texture->num_layers);
+		uint32_t num_mipmaps = (vk_texture) ? vk_texture->num_mipmaps : 0;
+		uint32_t num_layers = (vk_texture) ? vk_texture->num_layers : 0;
+
+		bindTexture(bind_set, binding, texture, 0, num_mipmaps, 0, num_layers);
 	}
 
 	void VulkanDriver::bindTexture(
@@ -1863,6 +1866,11 @@ namespace render::backend
 	void VulkanDriver::clearBindSets()
 	{
 		context->clearBindSets();
+	}
+
+	void VulkanDriver::allocateBindSets(uint8_t size)
+	{
+		context->allocateBindSets(size);
 	}
 
 	void VulkanDriver::pushBindSet(BindSet *set)
@@ -1999,10 +2007,10 @@ namespace render::backend
 		info.signalSemaphoreCount = 1;
 		info.pSignalSemaphores = &vk_command_buffer->rendering_finished_gpu;
 
+		VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
 		if (wait_swap_chain != nullptr)
 		{
-			VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
 			const vulkan::SwapChain *vk_wait_swap_chain = static_cast<const vulkan::SwapChain *>(wait_swap_chain);
 			uint32_t current_image = vk_wait_swap_chain->current_image;
 
@@ -2032,15 +2040,19 @@ namespace render::backend
 		info.signalSemaphoreCount = 1;
 		info.pSignalSemaphores = &vk_command_buffer->rendering_finished_gpu;
 
+		std::vector<VkSemaphore> wait_semaphores;
+		std::vector<VkPipelineStageFlags> wait_stages;
+
 		if (num_wait_command_buffers != 0 && wait_command_buffers != nullptr)
 		{
-			std::vector<VkSemaphore> wait_semaphores(num_wait_command_buffers);
-			std::vector<VkPipelineStageFlags> wait_stages(num_wait_command_buffers, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+			wait_semaphores.resize(num_wait_command_buffers);
+			wait_stages.resize(num_wait_command_buffers);
 
 			for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
 			{
 				const vulkan::CommandBuffer *vk_wait_command_buffer = static_cast<const vulkan::CommandBuffer *>(wait_command_buffers[i]);
 				wait_semaphores[i] = vk_wait_command_buffer->rendering_finished_gpu;
+				wait_stages[i] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			}
 
 			info.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size());

@@ -498,6 +498,10 @@ public:
 	virtual void clearBindSets(
 	) = 0;
 
+	virtual void allocateBindSets(
+		uint8_t size
+	) = 0;
+
 	virtual void pushBindSet(
 		BindSet *bind_set
 	) = 0;

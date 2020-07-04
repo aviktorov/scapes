@@ -19,6 +19,7 @@ namespace render::backend::vulkan
 		inline uint8_t getPushConstantsSize() const { return push_constants_size; }
 
 		inline void clearBindSets() { num_sets = 0; }
+		inline void allocateBindSets(uint8_t num_bind_sets) { num_sets = num_bind_sets; }
 		inline uint8_t getNumBindSets() const { return num_sets; }
 		inline const BindSet *getBindSet(uint8_t index) const { return sets[index]; }
 		inline BindSet *getBindSet(uint8_t index) { return sets[index]; }

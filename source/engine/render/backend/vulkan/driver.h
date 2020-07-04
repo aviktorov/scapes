@@ -367,6 +367,10 @@ namespace render::backend
 		void clearBindSets(
 		) override;
 
+		void allocateBindSets(
+			uint8_t num_bind_sets
+		) override;
+
 		void pushBindSet(
 			BindSet *bind_set
 		) override;
