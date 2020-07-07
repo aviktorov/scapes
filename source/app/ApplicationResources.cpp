@@ -1,5 +1,6 @@
 #include "ApplicationResources.h"
 
+#include <vector>
 #include <cassert>
 
 namespace config

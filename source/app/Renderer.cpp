@@ -66,8 +66,8 @@ void Renderer::init(const ApplicationResources *resources)
 		&bakedBRDF
 	};
 
-	for (int k = 0; k < 8; k++)
-		driver->bindTexture(scene_bind_set, k, textures[k]->getBackend());
+	for (int i = 0; i < 8; i++)
+		driver->bindTexture(scene_bind_set, i, textures[i]->getBackend());
 }
 
 void Renderer::shutdown()
