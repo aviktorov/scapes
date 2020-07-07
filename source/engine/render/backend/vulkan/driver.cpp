@@ -4,15 +4,15 @@
 #include <fstream>
 #include <string>
 
-#include "render/backend/vulkan/driver.h"
+#include "render/backend/vulkan/Driver.h"
 #include "render/backend/vulkan/Context.h"
-#include "render/backend/vulkan/device.h"
-#include "render/backend/vulkan/platform.h"
+#include "render/backend/vulkan/Device.h"
+#include "render/backend/vulkan/Platform.h"
 #include "render/backend/vulkan/DescriptorSetLayoutCache.h"
 #include "render/backend/vulkan/PipelineLayoutCache.h"
 #include "render/backend/vulkan/PipelineCache.h"
 #include "render/backend/vulkan/RenderPassCache.h"
-#include "render/backend/vulkan/VulkanRenderPassBuilder.h"
+#include "render/backend/vulkan/RenderPassBuilder.h"
 #include "render/backend/vulkan/VulkanUtils.h"
 
 #include "shaderc/shaderc.h"
@@ -994,7 +994,7 @@ namespace render::backend
 
 		uint32_t width = 0;
 		uint32_t height = 0;
-		VulkanRenderPassBuilder builder;
+		vulkan::RenderPassBuilder builder;
 
 		builder.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
 
@@ -1524,24 +1524,20 @@ namespace render::backend
 		return vulkan::fromFormat(format);
 	}
 
-	VkSampleCountFlagBits VulkanDriver::toMultisample(Multisample samples)
+	Format VulkanDriver::getSwapChainImageFormat(const SwapChain *swap_chain)
 	{
-		return vulkan::toSamples(samples);
+		assert(swap_chain != nullptr && "Invalid swap chain");
+		const vulkan::SwapChain *vk_swap_chain = static_cast<const vulkan::SwapChain *>(swap_chain);
+
+		return vulkan::fromFormat(vk_swap_chain->surface_format.format);
 	}
 
-	Multisample VulkanDriver::fromMultisample(VkSampleCountFlagBits samples)
+	uint32_t VulkanDriver::getNumSwapChainImages(const SwapChain *swap_chain)
 	{
-		return vulkan::fromSamples(samples);
-	}
+		assert(swap_chain != nullptr && "Invalid swap chain");
+		const vulkan::SwapChain *vk_swap_chain = static_cast<const vulkan::SwapChain *>(swap_chain);
 
-	VkFormat VulkanDriver::toFormat(Format format)
-	{
-		return vulkan::toFormat(format);
-	}
-
-	Format VulkanDriver::fromFormat(VkFormat format)
-	{
-		return vulkan::fromFormat(format);
+		return vk_swap_chain->num_images;
 	}
 
 	void VulkanDriver::generateTexture2DMipmaps(Texture *texture)

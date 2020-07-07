@@ -1,7 +1,8 @@
 #include "Scene.h"
 
-#include "VulkanMesh.h"
-#include "VulkanTexture.h"
+#include <render/backend/Driver.h>
+#include <render/Mesh.h>
+#include <render/Texture.h>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -10,7 +11,44 @@
 #include <iostream>
 #include <sstream>
 
+using namespace render;
 using namespace render::backend;
+
+/*
+ */
+static backend::Texture *default_albedo = nullptr;
+static backend::Texture *default_normal = nullptr;
+static backend::Texture *default_roughness = nullptr;
+static backend::Texture *default_metalness = nullptr;
+
+/*
+ */
+static backend::Texture *generateTexture(Driver *driver, uint8_t r, uint8_t g, uint8_t b)
+{
+	uint8_t pixels[16] = {
+		r, g, b, 255,
+		r, g, b, 255,
+		r, g, b, 255,
+		r, g, b, 255,
+	};
+
+	return driver->createTexture2D(2, 2, 1, Format::R8G8B8A8_UNORM, Multisample::COUNT_1, pixels);
+}
+
+static void generateDefaultTextures(Driver *driver)
+{
+	if (default_albedo == nullptr)
+		default_albedo = generateTexture(driver, 127, 127, 127);
+
+	if (default_normal == nullptr)
+		default_normal = generateTexture(driver, 127, 127, 255);
+
+	if (default_roughness == nullptr)
+		default_roughness = generateTexture(driver, 255, 255, 255);
+
+	if (default_metalness == nullptr)
+		default_metalness = generateTexture(driver, 0, 0, 0);
+}
 
 /*
  */
@@ -24,38 +62,6 @@ static glm::mat4 toGlm(const aiMatrix4x4 &transform)
 	result[0].w = transform.d1; result[1].w = transform.d2; result[2].w = transform.d3; result[3].w = transform.d4;
 
 	return result;
-}
-
-static Texture *default_albedo = nullptr;
-static Texture *default_normal = nullptr;
-static Texture *default_roughness = nullptr;
-static Texture *default_metalness = nullptr;
-
-static void generateDefaultTextures(Driver *driver)
-{
-	auto generate_texture = [=](uint8_t r, uint8_t g, uint8_t b) -> Texture *
-	{
-		uint8_t pixels[16] = {
-			r, g, b, 255,
-			r, g, b, 255,
-			r, g, b, 255,
-			r, g, b, 255,
-		};
-
-		return driver->createTexture2D(2, 2, 1, Format::R8G8B8A8_UNORM, Multisample::COUNT_1, pixels);
-	};
-
-	if (default_albedo == nullptr)
-		default_albedo = generate_texture(127, 127, 127);
-
-	if (default_normal == nullptr)
-		default_normal = generate_texture(127, 127, 255);
-
-	if (default_roughness == nullptr)
-		default_roughness = generate_texture(255, 255, 255);
-
-	if (default_metalness == nullptr)
-		default_metalness = generate_texture(0, 0, 0);
 }
 
 /*
@@ -102,7 +108,7 @@ bool Scene::import(const char *path)
 	meshes.resize(scene->mNumMeshes);
 	for (unsigned int i = 0; i < scene->mNumMeshes; ++i)
 	{
-		VulkanMesh *mesh = new VulkanMesh(driver);
+		render::Mesh *mesh = new render::Mesh(driver);
 		mesh->import(scene->mMeshes[i]);
 
 		meshes[i] = mesh;
@@ -112,7 +118,7 @@ bool Scene::import(const char *path)
 	for (unsigned int i = 0; i < scene->mNumTextures; ++i)
 	{
 		std::stringstream path_builder;
-		VulkanTexture *texture = new VulkanTexture(driver);
+		render::Texture *texture = new render::Texture(driver);
 		
 		path_builder << dir << '/' << scene->mTextures[i]->mFilename.C_Str();
 		const std::string &texture_path = path_builder.str();
@@ -124,7 +130,7 @@ bool Scene::import(const char *path)
 	// import materials
 	materials.resize(scene->mNumMaterials);
 
-	auto import_material_texture = [=](const aiMaterial *material, aiTextureType type) -> VulkanTexture *
+	auto import_material_texture = [=](const aiMaterial *material, aiTextureType type) -> render::Texture *
 	{
 		aiString path;
 		material->GetTexture(type, 0, &path);
@@ -139,7 +145,7 @@ bool Scene::import(const char *path)
 		auto it = textures.find(texture_path);
 		if (it == textures.end())
 		{
-			VulkanTexture *texture = new VulkanTexture(driver);
+			render::Texture *texture = new render::Texture(driver);
 			texture->import(texture_path.c_str());
 
 			textures.insert({texture_path, texture});
@@ -161,10 +167,10 @@ bool Scene::import(const char *path)
 
 		render_material.bindings = driver->createBindSet();
 
-		const Texture *albedo = (render_material.albedo) ? render_material.albedo->getBackend() : default_albedo;
-		const Texture *normal = (render_material.normal) ? render_material.normal->getBackend() : default_normal;
-		const Texture *roughness = (render_material.roughness) ? render_material.roughness->getBackend() : default_roughness;
-		const Texture *metalness = (render_material.metalness) ? render_material.metalness->getBackend() : default_metalness;
+		const backend::Texture *albedo = (render_material.albedo) ? render_material.albedo->getBackend() : default_albedo;
+		const backend::Texture *normal = (render_material.normal) ? render_material.normal->getBackend() : default_normal;
+		const backend::Texture *roughness = (render_material.roughness) ? render_material.roughness->getBackend() : default_roughness;
+		const backend::Texture *metalness = (render_material.metalness) ? render_material.metalness->getBackend() : default_metalness;
 
 		driver->bindTexture(render_material.bindings, 0, albedo);
 		driver->bindTexture(render_material.bindings, 1, normal);
@@ -205,7 +211,7 @@ void Scene::importNodes(const aiScene *scene, const aiNode *root, const glm::mat
 		unsigned int mesh_index = root->mMeshes[i];
 		int32_t material_index = static_cast<int32_t>(scene->mMeshes[mesh_index]->mMaterialIndex);
 
-		VulkanMesh *mesh = meshes[mesh_index];
+		render::Mesh *mesh = meshes[mesh_index];
 
 		RenderNode node;
 		node.mesh = mesh;

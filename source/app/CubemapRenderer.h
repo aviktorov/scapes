@@ -1,30 +1,32 @@
 #pragma once
 
-#include "VulkanMesh.h"
-
+#include <render/Mesh.h>
 #include <render/backend/driver.h>
 
-class VulkanShader;
-class VulkanTexture;
+namespace render
+{
+	class Shader;
+	class Texture;
+}
 
 /*
  */
-class VulkanCubemapRenderer
+class CubemapRenderer
 {
 public:
-	VulkanCubemapRenderer(render::backend::Driver *driver);
+	CubemapRenderer(render::backend::Driver *driver);
 
 	void init(
-		const VulkanTexture *target_texture,
+		const render::Texture *target_texture,
 		uint32_t target_mip
 	);
 
 	void shutdown();
 
 	void render(
-		const VulkanShader *vertex_shader,
-		const VulkanShader *fragment_shader,
-		const VulkanTexture *input_texture,
+		const render::Shader *vertex_shader,
+		const render::Shader *fragment_shader,
+		const render::Texture *input_texture,
 		int input_mip = -1,
 		uint8_t push_constants_size = 0,
 		const uint8_t *push_constants_data = nullptr
@@ -37,5 +39,5 @@ private:
 	render::backend::FrameBuffer *framebuffer {nullptr};
 	render::backend::UniformBuffer *uniform_buffer {nullptr};
 
-	VulkanMesh quad;
+	render::Mesh quad;
 };

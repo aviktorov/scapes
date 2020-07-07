@@ -1,5 +1,4 @@
-#include "RenderScene.h"
-#include "VulkanShader.h"
+#include "ApplicationResources.h"
 
 #include <cassert>
 
@@ -59,20 +58,27 @@ namespace config
 
 /*
  */
-const char *RenderScene::getHDRTexturePath(int index) const
+const char *ApplicationResources::getHDRTexturePath(int index) const
 {
 	assert(index >= 0 && index < config::hdrTextures.size());
 	return config::hdrTextures[index];
 }
 
-size_t RenderScene::getNumHDRTextures() const
+size_t ApplicationResources::getNumHDRTextures() const
 {
 	return config::hdrTextures.size();
 }
 
 /*
  */
-void RenderScene::init()
+ApplicationResources::~ApplicationResources()
+{
+	shutdown();
+}
+
+/*
+ */
+void ApplicationResources::init()
 {
 	for (int i = 0; i < config::meshes.size(); i++)
 		resources.loadMesh(i, config::meshes[i]);
@@ -89,7 +95,7 @@ void RenderScene::init()
 		resources.loadTexture(config::Textures::EnvironmentBase + i, config::hdrTextures[i]);
 }
 
-void RenderScene::shutdown()
+void ApplicationResources::shutdown()
 {
 	for (int i = 0; i < config::meshes.size(); i++)
 		resources.unloadMesh(i);
@@ -106,7 +112,7 @@ void RenderScene::shutdown()
 		resources.unloadTexture(config::Textures::EnvironmentBase + i);
 }
 
-void RenderScene::reloadShaders()
+void ApplicationResources::reloadShaders()
 {
 	for (int i = 0; i < config::shaders.size(); i++)
 		resources.reloadShader(i);

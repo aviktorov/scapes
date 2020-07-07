@@ -1,13 +1,14 @@
-#include "VulkanCubemapRenderer.h"
+#include "CubemapRenderer.h"
 
-#include "VulkanShader.h"
-#include "VulkanTexture.h"
+#include <render/Shader.h>
+#include <render/Texture.h>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLM/glm.hpp>
 #include <GLM/gtc/matrix_transform.hpp>
 
+using namespace render;
 using namespace render::backend;
 
 /*
@@ -19,7 +20,7 @@ struct CubemapFaceOrientationData
 
 /*
  */
-VulkanCubemapRenderer::VulkanCubemapRenderer(Driver *driver)
+CubemapRenderer::CubemapRenderer(Driver *driver)
 	: driver(driver)
 	, quad(driver)
 {
@@ -27,8 +28,8 @@ VulkanCubemapRenderer::VulkanCubemapRenderer(Driver *driver)
 
 /*
  */
-void VulkanCubemapRenderer::init(
-	const VulkanTexture *target_texture,
+void CubemapRenderer::init(
+	const render::Texture *target_texture,
 	uint32_t target_mip
 )
 {
@@ -98,7 +99,7 @@ void VulkanCubemapRenderer::init(
 	driver->bindUniformBuffer(bind_set, 0, uniform_buffer);
 }
 
-void VulkanCubemapRenderer::shutdown()
+void CubemapRenderer::shutdown()
 {
 	driver->destroyUniformBuffer(uniform_buffer);
 	uniform_buffer = nullptr;
@@ -118,10 +119,10 @@ void VulkanCubemapRenderer::shutdown()
 
 /*
  */
-void VulkanCubemapRenderer::render(
-	const VulkanShader *vertex_shader,
-	const VulkanShader *fragment_shader,
-	const VulkanTexture *input_texture,
+void CubemapRenderer::render(
+	const render::Shader *vertex_shader,
+	const render::Shader *fragment_shader,
+	const render::Texture *input_texture,
 	int input_mip,
 	uint8_t push_constants_size,
 	const uint8_t *push_constants_data

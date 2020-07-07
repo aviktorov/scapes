@@ -165,13 +165,10 @@ namespace render::backend
 			VkImageView depth_view {VK_NULL_HANDLE};
 			VkDeviceMemory depth_memory {VK_NULL_HANDLE};
 
-			VkRenderPass dummy_render_pass {VK_NULL_HANDLE}; // TODO: move to render pass cache
-
 			uint32_t num_images {0};
 			uint32_t current_image {0};
 
 			VkSemaphore image_available_gpu[SwapChain::MAX_IMAGES];
-			VkFramebuffer framebuffer[SwapChain::MAX_IMAGES];
 			VkImage images[SwapChain::MAX_IMAGES];
 			VkImageView views[SwapChain::MAX_IMAGES];
 		};
@@ -300,12 +297,8 @@ namespace render::backend
 		Multisample getMaxSampleCount() override;
 		Format getOptimalDepthFormat() override;
 
-		// TODO: remove later
-		VkSampleCountFlagBits toMultisample(Multisample samples);
-		Multisample fromMultisample(VkSampleCountFlagBits samples);
-
-		VkFormat toFormat(Format format);
-		Format fromFormat(VkFormat format);
+		Format getSwapChainImageFormat(const SwapChain *swap_chain) override;
+		uint32_t getNumSwapChainImages(const SwapChain *swap_chain) override;
 
 	public:
 		void generateTexture2DMipmaps(Texture *texture) override;

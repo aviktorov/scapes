@@ -1,10 +1,10 @@
 #include "render/backend/vulkan/PipelineCache.h"
-
-#include "render/backend/vulkan/driver.h"
-#include "render/backend/vulkan/device.h"
-#include "render/backend/vulkan/context.h"
 #include "render/backend/vulkan/PipelineLayoutCache.h"
-#include "render/backend/vulkan/VulkanGraphicsPipelineBuilder.h"
+#include "render/backend/vulkan/GraphicsPipelineBuilder.h"
+
+#include "render/backend/vulkan/Driver.h"
+#include "render/backend/vulkan/Device.h"
+#include "render/backend/vulkan/Context.h"
 
 #include <vector>
 #include <cassert>
@@ -66,7 +66,7 @@ namespace render::backend::vulkan
 		if (it != cache.end())
 			return it->second;
 
-		VulkanGraphicsPipelineBuilder builder(layout, context->getRenderPass());
+		GraphicsPipelineBuilder builder(layout, context->getRenderPass());
 
 		builder.addViewport(VkViewport());
 		builder.addScissor(VkRect2D());

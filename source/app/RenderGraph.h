@@ -2,10 +2,14 @@
 
 #include <render/backend/driver.h>
 
-class RenderScene;
+class ApplicationResources;
 class Scene;
-class VulkanShader;
-struct VulkanRenderFrame;
+
+namespace render
+{
+	class Shader;
+	struct RenderFrame;
+}
 
 struct GBuffer
 {
@@ -33,10 +37,10 @@ public:
 
 	virtual ~RenderGraph();
 
-	void init(const RenderScene *scene, uint32_t width, uint32_t height);
+	void init(const ApplicationResources *resources, uint32_t width, uint32_t height);
 	void shutdown();
 	void resize(uint32_t width, uint32_t height);
-	void render(const Scene *scene, const VulkanRenderFrame &frame);
+	void render(const Scene *scene, const render::RenderFrame &frame);
 
 	const GBuffer &getGBuffer() const { return gbuffer; }
 	const LBuffer &getLBuffer() const { return lbuffer; }
@@ -48,7 +52,7 @@ private:
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
-	void renderGBuffer(const Scene *scene, const VulkanRenderFrame &frame);
+	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame);
 
 private:
 	render::backend::Driver *driver {nullptr};
@@ -56,6 +60,6 @@ private:
 	GBuffer gbuffer;
 	LBuffer lbuffer;
 
-	const VulkanShader *gbuffer_pass_vertex {nullptr};
-	const VulkanShader *gbuffer_pass_fragment {nullptr};
+	const render::Shader *gbuffer_pass_vertex {nullptr};
+	const render::Shader *gbuffer_pass_fragment {nullptr};
 };

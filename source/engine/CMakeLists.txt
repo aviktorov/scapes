@@ -12,6 +12,7 @@ file(GLOB VK_BACKEND_HEADERS
 
 file(GLOB SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/render/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/driver.cpp
 	${THIRDPARTY_DIR}/volk/volk.c
 	${THIRDPARTY_DIR}/imgui/imgui.cpp

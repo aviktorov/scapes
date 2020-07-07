@@ -1,8 +1,8 @@
 #include "render/backend/vulkan/RenderPassCache.h"
+#include "render/backend/vulkan/RenderPassBuilder.h"
 
-#include "render/backend/vulkan/driver.h"
-#include "render/backend/vulkan/device.h"
-#include "render/backend/vulkan/VulkanRenderPassBuilder.h"
+#include "render/backend/vulkan/Driver.h"
+#include "render/backend/vulkan/Device.h"
 
 #include <cassert>
 
@@ -28,7 +28,7 @@ namespace render::backend::vulkan
 		if (it != cache.end())
 			return it->second;
 
-		VulkanRenderPassBuilder builder;
+		RenderPassBuilder builder;
 		builder.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
 
 		for (uint8_t i = 0; i < frame_buffer->num_attachments; ++i)

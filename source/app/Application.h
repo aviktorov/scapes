@@ -1,18 +1,25 @@
 #pragma once
 
-#include <render/backend/driver.h>
-
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLM/glm.hpp>
 #include <GLM/gtc/matrix_transform.hpp>
 
+namespace render
+{
+	class SwapChain;
+}
+
+namespace render::backend
+{
+	class Driver;
+}
+
 struct GLFWwindow;
-class RenderScene;
+class ApplicationResources;
 class RenderGraph;
-class VulkanRenderer;
-class VulkanImGuiRenderer;
-class VulkanSwapChain;
+class Renderer;
+class ImGuiRenderer;
 class Scene;
 
 /*
@@ -57,12 +64,12 @@ private:
 	void initWindow();
 	void shutdownWindow();
 
-	void initVulkan();
-	void shutdownVulkan();
+	void initDriver();
+	void shutdownDriver();
 
-	void initVulkanSwapChain();
-	void shutdownVulkanSwapChain();
-	void recreateVulkanSwapChain();
+	void initSwapChain();
+	void shutdownSwapChain();
+	void recreateSwapChain();
 
 	void initRenderScene();
 	void shutdownRenderScene();
@@ -88,15 +95,14 @@ private:
 
 	Scene *sponza {nullptr};
 	RenderGraph *render_graph {nullptr};
-	RenderScene *scene {nullptr};
+	ApplicationResources *resources {nullptr};
 	ApplicationState state;
 	CameraState camera;
 	InputState input;
 
-	VulkanRenderer *renderer {nullptr};
-	VulkanImGuiRenderer *imguiRenderer {nullptr};
+	Renderer *renderer {nullptr};
+	ImGuiRenderer *imgui_renderer {nullptr};
 
-	VulkanSwapChain *swapChain {nullptr};
-
+	render::SwapChain *swap_chain {nullptr};
 	render::backend::Driver *driver {nullptr};
 };

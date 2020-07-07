@@ -1,12 +1,12 @@
-#include <volk.h>
-
 #include "Application.h"
-#include "VulkanImGuiRenderer.h"
-#include "VulkanRenderer.h"
-#include "VulkanSwapChain.h"
+#include "ApplicationResources.h"
 
+#include <render/backend/Driver.h>
+#include <render/SwapChain.h>
+
+#include "ImGuiRenderer.h"
+#include "Renderer.h"
 #include "RenderGraph.h"
-#include "RenderScene.h"
 #include "Scene.h"
 
 #include <GLFW/glfw3.h>
@@ -18,6 +18,7 @@
 #include <iostream>
 #include <chrono>
 
+using namespace render;
 using namespace render::backend;
 
 /*
@@ -26,15 +27,15 @@ void Application::run()
 {
 	initWindow();
 	initImGui();
-	initVulkan();
-	initVulkanSwapChain();
+	initDriver();
+	initSwapChain();
 	initRenderScene();
 	initRenderers();
 	mainloop();
 	shutdownRenderers();
 	shutdownRenderScene();
-	shutdownVulkanSwapChain();
-	shutdownVulkan();
+	shutdownSwapChain();
+	shutdownDriver();
 	shutdownImGui();
 	shutdownWindow();
 }
@@ -51,9 +52,7 @@ void Application::update()
 	const glm::vec3 &up = {0.0f, 0.0f, 1.0f};
 	const glm::vec3 &zero = {0.0f, 0.0f, 0.0f};
 
-	VkExtent2D extent = swapChain->getExtent();
-
-	const float aspect = extent.width / (float) extent.height;
+	const float aspect = swap_chain->getWidth() / (float)swap_chain->getHeight();
 	const float zNear = 0.1f;
 	const float zFar = 100000.0f;
 
@@ -75,20 +74,20 @@ void Application::update()
 
 	if (ImGui::Button("Reload Shaders"))
 	{
-		scene->reloadShaders();
-		renderer->setEnvironment(scene, scene->getHDRTexture(state.currentEnvironment));
+		resources->reloadShaders();
+		renderer->setEnvironment(resources, resources->getHDRTexture(state.currentEnvironment));
 	}
 
 	int oldCurrentEnvironment = state.currentEnvironment;
-	if (ImGui::BeginCombo("Choose Your Destiny", scene->getHDRTexturePath(state.currentEnvironment)))
+	if (ImGui::BeginCombo("Choose Your Destiny", resources->getHDRTexturePath(state.currentEnvironment)))
 	{
-		for (int i = 0; i < scene->getNumHDRTextures(); i++)
+		for (int i = 0; i < resources->getNumHDRTextures(); i++)
 		{
 			bool selected = (i == state.currentEnvironment);
-			if (ImGui::Selectable(scene->getHDRTexturePath(i), &selected))
+			if (ImGui::Selectable(resources->getHDRTexturePath(i), &selected))
 			{
 				state.currentEnvironment = i;
-				renderer->setEnvironment(scene, scene->getHDRTexture(state.currentEnvironment));
+				renderer->setEnvironment(resources, resources->getHDRTexture(state.currentEnvironment));
 			}
 			if (selected)
 				ImGui::SetItemDefaultFocus();
@@ -108,12 +107,16 @@ void Application::update()
  */
 void Application::render()
 {
-	VulkanRenderFrame frame;
-	if (!swapChain->acquire(&state, frame))
+	RenderFrame frame;
+	if (!swap_chain->acquire(frame))
 	{
-		recreateVulkanSwapChain();
+		recreateSwapChain();
 		return;
 	}
+
+	memcpy(frame.uniform_buffer_data, &state, sizeof(ApplicationState));
+	driver->resetCommandBuffer(frame.command_buffer);
+	driver->beginCommandBuffer(frame.command_buffer);
 
 	render_graph->render(sponza, frame);
 
@@ -132,15 +135,18 @@ void Application::render()
 
 	driver->beginRenderPass(frame.command_buffer, frame.frame_buffer, &info);
 
-	// renderer->render(scene, frame);
-	imguiRenderer->render(frame);
+	renderer->render(resources, frame);
+	imgui_renderer->render(frame);
 
 	driver->endRenderPass(frame.command_buffer);
 
-	if (!swapChain->present(frame) || windowResized)
+	driver->endCommandBuffer(frame.command_buffer);
+	driver->submitSyncked(frame.command_buffer, swap_chain->getBackend());
+
+	if (!swap_chain->present(frame) || windowResized)
 	{
 		windowResized = false;
-		recreateVulkanSwapChain();
+		recreateSwapChain();
 	}
 }
 
@@ -240,8 +246,8 @@ void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
  */
 void Application::initRenderScene()
 {
-	scene = new RenderScene(driver);
-	scene->init();
+	resources = new ApplicationResources(driver);
+	resources->init();
 
 	sponza = new Scene(driver);
 	sponza->import("scenes/pbr_sponza/sponza.obj");
@@ -249,28 +255,26 @@ void Application::initRenderScene()
 
 void Application::shutdownRenderScene()
 {
-	scene->shutdown();
+	delete resources;
+	resources = nullptr;
 
-	delete scene;
-	scene = nullptr;
+	delete sponza;
+	sponza = nullptr;
 }
 
 /*
  */
 void Application::initRenderers()
 {
-	int width, height;
-	glfwGetWindowSize(window, &width, &height);
+	renderer = new Renderer(driver);
+	renderer->init(resources);
+	renderer->setEnvironment(resources, resources->getHDRTexture(state.currentEnvironment));
 
-	renderer = new VulkanRenderer(driver);
-	renderer->init(scene);
-	renderer->setEnvironment(scene, scene->getHDRTexture(state.currentEnvironment));
-
-	imguiRenderer = new VulkanImGuiRenderer(driver, ImGui::GetCurrentContext(), swapChain->getExtent(), swapChain->getDummyRenderPass());
-	imguiRenderer->init(swapChain);
+	imgui_renderer = new ImGuiRenderer(driver, ImGui::GetCurrentContext());
+	imgui_renderer->init(swap_chain);
 
 	render_graph = new RenderGraph(driver);
-	render_graph->init(scene, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+	render_graph->init(resources, swap_chain->getWidth(), swap_chain->getHeight());
 }
 
 void Application::shutdownRenderers()
@@ -278,8 +282,8 @@ void Application::shutdownRenderers()
 	delete renderer;
 	renderer = nullptr;
 
-	delete imguiRenderer;
-	imguiRenderer = nullptr;
+	delete imgui_renderer;
+	imgui_renderer = nullptr;
 
 	delete render_graph;
 	render_graph = nullptr;
@@ -304,12 +308,12 @@ void Application::shutdownImGui()
 
 /*
  */
-void Application::initVulkan()
+void Application::initDriver()
 {
-	driver = render::backend::Driver::create("PBR Sandbox", "Scape");
+	driver = backend::Driver::create("PBR Sandbox", "Scape");
 }
 
-void Application::shutdownVulkan()
+void Application::shutdownDriver()
 {
 	delete driver;
 	driver = nullptr;
@@ -317,7 +321,7 @@ void Application::shutdownVulkan()
 
 /*
  */
-void Application::initVulkanSwapChain()
+void Application::initSwapChain()
 {
 #if defined(PBR_SANDBOX_WIN32)
 	void *nativeWindow = glfwGetWin32Window(window);
@@ -325,22 +329,24 @@ void Application::initVulkanSwapChain()
 	void *nativeWindow = nullptr;
 #endif
 
-	if (!swapChain)
-		swapChain = new VulkanSwapChain(driver, nativeWindow, sizeof(ApplicationState));
+	if (!swap_chain)
+		swap_chain = new render::SwapChain(driver, nativeWindow);
 
 	int width, height;
 	glfwGetWindowSize(window, &width, &height);
 
-	swapChain->init(width, height);
+	uint32_t ubo_size = static_cast<uint32_t>(sizeof(ApplicationState));
+
+	swap_chain->init(static_cast<uint32_t>(width), static_cast<uint32_t>(height), ubo_size);
 }
 
-void Application::shutdownVulkanSwapChain()
+void Application::shutdownSwapChain()
 {
-	delete swapChain;
-	swapChain = nullptr;
+	delete swap_chain;
+	swap_chain = nullptr;
 }
 
-void Application::recreateVulkanSwapChain()
+void Application::recreateSwapChain()
 {
 	int width = 0, height = 0;
 	while (width == 0 || height == 0)
@@ -351,7 +357,8 @@ void Application::recreateVulkanSwapChain()
 	driver->wait();
 
 	glfwGetWindowSize(window, &width, &height);
-	swapChain->reinit(width, height);
-	imguiRenderer->resize(swapChain);
-	render_graph->resize(width, height);
+
+	swap_chain->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+	render_graph->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+	imgui_renderer->resize(swap_chain);
 }

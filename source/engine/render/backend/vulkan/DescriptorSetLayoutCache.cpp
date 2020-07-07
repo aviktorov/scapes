@@ -1,8 +1,8 @@
 #include "render/backend/vulkan/DescriptorSetLayoutCache.h"
+#include "render/backend/vulkan/DescriptorSetLayoutBuilder.h"
 
-#include "render/backend/vulkan/driver.h"
-#include "render/backend/vulkan/device.h"
-#include "render/backend/vulkan/VulkanDescriptorSetLayoutBuilder.h"
+#include "render/backend/vulkan/Driver.h"
+#include "render/backend/vulkan/Device.h"
 
 #include <cassert>
 
@@ -28,7 +28,7 @@ namespace render::backend::vulkan
 		if (it != cache.end())
 			return it->second;
 
-		VulkanDescriptorSetLayoutBuilder builder;
+		DescriptorSetLayoutBuilder builder;
 
 		for (uint8_t i = 0; i < BindSet::MAX_BINDINGS; ++i)
 		{

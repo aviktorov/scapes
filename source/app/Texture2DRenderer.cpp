@@ -1,14 +1,14 @@
-#include "VulkanTexture2DRenderer.h"
+#include "Texture2DRenderer.h"
 
-#include "VulkanTexture.h"
-#include "VulkanShader.h"
+#include <render/Shader.h>
+#include <render/Texture.h>
 
-
+using namespace render;
 using namespace render::backend;
 
 /*
  */
-VulkanTexture2DRenderer::VulkanTexture2DRenderer(Driver *driver)
+Texture2DRenderer::Texture2DRenderer(Driver *driver)
 	: driver(driver)
 	, quad(driver)
 {
@@ -16,7 +16,7 @@ VulkanTexture2DRenderer::VulkanTexture2DRenderer(Driver *driver)
 
 /*
  */
-void VulkanTexture2DRenderer::init(const VulkanTexture *target_texture)
+void Texture2DRenderer::init(const render::Texture *target_texture)
 {
 	assert(target_texture != nullptr);
 
@@ -30,7 +30,7 @@ void VulkanTexture2DRenderer::init(const VulkanTexture *target_texture)
 	command_buffer = driver->createCommandBuffer(CommandBufferType::PRIMARY);
 }
 
-void VulkanTexture2DRenderer::shutdown()
+void Texture2DRenderer::shutdown()
 {
 	driver->destroyFrameBuffer(framebuffer);
 	framebuffer = nullptr;
@@ -44,7 +44,10 @@ void VulkanTexture2DRenderer::shutdown()
 
 /*
  */
-void VulkanTexture2DRenderer::render(const VulkanShader *vertex_shader, const VulkanShader *fragment_shader)
+void Texture2DRenderer::render(
+	const render::Shader *vertex_shader,
+	const render::Shader *fragment_shader
+)
 {
 	assert(vertex_shader != nullptr);
 	assert(fragment_shader != nullptr);

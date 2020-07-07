@@ -438,6 +438,9 @@ public:
 	virtual Multisample getMaxSampleCount() = 0;
 	virtual Format getOptimalDepthFormat() = 0;
 
+	virtual Format getSwapChainImageFormat(const SwapChain *swap_chain) = 0;
+	virtual uint32_t getNumSwapChainImages(const SwapChain *swap_chain) = 0;
+
 public:
 	virtual void generateTexture2DMipmaps(Texture *texture) = 0;
 

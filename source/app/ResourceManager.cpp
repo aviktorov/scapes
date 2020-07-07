@@ -1,14 +1,14 @@
-#include "VulkanResourceManager.h"
+#include "ResourceManager.h"
 
-#include "VulkanMesh.h"
-#include "VulkanShader.h"
-#include "VulkanTexture.h"
+#include <render/Mesh.h>
+#include <render/Shader.h>
+#include <render/Texture.h>
 
 #include <iostream>
 
 /*
  */
-VulkanMesh *VulkanResourceManager::getMesh(int id) const
+render::Mesh *ResourceManager::getMesh(int id) const
 {
 	auto it = meshes.find(id);
 	if (it != meshes.end())
@@ -17,32 +17,32 @@ VulkanMesh *VulkanResourceManager::getMesh(int id) const
 	return nullptr;
 }
 
-VulkanMesh *VulkanResourceManager::createCubeMesh(int id, float size)
+render::Mesh *ResourceManager::createCubeMesh(int id, float size)
 {
 	auto it = meshes.find(id);
 	if (it != meshes.end())
 	{
-		std::cerr << "VulkanResourceManager::loadMesh(): " << id << " is already taken by another mesh" << std::endl;
+		std::cerr << "ResourceManager::loadMesh(): " << id << " is already taken by another mesh" << std::endl;
 		return nullptr;
 	}
 
-	VulkanMesh *mesh = new VulkanMesh(driver);
+	render::Mesh *mesh = new render::Mesh(driver);
 	mesh->createSkybox(size);
 
 	meshes.insert(std::make_pair(id, mesh));
 	return mesh;
 }
 
-VulkanMesh *VulkanResourceManager::loadMesh(int id, const char *path)
+render::Mesh *ResourceManager::loadMesh(int id, const char *path)
 {
 	auto it = meshes.find(id);
 	if (it != meshes.end())
 	{
-		std::cerr << "VulkanResourceManager::loadMesh(): " << id << " is already taken by another mesh" << std::endl;
+		std::cerr << "ResourceManager::loadMesh(): " << id << " is already taken by another mesh" << std::endl;
 		return nullptr;
 	}
 
-	VulkanMesh *mesh = new VulkanMesh(driver);
+	render::Mesh *mesh = new render::Mesh(driver);
 	if (!mesh->import(path))
 		return nullptr;
 
@@ -50,7 +50,7 @@ VulkanMesh *VulkanResourceManager::loadMesh(int id, const char *path)
 	return mesh;
 }
 
-void VulkanResourceManager::unloadMesh(int id)
+void ResourceManager::unloadMesh(int id)
 {
 	auto it = meshes.find(id);
 	if (it == meshes.end())
@@ -62,7 +62,7 @@ void VulkanResourceManager::unloadMesh(int id)
 
 /*
  */
-VulkanShader *VulkanResourceManager::getShader(int id) const
+render::Shader *ResourceManager::getShader(int id) const
 {
 	auto it = shaders.find(id);
 	if (it != shaders.end())
@@ -71,16 +71,16 @@ VulkanShader *VulkanResourceManager::getShader(int id) const
 	return nullptr;
 }
 
-VulkanShader *VulkanResourceManager::loadShader(int id, render::backend::ShaderType type, const char *path)
+render::Shader *ResourceManager::loadShader(int id, render::backend::ShaderType type, const char *path)
 {
 	auto it = shaders.find(id);
 	if (it != shaders.end())
 	{
-		std::cerr << "VulkanResourceManager::loadShader(): " << id << " is already taken by another shader" << std::endl;
+		std::cerr << "ResourceManager::loadShader(): " << id << " is already taken by another shader" << std::endl;
 		return nullptr;
 	}
 
-	VulkanShader *shader = new VulkanShader(driver);
+	render::Shader *shader = new render::Shader(driver);
 	if (!shader->compileFromFile(path, type))
 		return nullptr;
 
@@ -88,7 +88,7 @@ VulkanShader *VulkanResourceManager::loadShader(int id, render::backend::ShaderT
 	return shader;
 }
 
-bool VulkanResourceManager::reloadShader(int id)
+bool ResourceManager::reloadShader(int id)
 {
 	auto it = shaders.find(id);
 	if (it == shaders.end())
@@ -97,7 +97,7 @@ bool VulkanResourceManager::reloadShader(int id)
 	return it->second->reload();
 }
 
-void VulkanResourceManager::unloadShader(int id)
+void ResourceManager::unloadShader(int id)
 {
 	auto it = shaders.find(id);
 	if (it == shaders.end())
@@ -109,7 +109,7 @@ void VulkanResourceManager::unloadShader(int id)
 
 /*
  */
-VulkanTexture *VulkanResourceManager::getTexture(int id) const
+render::Texture *ResourceManager::getTexture(int id) const
 {
 	auto it = textures.find(id);
 	if (it != textures.end())
@@ -118,16 +118,16 @@ VulkanTexture *VulkanResourceManager::getTexture(int id) const
 	return nullptr;
 }
 
-VulkanTexture *VulkanResourceManager::loadTexture(int id, const char *path)
+render::Texture *ResourceManager::loadTexture(int id, const char *path)
 {
 	auto it = textures.find(id);
 	if (it != textures.end())
 	{
-		std::cerr << "VulkanResourceManager::loadTexture(): " << id << " is already taken by another texture" << std::endl;
+		std::cerr << "ResourceManager::loadTexture(): " << id << " is already taken by another texture" << std::endl;
 		return nullptr;
 	}
 
-	VulkanTexture *texture = new VulkanTexture(driver);
+	render::Texture *texture = new render::Texture(driver);
 	if (!texture->import(path))
 		return nullptr;
 
@@ -135,7 +135,7 @@ VulkanTexture *VulkanResourceManager::loadTexture(int id, const char *path)
 	return texture;
 }
 
-void VulkanResourceManager::unloadTexture(int id)
+void ResourceManager::unloadTexture(int id)
 {
 	auto it = textures.find(id);
 	if (it == textures.end())

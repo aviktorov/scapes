@@ -1,11 +1,11 @@
 #include "RenderGraph.h"
 
 #include "Scene.h"
-#include "RenderScene.h"
+#include "ApplicationResources.h"
 
-#include "VulkanMesh.h"
-#include "VulkanSwapChain.h"
-#include "VulkanShader.h"
+#include <render/Mesh.h>
+#include <render/SwapChain.h>
+#include <render/Shader.h>
 
 #include <GLM/glm.hpp>
 
@@ -22,13 +22,13 @@ RenderGraph::~RenderGraph()
 
 /*
  */
-void RenderGraph::init(const RenderScene *scene, uint32_t width, uint32_t height)
+void RenderGraph::init(const ApplicationResources *resources, uint32_t width, uint32_t height)
 {
 	initGBuffer(width, height);
 	initLBuffer(width, height);
 
-	gbuffer_pass_vertex = scene->getGBufferVertexShader();
-	gbuffer_pass_fragment = scene->getGBufferFragmentShader();
+	gbuffer_pass_vertex = resources->getGBufferVertexShader();
+	gbuffer_pass_fragment = resources->getGBufferFragmentShader();
 }
 
 void RenderGraph::shutdown()
@@ -102,12 +102,12 @@ void RenderGraph::resize(uint32_t width, uint32_t height)
 
 /*
  */
-void RenderGraph::render(const Scene *scene, const VulkanRenderFrame &frame)
+void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame)
 {
 	renderGBuffer(scene, frame);
 }
 
-void RenderGraph::renderGBuffer(const Scene *scene, const VulkanRenderFrame &frame)
+void RenderGraph::renderGBuffer(const Scene *scene, const render::RenderFrame &frame)
 {
 	assert(gbuffer_pass_vertex);
 	assert(gbuffer_pass_fragment);
@@ -135,7 +135,7 @@ void RenderGraph::renderGBuffer(const Scene *scene, const VulkanRenderFrame &fra
 
 	for (size_t i = 0; i < scene->getNumNodes(); ++i)
 	{
-		const VulkanMesh *node_mesh = scene->getNodeMesh(i);
+		const render::Mesh *node_mesh = scene->getNodeMesh(i);
 		const glm::mat4 &node_transform = scene->getNodeWorldTransform(i);
 		render::backend::BindSet *node_bindings = scene->getNodeBindings(i);
 

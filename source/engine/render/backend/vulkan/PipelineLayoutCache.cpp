@@ -1,10 +1,10 @@
 #include "render/backend/vulkan/PipelineLayoutCache.h"
-
-#include "render/backend/vulkan/driver.h"
-#include "render/backend/vulkan/device.h"
-#include "render/backend/vulkan/context.h"
+#include "render/backend/vulkan/PipelineLayoutBuilder.h"
 #include "render/backend/vulkan/DescriptorSetLayoutCache.h"
-#include "render/backend/vulkan/VulkanPipelineLayoutBuilder.h"
+
+#include "render/backend/vulkan/Driver.h"
+#include "render/backend/vulkan/Device.h"
+#include "render/backend/vulkan/Context.h"
 
 #include <vector>
 #include <cassert>
@@ -38,7 +38,7 @@ namespace render::backend::vulkan
 		if (it != cache.end())
 			return it->second;
 
-		VulkanPipelineLayoutBuilder builder;
+		PipelineLayoutBuilder builder;
 
 		for (uint8_t i = 0; i < num_bind_sets; ++i)
 			builder.addDescriptorSetLayout(layouts[i]);
