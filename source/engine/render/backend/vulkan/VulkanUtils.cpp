@@ -265,7 +265,7 @@ void VulkanUtils::createBuffer(
 	VkBufferUsageFlags usage,
 	VkMemoryPropertyFlags memoryProperties,
 	VkBuffer &buffer,
-	VkDeviceMemory &memory
+	VmaAllocation &memory
 )
 {
 	// Create buffer
@@ -275,23 +275,13 @@ void VulkanUtils::createBuffer(
 	bufferInfo.usage = usage;
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	if (vkCreateBuffer(device->getDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
-		throw std::runtime_error("Can't create buffer");
+	VmaAllocationCreateInfo allocInfo = {};
+	allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-	// Allocate memory for the buffer
-	VkMemoryRequirements memoryRequirements = {};
-	vkGetBufferMemoryRequirements(device->getDevice(), buffer, &memoryRequirements);
-
-	VkMemoryAllocateInfo memoryAllocateInfo = {};
-	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(device->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
-
-	if (vkAllocateMemory(device->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
-		throw std::runtime_error("Can't allocate buffer memory");
-
-	if (vkBindBufferMemory(device->getDevice(), buffer, memory, 0) != VK_SUCCESS)
-		throw std::runtime_error("Can't bind buffer memory");
+	if (vmaCreateBuffer(device->getVRAMAllocator(), &bufferInfo, &allocInfo, &buffer, &memory, nullptr) != VK_SUCCESS)
+	{
+		// TODO: log error "Can't create buffer"
+	}
 }
 
 void VulkanUtils::createDeviceLocalBuffer(
@@ -300,10 +290,10 @@ void VulkanUtils::createDeviceLocalBuffer(
 	const void *data,
 	VkBufferUsageFlags usage,
 	VkBuffer &buffer,
-	VkDeviceMemory &memory
+	VmaAllocation &memory
 )
 {
-	// Create vertex buffer
+	// Create device local buffer
 	createBuffer(
 		device,
 		size,
@@ -315,29 +305,33 @@ void VulkanUtils::createDeviceLocalBuffer(
 
 	// Create staging buffer
 	VkBuffer staging_buffer = VK_NULL_HANDLE;
-	VkDeviceMemory staging_memory = VK_NULL_HANDLE;
+	VmaAllocation staging_memory = VK_NULL_HANDLE;
 
-	VulkanUtils::createBuffer(
-		device,
-		size,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		staging_buffer,
-		staging_memory
-	);
+	VkBufferCreateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = size;
+	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VmaAllocationCreateInfo allocInfo = {};
+	allocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+
+	if (vmaCreateBuffer(device->getVRAMAllocator(), &bufferInfo, &allocInfo, &staging_buffer, &staging_memory, nullptr) != VK_SUCCESS)
+	{
+		// TODO: log error "Can't create staging buffer"
+	}
 
 	// Fill staging buffer
 	void *staging_data = nullptr;
-	vkMapMemory(device->getDevice(), staging_memory, 0, size, 0, &staging_data);
+	vmaMapMemory(device->getVRAMAllocator(), staging_memory, &staging_data);
 	memcpy(staging_data, data, static_cast<size_t>(size));
-	vkUnmapMemory(device->getDevice(), staging_memory);
+	vmaUnmapMemory(device->getVRAMAllocator(), staging_memory);
 
 	// Transfer to GPU local memory
 	copyBuffer(device, staging_buffer, buffer, size);
 
 	// Destroy staging buffer
-	vkDestroyBuffer(device->getDevice(), staging_buffer, nullptr);
-	vkFreeMemory(device->getDevice(), staging_memory, nullptr);
+	vmaDestroyBuffer(device->getVRAMAllocator(), staging_buffer, staging_memory);
 }
 
 /*
@@ -357,7 +351,7 @@ void VulkanUtils::createImage(
 	VkMemoryPropertyFlags memoryProperties,
 	VkImageCreateFlags flags,
 	VkImage &image,
-	VkDeviceMemory &memory
+	VmaAllocation &memory
 )
 {
 	// Create buffer
@@ -377,23 +371,13 @@ void VulkanUtils::createImage(
 	imageInfo.samples = numSamples;
 	imageInfo.flags = flags;
 
-	if (vkCreateImage(device->getDevice(), &imageInfo, nullptr, &image) != VK_SUCCESS)
-		throw std::runtime_error("Can't create image");
+	VmaAllocationCreateInfo allocInfo = {};
+	allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-	// Allocate memory for the buffer
-	VkMemoryRequirements memoryRequirements = {};
-	vkGetImageMemoryRequirements(device->getDevice(), image, &memoryRequirements);
-
-	VkMemoryAllocateInfo memoryAllocateInfo = {};
-	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memoryAllocateInfo.allocationSize = memoryRequirements.size;
-	memoryAllocateInfo.memoryTypeIndex = findMemoryType(device->getPhysicalDevice(), memoryRequirements.memoryTypeBits, memoryProperties);
-
-	if (vkAllocateMemory(device->getDevice(), &memoryAllocateInfo, nullptr, &memory) != VK_SUCCESS)
-		throw std::runtime_error("Can't allocate image memory");
-
-	if (vkBindImageMemory(device->getDevice(), image, memory, 0) != VK_SUCCESS)
-		throw std::runtime_error("Can't bind image memory");
+	if (vmaCreateImage(device->getVRAMAllocator(), &imageInfo, &allocInfo, &image, &memory, nullptr) != VK_SUCCESS)
+	{
+		// TODO: log error "Can't create image"
+	}
 }
 
 /*
@@ -409,7 +393,7 @@ void VulkanUtils::createImageCube(
 	VkImageUsageFlags usage,
 	VkMemoryPropertyFlags memoryProperties,
 	VkImage &image,
-	VkDeviceMemory &memory
+	VmaAllocation &memory
 )
 {
 	createImage(
@@ -435,7 +419,7 @@ void VulkanUtils::createImage2D(
 	VkImageUsageFlags usage,
 	VkMemoryPropertyFlags memoryProperties,
 	VkImage &image,
-	VkDeviceMemory &memory
+	VmaAllocation &memory
 )
 {
 	createImage(
@@ -480,22 +464,27 @@ void VulkanUtils::fillImage(
 
 	// Create staging buffer
 	VkBuffer staging_buffer = VK_NULL_HANDLE;
-	VkDeviceMemory staging_memory = VK_NULL_HANDLE;
+	VmaAllocation staging_memory = VK_NULL_HANDLE;
 
-	createBuffer(
-		device,
-		resource_size * dataArrayLayers,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		staging_buffer,
-		staging_memory
-	);
+	VkBufferCreateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = resource_size * dataArrayLayers;
+	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VmaAllocationCreateInfo allocInfo = {};
+	allocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+
+	if (vmaCreateBuffer(device->getVRAMAllocator(), &bufferInfo, &allocInfo, &staging_buffer, &staging_memory, nullptr) != VK_SUCCESS)
+	{
+		// TODO: log error "Can't create staging buffer"
+	}
 
 	// Fill staging buffer
 	void *staging_data = nullptr;
-	vkMapMemory(device->getDevice(), staging_memory, 0, resource_size * dataArrayLayers, 0, &staging_data);
+	vmaMapMemory(device->getVRAMAllocator(), staging_memory, &staging_data);
 	memcpy(staging_data, data, static_cast<size_t>(resource_size * dataArrayLayers));
-	vkUnmapMemory(device->getDevice(), staging_memory);
+	vmaUnmapMemory(device->getVRAMAllocator(), staging_memory);
 
 	// Copy to the image memory on GPU
 	VkDeviceSize offset = 0;
@@ -536,8 +525,7 @@ void VulkanUtils::fillImage(
 	VulkanUtils::endSingleTimeCommands(device, command_buffer);
 
 	// Destroy staging buffer
-	vkDestroyBuffer(device->getDevice(), staging_buffer, nullptr);
-	vkFreeMemory(device->getDevice(), staging_memory, nullptr);
+	vmaDestroyBuffer(device->getVRAMAllocator(), staging_buffer, staging_memory);
 }
 
 VkImageView VulkanUtils::createImageView(
@@ -617,61 +605,6 @@ VkShaderModule VulkanUtils::createShaderModule(
 		return VK_NULL_HANDLE;
 
 	return shader;
-}
-
-void VulkanUtils::bindUniformBuffer(
-	const render::backend::vulkan::Device *device,
-	VkDescriptorSet descriptorSet,
-	int binding,
-	VkBuffer buffer,
-	VkDeviceSize offset,
-	VkDeviceSize size
-)
-{
-	VkDescriptorBufferInfo descriptorBufferInfo = {};
-	descriptorBufferInfo.buffer = buffer;
-	descriptorBufferInfo.offset = offset;
-	descriptorBufferInfo.range = size;
-
-	VkWriteDescriptorSet descriptorWrite = {};
-	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptorWrite.dstSet = descriptorSet;
-	descriptorWrite.dstBinding = binding;
-	descriptorWrite.dstArrayElement = 0;
-	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorWrite.descriptorCount = 1;
-	descriptorWrite.pBufferInfo = &descriptorBufferInfo;
-
-	// TODO: not optimal, probably should be refactored to a Binder class,
-	// i.e. it's better to collect all descriptor writes before the call
-	vkUpdateDescriptorSets(device->getDevice(), 1, &descriptorWrite, 0, nullptr);
-}
-
-void VulkanUtils::bindCombinedImageSampler(
-	const render::backend::vulkan::Device *device,
-	VkDescriptorSet descriptorSet,
-	int binding,
-	VkImageView imageView,
-	VkSampler sampler
-)
-{
-	VkDescriptorImageInfo descriptorImageInfo = {};
-	descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	descriptorImageInfo.imageView = imageView;
-	descriptorImageInfo.sampler = sampler;
-
-	VkWriteDescriptorSet descriptorWrite = {};
-	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptorWrite.dstSet = descriptorSet;
-	descriptorWrite.dstBinding = binding;
-	descriptorWrite.dstArrayElement = 0;
-	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	descriptorWrite.descriptorCount = 1;
-	descriptorWrite.pImageInfo = &descriptorImageInfo;
-
-	// TODO: not optimal, probably should be refactored to a Binder class,
-	// i.e. it's better to collect all descriptor writes before the call
-	vkUpdateDescriptorSets(device->getDevice(), 1, &descriptorWrite, 0, nullptr);
 }
 
 void VulkanUtils::copyBuffer(

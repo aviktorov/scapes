@@ -20,6 +20,7 @@ include_directories("3rdparty/glm")
 include_directories("3rdparty/shaderc/include")
 include_directories("3rdparty/stb")
 include_directories("3rdparty/volk")
+include_directories("3rdparty/vma")
 include_directories("3rdparty/imgui")
 include_directories("3rdparty/imgui/examples")
 

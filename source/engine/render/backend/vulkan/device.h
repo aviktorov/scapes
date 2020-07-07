@@ -1,6 +1,8 @@
 #pragma once
 
 #include <volk.h>
+#include <vk_mem_alloc.h>
+
 #include <optional>
 
 namespace render::backend::vulkan
@@ -18,6 +20,7 @@ namespace render::backend::vulkan
 		inline uint32_t getGraphicsQueueFamily() const { return graphicsQueueFamily; }
 		inline VkQueue getGraphicsQueue() const { return graphicsQueue; }
 		inline VkSampleCountFlagBits getMaxSampleCount() const { return maxMSAASamples; }
+		inline VmaAllocator getVRAMAllocator() const { return vram_allocator; }
 
 	public:
 		void init(const char *applicationName, const char *engineName);
@@ -50,7 +53,6 @@ namespace render::backend::vulkan
 		VkSampleCountFlagBits maxMSAASamples {VK_SAMPLE_COUNT_1_BIT};
 		VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
 
-		// TODO: depth buffer
-		// TODO: msaa resolve buffer
+		VmaAllocator vram_allocator {VK_NULL_HANDLE};
 	};
 }

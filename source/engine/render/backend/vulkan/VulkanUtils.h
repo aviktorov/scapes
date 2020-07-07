@@ -1,7 +1,9 @@
 #pragma once
 
 #include <vector>
+
 #include <volk.h>
+#include <vk_mem_alloc.h>
 
 namespace render::backend::vulkan
 {
@@ -66,7 +68,7 @@ public:
 		VkBufferUsageFlags usage,
 		VkMemoryPropertyFlags memoryProperties,
 		VkBuffer &buffer,
-		VkDeviceMemory &memory
+		VmaAllocation &memory
 	);
 
 	static void createDeviceLocalBuffer(
@@ -75,7 +77,7 @@ public:
 		const void *data,
 		VkBufferUsageFlags usage,
 		VkBuffer &buffer,
-		VkDeviceMemory &memory
+		VmaAllocation &memory
 	);
 
 	static void createImage(
@@ -93,7 +95,7 @@ public:
 		VkMemoryPropertyFlags memoryProperties,
 		VkImageCreateFlags flags,
 		VkImage &image,
-		VkDeviceMemory &memory
+		VmaAllocation &memory
 	);
 
 	static void fillImage(
@@ -122,7 +124,7 @@ public:
 		VkImageUsageFlags usage,
 		VkMemoryPropertyFlags memoryProperties,
 		VkImage &image,
-		VkDeviceMemory &memory
+		VmaAllocation &memory
 	);
 
 	static void createImage2D(
@@ -136,7 +138,7 @@ public:
 		VkImageUsageFlags usage,
 		VkMemoryPropertyFlags memoryProperties,
 		VkImage &image,
-		VkDeviceMemory &memory
+		VmaAllocation &memory
 	);
 
 	static void createImage2D(
@@ -151,7 +153,7 @@ public:
 		VkFormat format,
 		VkImageTiling tiling,
 		VkImage &image,
-		VkDeviceMemory &memory
+		VmaAllocation &memory
 	);
 
 	static VkImageView createImageView(
@@ -176,23 +178,6 @@ public:
 		const render::backend::vulkan::Device *device,
 		const uint32_t *bytecode,
 		size_t bytecodeSize
-	);
-
-	static void VulkanUtils::bindUniformBuffer(
-		const render::backend::vulkan::Device *device,
-		VkDescriptorSet descriptorSet,
-		int binding,
-		VkBuffer buffer,
-		VkDeviceSize offset,
-		VkDeviceSize size
-	);
-
-	static void bindCombinedImageSampler(
-		const render::backend::vulkan::Device *device,
-		VkDescriptorSet descriptorSet,
-		int binding,
-		VkImageView imageView,
-		VkSampler sampler
 	);
 
 	static void copyBuffer(

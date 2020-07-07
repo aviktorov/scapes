@@ -2,6 +2,9 @@
 #include "render/backend/vulkan/platform.h"
 #include "render/backend/vulkan/VulkanUtils.h"
 
+#define VMA_IMPLEMENTATION
+#include <vk_mem_alloc.h>
+
 #include <array>
 #include <vector>
 #include <iostream>
@@ -188,10 +191,21 @@ namespace render::backend::vulkan
 			throw std::runtime_error("Can't create descriptor pool");
 
 		maxMSAASamples = VulkanUtils::getMaxUsableSampleCount(physicalDevice);
+
+		VmaAllocatorCreateInfo allocatorInfo = {};
+		allocatorInfo.physicalDevice = physicalDevice;
+		allocatorInfo.device = device;
+		allocatorInfo.instance = instance;
+
+		if (vmaCreateAllocator(&allocatorInfo, &vram_allocator) != VK_SUCCESS)
+			throw std::runtime_error("Can't create VRAM allocator");
 	}
 
 	void Device::shutdown()
 	{
+		vmaDestroyAllocator(vram_allocator);
+		vram_allocator = VK_NULL_HANDLE;
+
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 		descriptorPool = VK_NULL_HANDLE;
 

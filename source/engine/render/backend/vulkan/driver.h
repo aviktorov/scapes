@@ -2,6 +2,7 @@
 
 #include "render/backend/driver.h"
 #include <volk.h>
+#include <vk_mem_alloc.h>
 
 namespace render::backend
 {
@@ -23,7 +24,7 @@ namespace render::backend
 			};
 
 			VkBuffer buffer {VK_NULL_HANDLE};
-			VkDeviceMemory memory {VK_NULL_HANDLE}; // TODO: replace by VMA later
+			VmaAllocation memory {VK_NULL_HANDLE};
 			uint16_t vertex_size {0};
 			uint32_t num_vertices {0};
 			uint8_t num_attributes {0};
@@ -34,7 +35,7 @@ namespace render::backend
 		struct IndexBuffer : public render::backend::IndexBuffer
 		{
 			VkBuffer buffer {VK_NULL_HANDLE};
-			VkDeviceMemory memory {VK_NULL_HANDLE}; // TODO: replace by VMA later
+			VmaAllocation memory {VK_NULL_HANDLE};
 			VkIndexType type {VK_INDEX_TYPE_UINT16};
 			uint32_t num_indices {0};
 			// TODO: static / dynamic fields
@@ -52,7 +53,7 @@ namespace render::backend
 			VkImage image {VK_NULL_HANDLE};
 			VkImageView view {VK_NULL_HANDLE};
 			VkSampler sampler {VK_NULL_HANDLE};
-			VkDeviceMemory memory {VK_NULL_HANDLE}; // TODO: replace by VMA later
+			VmaAllocation memory {VK_NULL_HANDLE};
 			VkImageType type {VK_IMAGE_TYPE_2D};
 			VkFormat format {VK_FORMAT_UNDEFINED};
 			uint32_t width {0};
@@ -96,7 +97,7 @@ namespace render::backend
 		struct UniformBuffer : public render::backend::UniformBuffer
 		{
 			VkBuffer buffer {VK_NULL_HANDLE};
-			VkDeviceMemory memory {VK_NULL_HANDLE}; // TODO: replace by VMA later
+			VmaAllocation memory {VK_NULL_HANDLE};
 			uint32_t size {0};
 			void *pointer {nullptr};
 			// TODO: static / dynamic fields
@@ -159,11 +160,11 @@ namespace render::backend
 
 			VkImage msaa_color_image {VK_NULL_HANDLE};
 			VkImageView msaa_color_view {VK_NULL_HANDLE};
-			VkDeviceMemory msaa_color_memory {VK_NULL_HANDLE};
+			VmaAllocation msaa_color_memory {VK_NULL_HANDLE};
 
 			VkImage depth_image {VK_NULL_HANDLE};
 			VkImageView depth_view {VK_NULL_HANDLE};
-			VkDeviceMemory depth_memory {VK_NULL_HANDLE};
+			VmaAllocation depth_memory {VK_NULL_HANDLE};
 
 			uint32_t num_images {0};
 			uint32_t current_image {0};

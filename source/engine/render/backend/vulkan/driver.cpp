@@ -15,7 +15,7 @@
 #include "render/backend/vulkan/RenderPassBuilder.h"
 #include "render/backend/vulkan/VulkanUtils.h"
 
-#include "shaderc/shaderc.h"
+#include <shaderc/shaderc.h>
 
 namespace render::backend
 {
@@ -1191,7 +1191,7 @@ namespace render::backend
 			result->memory
 		);
 
-		if (vkMapMemory(device->getDevice(), result->memory, 0, size, 0, &result->pointer) != VK_SUCCESS)
+		if (vmaMapMemory(device->getVRAMAllocator(), result->memory, &result->pointer) != VK_SUCCESS)
 		{
 			// TODO: log error
 			delete result;
@@ -1326,8 +1326,7 @@ namespace render::backend
 
 		vulkan::VertexBuffer *vk_vertex_buffer = static_cast<vulkan::VertexBuffer *>(vertex_buffer);
 
-		vkDestroyBuffer(device->getDevice(), vk_vertex_buffer->buffer, nullptr);
-		vkFreeMemory(device->getDevice(), vk_vertex_buffer->memory, nullptr);
+		vmaDestroyBuffer(device->getVRAMAllocator(), vk_vertex_buffer->buffer, vk_vertex_buffer->memory);
 
 		vk_vertex_buffer->buffer = VK_NULL_HANDLE;
 		vk_vertex_buffer->memory = VK_NULL_HANDLE;
@@ -1343,8 +1342,7 @@ namespace render::backend
 
 		vulkan::IndexBuffer *vk_index_buffer = static_cast<vulkan::IndexBuffer *>(index_buffer);
 
-		vkDestroyBuffer(device->getDevice(), vk_index_buffer->buffer, nullptr);
-		vkFreeMemory(device->getDevice(), vk_index_buffer->memory, nullptr);
+		vmaDestroyBuffer(device->getVRAMAllocator(), vk_index_buffer->buffer, vk_index_buffer->memory);
 
 		vk_index_buffer->buffer = VK_NULL_HANDLE;
 		vk_index_buffer->memory = VK_NULL_HANDLE;
@@ -1374,8 +1372,7 @@ namespace render::backend
 
 		vulkan::Texture *vk_texture = static_cast<vulkan::Texture *>(texture);
 
-		vkDestroyImage(device->getDevice(), vk_texture->image, nullptr);
-		vkFreeMemory(device->getDevice(), vk_texture->memory, nullptr);
+		vmaDestroyImage(device->getVRAMAllocator(), vk_texture->image, vk_texture->memory);
 
 		vk_texture->image = VK_NULL_HANDLE;
 		vk_texture->memory = VK_NULL_HANDLE;
@@ -1435,8 +1432,8 @@ namespace render::backend
 
 		vulkan::UniformBuffer *vk_uniform_buffer = static_cast<vulkan::UniformBuffer *>(uniform_buffer);
 
-		vkDestroyBuffer(device->getDevice(), vk_uniform_buffer->buffer, nullptr);
-		vkFreeMemory(device->getDevice(), vk_uniform_buffer->memory, nullptr);
+		vmaUnmapMemory(device->getVRAMAllocator(), vk_uniform_buffer->memory);
+		vmaDestroyBuffer(device->getVRAMAllocator(), vk_uniform_buffer->buffer, vk_uniform_buffer->memory);
 
 		vk_uniform_buffer->buffer = VK_NULL_HANDLE;
 		vk_uniform_buffer->memory = VK_NULL_HANDLE;
