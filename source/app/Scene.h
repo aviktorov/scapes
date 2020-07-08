@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+class Light;
+
 namespace render
 {
 	class Mesh;
@@ -44,6 +46,10 @@ public:
 		return materials[material_index].bindings;
 	}
 
+	inline void addLight(Light *light) { lights.push_back(light); }
+	inline size_t getNumLights() const { return lights.size(); }
+	inline const Light *getLight(size_t index) const { return lights[index]; }
+
 private:
 	struct RenderNode
 	{
@@ -72,4 +78,7 @@ private:
 	std::map<std::string, render::Texture *> textures;
 	std::vector<RenderMaterial> materials;
 	std::vector<RenderNode> nodes;
+
+	// does not own
+	std::vector<Light *> lights;
 };
