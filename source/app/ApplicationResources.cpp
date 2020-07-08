@@ -1,4 +1,5 @@
 #include "ApplicationResources.h"
+#include "RenderUtils.h"
 
 #include <vector>
 #include <cassert>
@@ -81,40 +82,86 @@ ApplicationResources::~ApplicationResources()
  */
 void ApplicationResources::init()
 {
-	for (int i = 0; i < config::meshes.size(); i++)
+	for (int i = 0; i < config::meshes.size(); ++i)
 		resources.loadMesh(i, config::meshes[i]);
 
 	resources.createCubeMesh(config::Meshes::Skybox, 10000.0f);
 
-	for (int i = 0; i < config::shaders.size(); i++)
+	for (int i = 0; i < config::shaders.size(); ++i)
 		resources.loadShader(i, config::shaderTypes[i], config::shaders[i]);
 
-	for (int i = 0; i < config::textures.size(); i++)
+	for (int i = 0; i < config::textures.size(); ++i)
 		resources.loadTexture(i, config::textures[i]);
 
-	for (int i = 0; i < config::hdrTextures.size(); i++)
+	for (int i = 0; i < config::hdrTextures.size(); ++i)
 		resources.loadTexture(config::Textures::EnvironmentBase + i, config::hdrTextures[i]);
+
+	baked_brdf = RenderUtils::createTexture2D(
+		driver,
+		render::backend::Format::R16G16_SFLOAT,
+		256, 256, 1,
+		resources.getShader(config::Shaders::BakedBRDFVertex),
+		resources.getShader(config::Shaders::BakedBRDFFragment)
+	);
+
+	environment_cubemaps.resize(config::hdrTextures.size());
+	irradiance_cubemaps.resize(config::hdrTextures.size());
+
+	for (int i = 0; i < config::hdrTextures.size(); ++i)
+	{
+		environment_cubemaps[i] = RenderUtils::hdriToCube(
+			driver,
+			render::backend::Format::R32G32B32A32_SFLOAT,
+			256,
+			resources.getTexture(config::Textures::EnvironmentBase + i),
+			resources.getShader(config::Shaders::CubeVertex),
+			resources.getShader(config::Shaders::HDRIToCubeFragment),
+			resources.getShader(config::Shaders::CubeToPrefilteredSpecular)
+		);
+
+		irradiance_cubemaps[i] = RenderUtils::createTextureCube(
+			driver,
+			render::backend::Format::R32G32B32A32_SFLOAT,
+			256,
+			1,
+			resources.getShader(config::Shaders::CubeVertex),
+			resources.getShader(config::Shaders::DiffuseIrradianceFragment),
+			environment_cubemaps[i]
+		);
+	}
 }
 
 void ApplicationResources::shutdown()
 {
-	for (int i = 0; i < config::meshes.size(); i++)
+	for (int i = 0; i < config::meshes.size(); ++i)
 		resources.unloadMesh(i);
 
 	resources.unloadMesh(config::Meshes::Skybox);
 
-	for (int i = 0; i < config::shaders.size(); i++)
+	for (int i = 0; i < config::shaders.size(); ++i)
 		resources.unloadShader(i);
 
-	for (int i = 0; i < config::textures.size(); i++)
+	for (int i = 0; i < config::textures.size(); ++i)
 		resources.unloadTexture(i);
 
-	for (int i = 0; i < config::hdrTextures.size(); i++)
+	for (int i = 0; i < config::hdrTextures.size(); ++i)
 		resources.unloadTexture(config::Textures::EnvironmentBase + i);
+
+	delete baked_brdf;
+	baked_brdf = nullptr;
+
+	for (int i = 0; i < environment_cubemaps.size(); ++i)
+		delete environment_cubemaps[i];
+	
+	for (int i = 0; i < irradiance_cubemaps.size(); ++i)
+		delete irradiance_cubemaps[i];
+
+	environment_cubemaps.clear();
+	irradiance_cubemaps.clear();
 }
 
 void ApplicationResources::reloadShaders()
 {
-	for (int i = 0; i < config::shaders.size(); i++)
+	for (int i = 0; i < config::shaders.size(); ++i)
 		resources.reloadShader(i);
 }

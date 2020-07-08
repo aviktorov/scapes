@@ -75,7 +75,7 @@ void Application::update()
 	if (ImGui::Button("Reload Shaders"))
 	{
 		resources->reloadShaders();
-		renderer->setEnvironment(resources, resources->getHDRTexture(state.currentEnvironment));
+		renderer->setEnvironment(resources, state.currentEnvironment);
 	}
 
 	int oldCurrentEnvironment = state.currentEnvironment;
@@ -87,7 +87,7 @@ void Application::update()
 			if (ImGui::Selectable(resources->getHDRTexturePath(i), &selected))
 			{
 				state.currentEnvironment = i;
-				renderer->setEnvironment(resources, resources->getHDRTexture(state.currentEnvironment));
+				renderer->setEnvironment(resources, i);
 			}
 			if (selected)
 				ImGui::SetItemDefaultFocus();
@@ -268,7 +268,7 @@ void Application::initRenderers()
 {
 	renderer = new Renderer(driver);
 	renderer->init(resources);
-	renderer->setEnvironment(resources, resources->getHDRTexture(state.currentEnvironment));
+	renderer->setEnvironment(resources, state.currentEnvironment);
 
 	imgui_renderer = new ImGuiRenderer(driver, ImGui::GetCurrentContext());
 	imgui_renderer->init(swap_chain);

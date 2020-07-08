@@ -30,19 +30,9 @@ public:
 	void resize(const render::SwapChain *swapChain);
 	void render(const ApplicationResources *scene, const render::RenderFrame &frame);
 
-	void setEnvironment(const ApplicationResources *scene, const render::Texture *texture);
+	void setEnvironment(const ApplicationResources *scene, int index);
 
 private:
 	render::backend::Driver *driver {nullptr};
-
-	Texture2DRenderer bakedBRDFRenderer;
-	CubemapRenderer hdriToCubeRenderer;
-	std::vector<CubemapRenderer*> cubeToPrefilteredRenderers;
-	CubemapRenderer diffuseIrradianceRenderer;
-
-	render::Texture bakedBRDF;
-	render::Texture environmentCubemap;
-	render::Texture diffuseIrradianceCubemap;
-
 	render::backend::BindSet *scene_bind_set {nullptr};
 };

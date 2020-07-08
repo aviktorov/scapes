@@ -43,7 +43,7 @@ class ApplicationResources
 {
 public:
 	ApplicationResources(render::backend::Driver *driver)
-		: resources(driver) { }
+		: driver(driver), resources(driver) { }
 
 	virtual ~ApplicationResources();
 
@@ -72,8 +72,12 @@ public:
 	inline const render::Texture *getShadingTexture() const { return resources.getTexture(config::Textures::Shading); }
 	inline const render::Texture *getEmissionTexture() const { return resources.getTexture(config::Textures::Emission); }
 	inline const render::Texture *getHDRTexture(int index) const { return resources.getTexture(config::Textures::EnvironmentBase + index); }
+	inline const render::Texture *getHDREnvironmentCubemap(int index) const { return environment_cubemaps[index]; }
+	inline const render::Texture *getHDRIrradianceCubemap(int index) const { return irradiance_cubemaps[index]; }
 	const char *getHDRTexturePath(int index) const;
 	size_t getNumHDRTextures() const;
+
+	inline const render::Texture *getBakedBRDFTexture() const { return baked_brdf; }
 
 	inline const render::Mesh *getMesh() const { return resources.getMesh(config::Meshes::Helmet); }
 	inline const render::Mesh *getSkybox() const { return resources.getMesh(config::Meshes::Skybox); }
@@ -81,5 +85,10 @@ public:
 	void reloadShaders();
 
 private:
+	render::backend::Driver *driver {nullptr};
 	ResourceManager resources;
+
+	render::Texture *baked_brdf {nullptr};
+	std::vector<render::Texture *> environment_cubemaps;
+	std::vector<render::Texture *> irradiance_cubemaps;
 };
