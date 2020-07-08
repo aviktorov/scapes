@@ -4,6 +4,7 @@
 #include <render/backend/Driver.h>
 #include <render/SwapChain.h>
 
+#include "SkyLight.h"
 #include "ImGuiRenderer.h"
 #include "Renderer.h"
 #include "RenderGraph.h"
@@ -15,6 +16,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 
+#include <algorithm>
 #include <iostream>
 #include <chrono>
 
@@ -61,11 +63,19 @@ void Application::update()
 	cameraPos.y = static_cast<float>(glm::sin(camera.phi) * glm::cos(camera.theta) * camera.radius);
 	cameraPos.z = static_cast<float>(glm::sin(camera.theta) * camera.radius);
 
+	glm::vec4 cameraParams;
+	cameraParams.x = zNear;
+	cameraParams.y = zFar;
+	cameraParams.z = 1.0f / zNear;
+	cameraParams.w = 1.0f / zFar;
+
 	state.world = glm::mat4(1.0f);
 	state.view = glm::lookAt(cameraPos, zero, up);
 	state.proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
 	state.proj[1][1] *= -1;
+	state.invProj = glm::inverse(state.proj);
 	state.cameraPosWS = cameraPos;
+	state.cameraParams = cameraParams;
 
 	static float f = 0.0f;
 	static int counter = 0;
@@ -75,7 +85,8 @@ void Application::update()
 	if (ImGui::Button("Reload Shaders"))
 	{
 		resources->reloadShaders();
-		renderer->setEnvironment(resources, state.currentEnvironment);
+		sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(state.currentEnvironment));
+		sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(state.currentEnvironment));
 	}
 
 	int oldCurrentEnvironment = state.currentEnvironment;
@@ -87,7 +98,8 @@ void Application::update()
 			if (ImGui::Selectable(resources->getHDRTexturePath(i), &selected))
 			{
 				state.currentEnvironment = i;
-				renderer->setEnvironment(resources, i);
+				sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(state.currentEnvironment));
+				sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(state.currentEnvironment));
 			}
 			if (selected)
 				ImGui::SetItemDefaultFocus();
@@ -135,7 +147,7 @@ void Application::render()
 
 	driver->beginRenderPass(frame.command_buffer, frame.frame_buffer, &info);
 
-	renderer->render(resources, frame);
+	renderer->render(resources, sky_light, frame);
 	imgui_renderer->render(frame);
 
 	driver->endRenderPass(frame.command_buffer);
@@ -251,10 +263,20 @@ void Application::initRenderScene()
 
 	sponza = new Scene(driver);
 	sponza->import("scenes/pbr_sponza/sponza.obj");
+
+	sky_light = new SkyLight(driver, resources->getSkyLightVertexShader(), resources->getSkyLightFragmentShader());
+	sky_light->setBakedBRDFTexture(resources->getBakedBRDFTexture());
+	sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(0));
+	sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(0));
+
+	sponza->addLight(sky_light);
 }
 
 void Application::shutdownRenderScene()
 {
+	delete sky_light;
+	sky_light = nullptr;
+
 	delete resources;
 	resources = nullptr;
 
@@ -268,7 +290,6 @@ void Application::initRenderers()
 {
 	renderer = new Renderer(driver);
 	renderer->init(resources);
-	renderer->setEnvironment(resources, state.currentEnvironment);
 
 	imgui_renderer = new ImGuiRenderer(driver, ImGui::GetCurrentContext());
 	imgui_renderer->init(swap_chain);

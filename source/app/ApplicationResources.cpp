@@ -1,6 +1,8 @@
 #include "ApplicationResources.h"
 #include "RenderUtils.h"
 
+#include <render/Texture.h>
+
 #include <vector>
 #include <cassert>
 
@@ -23,8 +25,10 @@ namespace config
 		"shaders/diffuseIrradiance.frag",
 		"shaders/bakedBRDF.vert",
 		"shaders/bakedBRDF.frag",
-		"shaders/gbuffer.vert",
-		"shaders/gbuffer.frag",
+		"shaders/deferred/gbuffer.vert",
+		"shaders/deferred/gbuffer.frag",
+		"shaders/deferred/skylight_deferred.vert",
+		"shaders/deferred/skylight_deferred.frag",
 	};
 
 	static std::vector<render::backend::ShaderType> shaderTypes = {
@@ -35,6 +39,8 @@ namespace config
 		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,

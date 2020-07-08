@@ -21,6 +21,7 @@ class RenderGraph;
 class Renderer;
 class ImGuiRenderer;
 class Scene;
+class SkyLight;
 
 /*
  */
@@ -29,6 +30,8 @@ struct ApplicationState
 	glm::mat4 world;
 	glm::mat4 view;
 	glm::mat4 proj;
+	glm::mat4 invProj;
+	glm::vec4 cameraParams;
 	glm::vec3 cameraPosWS;
 	float lerpUserValues {0.0f};
 	float userMetalness {0.0f};
@@ -94,6 +97,8 @@ private:
 	bool windowResized {false};
 
 	Scene *sponza {nullptr};
+	SkyLight *sky_light {nullptr};
+
 	RenderGraph *render_graph {nullptr};
 	ApplicationResources *resources {nullptr};
 	ApplicationState state;

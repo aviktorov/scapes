@@ -24,6 +24,8 @@ namespace config
 		BakedBRDFFragment,
 		GBufferVertex,
 		GBufferFragment,
+		SkyLightVertex,
+		SkyLightFragment,
 	};
 
 	enum Textures
@@ -65,6 +67,9 @@ public:
 
 	inline const render::Shader *getGBufferVertexShader() const { return resources.getShader(config::Shaders::GBufferVertex); }
 	inline const render::Shader *getGBufferFragmentShader() const { return resources.getShader(config::Shaders::GBufferFragment); }
+
+	inline const render::Shader *getSkyLightVertexShader() const { return resources.getShader(config::Shaders::SkyLightVertex); }
+	inline const render::Shader *getSkyLightFragmentShader() const { return resources.getShader(config::Shaders::SkyLightFragment); }
 
 	inline const render::Texture *getAlbedoTexture() const { return resources.getTexture(config::Textures::Albedo); }
 	inline const render::Texture *getNormalTexture() const { return resources.getTexture(config::Textures::Normal); }

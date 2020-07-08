@@ -1,20 +1,17 @@
 #pragma once
 
-#include <vector>
-
-#include "CubemapRenderer.h"
-#include "Texture2DRenderer.h"
-
-#include <render/Texture.h>
-#include <render/Shader.h>
-#include <render/backend/driver.h>
-
 class ApplicationResources;
+class SkyLight;
 
 namespace render
 {
-	class SwapChain;
 	struct RenderFrame;
+}
+
+namespace render::backend
+{
+	class Driver;
+	struct BindSet;
 }
 
 /*
@@ -27,10 +24,7 @@ public:
 
 	void init(const ApplicationResources *scene);
 	void shutdown();
-	void resize(const render::SwapChain *swapChain);
-	void render(const ApplicationResources *scene, const render::RenderFrame &frame);
-
-	void setEnvironment(const ApplicationResources *scene, int index);
+	void render(const ApplicationResources *scene, const SkyLight *light, const render::RenderFrame &frame);
 
 private:
 	render::backend::Driver *driver {nullptr};
