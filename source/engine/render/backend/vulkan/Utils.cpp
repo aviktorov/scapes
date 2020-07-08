@@ -115,7 +115,7 @@ namespace render::backend::vulkan
 
 			default:
 			{
-				std::cerr << "vulkan::fromFormat(): unsupported format " << format << std::endl;
+				std::cerr << "vulkan::Utils::getApiFormat(): unsupported format " << format << std::endl;
 				return Format::UNDEFINED;
 			}
 		}
@@ -288,7 +288,7 @@ namespace render::backend::vulkan
 			case CommandBufferType::SECONDARY: return VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 			default:
 			{
-				std::cerr << "vulkan::toCommandBufferLevel(): unsupported command buffer type" << std::endl;
+				std::cerr << "vulkan::Utils::getCommandBufferLevel(): unsupported command buffer type" << std::endl;
 				// TODO: Log fatal?
 				return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			}
