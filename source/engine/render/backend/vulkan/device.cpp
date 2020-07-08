@@ -1,6 +1,6 @@
-#include "render/backend/vulkan/device.h"
-#include "render/backend/vulkan/platform.h"
-#include "render/backend/vulkan/VulkanUtils.h"
+#include "render/backend/vulkan/Device.h"
+#include "render/backend/vulkan/Platform.h"
+#include "render/backend/vulkan/Utils.h"
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
@@ -55,11 +55,11 @@ namespace render::backend::vulkan
 
 		// Check required instance extensions
 		requiredInstanceExtensions.push_back(render::backend::vulkan::Platform::getInstanceExtension());
-		if (!VulkanUtils::checkInstanceExtensions(requiredInstanceExtensions, true))
+		if (!Utils::checkInstanceExtensions(requiredInstanceExtensions, true))
 			throw std::runtime_error("This device doesn't have required Vulkan extensions");
 
 		// Check required instance validation layers
-		if (!VulkanUtils::checkInstanceValidationLayers(requiredValidationLayers, true))
+		if (!Utils::checkInstanceValidationLayers(requiredValidationLayers, true))
 			throw std::runtime_error("This device doesn't have required Vulkan validation layers");
 
 		// Fill instance structures
@@ -128,7 +128,7 @@ namespace render::backend::vulkan
 			throw std::runtime_error("Failed to find a suitable GPU");
 
 		// Create logical device
-		graphicsQueueFamily = VulkanUtils::getGraphicsQueueFamily(physicalDevice);
+		graphicsQueueFamily = Utils::getGraphicsQueueFamily(physicalDevice);
 		const float queuePriority = 1.0f;
 
 		VkDeviceQueueCreateInfo graphicsQueueInfo = {};
@@ -190,7 +190,7 @@ namespace render::backend::vulkan
 		if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
 			throw std::runtime_error("Can't create descriptor pool");
 
-		maxMSAASamples = VulkanUtils::getMaxUsableSampleCount(physicalDevice);
+		maxMSAASamples = Utils::getMaxUsableSampleCount(physicalDevice);
 
 		VmaAllocatorCreateInfo allocatorInfo = {};
 		allocatorInfo.physicalDevice = physicalDevice;
@@ -239,7 +239,7 @@ namespace render::backend::vulkan
 	 */
 	int Device::examinePhysicalDevice(VkPhysicalDevice physicalDevice) const
 	{
-		if (!VulkanUtils::checkPhysicalDeviceExtensions(physicalDevice, requiredPhysicalDeviceExtensions))
+		if (!Utils::checkPhysicalDeviceExtensions(physicalDevice, requiredPhysicalDeviceExtensions))
 			return -1;
 
 		VkPhysicalDeviceProperties physicalDeviceProperties;

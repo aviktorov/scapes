@@ -2,7 +2,7 @@
 #include <volk.h>
 #include <render/backend/vulkan/Driver.h>
 #include <render/backend/vulkan/Device.h>
-#include <render/backend/vulkan/VulkanUtils.h>
+#include <render/backend/vulkan/Utils.h>
 
 #include "ImGuiRenderer.h"
 
@@ -63,9 +63,9 @@ void ImGuiRenderer::init(const render::SwapChain *swap_chain)
 
 	ImGui_ImplVulkan_Init(&init_info, vk_frame_buffer->dummy_render_pass);
 
-	VkCommandBuffer temp_command_buffer = VulkanUtils::beginSingleTimeCommands(vk_device);
+	VkCommandBuffer temp_command_buffer = vulkan::Utils::beginSingleTimeCommands(vk_device);
 	ImGui_ImplVulkan_CreateFontsTexture(temp_command_buffer);
-	VulkanUtils::endSingleTimeCommands(vk_device, temp_command_buffer);
+	vulkan::Utils::endSingleTimeCommands(vk_device, temp_command_buffer);
 }
 
 void ImGuiRenderer::shutdown()

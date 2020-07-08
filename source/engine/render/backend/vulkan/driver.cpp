@@ -13,7 +13,7 @@
 #include "render/backend/vulkan/PipelineCache.h"
 #include "render/backend/vulkan/RenderPassCache.h"
 #include "render/backend/vulkan/RenderPassBuilder.h"
-#include "render/backend/vulkan/VulkanUtils.h"
+#include "render/backend/vulkan/Utils.h"
 
 #include <shaderc/shaderc.h>
 
@@ -125,336 +125,12 @@ namespace render::backend
 
 	namespace vulkan
 	{
-		static VkFormat toFormat(Format format)
-		{
-			static VkFormat supported_formats[static_cast<int>(Format::MAX)] =
-			{
-				VK_FORMAT_UNDEFINED,
-
-				// 8-bit formats
-				VK_FORMAT_R8_UNORM, VK_FORMAT_R8_SNORM, VK_FORMAT_R8_UINT, VK_FORMAT_R8_SINT,
-				VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8_SNORM, VK_FORMAT_R8G8_UINT, VK_FORMAT_R8G8_SINT,
-				VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8_SNORM, VK_FORMAT_R8G8B8_UINT, VK_FORMAT_R8G8B8_SINT,
-				VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_B8G8R8_SNORM, VK_FORMAT_B8G8R8_UINT, VK_FORMAT_B8G8R8_SINT,
-				VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SNORM, VK_FORMAT_R8G8B8A8_UINT, VK_FORMAT_R8G8B8A8_SINT,
-				VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SNORM, VK_FORMAT_B8G8R8A8_UINT, VK_FORMAT_B8G8R8A8_SINT,
-
-				// 16-bit formats
-				VK_FORMAT_R16_UNORM, VK_FORMAT_R16_SNORM, VK_FORMAT_R16_UINT, VK_FORMAT_R16_SINT, VK_FORMAT_R16_SFLOAT,
-				VK_FORMAT_R16G16_UNORM, VK_FORMAT_R16G16_SNORM, VK_FORMAT_R16G16_UINT, VK_FORMAT_R16G16_SINT, VK_FORMAT_R16G16_SFLOAT,
-				VK_FORMAT_R16G16B16_UNORM, VK_FORMAT_R16G16B16_SNORM, VK_FORMAT_R16G16B16_UINT, VK_FORMAT_R16G16B16_SINT, VK_FORMAT_R16G16B16_SFLOAT,
-				VK_FORMAT_R16G16B16A16_UNORM, VK_FORMAT_R16G16B16A16_SNORM, VK_FORMAT_R16G16B16A16_UINT, VK_FORMAT_R16G16B16A16_SINT, VK_FORMAT_R16G16B16A16_SFLOAT,
-
-				// 32-bit formats
-				VK_FORMAT_R32_UINT, VK_FORMAT_R32_SINT, VK_FORMAT_R32_SFLOAT,
-				VK_FORMAT_R32G32_UINT, VK_FORMAT_R32G32_SINT, VK_FORMAT_R32G32_SFLOAT,
-				VK_FORMAT_R32G32B32_UINT, VK_FORMAT_R32G32B32_SINT, VK_FORMAT_R32G32B32_SFLOAT,
-				VK_FORMAT_R32G32B32A32_UINT, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32G32B32A32_SFLOAT,
-
-				// depth formats
-				VK_FORMAT_D16_UNORM, VK_FORMAT_D16_UNORM_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT,
-			};
-
-			return supported_formats[static_cast<int>(format)];
-		}
-
-		static Format fromFormat(VkFormat format)
-		{
-			switch (format)
-			{
-				case VK_FORMAT_UNDEFINED: return Format::UNDEFINED;
-
-				case VK_FORMAT_R8_UNORM: return Format::R8_UNORM;
-				case VK_FORMAT_R8_SNORM: return Format::R8_SNORM;
-				case VK_FORMAT_R8_UINT: return Format::R8_UINT;
-				case VK_FORMAT_R8_SINT: return Format::R8_SINT;
-				case VK_FORMAT_R8G8_UNORM: return Format::R8G8_UNORM;
-				case VK_FORMAT_R8G8_SNORM: return Format::R8G8_SNORM;
-				case VK_FORMAT_R8G8_UINT: return Format::R8G8_UINT;
-				case VK_FORMAT_R8G8_SINT: return Format::R8G8_SINT;
-				case VK_FORMAT_R8G8B8_UNORM: return Format::R8G8B8_UNORM;
-				case VK_FORMAT_R8G8B8_SNORM: return Format::R8G8B8_SNORM;
-				case VK_FORMAT_R8G8B8_UINT: return Format::R8G8B8_UINT;
-				case VK_FORMAT_R8G8B8_SINT: return Format::R8G8B8_SINT;
-				case VK_FORMAT_B8G8R8_UNORM: return Format::B8G8R8_UNORM;
-				case VK_FORMAT_B8G8R8_SNORM: return Format::B8G8R8_SNORM;
-				case VK_FORMAT_B8G8R8_UINT: return Format::B8G8R8_UINT;
-				case VK_FORMAT_B8G8R8_SINT: return Format::B8G8R8_SINT;
-				case VK_FORMAT_R8G8B8A8_UNORM: return Format::R8G8B8A8_UNORM;
-				case VK_FORMAT_R8G8B8A8_SNORM: return Format::R8G8B8A8_SNORM;
-				case VK_FORMAT_R8G8B8A8_UINT: return Format::R8G8B8A8_UINT;
-				case VK_FORMAT_R8G8B8A8_SINT: return Format::R8G8B8A8_SINT;
-				case VK_FORMAT_B8G8R8A8_UNORM: return Format::B8G8R8A8_UNORM;
-				case VK_FORMAT_B8G8R8A8_SNORM: return Format::B8G8R8A8_SNORM;
-				case VK_FORMAT_B8G8R8A8_UINT: return Format::B8G8R8A8_UINT;
-				case VK_FORMAT_B8G8R8A8_SINT: return Format::B8G8R8A8_SINT;
-
-				case VK_FORMAT_R16_UNORM: return Format::R16_UNORM;
-				case VK_FORMAT_R16_SNORM: return Format::R16_SNORM;
-				case VK_FORMAT_R16_UINT: return Format::R16_UINT;
-				case VK_FORMAT_R16_SINT: return Format::R16_SINT;
-				case VK_FORMAT_R16_SFLOAT: return Format::R16_SFLOAT;
-				case VK_FORMAT_R16G16_UNORM: return Format::R16G16_UNORM;
-				case VK_FORMAT_R16G16_SNORM: return Format::R16G16_SNORM;
-				case VK_FORMAT_R16G16_UINT: return Format::R16G16_UINT;
-				case VK_FORMAT_R16G16_SINT: return Format::R16G16_SINT;
-				case VK_FORMAT_R16G16_SFLOAT: return Format::R16G16_SFLOAT;
-				case VK_FORMAT_R16G16B16_UNORM: return Format::R16G16B16_UNORM;
-				case VK_FORMAT_R16G16B16_SNORM: return Format::R16G16B16_SNORM;
-				case VK_FORMAT_R16G16B16_UINT: return Format::R16G16B16_UINT;
-				case VK_FORMAT_R16G16B16_SINT: return Format::R16G16B16_SINT;
-				case VK_FORMAT_R16G16B16_SFLOAT: return Format::R16G16B16_SFLOAT;
-				case VK_FORMAT_R16G16B16A16_UNORM: return Format::R16G16B16A16_UNORM;
-				case VK_FORMAT_R16G16B16A16_SNORM: return Format::R16G16B16A16_SNORM;
-				case VK_FORMAT_R16G16B16A16_UINT: return Format::R16G16B16A16_UINT;
-				case VK_FORMAT_R16G16B16A16_SINT: return Format::R16G16B16A16_SINT;
-				case VK_FORMAT_R16G16B16A16_SFLOAT: return Format::R16G16B16A16_SFLOAT;
-
-				case VK_FORMAT_R32_UINT: return Format::R32_UINT;
-				case VK_FORMAT_R32_SINT: return Format::R32_SINT;
-				case VK_FORMAT_R32_SFLOAT: return Format::R32_SFLOAT;
-				case VK_FORMAT_R32G32_UINT: return Format::R32G32_UINT;
-				case VK_FORMAT_R32G32_SINT: return Format::R32G32_SINT;
-				case VK_FORMAT_R32G32_SFLOAT: return Format::R32G32_SFLOAT;
-				case VK_FORMAT_R32G32B32_UINT: return Format::R32G32B32_UINT;
-				case VK_FORMAT_R32G32B32_SINT: return Format::R32G32B32_SINT;
-				case VK_FORMAT_R32G32B32_SFLOAT: return Format::R32G32B32_SFLOAT;
-				case VK_FORMAT_R32G32B32A32_UINT: return Format::R32G32B32A32_UINT;
-				case VK_FORMAT_R32G32B32A32_SINT: return Format::R32G32B32A32_SINT;
-				case VK_FORMAT_R32G32B32A32_SFLOAT: return Format::R32G32B32A32_SFLOAT;
-
-				case VK_FORMAT_D16_UNORM: return Format::D16_UNORM;
-				case VK_FORMAT_D16_UNORM_S8_UINT: return Format::D16_UNORM_S8_UINT;
-				case VK_FORMAT_D24_UNORM_S8_UINT: return Format::D24_UNORM_S8_UINT;
-				case VK_FORMAT_D32_SFLOAT: return Format::D32_SFLOAT;
-				case VK_FORMAT_D32_SFLOAT_S8_UINT: return Format::D32_SFLOAT_S8_UINT;
-
-				default:
-				{
-					std::cerr << "vulkan::fromFormat(): unsupported format " << format << std::endl;
-					return Format::UNDEFINED;
-				}
-			}
-		}
-
-		static VkSampleCountFlagBits toSamples(Multisample samples)
-		{
-			static VkSampleCountFlagBits supported_samples[static_cast<int>(Multisample::MAX)] =
-			{
-				VK_SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_2_BIT,
-				VK_SAMPLE_COUNT_4_BIT, VK_SAMPLE_COUNT_8_BIT,
-				VK_SAMPLE_COUNT_16_BIT, VK_SAMPLE_COUNT_32_BIT,
-				VK_SAMPLE_COUNT_64_BIT,
-			};
-
-			return supported_samples[static_cast<int>(samples)];
-		}
-
-		static Multisample fromSamples(VkSampleCountFlagBits samples)
-		{
-			if (samples & VK_SAMPLE_COUNT_64_BIT) { return Multisample::COUNT_64; }
-			if (samples & VK_SAMPLE_COUNT_32_BIT) { return Multisample::COUNT_32; }
-			if (samples & VK_SAMPLE_COUNT_16_BIT) { return Multisample::COUNT_16; }
-			if (samples & VK_SAMPLE_COUNT_8_BIT) { return Multisample::COUNT_8; }
-			if (samples & VK_SAMPLE_COUNT_4_BIT) { return Multisample::COUNT_4; }
-			if (samples & VK_SAMPLE_COUNT_2_BIT) { return Multisample::COUNT_2; }
-
-			return Multisample::COUNT_1;
-		}
-
-		static VkImageUsageFlags toImageUsageFlags(VkFormat format)
-		{
-			if (format == VK_FORMAT_UNDEFINED)
-				return 0;
-
-			switch (format)
-			{
-				case VK_FORMAT_D16_UNORM:
-				case VK_FORMAT_D32_SFLOAT:
-				case VK_FORMAT_D16_UNORM_S8_UINT:
-				case VK_FORMAT_D24_UNORM_S8_UINT:
-				case VK_FORMAT_D32_SFLOAT_S8_UINT: return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-			}
-
-			return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		}
-
-		static VkImageAspectFlags toImageAspectFlags(VkFormat format)
-		{
-			if (format == VK_FORMAT_UNDEFINED)
-				return 0;
-
-			switch (format)
-			{
-				case VK_FORMAT_D16_UNORM:
-				case VK_FORMAT_D32_SFLOAT: return VK_IMAGE_ASPECT_DEPTH_BIT;
-				case VK_FORMAT_D16_UNORM_S8_UINT:
-				case VK_FORMAT_D24_UNORM_S8_UINT:
-				case VK_FORMAT_D32_SFLOAT_S8_UINT: return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-			}
-
-			return VK_IMAGE_ASPECT_COLOR_BIT;
-		}
-
-		static VkImageViewType toImageBaseViewType(VkImageType type, VkImageCreateFlags flags, uint32_t num_layers)
-		{
-			if ((type == VK_IMAGE_TYPE_2D) && (num_layers == 1) && (flags == 0))
-				return VK_IMAGE_VIEW_TYPE_2D;
-
-			if ((type == VK_IMAGE_TYPE_2D) && (num_layers > 1) && (flags == 0))
-				return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-
-			if ((type == VK_IMAGE_TYPE_3D) && (num_layers == 1) && (flags == 0))
-				return VK_IMAGE_VIEW_TYPE_3D;
-
-			if (type == VK_IMAGE_TYPE_2D && num_layers == 6 && (flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT))
-				return VK_IMAGE_VIEW_TYPE_CUBE;
-
-			return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-		}
-
-		static uint8_t toPixelSize(Format format)
-		{
-			static uint8_t supported_formats[static_cast<int>(Format::MAX)] =
-			{
-				0,
-
-				// 8-bit formats
-				1, 1, 1, 1,
-				2, 2, 2, 2,
-				3, 3, 3, 3,
-				3, 3, 3, 3,
-				4, 4, 4, 4,
-				4, 4, 4, 4,
-
-				// 16-bit formats
-				2, 2, 2, 2, 2,
-				4, 4, 4, 4, 4,
-				6, 6, 6, 6, 6,
-				8, 8, 8, 8, 8,
-
-				// 32-bit formats
-				4, 4, 4,
-				8, 8, 8,
-				12, 12, 12,
-				16, 16, 16,
-
-				// depth formats
-				2, 3, 4, 4, 5,
-			};
-
-			return supported_formats[static_cast<int>(format)];
-		}
-
-		static VkIndexType toIndexType(IndexSize size)
-		{
-			static VkIndexType supported_sizes[static_cast<int>(IndexSize::MAX)] =
-			{
-				VK_INDEX_TYPE_UINT16, VK_INDEX_TYPE_UINT32,
-			};
-
-			return supported_sizes[static_cast<int>(size)];
-		}
-
-		static uint8_t toIndexSize(IndexSize size)
-		{
-			static uint8_t supported_sizes[static_cast<int>(IndexSize::MAX)] =
-			{
-				2, 4
-			};
-
-			return supported_sizes[static_cast<int>(size)];
-		}
-
-		static VkPrimitiveTopology toPrimitiveTopology(RenderPrimitiveType type)
-		{
-			static VkPrimitiveTopology supported_types[static_cast<int>(RenderPrimitiveType::MAX)] =
-			{
-				// points
-				VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
-
-				// lines
-				VK_PRIMITIVE_TOPOLOGY_LINE_LIST, VK_PRIMITIVE_TOPOLOGY_PATCH_LIST, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
-
-				// triangles
-				VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_PRIMITIVE_TOPOLOGY_PATCH_LIST, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,
-
-				// quads
-				VK_PRIMITIVE_TOPOLOGY_PATCH_LIST,
-			};
-
-			return supported_types[static_cast<int>(type)];
-		}
-
-		static VkCommandBufferLevel toCommandBufferLevel(CommandBufferType type)
-		{
-			switch (type)
-			{
-				case CommandBufferType::PRIMARY: return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-				case CommandBufferType::SECONDARY: return VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-				default:
-				{
-					std::cerr << "vulkan::toCommandBufferLevel(): unsupported command buffer type" << std::endl;
-					// TODO: Log fatal?
-					return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-				}
-			}
-		}
-
-		static VkCullModeFlags toCullMode(CullMode mode)
-		{
-			static VkCullModeFlags supported_cull_modes[static_cast<int>(CullMode::MAX)] =
-			{
-				VK_CULL_MODE_NONE,
-				VK_CULL_MODE_FRONT_BIT,
-				VK_CULL_MODE_BACK_BIT,
-				VK_CULL_MODE_FRONT_AND_BACK,
-			};
-
-			return supported_cull_modes[static_cast<int>(mode)];
-		}
-
-		static VkCompareOp toDepthCompareFunc(DepthCompareFunc func)
-		{
-			static VkCompareOp supported_depth_compare_funcs[static_cast<int>(DepthCompareFunc::MAX)] =
-			{
-				VK_COMPARE_OP_NEVER,
-				VK_COMPARE_OP_LESS,
-				VK_COMPARE_OP_EQUAL,
-				VK_COMPARE_OP_LESS_OR_EQUAL,
-				VK_COMPARE_OP_GREATER,
-				VK_COMPARE_OP_NOT_EQUAL,
-				VK_COMPARE_OP_GREATER_OR_EQUAL,
-				VK_COMPARE_OP_ALWAYS,
-			};
-
-			return supported_depth_compare_funcs[static_cast<int>(func)];
-		}
-
-		static VkBlendFactor toBlendFactor(BlendFactor factor)
-		{
-			static VkBlendFactor supported_blend_factors[static_cast<int>(BlendFactor::MAX)] =
-			{
-				VK_BLEND_FACTOR_ZERO,
-				VK_BLEND_FACTOR_ONE,
-				VK_BLEND_FACTOR_SRC_COLOR,
-				VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
-				VK_BLEND_FACTOR_DST_COLOR,
-				VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
-				VK_BLEND_FACTOR_SRC_ALPHA,
-				VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-				VK_BLEND_FACTOR_DST_ALPHA,
-				VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
-			};
-
-			return supported_blend_factors[static_cast<int>(factor)];
-		}
 
 		static void createTextureData(const Device *device, Texture *texture, Format format, const void *data, int num_data_mipmaps, int num_data_layers)
 		{
-			VkImageUsageFlags usage_flags = toImageUsageFlags(texture->format);
+			VkImageUsageFlags usage_flags = Utils::getImageUsageFlags(texture->format);
 
-			VulkanUtils::createImage(
+			Utils::createImage(
 				device,
 				texture->type,
 				texture->width, texture->height, texture->depth,
@@ -472,7 +148,7 @@ namespace render::backend
 			if (data != nullptr)
 			{
 				// prepare for transfer
-				VulkanUtils::transitionImageLayout(
+				Utils::transitionImageLayout(
 					device,
 					texture->image,
 					texture->format,
@@ -483,12 +159,12 @@ namespace render::backend
 				);
 
 				// transfer data to GPU
-				VulkanUtils::fillImage(
+				Utils::fillImage(
 					device,
 					texture->image,
 					texture->width, texture->height, texture->depth,
 					texture->num_mipmaps, texture->num_layers,
-					vulkan::toPixelSize(format),
+					Utils::getPixelSize(format),
 					texture->format,
 					data,
 					num_data_mipmaps,
@@ -499,7 +175,7 @@ namespace render::backend
 			}
 
 			// prepare for shader access
-			VulkanUtils::transitionImageLayout(
+			Utils::transitionImageLayout(
 				device,
 				texture->image,
 				texture->format,
@@ -510,17 +186,17 @@ namespace render::backend
 			);
 
 			// create base view & sampler
-			texture->view = VulkanUtils::createImageView(
+			texture->view = Utils::createImageView(
 				device,
 				texture->image,
 				texture->format,
-				toImageAspectFlags(texture->format),
-				toImageBaseViewType(texture->type, texture->flags, texture->num_layers),
+				Utils::getImageAspectFlags(texture->format),
+				Utils::getImageBaseViewType(texture->type, texture->flags, texture->num_layers),
 				0, texture->num_mipmaps,
 				0, texture->num_layers
 			);
 
-			texture->sampler = VulkanUtils::createSampler(device, 0, texture->num_mipmaps);
+			texture->sampler = Utils::createSampler(device, 0, texture->num_mipmaps);
 		}
 
 		static void selectOptimalSwapChainSettings(const Device *device, SwapChain *swap_chain, uint32_t width, uint32_t height)
@@ -660,7 +336,7 @@ namespace render::backend
 			// Create frame objects
 			for (size_t i = 0; i < swap_chain->num_images; i++)
 			{
-				swap_chain->views[i] = VulkanUtils::createImageView(
+				swap_chain->views[i] = Utils::createImageView(
 					device,
 					swap_chain->images[i],
 					swap_chain->surface_format.format,
@@ -790,18 +466,26 @@ namespace render::backend
 		// copy vertex attributes
 		for (uint8_t i = 0; i < num_attributes; ++i)
 		{
-			result->attribute_formats[i] = vulkan::toFormat(attributes[i].format);
+			result->attribute_formats[i] = vulkan::Utils::getFormat(attributes[i].format);
 			result->attribute_offsets[i] = attributes[i].offset;
 		}
 
 		// create vertex buffer
-		VulkanUtils::createDeviceLocalBuffer(
+		vulkan::Utils::createBuffer(
 			device,
 			buffer_size,
-			data,
-			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			result->buffer,
 			result->memory
+		);
+
+		// fill vertex buffer
+		vulkan::Utils::fillBuffer(
+			device,
+			result->buffer,
+			buffer_size,
+			data
 		);
 
 		return result;
@@ -818,20 +502,28 @@ namespace render::backend
 		assert(data != nullptr && "Invalid index data");
 		assert(num_indices != 0 && "Invalid index count");
 
-		VkDeviceSize buffer_size = vulkan::toIndexSize(index_size) * num_indices;
-		
+		VkDeviceSize buffer_size = vulkan::Utils::getIndexSize(index_size) * num_indices;
+
 		vulkan::IndexBuffer *result = new vulkan::IndexBuffer();
-		result->type = vulkan::toIndexType(index_size);
+		result->type = vulkan::Utils::getIndexType(index_size);
 		result->num_indices = num_indices;
 
 		// create index buffer
-		VulkanUtils::createDeviceLocalBuffer(
+		vulkan::Utils::createBuffer(
 			device,
 			buffer_size,
-			data,
-			VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 			result->buffer,
 			result->memory
+		);
+
+		// fill vertex buffer
+		vulkan::Utils::fillBuffer(
+			device,
+			result->buffer,
+			buffer_size,
+			data
 		);
 
 		return result;
@@ -848,7 +540,7 @@ namespace render::backend
 
 		vulkan::RenderPrimitive *result = new vulkan::RenderPrimitive();
 
-		result->topology = vulkan::toPrimitiveTopology(type);
+		result->topology = vulkan::Utils::getPrimitiveTopology(type);
 		result->vertex_buffer = static_cast<const vulkan::VertexBuffer *>(vertex_buffer);
 		result->index_buffer = static_cast<const vulkan::IndexBuffer *>(index_buffer);
 
@@ -872,13 +564,13 @@ namespace render::backend
 
 		vulkan::Texture *result = new vulkan::Texture();
 		result->type = VK_IMAGE_TYPE_2D;
-		result->format = vulkan::toFormat(format);
+		result->format = vulkan::Utils::getFormat(format);
 		result->width = width;
 		result->height = height;
 		result->depth = 1;
 		result->num_mipmaps = num_mipmaps;
 		result->num_layers = 1;
-		result->samples = vulkan::toSamples(samples);
+		result->samples = vulkan::Utils::getSamples(samples);
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = 0;
 
@@ -906,7 +598,7 @@ namespace render::backend
 
 		vulkan::Texture *result = new vulkan::Texture();
 		result->type = VK_IMAGE_TYPE_2D;
-		result->format = vulkan::toFormat(format);
+		result->format = vulkan::Utils::getFormat(format);
 		result->width = width;
 		result->height = height;
 		result->depth = 1;
@@ -937,7 +629,7 @@ namespace render::backend
 
 		vulkan::Texture *result = new vulkan::Texture();
 		result->type = VK_IMAGE_TYPE_3D;
-		result->format = vulkan::toFormat(format);
+		result->format = vulkan::Utils::getFormat(format);
 		result->width = width;
 		result->height = height;
 		result->depth = depth;
@@ -968,7 +660,7 @@ namespace render::backend
 
 		vulkan::Texture *result = new vulkan::Texture();
 		result->type = VK_IMAGE_TYPE_2D;
-		result->format = vulkan::toFormat(format);
+		result->format = vulkan::Utils::getFormat(format);
 		result->width = width;
 		result->height = height;
 		result->depth = 1;
@@ -1012,9 +704,9 @@ namespace render::backend
 			{
 				const FrameBufferAttachment::Color &color = attachment.color;
 				const vulkan::Texture *color_texture = static_cast<const vulkan::Texture *>(color.texture);
-				VkImageAspectFlags flags = vulkan::toImageAspectFlags(color_texture->format);
+				VkImageAspectFlags flags = vulkan::Utils::getImageAspectFlags(color_texture->format);
 
-				view = VulkanUtils::createImageView(
+				view = vulkan::Utils::createImageView(
 					device,
 					color_texture->image, color_texture->format,
 					flags, VK_IMAGE_VIEW_TYPE_2D,
@@ -1044,9 +736,9 @@ namespace render::backend
 			{
 				const FrameBufferAttachment::Depth &depth = attachment.depth;
 				const vulkan::Texture *depth_texture = static_cast<const vulkan::Texture *>(depth.texture);
-				VkImageAspectFlags flags = vulkan::toImageAspectFlags(depth_texture->format);
+				VkImageAspectFlags flags = vulkan::Utils::getImageAspectFlags(depth_texture->format);
 
-				view = VulkanUtils::createImageView(
+				view = vulkan::Utils::createImageView(
 					device,
 					depth_texture->image, depth_texture->format,
 					flags, VK_IMAGE_VIEW_TYPE_2D
@@ -1064,9 +756,9 @@ namespace render::backend
 			{
 				const FrameBufferAttachment::SwapChainColor &swap_chain_color = attachment.swap_chain_color;
 				const vulkan::SwapChain *swap_chain = static_cast<const vulkan::SwapChain *>(swap_chain_color.swap_chain);
-				VkImageAspectFlags flags = vulkan::toImageAspectFlags(swap_chain->surface_format.format);
+				VkImageAspectFlags flags = vulkan::Utils::getImageAspectFlags(swap_chain->surface_format.format);
 
-				view = VulkanUtils::createImageView(
+				view = vulkan::Utils::createImageView(
 					device,
 					swap_chain->images[swap_chain_color.base_image], swap_chain->surface_format.format,
 					flags, VK_IMAGE_VIEW_TYPE_2D
@@ -1128,7 +820,7 @@ namespace render::backend
 	)
 	{
 		vulkan::CommandBuffer *result = new vulkan::CommandBuffer();
-		result->level = vulkan::toCommandBufferLevel(type);
+		result->level = vulkan::Utils::getCommandBufferLevel(type);
 
 		// Allocate commandbuffer
 		VkCommandBufferAllocateInfo info = {};
@@ -1182,7 +874,7 @@ namespace render::backend
 		vulkan::UniformBuffer *result = new vulkan::UniformBuffer();
 		result->size = size;
 
-		VulkanUtils::createBuffer(
+		vulkan::Utils::createBuffer(
 			device,
 			size,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -1245,7 +937,7 @@ namespace render::backend
 
 		vulkan::Shader *result = new vulkan::Shader();
 		result->type = type;
-		result->module = VulkanUtils::createShaderModule(device, bytecode_data, bytecode_size);
+		result->module = vulkan::Utils::createShaderModule(device, bytecode_data, bytecode_size);
 
 		shaderc_result_release(compilation_result);
 		shaderc_compile_options_release(options);
@@ -1265,7 +957,7 @@ namespace render::backend
 
 		vulkan::Shader *result = new vulkan::Shader();
 		result->type = type;
-		result->module = VulkanUtils::createShaderModule(device, reinterpret_cast<const uint32_t *>(data), size);
+		result->module = vulkan::Utils::createShaderModule(device, reinterpret_cast<const uint32_t *>(data), size);
 
 		return result;
 	}
@@ -1298,7 +990,7 @@ namespace render::backend
 		}
 
 		// Fetch present queue family
-		result->present_queue_family = VulkanUtils::getPresentQueueFamily(
+		result->present_queue_family = vulkan::Utils::getPresentQueueFamily(
 			device->getPhysicalDevice(),
 			result->surface,
 			device->getGraphicsQueueFamily()
@@ -1510,15 +1202,15 @@ namespace render::backend
 		assert(device != nullptr && "Invalid device");
 
 		VkSampleCountFlagBits samples = device->getMaxSampleCount();
-		return vulkan::fromSamples(samples);
+		return vulkan::Utils::getApiSamples(samples);
 	}
 
 	Format VulkanDriver::getOptimalDepthFormat()
 	{
 		assert(device != nullptr && "Invalid device");
 
-		VkFormat format = VulkanUtils::selectOptimalDepthFormat(device->getPhysicalDevice());
-		return vulkan::fromFormat(format);
+		VkFormat format = vulkan::Utils::selectOptimalDepthFormat(device->getPhysicalDevice());
+		return vulkan::Utils::getApiFormat(format);
 	}
 
 	Format VulkanDriver::getSwapChainImageFormat(const SwapChain *swap_chain)
@@ -1526,7 +1218,7 @@ namespace render::backend
 		assert(swap_chain != nullptr && "Invalid swap chain");
 		const vulkan::SwapChain *vk_swap_chain = static_cast<const vulkan::SwapChain *>(swap_chain);
 
-		return vulkan::fromFormat(vk_swap_chain->surface_format.format);
+		return vulkan::Utils::getApiFormat(vk_swap_chain->surface_format.format);
 	}
 
 	uint32_t VulkanDriver::getNumSwapChainImages(const SwapChain *swap_chain)
@@ -1544,18 +1236,18 @@ namespace render::backend
 		vulkan::Texture *vk_texture = static_cast<vulkan::Texture *>(texture);
 
 		// prepare for transfer
-		VulkanUtils::transitionImageLayout(
+		vulkan::Utils::transitionImageLayout(
 			device,
 			vk_texture->image,
 			vk_texture->format,
-			VK_IMAGE_LAYOUT_UNDEFINED,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			0,
 			vk_texture->num_mipmaps
 		);
 
 		// generate 2D mipmaps with linear filter
-		VulkanUtils::generateImage2DMipmaps(
+		vulkan::Utils::generateImage2DMipmaps(
 			device,
 			vk_texture->image,
 			vk_texture->format,
@@ -1567,7 +1259,7 @@ namespace render::backend
 		);
 
 		// prepare for shader access
-		VulkanUtils::transitionImageLayout(
+		vulkan::Utils::transitionImageLayout(
 			device,
 			vk_texture->image,
 			vk_texture->format,
@@ -1685,7 +1377,7 @@ namespace render::backend
 			info.pWaitSemaphores = wait_semaphores.data();
 		}
 
-		VulkanUtils::transitionImageLayout(
+		vulkan::Utils::transitionImageLayout(
 			device,
 			vk_swap_chain->images[current_image],
 			vk_swap_chain->surface_format.format,
@@ -1815,12 +1507,12 @@ namespace render::backend
 
 		if (vk_texture)
 		{
-			view = VulkanUtils::createImageView(
+			view = vulkan::Utils::createImageView(
 				device,
 				vk_texture->image,
 				vk_texture->format,
-				vulkan::toImageAspectFlags(vk_texture->format),
-				vulkan::toImageBaseViewType(vk_texture->type, vk_texture->flags, num_layers),
+				vulkan::Utils::getImageAspectFlags(vk_texture->format),
+				vulkan::Utils::getImageBaseViewType(vk_texture->type, vk_texture->flags, num_layers),
 				base_mip, num_mipmaps,
 				base_layer, num_layers
 			);
@@ -1893,7 +1585,7 @@ namespace render::backend
 	 */
 	void VulkanDriver::setCullMode(CullMode mode)
 	{
-		VkCullModeFlags vk_mode = vulkan::toCullMode(mode);
+		VkCullModeFlags vk_mode = vulkan::Utils::getCullMode(mode);
 		context->setCullMode(vk_mode);
 	}
 
@@ -1909,7 +1601,7 @@ namespace render::backend
 
 	void VulkanDriver::setDepthCompareFunc(DepthCompareFunc func)
 	{
-		VkCompareOp vk_func = vulkan::toDepthCompareFunc(func);
+		VkCompareOp vk_func = vulkan::Utils::getDepthCompareFunc(func);
 		context->setDepthCompareFunc(vk_func);
 	}
 
@@ -1920,8 +1612,8 @@ namespace render::backend
 
 	void VulkanDriver::setBlendFactors(BlendFactor src_factor, BlendFactor dest_factor)
 	{
-		VkBlendFactor vk_src_factor = vulkan::toBlendFactor(src_factor);
-		VkBlendFactor vk_dest_factor = vulkan::toBlendFactor(dest_factor);
+		VkBlendFactor vk_src_factor = vulkan::Utils::getBlendFactor(src_factor);
+		VkBlendFactor vk_dest_factor = vulkan::Utils::getBlendFactor(dest_factor);
 		context->setBlendFactors(vk_src_factor, vk_dest_factor);
 	}
 
