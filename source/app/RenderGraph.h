@@ -18,6 +18,7 @@ struct GBuffer
 	render::backend::Texture *shading {nullptr};        // rg8,   r - roughness, g - metalness
 	render::backend::Texture *normal {nullptr};         // rg16f, packed normal without z
 	render::backend::FrameBuffer *framebuffer {nullptr};
+	render::backend::BindSet *bindings {nullptr};
 };
 
 struct LBuffer
@@ -25,6 +26,7 @@ struct LBuffer
 	render::backend::Texture *diffuse {nullptr};        // rgb16f, hdr linear color
 	render::backend::Texture *specular {nullptr};       // rga16f, hdr linear color
 	render::backend::FrameBuffer *framebuffer {nullptr};
+	render::backend::BindSet *bindings {nullptr};
 };
 
 /*
@@ -53,6 +55,7 @@ private:
 	void shutdownLBuffer();
 
 	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame);
+	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame);
 
 private:
 	render::backend::Driver *driver {nullptr};

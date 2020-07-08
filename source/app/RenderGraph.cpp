@@ -1,6 +1,7 @@
 #include "RenderGraph.h"
 
 #include "Scene.h"
+#include "SkyLight.h"
 #include "ApplicationResources.h"
 
 #include <render/Mesh.h>
@@ -55,6 +56,12 @@ void RenderGraph::initGBuffer(uint32_t width, uint32_t height)
 	};
 
 	gbuffer.framebuffer = driver->createFrameBuffer(4, gbuffer_attachments);
+	gbuffer.bindings = driver->createBindSet();
+
+	driver->bindTexture(gbuffer.bindings, 0, gbuffer.base_color);
+	driver->bindTexture(gbuffer.bindings, 1, gbuffer.depth);
+	driver->bindTexture(gbuffer.bindings, 2, gbuffer.normal);
+	driver->bindTexture(gbuffer.bindings, 3, gbuffer.shading);
 }
 
 void RenderGraph::shutdownGBuffer()
@@ -64,6 +71,7 @@ void RenderGraph::shutdownGBuffer()
 	driver->destroyTexture(gbuffer.normal);
 	driver->destroyTexture(gbuffer.shading);
 	driver->destroyFrameBuffer(gbuffer.framebuffer);
+	driver->destroyBindSet(gbuffer.bindings);
 
 	memset(&gbuffer, 0, sizeof(GBuffer));
 }
@@ -79,6 +87,10 @@ void RenderGraph::initLBuffer(uint32_t width, uint32_t height)
 	};
 
 	lbuffer.framebuffer = driver->createFrameBuffer(2, lbuffer_attachments);
+	lbuffer.bindings = driver->createBindSet();
+
+	driver->bindTexture(lbuffer.bindings, 0, lbuffer.diffuse);
+	driver->bindTexture(lbuffer.bindings, 1, lbuffer.specular);
 }
 
 void RenderGraph::shutdownLBuffer()
@@ -105,6 +117,7 @@ void RenderGraph::resize(uint32_t width, uint32_t height)
 void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame)
 {
 	renderGBuffer(scene, frame);
+	renderLBuffer(scene, frame);
 }
 
 void RenderGraph::renderGBuffer(const Scene *scene, const render::RenderFrame &frame)
@@ -143,6 +156,46 @@ void RenderGraph::renderGBuffer(const Scene *scene, const render::RenderFrame &f
 		driver->setPushConstants(static_cast<uint8_t>(sizeof(glm::mat4)), &node_transform);
 
 		driver->drawIndexedPrimitive(frame.command_buffer, node_mesh->getRenderPrimitive());
+	}
+
+	driver->endRenderPass(frame.command_buffer);
+}
+
+void RenderGraph::renderLBuffer(const Scene *scene, const render::RenderFrame &frame)
+{
+	RenderPassClearValue clear_values[2];
+	memset(clear_values, 0, sizeof(RenderPassClearValue) * 2);
+
+	RenderPassLoadOp load_ops[4] = { RenderPassLoadOp::DONT_CARE, RenderPassLoadOp::DONT_CARE };
+	RenderPassStoreOp store_ops[4] = { RenderPassStoreOp::STORE, RenderPassStoreOp::STORE };
+
+	RenderPassInfo info;
+	info.clear_values = clear_values;
+	info.load_ops = load_ops;
+	info.store_ops = store_ops;
+
+	driver->beginRenderPass(frame.command_buffer, lbuffer.framebuffer, &info);
+
+	driver->clearPushConstants();
+	driver->allocateBindSets(3);
+	driver->setBindSet(0, frame.bind_set);
+	driver->setBindSet(1, gbuffer.bindings);
+
+	for (size_t i = 0; i < scene->getNumLights(); ++i)
+	{
+		const Light *light = scene->getLight(i);
+
+		const render::Shader *vertex_shader = light->getVertexShader();
+		const render::Shader *fragment_shader = light->getFragmentShader();
+		const render::Mesh *light_mesh = light->getMesh();
+		render::backend::BindSet *light_bindings = light->getBindSet();
+
+		driver->clearShaders();
+		driver->setShader(render::backend::ShaderType::VERTEX, vertex_shader->getBackend());
+		driver->setShader(render::backend::ShaderType::FRAGMENT, fragment_shader->getBackend());
+
+		driver->setBindSet(2, light_bindings);
+		driver->drawIndexedPrimitive(frame.command_buffer, light_mesh->getRenderPrimitive());
 	}
 
 	driver->endRenderPass(frame.command_buffer);
