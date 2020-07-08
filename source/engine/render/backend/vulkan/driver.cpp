@@ -1167,6 +1167,9 @@ namespace render::backend::vulkan
 			vkDestroyImageView(device->getDevice(), data.texture.view, nullptr);
 		}
 
+		if (vk_bind_set->set != VK_NULL_HANDLE)
+			vkFreeDescriptorSets(device->getDevice(), device->getDescriptorPool(), 1, &vk_bind_set->set);
+
 		delete bind_set;
 		bind_set = nullptr;
 	}
