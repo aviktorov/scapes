@@ -9,7 +9,7 @@ namespace render::backend
 	{
 		switch (api)
 		{
-			case Api::VULKAN: return new VulkanDriver(application_name, engine_name);
+			case Api::VULKAN: return new vulkan::Driver(application_name, engine_name);
 		}
 
 		return nullptr;

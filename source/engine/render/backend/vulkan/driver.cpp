@@ -1,9 +1,3 @@
-#include <algorithm>
-#include <cassert>
-#include <iostream>
-#include <fstream>
-#include <string>
-
 #include "render/backend/vulkan/Driver.h"
 #include "render/backend/vulkan/Context.h"
 #include "render/backend/vulkan/Device.h"
@@ -17,7 +11,13 @@
 
 #include <shaderc/shaderc.h>
 
-namespace render::backend
+#include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <fstream>
+#include <string>
+
+namespace render::backend::vulkan
 {
 	namespace shaderc
 	{
@@ -123,9 +123,8 @@ namespace render::backend
 		}
 	}
 
-	namespace vulkan
+	namespace helpers
 	{
-
 		static void createTextureData(const Device *device, Texture *texture, Format format, const void *data, int num_data_mipmaps, int num_data_layers)
 		{
 			VkImageUsageFlags usage_flags = Utils::getImageUsageFlags(texture->format);
@@ -324,7 +323,7 @@ namespace render::backend
 
 			if (vkCreateSwapchainKHR(device->getDevice(), &info, nullptr, &swap_chain->swap_chain) != VK_SUCCESS)
 			{
-				std::cerr << "vulkan::createSwapChainObjects(): vkCreateSwapchainKHR failed" << std::endl;
+				std::cerr << "createSwapChainObjects(): vkCreateSwapchainKHR failed" << std::endl;
 				return false;
 			}
 
@@ -349,7 +348,7 @@ namespace render::backend
 
 				if (vkCreateSemaphore(device->getDevice(), &semaphore_info, nullptr, &swap_chain->image_available_gpu[i]) != VK_SUCCESS)
 				{
-					std::cerr << "vulkan::createSwapChainObjects(): can't create 'image available' semaphore" << std::endl;
+					std::cerr << "createSwapChainObjects(): can't create 'image available' semaphore" << std::endl;
 					return false;
 				}
 			}
@@ -392,7 +391,7 @@ namespace render::backend
 			vkAllocateDescriptorSets(device->getDevice(), &info, &bind_set->set);
 			assert(bind_set->set);
 
-			for (uint8_t i = 0; i < vulkan::BindSet::MAX_BINDINGS; ++i)
+			for (uint8_t i = 0; i < BindSet::MAX_BINDINGS; ++i)
 			{
 				if (!bind_set->binding_used[i])
 					continue;
@@ -402,19 +401,19 @@ namespace render::backend
 		}
 	}
 
-	VulkanDriver::VulkanDriver(const char *application_name, const char *engine_name)
+	Driver::Driver(const char *application_name, const char *engine_name)
 	{
-		device = new vulkan::Device();
+		device = new Device();
 		device->init(application_name, engine_name);
 
-		context = new vulkan::Context();
-		descriptor_set_layout_cache = new vulkan::DescriptorSetLayoutCache(device);
-		pipeline_layout_cache = new vulkan::PipelineLayoutCache(device, descriptor_set_layout_cache);
-		pipeline_cache = new vulkan::PipelineCache(device, pipeline_layout_cache);
-		render_pass_cache = new vulkan::RenderPassCache(device);
+		context = new Context();
+		descriptor_set_layout_cache = new DescriptorSetLayoutCache(device);
+		pipeline_layout_cache = new PipelineLayoutCache(device, descriptor_set_layout_cache);
+		pipeline_cache = new PipelineCache(device, pipeline_layout_cache);
+		render_pass_cache = new RenderPassCache(device);
 	}
 
-	VulkanDriver::~VulkanDriver()
+	Driver::~Driver()
 	{
 		delete pipeline_cache;
 		pipeline_cache = nullptr;
@@ -441,7 +440,7 @@ namespace render::backend
 		device = nullptr;
 	}
 
-	VertexBuffer *VulkanDriver::createVertexBuffer(
+	backend::VertexBuffer *Driver::createVertexBuffer(
 		BufferType type,
 		uint16_t vertex_size,
 		uint32_t num_vertices,
@@ -454,11 +453,11 @@ namespace render::backend
 		assert(data != nullptr && "Invalid vertex data");
 		assert(num_vertices != 0 && "Invalid vertex count");
 		assert(vertex_size != 0 && "Invalid vertex size");
-		assert(num_attributes <= vulkan::VertexBuffer::MAX_ATTRIBUTES && "Vertex attributes are limited to 16");
+		assert(num_attributes <= VertexBuffer::MAX_ATTRIBUTES && "Vertex attributes are limited to 16");
 
 		VkDeviceSize buffer_size = vertex_size * num_vertices;
 		
-		vulkan::VertexBuffer *result = new vulkan::VertexBuffer();
+		VertexBuffer *result = new VertexBuffer();
 		result->vertex_size = vertex_size;
 		result->num_vertices = num_vertices;
 		result->num_attributes = num_attributes;
@@ -466,12 +465,12 @@ namespace render::backend
 		// copy vertex attributes
 		for (uint8_t i = 0; i < num_attributes; ++i)
 		{
-			result->attribute_formats[i] = vulkan::Utils::getFormat(attributes[i].format);
+			result->attribute_formats[i] = Utils::getFormat(attributes[i].format);
 			result->attribute_offsets[i] = attributes[i].offset;
 		}
 
 		// create vertex buffer
-		vulkan::Utils::createBuffer(
+		Utils::createBuffer(
 			device,
 			buffer_size,
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -481,7 +480,7 @@ namespace render::backend
 		);
 
 		// fill vertex buffer
-		vulkan::Utils::fillBuffer(
+		Utils::fillBuffer(
 			device,
 			result->buffer,
 			buffer_size,
@@ -491,7 +490,7 @@ namespace render::backend
 		return result;
 	}
 
-	IndexBuffer *VulkanDriver::createIndexBuffer(
+	backend::IndexBuffer *Driver::createIndexBuffer(
 		BufferType type,
 		IndexSize index_size,
 		uint32_t num_indices,
@@ -502,14 +501,14 @@ namespace render::backend
 		assert(data != nullptr && "Invalid index data");
 		assert(num_indices != 0 && "Invalid index count");
 
-		VkDeviceSize buffer_size = vulkan::Utils::getIndexSize(index_size) * num_indices;
+		VkDeviceSize buffer_size = Utils::getIndexSize(index_size) * num_indices;
 
-		vulkan::IndexBuffer *result = new vulkan::IndexBuffer();
-		result->type = vulkan::Utils::getIndexType(index_size);
+		IndexBuffer *result = new IndexBuffer();
+		result->type = Utils::getIndexType(index_size);
 		result->num_indices = num_indices;
 
 		// create index buffer
-		vulkan::Utils::createBuffer(
+		Utils::createBuffer(
 			device,
 			buffer_size,
 			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -519,7 +518,7 @@ namespace render::backend
 		);
 
 		// fill vertex buffer
-		vulkan::Utils::fillBuffer(
+		Utils::fillBuffer(
 			device,
 			result->buffer,
 			buffer_size,
@@ -529,25 +528,25 @@ namespace render::backend
 		return result;
 	}
 
-	RenderPrimitive *VulkanDriver::createRenderPrimitive(
+	backend::RenderPrimitive *Driver::createRenderPrimitive(
 		RenderPrimitiveType type,
-		const VertexBuffer *vertex_buffer,
-		const IndexBuffer *index_buffer
+		const backend::VertexBuffer *vertex_buffer,
+		const backend::IndexBuffer *index_buffer
 	)
 	{
 		assert(vertex_buffer != nullptr && "Invalid vertex buffer");
 		assert(index_buffer != nullptr && "Invalid vertex buffer");
 
-		vulkan::RenderPrimitive *result = new vulkan::RenderPrimitive();
+		RenderPrimitive *result = new RenderPrimitive();
 
-		result->topology = vulkan::Utils::getPrimitiveTopology(type);
-		result->vertex_buffer = static_cast<const vulkan::VertexBuffer *>(vertex_buffer);
-		result->index_buffer = static_cast<const vulkan::IndexBuffer *>(index_buffer);
+		result->topology = Utils::getPrimitiveTopology(type);
+		result->vertex_buffer = static_cast<const VertexBuffer *>(vertex_buffer);
+		result->index_buffer = static_cast<const IndexBuffer *>(index_buffer);
 
 		return result;
 	}
 
-	Texture *VulkanDriver::createTexture2D(
+	backend::Texture *Driver::createTexture2D(
 		uint32_t width,
 		uint32_t height,
 		uint32_t num_mipmaps,
@@ -562,24 +561,24 @@ namespace render::backend
 		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
 		assert((samples == Multisample::COUNT_1) || (samples != Multisample::COUNT_1 && num_mipmaps == 1));
 
-		vulkan::Texture *result = new vulkan::Texture();
+		Texture *result = new Texture();
 		result->type = VK_IMAGE_TYPE_2D;
-		result->format = vulkan::Utils::getFormat(format);
+		result->format = Utils::getFormat(format);
 		result->width = width;
 		result->height = height;
 		result->depth = 1;
 		result->num_mipmaps = num_mipmaps;
 		result->num_layers = 1;
-		result->samples = vulkan::Utils::getSamples(samples);
+		result->samples = Utils::getSamples(samples);
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = 0;
 
-		vulkan::createTextureData(device, result, format, data, num_data_mipmaps, 1);
+		helpers::createTextureData(device, result, format, data, num_data_mipmaps, 1);
 
 		return result;
 	}
 
-	Texture *VulkanDriver::createTexture2DArray(
+	backend::Texture *Driver::createTexture2DArray(
 		uint32_t width,
 		uint32_t height,
 		uint32_t num_mipmaps,
@@ -596,9 +595,9 @@ namespace render::backend
 		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
 		assert((data == nullptr) || (data != nullptr && num_data_layers != 0) && "Invalid data layers");
 
-		vulkan::Texture *result = new vulkan::Texture();
+		Texture *result = new Texture();
 		result->type = VK_IMAGE_TYPE_2D;
-		result->format = vulkan::Utils::getFormat(format);
+		result->format = Utils::getFormat(format);
 		result->width = width;
 		result->height = height;
 		result->depth = 1;
@@ -608,12 +607,12 @@ namespace render::backend
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = 0;
 
-		vulkan::createTextureData(device, result, format, data, num_data_mipmaps, num_data_layers);
+		helpers::createTextureData(device, result, format, data, num_data_mipmaps, num_data_layers);
 
 		return result;
 	}
 
-	Texture *VulkanDriver::createTexture3D(
+	backend::Texture *Driver::createTexture3D(
 		uint32_t width,
 		uint32_t height,
 		uint32_t depth,
@@ -627,9 +626,9 @@ namespace render::backend
 		assert(num_mipmaps != 0 && "Invalid mipmap count");
 		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
 
-		vulkan::Texture *result = new vulkan::Texture();
+		Texture *result = new Texture();
 		result->type = VK_IMAGE_TYPE_3D;
-		result->format = vulkan::Utils::getFormat(format);
+		result->format = Utils::getFormat(format);
 		result->width = width;
 		result->height = height;
 		result->depth = depth;
@@ -639,12 +638,12 @@ namespace render::backend
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = 0;
 
-		vulkan::createTextureData(device, result, format, data, num_data_mipmaps, 1);
+		helpers::createTextureData(device, result, format, data, num_data_mipmaps, 1);
 
 		return result;
 	}
 
-	Texture *VulkanDriver::createTextureCube(
+	backend::Texture *Driver::createTextureCube(
 		uint32_t width,
 		uint32_t height,
 		uint32_t num_mipmaps,
@@ -658,9 +657,9 @@ namespace render::backend
 		assert(num_mipmaps != 0 && "Invalid mipmap count");
 		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
 
-		vulkan::Texture *result = new vulkan::Texture();
+		Texture *result = new Texture();
 		result->type = VK_IMAGE_TYPE_2D;
-		result->format = vulkan::Utils::getFormat(format);
+		result->format = Utils::getFormat(format);
 		result->width = width;
 		result->height = height;
 		result->depth = 1;
@@ -670,23 +669,23 @@ namespace render::backend
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
-		vulkan::createTextureData(device, result, format, data, num_data_mipmaps, 1);
+		helpers::createTextureData(device, result, format, data, num_data_mipmaps, 1);
 
 		return result;
 	}
 
-	FrameBuffer *VulkanDriver::createFrameBuffer(
+	backend::FrameBuffer *Driver::createFrameBuffer(
 		uint8_t num_attachments,
 		const FrameBufferAttachment *attachments
 	)
 	{
 		// TODO: check for equal sizes (color + depthstencil)
 
-		vulkan::FrameBuffer *result = new vulkan::FrameBuffer();
+		FrameBuffer *result = new FrameBuffer();
 
 		uint32_t width = 0;
 		uint32_t height = 0;
-		vulkan::RenderPassBuilder builder;
+		RenderPassBuilder builder;
 
 		builder.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
 
@@ -703,10 +702,10 @@ namespace render::backend
 			if (attachment.type == FrameBufferAttachmentType::COLOR)
 			{
 				const FrameBufferAttachment::Color &color = attachment.color;
-				const vulkan::Texture *color_texture = static_cast<const vulkan::Texture *>(color.texture);
-				VkImageAspectFlags flags = vulkan::Utils::getImageAspectFlags(color_texture->format);
+				const Texture *color_texture = static_cast<const Texture *>(color.texture);
+				VkImageAspectFlags flags = Utils::getImageAspectFlags(color_texture->format);
 
-				view = vulkan::Utils::createImageView(
+				view = Utils::createImageView(
 					device,
 					color_texture->image, color_texture->format,
 					flags, VK_IMAGE_VIEW_TYPE_2D,
@@ -735,10 +734,10 @@ namespace render::backend
 			else if (attachment.type == FrameBufferAttachmentType::DEPTH)
 			{
 				const FrameBufferAttachment::Depth &depth = attachment.depth;
-				const vulkan::Texture *depth_texture = static_cast<const vulkan::Texture *>(depth.texture);
-				VkImageAspectFlags flags = vulkan::Utils::getImageAspectFlags(depth_texture->format);
+				const Texture *depth_texture = static_cast<const Texture *>(depth.texture);
+				VkImageAspectFlags flags = Utils::getImageAspectFlags(depth_texture->format);
 
-				view = vulkan::Utils::createImageView(
+				view = Utils::createImageView(
 					device,
 					depth_texture->image, depth_texture->format,
 					flags, VK_IMAGE_VIEW_TYPE_2D
@@ -755,10 +754,10 @@ namespace render::backend
 			else if (attachment.type == FrameBufferAttachmentType::SWAP_CHAIN_COLOR)
 			{
 				const FrameBufferAttachment::SwapChainColor &swap_chain_color = attachment.swap_chain_color;
-				const vulkan::SwapChain *swap_chain = static_cast<const vulkan::SwapChain *>(swap_chain_color.swap_chain);
-				VkImageAspectFlags flags = vulkan::Utils::getImageAspectFlags(swap_chain->surface_format.format);
+				const SwapChain *swap_chain = static_cast<const SwapChain *>(swap_chain_color.swap_chain);
+				VkImageAspectFlags flags = Utils::getImageAspectFlags(swap_chain->surface_format.format);
 
-				view = vulkan::Utils::createImageView(
+				view = Utils::createImageView(
 					device,
 					swap_chain->images[swap_chain_color.base_image], swap_chain->surface_format.format,
 					flags, VK_IMAGE_VIEW_TYPE_2D
@@ -815,12 +814,12 @@ namespace render::backend
 		return result;
 	}
 
-	CommandBuffer *VulkanDriver::createCommandBuffer(
+	backend::CommandBuffer *Driver::createCommandBuffer(
 		CommandBufferType type
 	)
 	{
-		vulkan::CommandBuffer *result = new vulkan::CommandBuffer();
-		result->level = vulkan::Utils::getCommandBufferLevel(type);
+		CommandBuffer *result = new CommandBuffer();
+		result->level = Utils::getCommandBufferLevel(type);
 
 		// Allocate commandbuffer
 		VkCommandBufferAllocateInfo info = {};
@@ -831,7 +830,7 @@ namespace render::backend
 
 		if (vkAllocateCommandBuffers(device->getDevice(), &info, &result->command_buffer) != VK_SUCCESS)
 		{
-			std::cerr << "VulkanDriver::createCommandBuffer(): can't allocate command buffer" << std::endl;
+			std::cerr << "Driver::createCommandBuffer(): can't allocate command buffer" << std::endl;
 			destroyCommandBuffer(result);
 			return nullptr;
 		}
@@ -842,7 +841,7 @@ namespace render::backend
 
 		if (vkCreateSemaphore(device->getDevice(), &semaphore_info, nullptr, &result->rendering_finished_gpu) != VK_SUCCESS)
 		{
-			std::cerr << "VulkanDriver::createCommandBuffer(): can't create 'rendering finished' semaphore" << std::endl;
+			std::cerr << "Driver::createCommandBuffer(): can't create 'rendering finished' semaphore" << std::endl;
 			destroyCommandBuffer(result);
 			return nullptr;
 		}
@@ -854,7 +853,7 @@ namespace render::backend
 
 		if (vkCreateFence(device->getDevice(), &fence_info, nullptr, &result->rendering_finished_cpu) != VK_SUCCESS)
 		{
-			std::cerr << "VulkanDriver::createCommandBuffer(): can't create 'rendering finished' fence" << std::endl;
+			std::cerr << "Driver::createCommandBuffer(): can't create 'rendering finished' fence" << std::endl;
 			destroyCommandBuffer(result);
 			return nullptr;
 		}
@@ -862,7 +861,7 @@ namespace render::backend
 		return result;
 	}
 
-	UniformBuffer *VulkanDriver::createUniformBuffer(
+	backend::UniformBuffer *Driver::createUniformBuffer(
 		BufferType type,
 		uint32_t size,
 		const void *data
@@ -871,10 +870,10 @@ namespace render::backend
 		assert(type == BufferType::DYNAMIC && "Only dynamic buffers are implemented at the moment");
 		assert(size != 0 && "Invalid size");
 
-		vulkan::UniformBuffer *result = new vulkan::UniformBuffer();
+		UniformBuffer *result = new UniformBuffer();
 		result->size = size;
 
-		vulkan::Utils::createBuffer(
+		Utils::createBuffer(
 			device,
 			size,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -896,7 +895,7 @@ namespace render::backend
 		return result;
 	}
 
-	Shader *VulkanDriver::createShaderFromSource(
+	backend::Shader *Driver::createShaderFromSource(
 		ShaderType type,
 		uint32_t size,
 		const char *data,
@@ -922,7 +921,7 @@ namespace render::backend
 
 		if (shaderc_result_get_compilation_status(compilation_result) != shaderc_compilation_status_success)
 		{
-			std::cerr << "VulkanDriver::createShaderFromSource(): can't compile shader at \"" << path << "\"" << std::endl;
+			std::cerr << "Driver::createShaderFromSource(): can't compile shader at \"" << path << "\"" << std::endl;
 			std::cerr << "\t" << shaderc_result_get_error_message(compilation_result);
 
 			shaderc_result_release(compilation_result);
@@ -935,9 +934,9 @@ namespace render::backend
 		size_t bytecode_size = shaderc_result_get_length(compilation_result);
 		const uint32_t *bytecode_data = reinterpret_cast<const uint32_t*>(shaderc_result_get_bytes(compilation_result));
 
-		vulkan::Shader *result = new vulkan::Shader();
+		Shader *result = new Shader();
 		result->type = type;
-		result->module = vulkan::Utils::createShaderModule(device, bytecode_data, bytecode_size);
+		result->module = Utils::createShaderModule(device, bytecode_data, bytecode_size);
 
 		shaderc_result_release(compilation_result);
 		shaderc_compile_options_release(options);
@@ -946,7 +945,7 @@ namespace render::backend
 		return result;
 	}
 
-	Shader *VulkanDriver::createShaderFromBytecode(
+	backend::Shader *Driver::createShaderFromBytecode(
 		ShaderType type,
 		uint32_t size,
 		const void *data
@@ -955,22 +954,22 @@ namespace render::backend
 		assert(size != 0 && "Invalid size");
 		assert(data != nullptr && "Invalid data");
 
-		vulkan::Shader *result = new vulkan::Shader();
+		Shader *result = new Shader();
 		result->type = type;
-		result->module = vulkan::Utils::createShaderModule(device, reinterpret_cast<const uint32_t *>(data), size);
+		result->module = Utils::createShaderModule(device, reinterpret_cast<const uint32_t *>(data), size);
 
 		return result;
 	}
 
-	BindSet *VulkanDriver::createBindSet()
+	backend::BindSet *Driver::createBindSet()
 	{
-		vulkan::BindSet *result = new vulkan::BindSet();
-		memset(result, 0, sizeof(vulkan::BindSet));
+		BindSet *result = new BindSet();
+		memset(result, 0, sizeof(BindSet));
 
 		return result;
 	}
 
-	SwapChain *VulkanDriver::createSwapChain(
+	backend::SwapChain *Driver::createSwapChain(
 		void *native_window,
 		uint32_t width,
 		uint32_t height
@@ -978,19 +977,19 @@ namespace render::backend
 	{
 		assert(native_window != nullptr && "Invalid window");
 
-		vulkan::SwapChain *result = new vulkan::SwapChain();
+		SwapChain *result = new SwapChain();
 
 		// Create platform surface
-		result->surface = vulkan::Platform::createSurface(device, native_window);
+		result->surface = Platform::createSurface(device, native_window);
 		if (result->surface == VK_NULL_HANDLE)
 		{
-			std::cerr << "VulkanDriver::createSwapChain(): can't create platform surface" << std::endl;
+			std::cerr << "Driver::createSwapChain(): can't create platform surface" << std::endl;
 			destroySwapChain(result);
 			return false;
 		}
 
 		// Fetch present queue family
-		result->present_queue_family = vulkan::Utils::getPresentQueueFamily(
+		result->present_queue_family = Utils::getPresentQueueFamily(
 			device->getPhysicalDevice(),
 			result->surface,
 			device->getGraphicsQueueFamily()
@@ -1000,23 +999,23 @@ namespace render::backend
 		vkGetDeviceQueue(device->getDevice(), result->present_queue_family, 0, &result->present_queue);
 		if (result->present_queue == VK_NULL_HANDLE)
 		{
-			std::cerr << "VulkanDriver::createSwapChain(): can't get present queue from logical device" << std::endl;
+			std::cerr << "Driver::createSwapChain(): can't get present queue from logical device" << std::endl;
 			destroySwapChain(result);
 			return false;
 		}
 
-		vulkan::selectOptimalSwapChainSettings(device, result, width, height);
-		vulkan::createSwapChainObjects(device, result);
+		helpers::selectOptimalSwapChainSettings(device, result, width, height);
+		helpers::createSwapChainObjects(device, result);
 
 		return result;
 	}
 
-	void VulkanDriver::destroyVertexBuffer(VertexBuffer *vertex_buffer)
+	void Driver::destroyVertexBuffer(backend::VertexBuffer *vertex_buffer)
 	{
 		if (vertex_buffer == nullptr)
 			return;
 
-		vulkan::VertexBuffer *vk_vertex_buffer = static_cast<vulkan::VertexBuffer *>(vertex_buffer);
+		VertexBuffer *vk_vertex_buffer = static_cast<VertexBuffer *>(vertex_buffer);
 
 		vmaDestroyBuffer(device->getVRAMAllocator(), vk_vertex_buffer->buffer, vk_vertex_buffer->memory);
 
@@ -1027,12 +1026,12 @@ namespace render::backend
 		vertex_buffer = nullptr;
 	}
 
-	void VulkanDriver::destroyIndexBuffer(IndexBuffer *index_buffer)
+	void Driver::destroyIndexBuffer(backend::IndexBuffer *index_buffer)
 	{
 		if (index_buffer == nullptr)
 			return;
 
-		vulkan::IndexBuffer *vk_index_buffer = static_cast<vulkan::IndexBuffer *>(index_buffer);
+		IndexBuffer *vk_index_buffer = static_cast<IndexBuffer *>(index_buffer);
 
 		vmaDestroyBuffer(device->getVRAMAllocator(), vk_index_buffer->buffer, vk_index_buffer->memory);
 
@@ -1043,12 +1042,12 @@ namespace render::backend
 		index_buffer = nullptr;
 	}
 
-	void VulkanDriver::destroyRenderPrimitive(RenderPrimitive *render_primitive)
+	void Driver::destroyRenderPrimitive(backend::RenderPrimitive *render_primitive)
 	{
 		if (render_primitive == nullptr)
 			return;
 
-		vulkan::RenderPrimitive *vk_render_primitive = static_cast<vulkan::RenderPrimitive *>(render_primitive);
+		RenderPrimitive *vk_render_primitive = static_cast<RenderPrimitive *>(render_primitive);
 
 		vk_render_primitive->vertex_buffer = nullptr;
 		vk_render_primitive->index_buffer = nullptr;
@@ -1057,12 +1056,12 @@ namespace render::backend
 		render_primitive = nullptr;
 	}
 
-	void VulkanDriver::destroyTexture(Texture *texture)
+	void Driver::destroyTexture(backend::Texture *texture)
 	{
 		if (texture == nullptr)
 			return;
 
-		vulkan::Texture *vk_texture = static_cast<vulkan::Texture *>(texture);
+		Texture *vk_texture = static_cast<Texture *>(texture);
 
 		vmaDestroyImage(device->getVRAMAllocator(), vk_texture->image, vk_texture->memory);
 
@@ -1074,12 +1073,12 @@ namespace render::backend
 		texture = nullptr;
 	}
 
-	void VulkanDriver::destroyFrameBuffer(FrameBuffer *frame_buffer)
+	void Driver::destroyFrameBuffer(backend::FrameBuffer *frame_buffer)
 	{
 		if (frame_buffer == nullptr)
 			return;
 
-		vulkan::FrameBuffer *vk_frame_buffer = static_cast<vulkan::FrameBuffer *>(frame_buffer);
+		FrameBuffer *vk_frame_buffer = static_cast<FrameBuffer *>(frame_buffer);
 
 		for (uint8_t i = 0; i < vk_frame_buffer->num_attachments; ++i)
 		{
@@ -1097,12 +1096,12 @@ namespace render::backend
 		frame_buffer = nullptr;
 	}
 
-	void VulkanDriver::destroyCommandBuffer(CommandBuffer *command_buffer)
+	void Driver::destroyCommandBuffer(backend::CommandBuffer *command_buffer)
 	{
 		if (command_buffer == nullptr)
 			return;
 
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 
 		vkFreeCommandBuffers(device->getDevice(), device->getCommandPool(), 1, &vk_command_buffer->command_buffer);
 		vk_command_buffer->command_buffer = VK_NULL_HANDLE;
@@ -1117,12 +1116,12 @@ namespace render::backend
 		command_buffer = nullptr;
 	}
 
-	void VulkanDriver::destroyUniformBuffer(UniformBuffer *uniform_buffer)
+	void Driver::destroyUniformBuffer(backend::UniformBuffer *uniform_buffer)
 	{
 		if (uniform_buffer == nullptr)
 			return;
 
-		vulkan::UniformBuffer *vk_uniform_buffer = static_cast<vulkan::UniformBuffer *>(uniform_buffer);
+		UniformBuffer *vk_uniform_buffer = static_cast<UniformBuffer *>(uniform_buffer);
 
 		vmaUnmapMemory(device->getVRAMAllocator(), vk_uniform_buffer->memory);
 		vmaDestroyBuffer(device->getVRAMAllocator(), vk_uniform_buffer->buffer, vk_uniform_buffer->memory);
@@ -1134,12 +1133,12 @@ namespace render::backend
 		uniform_buffer = nullptr;
 	}
 
-	void VulkanDriver::destroyShader(Shader *shader)
+	void Driver::destroyShader(backend::Shader *shader)
 	{
 		if (shader == nullptr)
 			return;
 
-		vulkan::Shader *vk_shader = static_cast<vulkan::Shader *>(shader);
+		Shader *vk_shader = static_cast<Shader *>(shader);
 
 		vkDestroyShaderModule(device->getDevice(), vk_shader->module, nullptr);
 		vk_shader->module = VK_NULL_HANDLE;
@@ -1148,14 +1147,14 @@ namespace render::backend
 		shader = nullptr;
 	}
 
-	void VulkanDriver::destroyBindSet(BindSet *bind_set)
+	void Driver::destroyBindSet(backend::BindSet *bind_set)
 	{
 		if (bind_set == nullptr)
 			return;
 
-		vulkan::BindSet *vk_bind_set = static_cast<vulkan::BindSet *>(bind_set);
+		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
 
-		for (uint32_t i = 0; i < vulkan::BindSet::MAX_BINDINGS; ++i)
+		for (uint32_t i = 0; i < BindSet::MAX_BINDINGS; ++i)
 		{
 			if (!vk_bind_set->binding_used[i])
 				continue;
@@ -1164,7 +1163,7 @@ namespace render::backend
 			if (info.descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 				continue;
 
-			vulkan::BindSet::Data &data = vk_bind_set->binding_data[i];
+			BindSet::Data &data = vk_bind_set->binding_data[i];
 			vkDestroyImageView(device->getDevice(), data.texture.view, nullptr);
 		}
 
@@ -1172,14 +1171,14 @@ namespace render::backend
 		bind_set = nullptr;
 	}
 
-	void VulkanDriver::destroySwapChain(SwapChain *swap_chain)
+	void Driver::destroySwapChain(backend::SwapChain *swap_chain)
 	{
 		if (swap_chain == nullptr)
 			return;
 
-		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
+		SwapChain *vk_swap_chain = static_cast<SwapChain *>(swap_chain);
 
-		vulkan::destroySwapChainObjects(device, vk_swap_chain);
+		helpers::destroySwapChainObjects(device, vk_swap_chain);
 
 		vk_swap_chain->present_queue_family = 0xFFFF;
 		vk_swap_chain->present_queue = VK_NULL_HANDLE;
@@ -1190,53 +1189,53 @@ namespace render::backend
 		vk_swap_chain->current_image = 0;
 
 		// Destroy platform surface
-		vulkan::Platform::destroySurface(device, vk_swap_chain->surface);
+		Platform::destroySurface(device, vk_swap_chain->surface);
 		vk_swap_chain->surface = nullptr;
 
 		delete swap_chain;
 		swap_chain = nullptr;
 	}
 
-	Multisample VulkanDriver::getMaxSampleCount()
+	Multisample Driver::getMaxSampleCount()
 	{
 		assert(device != nullptr && "Invalid device");
 
 		VkSampleCountFlagBits samples = device->getMaxSampleCount();
-		return vulkan::Utils::getApiSamples(samples);
+		return Utils::getApiSamples(samples);
 	}
 
-	Format VulkanDriver::getOptimalDepthFormat()
+	Format Driver::getOptimalDepthFormat()
 	{
 		assert(device != nullptr && "Invalid device");
 
-		VkFormat format = vulkan::Utils::selectOptimalDepthFormat(device->getPhysicalDevice());
-		return vulkan::Utils::getApiFormat(format);
+		VkFormat format = Utils::selectOptimalDepthFormat(device->getPhysicalDevice());
+		return Utils::getApiFormat(format);
 	}
 
-	Format VulkanDriver::getSwapChainImageFormat(const SwapChain *swap_chain)
+	Format Driver::getSwapChainImageFormat(const backend::SwapChain *swap_chain)
 	{
 		assert(swap_chain != nullptr && "Invalid swap chain");
-		const vulkan::SwapChain *vk_swap_chain = static_cast<const vulkan::SwapChain *>(swap_chain);
+		const SwapChain *vk_swap_chain = static_cast<const SwapChain *>(swap_chain);
 
-		return vulkan::Utils::getApiFormat(vk_swap_chain->surface_format.format);
+		return Utils::getApiFormat(vk_swap_chain->surface_format.format);
 	}
 
-	uint32_t VulkanDriver::getNumSwapChainImages(const SwapChain *swap_chain)
+	uint32_t Driver::getNumSwapChainImages(const backend::SwapChain *swap_chain)
 	{
 		assert(swap_chain != nullptr && "Invalid swap chain");
-		const vulkan::SwapChain *vk_swap_chain = static_cast<const vulkan::SwapChain *>(swap_chain);
+		const SwapChain *vk_swap_chain = static_cast<const SwapChain *>(swap_chain);
 
 		return vk_swap_chain->num_images;
 	}
 
-	void VulkanDriver::generateTexture2DMipmaps(Texture *texture)
+	void Driver::generateTexture2DMipmaps(backend::Texture *texture)
 	{
 		assert(texture != nullptr && "Invalid texture");
 
-		vulkan::Texture *vk_texture = static_cast<vulkan::Texture *>(texture);
+		Texture *vk_texture = static_cast<Texture *>(texture);
 
 		// prepare for transfer
-		vulkan::Utils::transitionImageLayout(
+		Utils::transitionImageLayout(
 			device,
 			vk_texture->image,
 			vk_texture->format,
@@ -1247,7 +1246,7 @@ namespace render::backend
 		);
 
 		// generate 2D mipmaps with linear filter
-		vulkan::Utils::generateImage2DMipmaps(
+		Utils::generateImage2DMipmaps(
 			device,
 			vk_texture->image,
 			vk_texture->format,
@@ -1259,7 +1258,7 @@ namespace render::backend
 		);
 
 		// prepare for shader access
-		vulkan::Utils::transitionImageLayout(
+		Utils::transitionImageLayout(
 			device,
 			vk_texture->image,
 			vk_texture->format,
@@ -1270,19 +1269,19 @@ namespace render::backend
 		);
 	}
 
-	void *VulkanDriver::map(UniformBuffer *uniform_buffer)
+	void *Driver::map(backend::UniformBuffer *uniform_buffer)
 	{
 		assert(uniform_buffer != nullptr && "Invalid uniform buffer");
 		// TODO: check DYNAMIC buffer type
 
-		vulkan::UniformBuffer *vk_uniform_buffer = static_cast<vulkan::UniformBuffer *>(uniform_buffer);
+		UniformBuffer *vk_uniform_buffer = static_cast<UniformBuffer *>(uniform_buffer);
 
 		// NOTE: here we should call vkMapMemory but since it was called during UBO creation, we do nothing here.
 		//       It's important to do a proper stress test to see if we can map all previously created UBOs.
 		return vk_uniform_buffer->pointer;
 	}
 
-	void VulkanDriver::unmap(UniformBuffer *uniform_buffer)
+	void Driver::unmap(backend::UniformBuffer *uniform_buffer)
 	{
 		assert(uniform_buffer != nullptr && "Invalid uniform buffer");
 		// TODO: check DYNAMIC buffer type
@@ -1291,16 +1290,16 @@ namespace render::backend
 		//       It's important to do a proper stress test to see if we can map all previously created UBOs.
 	}
 
-	void VulkanDriver::wait()
+	void Driver::wait()
 	{
 		assert(device != nullptr && "Invalid device");
 
 		device->wait();
 	}
 
-	bool VulkanDriver::wait(
+	bool Driver::wait(
 		uint32_t num_wait_command_buffers,
-		CommandBuffer * const *wait_command_buffers
+		backend::CommandBuffer * const *wait_command_buffers
 	)
 	{
 		if (num_wait_command_buffers == 0)
@@ -1310,7 +1309,7 @@ namespace render::backend
 
 		for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
 		{
-			const vulkan::CommandBuffer *vk_wait_command_buffer = static_cast<const vulkan::CommandBuffer *>(wait_command_buffers[i]);
+			const CommandBuffer *vk_wait_command_buffer = static_cast<const CommandBuffer *>(wait_command_buffers[i]);
 			wait_fences[i] = vk_wait_command_buffer->rendering_finished_cpu;
 		}
 
@@ -1319,9 +1318,9 @@ namespace render::backend
 		return result == VK_SUCCESS;
 	}
 
-	bool VulkanDriver::acquire(SwapChain *swap_chain, uint32_t *new_image)
+	bool Driver::acquire(backend::SwapChain *swap_chain, uint32_t *new_image)
 	{
-		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
+		SwapChain *vk_swap_chain = static_cast<SwapChain *>(swap_chain);
 		uint32_t current_image = vk_swap_chain->current_image;
 
 		VkResult result = vkAcquireNextImageKHR(
@@ -1346,9 +1345,9 @@ namespace render::backend
 		return true;
 	}
 
-	bool VulkanDriver::present(SwapChain *swap_chain, uint32_t num_wait_command_buffers, CommandBuffer * const *wait_command_buffers)
+	bool Driver::present(backend::SwapChain *swap_chain, uint32_t num_wait_command_buffers, backend::CommandBuffer * const *wait_command_buffers)
 	{
-		vulkan::SwapChain *vk_swap_chain = static_cast<vulkan::SwapChain *>(swap_chain);
+		SwapChain *vk_swap_chain = static_cast<SwapChain *>(swap_chain);
 		uint32_t current_image = vk_swap_chain->current_image;
 
 		std::vector<VkSemaphore> wait_semaphores(num_wait_command_buffers);
@@ -1359,7 +1358,7 @@ namespace render::backend
 
 			for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
 			{
-				const vulkan::CommandBuffer *vk_wait_command_buffer = static_cast<const vulkan::CommandBuffer *>(wait_command_buffers[i]);
+				const CommandBuffer *vk_wait_command_buffer = static_cast<const CommandBuffer *>(wait_command_buffers[i]);
 				wait_semaphores[i] = vk_wait_command_buffer->rendering_finished_gpu;
 				wait_fences[i] = vk_wait_command_buffer->rendering_finished_cpu;
 			}
@@ -1377,7 +1376,7 @@ namespace render::backend
 			info.pWaitSemaphores = wait_semaphores.data();
 		}
 
-		vulkan::Utils::transitionImageLayout(
+		Utils::transitionImageLayout(
 			device,
 			vk_swap_chain->images[current_image],
 			vk_swap_chain->surface_format.format,
@@ -1413,22 +1412,22 @@ namespace render::backend
 
 	/*
 	 */
-	void VulkanDriver::bindUniformBuffer(
-		BindSet *bind_set,
+	void Driver::bindUniformBuffer(
+		backend::BindSet *bind_set,
 		uint32_t binding,
-		const UniformBuffer *uniform_buffer
+		const backend::UniformBuffer *uniform_buffer
 	)
 	{
-		assert(binding < vulkan::BindSet::MAX_BINDINGS);
+		assert(binding < BindSet::MAX_BINDINGS);
 
 		if (bind_set == nullptr)
 			return;
 
-		vulkan::BindSet *vk_bind_set = static_cast<vulkan::BindSet *>(bind_set);
-		const vulkan::UniformBuffer *vk_uniform_buffer = static_cast<const vulkan::UniformBuffer *>(uniform_buffer);
+		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
+		const UniformBuffer *vk_uniform_buffer = static_cast<const UniformBuffer *>(uniform_buffer);
 		
 		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
-		vulkan::BindSet::Data &data = vk_bind_set->binding_data[binding];
+		BindSet::Data &data = vk_bind_set->binding_data[binding];
 
 		if (vk_bind_set->binding_used[binding] && info.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 		{
@@ -1454,19 +1453,19 @@ namespace render::backend
 		info.pImmutableSamplers = nullptr;
 	}
 
-	void VulkanDriver::bindTexture(
-		BindSet *bind_set,
+	void Driver::bindTexture(
+		backend::BindSet *bind_set,
 		uint32_t binding,
-		const Texture *texture
+		const backend::Texture *texture
 	)
 	{
-		assert(binding < vulkan::BindSet::MAX_BINDINGS);
+		assert(binding < BindSet::MAX_BINDINGS);
 
 		if (bind_set == nullptr)
 			return;
 
-		vulkan::BindSet *vk_bind_set = static_cast<vulkan::BindSet *>(bind_set);
-		const vulkan::Texture *vk_texture = static_cast<const vulkan::Texture *>(texture);
+		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
+		const Texture *vk_texture = static_cast<const Texture *>(texture);
 
 		uint32_t num_mipmaps = (vk_texture) ? vk_texture->num_mipmaps : 0;
 		uint32_t num_layers = (vk_texture) ? vk_texture->num_layers : 0;
@@ -1474,26 +1473,26 @@ namespace render::backend
 		bindTexture(bind_set, binding, texture, 0, num_mipmaps, 0, num_layers);
 	}
 
-	void VulkanDriver::bindTexture(
-		BindSet *bind_set,
+	void Driver::bindTexture(
+		backend::BindSet *bind_set,
 		uint32_t binding,
-		const Texture *texture,
+		const backend::Texture *texture,
 		uint32_t base_mip,
 		uint32_t num_mipmaps,
 		uint32_t base_layer,
 		uint32_t num_layers
 	)
 	{
-		assert(binding < vulkan::BindSet::MAX_BINDINGS);
+		assert(binding < BindSet::MAX_BINDINGS);
 
 		if (bind_set == nullptr)
 			return;
 
-		vulkan::BindSet *vk_bind_set = static_cast<vulkan::BindSet *>(bind_set);
-		const vulkan::Texture *vk_texture = static_cast<const vulkan::Texture *>(texture);
+		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
+		const Texture *vk_texture = static_cast<const Texture *>(texture);
 
 		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
-		vulkan::BindSet::Data &data = vk_bind_set->binding_data[binding];
+		BindSet::Data &data = vk_bind_set->binding_data[binding];
 
 		if (vk_bind_set->binding_used[binding] && info.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 		{
@@ -1507,12 +1506,12 @@ namespace render::backend
 
 		if (vk_texture)
 		{
-			view = vulkan::Utils::createImageView(
+			view = Utils::createImageView(
 				device,
 				vk_texture->image,
 				vk_texture->format,
-				vulkan::Utils::getImageAspectFlags(vk_texture->format),
-				vulkan::Utils::getImageBaseViewType(vk_texture->type, vk_texture->flags, num_layers),
+				Utils::getImageAspectFlags(vk_texture->format),
+				Utils::getImageBaseViewType(vk_texture->type, vk_texture->flags, num_layers),
 				base_mip, num_mipmaps,
 				base_layer, num_layers
 			);
@@ -1534,104 +1533,100 @@ namespace render::backend
 
 	/*
 	 */
-	void VulkanDriver::clearPushConstants(
-	)
+	void Driver::clearPushConstants()
 	{
 		context->clearPushConstants();
 	}
 
-	void VulkanDriver::setPushConstants(
-		uint8_t size,
-		const void *data
-	)
+	void Driver::setPushConstants(uint8_t size, const void *data)
 	{
 		context->setPushConstants(size, data);
 	}
 
-	void VulkanDriver::clearBindSets()
+	void Driver::clearBindSets()
 	{
 		context->clearBindSets();
 	}
 
-	void VulkanDriver::allocateBindSets(uint8_t size)
+	void Driver::allocateBindSets(uint8_t size)
 	{
 		context->allocateBindSets(size);
 	}
 
-	void VulkanDriver::pushBindSet(BindSet *set)
+	void Driver::pushBindSet(backend::BindSet *set)
 	{
-		vulkan::BindSet *vk_set = static_cast<vulkan::BindSet *>(set);
+		BindSet *vk_set = static_cast<BindSet *>(set);
 		context->pushBindSet(vk_set);
 	}
 
-	void VulkanDriver::setBindSet(uint32_t binding, BindSet *set)
+	void Driver::setBindSet(uint32_t binding, backend::BindSet *set)
 	{
-		vulkan::BindSet *vk_set = static_cast<vulkan::BindSet *>(set);
+		BindSet *vk_set = static_cast<BindSet *>(set);
 		context->setBindSet(binding, vk_set);
 	}
 
-	void VulkanDriver::clearShaders()
+	void Driver::clearShaders()
 	{
 		context->clearShaders();
 	}
 
-	void VulkanDriver::setShader(ShaderType type, const Shader *shader)
+	void Driver::setShader(ShaderType type, const backend::Shader *shader)
 	{
-		const vulkan::Shader *vk_shader = static_cast<const vulkan::Shader *>(shader);
+		const Shader *vk_shader = static_cast<const Shader *>(shader);
 		context->setShader(type, vk_shader);
 	}
 
 	/*
 	 */
-	void VulkanDriver::setCullMode(CullMode mode)
+	void Driver::setCullMode(CullMode mode)
 	{
-		VkCullModeFlags vk_mode = vulkan::Utils::getCullMode(mode);
+		VkCullModeFlags vk_mode = Utils::getCullMode(mode);
 		context->setCullMode(vk_mode);
 	}
 
-	void VulkanDriver::setDepthTest(bool enabled)
+	void Driver::setDepthTest(bool enabled)
 	{
 		context->setDepthTest(enabled);
 	}
 
-	void VulkanDriver::setDepthWrite(bool enabled)
+	void Driver::setDepthWrite(bool enabled)
 	{
 		context->setDepthWrite(enabled);
 	}
 
-	void VulkanDriver::setDepthCompareFunc(DepthCompareFunc func)
+	void Driver::setDepthCompareFunc(DepthCompareFunc func)
 	{
-		VkCompareOp vk_func = vulkan::Utils::getDepthCompareFunc(func);
+		VkCompareOp vk_func = Utils::getDepthCompareFunc(func);
 		context->setDepthCompareFunc(vk_func);
 	}
 
-	void VulkanDriver::setBlending(bool enabled)
+	void Driver::setBlending(bool enabled)
 	{
 		context->setBlending(enabled);
 	}
 
-	void VulkanDriver::setBlendFactors(BlendFactor src_factor, BlendFactor dest_factor)
+	void Driver::setBlendFactors(BlendFactor src_factor, BlendFactor dest_factor)
 	{
-		VkBlendFactor vk_src_factor = vulkan::Utils::getBlendFactor(src_factor);
-		VkBlendFactor vk_dest_factor = vulkan::Utils::getBlendFactor(dest_factor);
+		VkBlendFactor vk_src_factor = Utils::getBlendFactor(src_factor);
+		VkBlendFactor vk_dest_factor = Utils::getBlendFactor(dest_factor);
 		context->setBlendFactors(vk_src_factor, vk_dest_factor);
 	}
 
 	/*
 	 */
-	bool VulkanDriver::resetCommandBuffer(CommandBuffer *command_buffer)
+	bool Driver::resetCommandBuffer(backend::CommandBuffer *command_buffer)
 	{
 		if (command_buffer == nullptr)
 			return false;
 
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 		if (vkResetCommandBuffer(vk_command_buffer->command_buffer, 0) != VK_SUCCESS)
 			return false;
 
 		return true;
 	}
 
-	bool VulkanDriver::beginCommandBuffer(CommandBuffer *command_buffer)
+	bool Driver::beginCommandBuffer(backend::CommandBuffer *command_buffer)
 	{
 		if (command_buffer == nullptr)
 			return false;
@@ -1640,31 +1635,31 @@ namespace render::backend
 		info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 		if (vkBeginCommandBuffer(vk_command_buffer->command_buffer, &info) != VK_SUCCESS)
 			return false;
 
 		return true;
 	}
 
-	bool VulkanDriver::endCommandBuffer(CommandBuffer *command_buffer)
+	bool Driver::endCommandBuffer(backend::CommandBuffer *command_buffer)
 	{
 		if (command_buffer == nullptr)
 			return false;
 
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 		if (vkEndCommandBuffer(vk_command_buffer->command_buffer) != VK_SUCCESS)
 			return false;
 
 		return true;
 	}
 
-	bool VulkanDriver::submit(CommandBuffer *command_buffer)
+	bool Driver::submit(backend::CommandBuffer *command_buffer)
 	{
 		if (command_buffer == nullptr)
 			return false;
 		
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 
 		VkSubmitInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1678,12 +1673,12 @@ namespace render::backend
 		return true;
 	}
 
-	bool VulkanDriver::submitSyncked(CommandBuffer *command_buffer, const SwapChain *wait_swap_chain)
+	bool Driver::submitSyncked(backend::CommandBuffer *command_buffer, const backend::SwapChain *wait_swap_chain)
 	{
 		if (command_buffer == nullptr)
 			return false;
 		
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 
 		VkSubmitInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1696,7 +1691,7 @@ namespace render::backend
 
 		if (wait_swap_chain != nullptr)
 		{
-			const vulkan::SwapChain *vk_wait_swap_chain = static_cast<const vulkan::SwapChain *>(wait_swap_chain);
+			const SwapChain *vk_wait_swap_chain = static_cast<const SwapChain *>(wait_swap_chain);
 			uint32_t current_image = vk_wait_swap_chain->current_image;
 
 			info.waitSemaphoreCount = 1;
@@ -1711,12 +1706,12 @@ namespace render::backend
 		return true;
 	}
 
-	bool VulkanDriver::submitSyncked(CommandBuffer *command_buffer, uint32_t num_wait_command_buffers, CommandBuffer * const *wait_command_buffers)
+	bool Driver::submitSyncked(backend::CommandBuffer *command_buffer, uint32_t num_wait_command_buffers, backend::CommandBuffer * const *wait_command_buffers)
 	{
 		if (command_buffer == nullptr)
 			return false;
 		
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 
 		VkSubmitInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1735,7 +1730,7 @@ namespace render::backend
 
 			for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
 			{
-				const vulkan::CommandBuffer *vk_wait_command_buffer = static_cast<const vulkan::CommandBuffer *>(wait_command_buffers[i]);
+				const CommandBuffer *vk_wait_command_buffer = static_cast<const CommandBuffer *>(wait_command_buffers[i]);
 				wait_semaphores[i] = vk_wait_command_buffer->rendering_finished_gpu;
 				wait_stages[i] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			}
@@ -1752,15 +1747,15 @@ namespace render::backend
 		return true;
 	}
 
-	void VulkanDriver::beginRenderPass(CommandBuffer *command_buffer, const FrameBuffer *frame_buffer, const RenderPassInfo *info)
+	void Driver::beginRenderPass(backend::CommandBuffer *command_buffer, const backend::FrameBuffer *frame_buffer, const RenderPassInfo *info)
 	{
 		assert(frame_buffer);
 
 		if (command_buffer == nullptr)
 			return;
 		
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
-		const vulkan::FrameBuffer *vk_frame_buffer = static_cast<const vulkan::FrameBuffer *>(frame_buffer);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		const FrameBuffer *vk_frame_buffer = static_cast<const FrameBuffer *>(frame_buffer);
 
 		VkRenderPass render_pass = render_pass_cache->fetch(vk_frame_buffer, info);
 		context->setRenderPass(render_pass);
@@ -1778,44 +1773,44 @@ namespace render::backend
 		vkCmdBeginRenderPass(vk_command_buffer->command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
 
-	void VulkanDriver::endRenderPass(CommandBuffer *command_buffer)
+	void Driver::endRenderPass(backend::CommandBuffer *command_buffer)
 	{
 		if (command_buffer == nullptr)
 			return;
 
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 		vkCmdEndRenderPass(vk_command_buffer->command_buffer);
 
 		context->setRenderPass(VK_NULL_HANDLE);
 	}
 
-	void VulkanDriver::drawIndexedPrimitive(CommandBuffer *command_buffer, const RenderPrimitive *render_primitive)
+	void Driver::drawIndexedPrimitive(backend::CommandBuffer *command_buffer, const backend::RenderPrimitive *render_primitive)
 	{
 		if (command_buffer == nullptr)
 			return;
 
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
-		const vulkan::RenderPrimitive *vk_render_primitive = static_cast<const vulkan::RenderPrimitive *>(render_primitive);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		const RenderPrimitive *vk_render_primitive = static_cast<const RenderPrimitive *>(render_primitive);
 
 		std::vector<VkDescriptorSet> sets(context->getNumBindSets());
 		std::vector<VkWriteDescriptorSet> writes;
 		std::vector<VkDescriptorImageInfo> image_infos;
 		std::vector<VkDescriptorBufferInfo> buffer_infos;
 
-		writes.reserve(vulkan::BindSet::MAX_BINDINGS * context->getNumBindSets());
-		image_infos.reserve(vulkan::BindSet::MAX_BINDINGS * context->getNumBindSets());
-		buffer_infos.reserve(vulkan::BindSet::MAX_BINDINGS * context->getNumBindSets());
+		writes.reserve(BindSet::MAX_BINDINGS * context->getNumBindSets());
+		image_infos.reserve(BindSet::MAX_BINDINGS * context->getNumBindSets());
+		buffer_infos.reserve(BindSet::MAX_BINDINGS * context->getNumBindSets());
 
 		for (uint8_t i = 0; i < context->getNumBindSets(); ++i)
 		{
-			vulkan::BindSet *bind_set = context->getBindSet(i);
+			BindSet *bind_set = context->getBindSet(i);
 
 			VkDescriptorSetLayout new_layout = descriptor_set_layout_cache->fetch(bind_set);
-			vulkan::updateBindSetLayout(device, bind_set, new_layout);
+			helpers::updateBindSetLayout(device, bind_set, new_layout);
 
 			sets[i] = bind_set->set;
 
-			for (uint8_t j = 0; j < vulkan::BindSet::MAX_BINDINGS; ++j)
+			for (uint8_t j = 0; j < BindSet::MAX_BINDINGS; ++j)
 			{
 				if (!bind_set->binding_used[j])
 					continue;
@@ -1824,7 +1819,7 @@ namespace render::backend
 					continue;
 
 				VkDescriptorType descriptor_type = bind_set->bindings[j].descriptorType;
-				const vulkan::BindSet::Data &data = bind_set->binding_data[j];
+				const BindSet::Data &data = bind_set->binding_data[j];
 
 				VkWriteDescriptorSet write_set = {};
 				write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1901,10 +1896,10 @@ namespace render::backend
 		vkCmdDrawIndexed(vk_command_buffer->command_buffer, vk_render_primitive->index_buffer->num_indices, 1, 0, 0, 0);
 	}
 
-	void VulkanDriver::drawIndexedPrimitiveInstanced(
-		CommandBuffer *command_buffer,
-		const RenderPrimitive *render_primitive,
-		const VertexBuffer *instance_buffer,
+	void Driver::drawIndexedPrimitiveInstanced(
+		backend::CommandBuffer *command_buffer,
+		const backend::RenderPrimitive *render_primitive,
+		const backend::VertexBuffer *instance_buffer,
 		uint32_t num_instances,
 		uint32_t offset
 	)
@@ -1912,7 +1907,7 @@ namespace render::backend
 		if (command_buffer == nullptr)
 			return;
 
-		vulkan::CommandBuffer *vk_command_buffer = static_cast<vulkan::CommandBuffer *>(command_buffer);
-		const vulkan::RenderPrimitive *vk_render_primitive = static_cast<const vulkan::RenderPrimitive *>(render_primitive);
+		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		const RenderPrimitive *vk_render_primitive = static_cast<const RenderPrimitive *>(render_primitive);
 	}
 }

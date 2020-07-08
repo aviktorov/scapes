@@ -45,7 +45,7 @@ void *ImGuiRenderer::addTexture(const render::Texture *texture) const
  */
 void ImGuiRenderer::init(const render::SwapChain *swap_chain)
 {
-	const vulkan::Device *vk_device = static_cast<VulkanDriver *>(driver)->getDevice();
+	const vulkan::Device *vk_device = static_cast<vulkan::Driver *>(driver)->getDevice();
 	const vulkan::SwapChain *vk_swap_chain = static_cast<const vulkan::SwapChain *>(swap_chain->getBackend());
 	const vulkan::FrameBuffer *vk_frame_buffer = static_cast<const vulkan::FrameBuffer *>(swap_chain->getFrameBuffer(0));
 
