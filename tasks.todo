@@ -16,36 +16,37 @@ DX12 specific:
         - D3D12 helper library: D3DX12 (https://github.com/Microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12)
 
 Vulkan backend challenges:
-    ☐ Video memory allocation (VMA aka Vulkan Memory Allocator)
-    ☐ Pipeline variety: either add *pipeline struct to backend or create pipeline cache internally
-    ☐ Render pass variety: create renderpass cache internally
-    ☐ Image layout transitions
+    ✔ Video memory allocation (VMA aka Vulkan Memory Allocator) @done (7/7/2020, 10:18:02 PM)
+    ✔ Pipeline variety: either add *pipeline struct to backend or create pipeline cache internally @done (7/7/2020, 10:18:03 PM)
+    ✔ Render pass variety: create renderpass cache internally @done (7/7/2020, 10:18:03 PM)
+    ✔ Image layout transitions @done (7/7/2020, 10:18:04 PM)
     ☐ Instance attribute bindings: either move them to separate binding (not compatible with OpenGL) or sequentially increase attribute index during pipeline creation
 
 PBR Sandbox:
-    Offline:
-        ☐ Debug slow shader render failure
-        ☐ Create a pull request to ImGui (Vulkan + Volk)
-        ☐ Figure out different probability density functions for different NDF
+    Bugs:
         ✔ Figure out why context swap recreation is broken during resize event @done (6/5/2020, 10:54:32 PM)
         ✔ Figure out why render pass doesn't clear depth correctly @done (6/27/2020, 5:47:13 PM)
-    Online:
+        ☐ Debug slow shader render failure
+        ✔ Fix broken mipmap generation @done (7/8/2020, 7:05:02 PM)
+    Improvements:
+        ✔ Remove vulkan dependencies from VulkanTexture @done (7/7/2020, 10:17:57 PM)
+        ☐ Migrate ImGui renderer to backend
+        ☐ Create separate cmake script for backend
+        ✔ Organize, move & renames files in vulkan backend @done (7/7/2020, 10:17:52 PM)
+        ✔ Organize files in the engine @done (7/7/2020, 10:17:53 PM)
+    Future:
+        ☐ Figure out different probability density functions for different NDF
         ☐ Implement Oren-Nayar diffuse BRDF
         ☐ Implement microfacet Burley 12 diffuse BRDF
         ☐ Create a material class (holds textures, shaders & UBO for material params)
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add support for other platforms (Linux, MacOS, iOS, Android)
         ☐ Add simple FileSystem with data root path for simplified content loading
-    Next Up:
-        ☐ Remove vulkan dependencies from VulkanTexture
-        ☐ Migrate ImGui renderer to backend
-        ☐ Create separate cmake script for backend
         ☐ Improve microfacet BRDFs
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
+    Next Up:
         ☐ Split HDR, tonemapping & gamma correction to render passes
-        ☐ Organize, move & renames files in vulkan backend
-        ☐ Organize files in the engine
     Stream 38:
         ☐ Convert VulkanRenderer to IBL baker
         ☐ Add lbuffer pass with IBL light
