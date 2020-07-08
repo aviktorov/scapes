@@ -1,8 +1,8 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include "RenderState.inc"
-#include "brdf.inc"
+#include <common/RenderState.inc>
+#include <common/brdf.inc>
 
 layout(set = 1, binding = 0) uniform sampler2D albedoSampler;
 layout(set = 1, binding = 1) uniform sampler2D normalSampler;

@@ -1,7 +1,7 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include "brdf.inc"
+#include <common/brdf.inc>
 
 layout(location = 0) in vec2 fragTexCoord;
 

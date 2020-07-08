@@ -1,7 +1,7 @@
 #version 450
 #pragma shader_stage(vertex)
 
-#include "RenderState.inc"
+#include <common/RenderState.inc>
 
 layout(push_constant) uniform RenderNodeState {
 	mat4 transform;

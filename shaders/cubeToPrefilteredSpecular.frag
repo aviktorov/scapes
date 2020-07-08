@@ -1,7 +1,7 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include "brdf.inc"
+#include <common/brdf.inc>
 
 layout(push_constant) uniform UserData {
 	float roughness;

@@ -1,8 +1,11 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include "RenderState.inc"
+#include <common/RenderState.inc>
 #include "SceneTextures.inc"
+
+#define SKYLIGHT_SET 2
+#include <lights/skylight.inc>
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
@@ -10,11 +13,8 @@ layout(location = 2) in vec3 fragPositionOS;
 
 layout(location = 0) out vec4 outColor;
 
-const float PI = 3.141592653589798979f;
-const float iPI = 0.31830988618379f;
-
 void main() {
-	vec3 color = texture(environmentSampler, normalize(fragPositionOS)).rgb;
+	vec3 color = texture(skyLightEnvironmentCube, normalize(fragPositionOS)).rgb;
 
 	// TODO: move to separate pass
 	// Tonemapping + gamma correction

@@ -1,9 +1,13 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include "RenderState.inc"
+#include <common/RenderState.inc>
+#include <common/brdf.inc>
+
+#define SKYLIGHT_SET 2
+#include <lights/skylight.inc>
+
 #include "SceneTextures.inc"
-#include "brdf.inc"
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
@@ -13,18 +17,6 @@ layout(location = 4) in vec3 fragNormalWS;
 layout(location = 5) in vec3 fragPositionWS;
 
 layout(location = 0) out vec4 outColor;
-
-vec3 ApproximateSpecularIBL(vec3 f0, vec3 view, vec3 normal, float roughness)
-{
-	float dotNV = max(0.0f, dot(normal, view));
-
-	// TODO: remove magic constant, pass max mip levels instead
-	float mip = roughness * 8.0f;
-	vec3 prefilteredLi = textureLod(environmentSampler, -reflect(view, normal), mip).rgb;
-	vec2 integratedBRDF = texture(bakedBRDFSampler, vec2(roughness, dotNV)).xy;
-
-	return prefilteredLi * (f0 * integratedBRDF.x + integratedBRDF.y);
-}
 
 vec3 DirectBRDF(Surface surface, SurfaceMaterial material)
 {
@@ -37,11 +29,8 @@ vec3 DirectBRDF(Surface surface, SurfaceMaterial material)
 
 vec3 IBLBRDF(Surface surface, SurfaceMaterial material)
 {
-	vec3 F = F_Shlick(surface.dotNV, material.f0, material.roughness);
-	vec3 irradiance = texture(diffuseIrradianceSampler, surface.normal).rgb * material.ao;
-
-	vec3 diffuse_reflection = irradiance * material.albedo * lerp(vec3(1.0f) - F, vec3(0.0f), material.metalness);
-	vec3 specular_reflection = ApproximateSpecularIBL(material.f0, surface.view, surface.normal, material.roughness);
+	vec3 diffuse_reflection = SkyLight_Diffuse(surface.normal, surface.view, material);
+	vec3 specular_reflection = SkyLight_Specular(surface.normal, surface.view, material);
 
 	return diffuse_reflection + specular_reflection;
 }
