@@ -16,6 +16,7 @@ namespace render::backend::vulkan
 	 */
 	static int maxCombinedImageSamplers = 32;
 	static int maxUniformBuffers = 32;
+	static int maxDescriptorSets = 64;
 
 	/*
 	 */
@@ -184,7 +185,7 @@ namespace render::backend::vulkan
 		descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
 		descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
-		descriptorPoolInfo.maxSets = maxCombinedImageSamplers + maxUniformBuffers;
+		descriptorPoolInfo.maxSets = maxDescriptorSets;
 		descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
 		if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
