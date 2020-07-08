@@ -26,7 +26,7 @@ PBR Sandbox:
     Bugs:
         ✔ Figure out why context swap recreation is broken during resize event @done (6/5/2020, 10:54:32 PM)
         ✔ Figure out why render pass doesn't clear depth correctly @done (6/27/2020, 5:47:13 PM)
-        ☐ Debug slow shader render failure
+        ☐ Figure out why creating a 1024x1024 rgba32f texture crashes the app
         ✔ Fix broken mipmap generation @done (7/8/2020, 7:05:02 PM)
     Improvements:
         ✔ Remove vulkan dependencies from VulkanTexture @done (7/7/2020, 10:17:57 PM)
@@ -45,11 +45,13 @@ PBR Sandbox:
         ☐ Improve microfacet BRDFs
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
-    Next Up:
+    Stream 39:
         ☐ Split HDR, tonemapping & gamma correction to render passes
+            ☐ Add composite pass with tonemapping
+            ☐ Add post processing passes
     Stream 38:
-        ☐ Convert VulkanRenderer to IBL baker
-        ☐ Add lbuffer pass with IBL light
+        ✔ Extract SkyLight fron Renderer @done (7/8/2020, 11:49:20 PM)
+        ✔ Add lbuffer pass and fill it with SkyLight @done (7/9/2020, 3:13:26 AM)
     Stream 37:
         ✔ Write simple scene importer @done (7/4/2020, 11:11:13 PM)
         ✔ Add gbuffer pass @done (7/4/2020, 11:11:05 PM)
