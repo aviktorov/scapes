@@ -30,9 +30,9 @@ PBR Sandbox:
         ✔ Fix broken mipmap generation @done (7/8/2020, 7:05:02 PM)
     Improvements:
         ✔ Remove vulkan dependencies from VulkanTexture @done (7/7/2020, 10:17:57 PM)
-        ☐ Migrate ImGui renderer to backend
+        ✔ Migrate ImGui renderer to backend @done (7/14/2020, 8:48:46 PM)
         ☐ Create separate cmake script for backend
-        ✔ Organize, move & renames files in vulkan backend @done (7/7/2020, 10:17:52 PM)
+        ✔ Organize, move & renames files in vulkan backend @done (7/14/2020, 8:48:45 PM)
         ✔ Organize files in the engine @done (7/7/2020, 10:17:53 PM)
     Future:
         ☐ Figure out different probability density functions for different NDF
@@ -45,6 +45,13 @@ PBR Sandbox:
         ☐ Improve microfacet BRDFs
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
+    Next Up:
+        ☐ Directional light & shadows
+        ☐ SSAO / HBAO
+        ☐ SSR
+        ☐ Environment probe
+        ☐ Area lights?
+        ☐ Intergrate microprofile for CPU
     Stream 39:
         ☐ Split HDR, tonemapping & gamma correction to render passes
             ☐ Add composite pass with tonemapping
