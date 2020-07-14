@@ -10,27 +10,33 @@ namespace render
 }
 
 struct ImGuiContext;
+struct ImDrawData;
 
 /*
  */
 class ImGuiRenderer
 {
 public:
-	ImGuiRenderer(
-		render::backend::Driver *driver,
-		ImGuiContext *imguiContext
-	);
-
+	ImGuiRenderer(render::backend::Driver *driver);
 	virtual ~ImGuiRenderer();
 
-	void *addTexture(const render::Texture *texture) const;
-
-	void init(const render::SwapChain *swap_chain);
+	void init(ImGuiContext *imguiContext);
 	void shutdown();
-	void resize(const render::SwapChain *swap_chain);
 	void render(const render::RenderFrame &frame);
 
 private:
+	void updateBuffers(const ImDrawData *draw_data);
+	void setupRenderState(const render::RenderFrame &frame, const ImDrawData *draw_data);
+
+private:
 	render::backend::Driver *driver {nullptr};
-	ImGuiContext *imguiContext {nullptr};
+	render::backend::Texture *font_texture {nullptr};
+	render::backend::BindSet *bind_set {nullptr};
+	render::backend::Shader *vertex_shader {nullptr};
+	render::backend::Shader *fragment_shader {nullptr};
+
+	render::backend::VertexBuffer *vertices {nullptr};
+	render::backend::IndexBuffer *indices {nullptr};
+	size_t index_buffer_size {0};
+	size_t vertex_buffer_size {0};
 };

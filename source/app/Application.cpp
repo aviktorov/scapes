@@ -291,8 +291,8 @@ void Application::initRenderers()
 	renderer = new Renderer(driver);
 	renderer->init(resources);
 
-	imgui_renderer = new ImGuiRenderer(driver, ImGui::GetCurrentContext());
-	imgui_renderer->init(swap_chain);
+	imgui_renderer = new ImGuiRenderer(driver);
+	imgui_renderer->init(ImGui::GetCurrentContext());
 
 	render_graph = new RenderGraph(driver);
 	render_graph->init(resources, swap_chain->getWidth(), swap_chain->getHeight());
@@ -381,5 +381,4 @@ void Application::recreateSwapChain()
 
 	swap_chain->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	render_graph->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-	imgui_renderer->resize(swap_chain);
 }

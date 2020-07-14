@@ -1,30 +1,51 @@
-// TODO: remove Vulkan dependencies
-#include <volk.h>
-#include <render/backend/vulkan/Driver.h>
-#include <render/backend/vulkan/Device.h>
-#include <render/backend/vulkan/Utils.h>
-
 #include "ImGuiRenderer.h"
 
 #include <render/SwapChain.h>
 #include <render/Texture.h>
 
 #include "imgui.h"
-#include "imgui_impl_vulkan.h"
+#include <string>
 
 using namespace render;
 using namespace render::backend;
 
 /*
  */
-ImGuiRenderer::ImGuiRenderer(
-	Driver *driver,
-	ImGuiContext *imguiContext
-)
+static std::string vertex_shader_source =
+"#version 450 core\n"
+"#pragma shader_stage(vertex)\n"
+"layout(location = 0) in vec2 aPos;\n"
+"layout(location = 1) in vec2 aUV;\n"
+"layout(location = 2) in vec4 aColor;\n"
+"layout(push_constant) uniform uPushConstant { vec2 uScale; vec2 uTranslate; } pc;\n"
+"\n"
+"out gl_PerVertex { vec4 gl_Position; };\n"
+"layout(location = 0) out struct { vec4 Color; vec2 UV; } Out;\n"
+"\n"
+"void main()\n"
+"{\n"
+"    Out.Color = aColor;\n"
+"    Out.UV = aUV;\n"
+"    gl_Position = vec4(aPos * pc.uScale + pc.uTranslate, 0, 1);\n"
+"}\n";
+
+static std::string fragment_shader_source = 
+"#version 450 core\n"
+"#pragma shader_stage(fragment)\n"
+"layout(location = 0) out vec4 fColor;\n"
+"layout(set=0, binding=0) uniform sampler2D sTexture;\n"
+"layout(location = 0) in struct { vec4 Color; vec2 UV; } In;\n"
+"void main()\n"
+"{\n"
+"    fColor = In.Color * texture(sTexture, In.UV.st);\n"
+"}\n";
+
+/*
+ */
+ImGuiRenderer::ImGuiRenderer(Driver *driver)
 	: driver(driver)
-	, imguiContext(imguiContext)
 {
-	ImGui::SetCurrentContext(imguiContext);
+
 }
 
 ImGuiRenderer::~ImGuiRenderer()
@@ -34,56 +55,194 @@ ImGuiRenderer::~ImGuiRenderer()
 
 /*
  */
-void *ImGuiRenderer::addTexture(const render::Texture *texture) const
+void ImGuiRenderer::init(ImGuiContext *context)
 {
-	const vulkan::Texture *vk_texture = static_cast<const vulkan::Texture *>(texture->getBackend());
+	ImGui::SetCurrentContext(context);
 
-	return ImGui_ImplVulkan_AddTexture(vk_texture->sampler, vk_texture->view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-}
+	uint32_t width, height;
+	unsigned char *pixels = nullptr;
 
-/*
- */
-void ImGuiRenderer::init(const render::SwapChain *swap_chain)
-{
-	const vulkan::Device *vk_device = static_cast<vulkan::Driver *>(driver)->getDevice();
-	const vulkan::SwapChain *vk_swap_chain = static_cast<const vulkan::SwapChain *>(swap_chain->getBackend());
-	const vulkan::FrameBuffer *vk_frame_buffer = static_cast<const vulkan::FrameBuffer *>(swap_chain->getFrameBuffer(0));
+	ImGuiIO &io = ImGui::GetIO();
+	io.Fonts->GetTexDataAsRGBA32(&pixels, reinterpret_cast<int *>(&width), reinterpret_cast<int *>(&height));
 
-	// Init ImGui bindings for Vulkan
-	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = vk_device->getInstance();
-	init_info.PhysicalDevice = vk_device->getPhysicalDevice();
-	init_info.Device = vk_device->getDevice();
-	init_info.QueueFamily = vk_device->getGraphicsQueueFamily();
-	init_info.Queue = vk_device->getGraphicsQueue();
-	init_info.DescriptorPool = vk_device->getDescriptorPool();
-	init_info.MSAASamples = vk_device->getMaxSampleCount();
-	init_info.MinImageCount = vk_swap_chain->num_images;
-	init_info.ImageCount = vk_swap_chain->num_images;
+	bind_set = driver->createBindSet();
 
-	ImGui_ImplVulkan_Init(&init_info, vk_frame_buffer->dummy_render_pass);
+	vertex_shader = driver->createShaderFromSource(ShaderType::VERTEX, static_cast<uint32_t>(vertex_shader_source.size()), vertex_shader_source.c_str());
+	fragment_shader = driver->createShaderFromSource(ShaderType::FRAGMENT, static_cast<uint32_t>(fragment_shader_source.size()), fragment_shader_source.c_str());
 
-	VkCommandBuffer temp_command_buffer = vulkan::Utils::beginSingleTimeCommands(vk_device);
-	ImGui_ImplVulkan_CreateFontsTexture(temp_command_buffer);
-	vulkan::Utils::endSingleTimeCommands(vk_device, temp_command_buffer);
+	font_texture = driver->createTexture2D(width, height, 1, Format::R8G8B8A8_UNORM, Multisample::COUNT_1, pixels);
+	io.Fonts->TexID = reinterpret_cast<ImTextureID>(font_texture);
+
+	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+	io.BackendRendererName = "Scape ImGui";
 }
 
 void ImGuiRenderer::shutdown()
 {
-	ImGui_ImplVulkan_Shutdown();
-	imguiContext = nullptr;
+	driver->destroyVertexBuffer(vertices);
+	vertices = nullptr;
+
+	driver->destroyIndexBuffer(indices);
+	indices = nullptr;
+
+	driver->destroyTexture(font_texture);
+	font_texture = nullptr;
+
+	driver->destroyBindSet(bind_set);
+	bind_set = nullptr;
+
+	driver->destroyShader(vertex_shader);
+	vertex_shader = nullptr;
+
+	driver->destroyShader(fragment_shader);
+	fragment_shader = nullptr;
 }
 
 /*
  */
-void ImGuiRenderer::resize(const render::SwapChain *swap_chain)
+void ImGuiRenderer::updateBuffers(const ImDrawData *draw_data)
 {
-	uint32_t num_images = driver->getNumSwapChainImages(swap_chain->getBackend());
-	ImGui_ImplVulkan_SetMinImageCount(num_images);
+	uint32_t num_indices = draw_data->TotalIdxCount;
+	uint32_t num_vertices = draw_data->TotalVtxCount;
+
+	if (num_vertices == 0 || num_indices == 0)
+		return;
+
+	size_t index_size = sizeof(ImDrawIdx);
+	uint16_t vertex_size = static_cast<uint16_t>(sizeof(ImDrawVert));
+
+	assert(index_size == 2 || index_size == 4);
+
+	backend::IndexFormat index_format = backend::IndexFormat::UINT16;
+	if (index_size == 4)
+		index_format = backend::IndexFormat::UINT32;
+
+	static const uint8_t num_attributes = 3;
+	static VertexAttribute attributes[] =
+	{
+		{ backend::Format::R32G32_SFLOAT, offsetof(ImDrawVert, pos), },
+		{ backend::Format::R32G32_SFLOAT, offsetof(ImDrawVert, uv), },
+		{ backend::Format::R8G8B8A8_UNORM, offsetof(ImDrawVert, col), },
+	};
+
+	// resize index buffer
+	if (index_buffer_size < index_size * num_indices)
+	{
+		index_buffer_size = index_size * num_indices;
+
+		driver->destroyIndexBuffer(indices);
+		indices = driver->createIndexBuffer(BufferType::DYNAMIC, index_format, num_indices, nullptr);
+	}
+
+	// resize vertex buffer
+	if (vertex_buffer_size < vertex_size * num_vertices)
+	{
+		vertex_buffer_size = vertex_size * num_vertices;
+
+		driver->destroyVertexBuffer(vertices);
+		vertices = driver->createVertexBuffer(BufferType::DYNAMIC, vertex_size, num_vertices, num_attributes, attributes, nullptr);
+	}
+
+	ImDrawVert *vertex_data = reinterpret_cast<ImDrawVert *>(driver->map(vertices));
+	ImDrawIdx *index_data = reinterpret_cast<ImDrawIdx *>(driver->map(indices));
+
+	for (int i = 0; i < draw_data->CmdListsCount; ++i)
+	{
+		const ImDrawList *commands = draw_data->CmdLists[i];
+		memcpy(vertex_data, commands->VtxBuffer.Data, commands->VtxBuffer.Size * vertex_size);
+		memcpy(index_data, commands->IdxBuffer.Data, commands->IdxBuffer.Size * index_size);
+		vertex_data += commands->VtxBuffer.Size;
+		index_data += commands->IdxBuffer.Size;
+	}
+
+	driver->unmap(vertices);
+	driver->unmap(indices);
+}
+
+void ImGuiRenderer::setupRenderState(const render::RenderFrame &frame, const ImDrawData *draw_data)
+{
+	driver->clearBindSets();
+	driver->pushBindSet(bind_set);
+
+	driver->clearShaders();
+	driver->setShader(ShaderType::VERTEX, vertex_shader);
+	driver->setShader(ShaderType::FRAGMENT, fragment_shader);
+
+	float transform[4];
+	transform[0] = 2.0f / draw_data->DisplaySize.x;
+	transform[1] = 2.0f / draw_data->DisplaySize.y;
+	transform[2] = -1.0f - draw_data->DisplayPos.x * transform[0];
+	transform[3] = -1.0f - draw_data->DisplayPos.y * transform[1];
+	uint8_t size = static_cast<uint8_t>(sizeof(float) * 4);
+
+	driver->clearPushConstants();
+	driver->setPushConstants(size, transform);
+
+	driver->setBlending(true);
+	driver->setBlendFactors(BlendFactor::SRC_ALPHA, BlendFactor::ONE_MINUS_SRC_ALPHA);
+	driver->setCullMode(CullMode::NONE);
+	driver->setDepthWrite(false);
+	driver->setDepthTest(false);
 }
 
 void ImGuiRenderer::render(const render::RenderFrame &frame)
 {
-	VkCommandBuffer command_buffer = static_cast<vulkan::CommandBuffer *>(frame.command_buffer)->command_buffer;
-	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
+	const ImDrawData *draw_data = ImGui::GetDrawData();
+	const ImVec2 &clip_offset = draw_data->DisplayPos;
+	const ImVec2 &clip_scale = draw_data->FramebufferScale;
+
+	updateBuffers(draw_data);
+	setupRenderState(frame, draw_data);
+
+	backend::RenderPrimitive primitive;
+	primitive.type = backend::RenderPrimitiveType::TRIANGLE_LIST;
+	primitive.vertices = vertices;
+	primitive.indices = indices;
+
+	uint32_t index_offset = 0;
+	int32_t vertex_index_offset = 0;
+
+	for (int i = 0; i < draw_data->CmdListsCount; ++i)
+	{
+		const ImDrawList *list = draw_data->CmdLists[i];
+		const ImDrawCmd *commands = list->CmdBuffer.Data;
+
+		for (int j = 0; j < list->CmdBuffer.Size; ++j)
+		{
+			const ImDrawCmd &command = commands[j];
+			if (command.UserCallback)
+			{
+				if (command.UserCallback == ImDrawCallback_ResetRenderState)
+					setupRenderState(frame, draw_data);
+				else
+					command.UserCallback(list, &command);
+			}
+			else
+			{
+				primitive.num_indices = command.ElemCount;
+				primitive.base_index = index_offset + command.IdxOffset;
+				primitive.vertex_index_offset = vertex_index_offset + command.VtxOffset;
+
+				const backend::Texture *texture = reinterpret_cast<const backend::Texture *>(command.TextureId);
+				driver->bindTexture(bind_set, 0, texture);
+
+				float x0 = (command.ClipRect.x - clip_offset.x) * clip_scale.x;
+				float y0 = (command.ClipRect.y - clip_offset.y) * clip_scale.y;
+				float x1 = (command.ClipRect.z - clip_offset.x) * clip_scale.x;
+				float y1 = (command.ClipRect.w - clip_offset.x) * clip_scale.y;
+				
+				x0 = std::max(0.0f, x0);
+				y0 = std::max(0.0f, y0);
+
+				uint32_t width = static_cast<uint32_t>(x1 - x0);
+				uint32_t height = static_cast<uint32_t>(y1 - y0);
+
+				driver->setScissor(static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
+				driver->drawIndexedPrimitive(frame.command_buffer, &primitive);
+			}
+
+		}
+		index_offset = list->IdxBuffer.Size;
+		vertex_index_offset = list->VtxBuffer.Size;
+	}
 }
