@@ -16,7 +16,7 @@ namespace render::backend::vulkan
 	 */
 	static int maxCombinedImageSamplers = 32;
 	static int maxUniformBuffers = 32;
-	static int maxDescriptorSets = 64;
+	static int maxDescriptorSets = 512;
 
 	/*
 	 */
