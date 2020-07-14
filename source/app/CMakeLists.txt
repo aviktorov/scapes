@@ -6,8 +6,9 @@ file(GLOB SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 	${THIRDPARTY_DIR}/imgui/examples/imgui_impl_glfw.cpp
 )
+
 file(GLOB HEADERS
-	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/*.h
 )
 
 add_executable(${TARGET} ${SOURCES} ${HEADERS})
