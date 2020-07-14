@@ -65,14 +65,14 @@ void ImGuiRenderer::init(ImGuiContext *context)
 	ImGuiIO &io = ImGui::GetIO();
 	io.Fonts->GetTexDataAsRGBA32(&pixels, reinterpret_cast<int *>(&width), reinterpret_cast<int *>(&height));
 
-	bind_set = driver->createBindSet();
-
 	vertex_shader = driver->createShaderFromSource(ShaderType::VERTEX, static_cast<uint32_t>(vertex_shader_source.size()), vertex_shader_source.c_str());
 	fragment_shader = driver->createShaderFromSource(ShaderType::FRAGMENT, static_cast<uint32_t>(fragment_shader_source.size()), fragment_shader_source.c_str());
 
 	font_texture = driver->createTexture2D(width, height, 1, Format::R8G8B8A8_UNORM, Multisample::COUNT_1, pixels);
-	io.Fonts->TexID = reinterpret_cast<ImTextureID>(font_texture);
+	font_bind_set = driver->createBindSet();
+	driver->bindTexture(font_bind_set, 0, font_texture);
 
+	io.Fonts->TexID = reinterpret_cast<ImTextureID>(font_bind_set);
 	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
 	io.BackendRendererName = "Scape ImGui";
 }
@@ -88,14 +88,40 @@ void ImGuiRenderer::shutdown()
 	driver->destroyTexture(font_texture);
 	font_texture = nullptr;
 
-	driver->destroyBindSet(bind_set);
-	bind_set = nullptr;
+	driver->destroyBindSet(font_bind_set);
+	font_bind_set = nullptr;
+
+	invalidateTextureIDs();
 
 	driver->destroyShader(vertex_shader);
 	vertex_shader = nullptr;
 
 	driver->destroyShader(fragment_shader);
 	fragment_shader = nullptr;
+}
+
+/*
+ */
+ImTextureID ImGuiRenderer::fetchTextureID(const backend::Texture *texture)
+{
+	auto it = registered_textures.find(texture);
+	if (it != registered_textures.end())
+		return it->second;
+
+	BindSet *bind_set = driver->createBindSet();
+	driver->bindTexture(bind_set, 0, texture);
+
+	registered_textures.insert(std::make_pair(texture, bind_set));
+
+	return reinterpret_cast<ImTextureID>(bind_set);
+}
+
+void ImGuiRenderer::invalidateTextureIDs()
+{
+	for (auto &it : registered_textures)
+		driver->destroyBindSet(it.second);
+
+	registered_textures.clear();
 }
 
 /*
@@ -162,7 +188,7 @@ void ImGuiRenderer::updateBuffers(const ImDrawData *draw_data)
 void ImGuiRenderer::setupRenderState(const render::RenderFrame &frame, const ImDrawData *draw_data)
 {
 	driver->clearBindSets();
-	driver->pushBindSet(bind_set);
+	driver->allocateBindSets(1);
 
 	driver->clearShaders();
 	driver->setShader(ShaderType::VERTEX, vertex_shader);
@@ -223,8 +249,8 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 				primitive.base_index = index_offset + command.IdxOffset;
 				primitive.vertex_index_offset = vertex_index_offset + command.VtxOffset;
 
-				const backend::Texture *texture = reinterpret_cast<const backend::Texture *>(command.TextureId);
-				driver->bindTexture(bind_set, 0, texture);
+				backend::BindSet *bind_set = reinterpret_cast<backend::BindSet *>(command.TextureId);
+				driver->setBindSet(0, bind_set);
 
 				float x0 = (command.ClipRect.x - clip_offset.x) * clip_scale.x;
 				float y0 = (command.ClipRect.y - clip_offset.y) * clip_scale.y;
@@ -240,9 +266,9 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 				driver->setScissor(static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
 				driver->drawIndexedPrimitive(frame.command_buffer, &primitive);
 			}
-
 		}
-		index_offset = list->IdxBuffer.Size;
-		vertex_index_offset = list->VtxBuffer.Size;
+
+		index_offset += list->IdxBuffer.Size;
+		vertex_index_offset += list->VtxBuffer.Size;
 	}
 }
