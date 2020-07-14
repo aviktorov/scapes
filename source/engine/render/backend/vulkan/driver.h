@@ -381,6 +381,20 @@ namespace render::backend::vulkan
 
 	public:
 		// render state
+		void setViewport(
+			float x,
+			float y,
+			float width,
+			float height
+		) override;
+
+		void setScissor(
+			int32_t x,
+			int32_t y,
+			uint32_t width,
+			uint32_t height
+		) override;
+
 		void setCullMode(
 			CullMode mode
 		) override;
@@ -449,7 +463,9 @@ namespace render::backend::vulkan
 
 		void drawIndexedPrimitive(
 			backend::CommandBuffer *command_buffer,
-			const backend::RenderPrimitive *render_primitive
+			const backend::RenderPrimitive *render_primitive,
+			uint32_t base_index,
+			int32_t vertex_offset
 		) override;
 
 		void drawIndexedPrimitiveInstanced(

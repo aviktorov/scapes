@@ -35,7 +35,10 @@ namespace render::backend::vulkan
 		void setFramebuffer(const FrameBuffer *frame_buffer);
 
 		inline VkViewport getViewport() const { return viewport; }
+		inline void setViewport(VkViewport v) { viewport = v; }
+
 		inline VkRect2D getScissor() const { return scissor; }
+		inline void setScissor(VkRect2D s) { scissor = s; }
 
 		inline VkSampleCountFlagBits getMaxSampleCount() const { return samples; }
 		inline uint8_t getNumColorAttachments() const { return num_color_attachments; }

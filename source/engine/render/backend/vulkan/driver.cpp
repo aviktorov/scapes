@@ -456,7 +456,7 @@ namespace render::backend::vulkan
 		assert(num_attributes <= VertexBuffer::MAX_ATTRIBUTES && "Vertex attributes are limited to 16");
 
 		VkDeviceSize buffer_size = vertex_size * num_vertices;
-		
+
 		VertexBuffer *result = new VertexBuffer();
 		result->vertex_size = vertex_size;
 		result->num_vertices = num_vertices;
@@ -1581,6 +1581,26 @@ namespace render::backend::vulkan
 
 	/*
 	 */
+	void Driver::setViewport(float x, float y, float width, float height)
+	{
+		VkViewport viewport;
+		viewport.x = x;
+		viewport.y = y;
+		viewport.width = width;
+		viewport.height = height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		context->setViewport(viewport);
+	}
+
+	void Driver::setScissor(int32_t x, int32_t y, uint32_t width, uint32_t height)
+	{
+		VkRect2D scissor;
+		scissor.offset = { x, y };
+		scissor.extent = { width, height };
+		context->setScissor(scissor);
+	}
+
 	void Driver::setCullMode(CullMode mode)
 	{
 		VkCullModeFlags vk_mode = Utils::getCullMode(mode);
@@ -1787,7 +1807,7 @@ namespace render::backend::vulkan
 		context->setRenderPass(VK_NULL_HANDLE);
 	}
 
-	void Driver::drawIndexedPrimitive(backend::CommandBuffer *command_buffer, const backend::RenderPrimitive *render_primitive)
+	void Driver::drawIndexedPrimitive(backend::CommandBuffer *command_buffer, const backend::RenderPrimitive *render_primitive, uint32_t base_index, int32_t vertex_offset)
 	{
 		if (command_buffer == nullptr)
 			return;
@@ -1896,7 +1916,10 @@ namespace render::backend::vulkan
 		vkCmdBindVertexBuffers(vk_command_buffer->command_buffer, 0, 1, vertex_buffers, offsets);
 		vkCmdBindIndexBuffer(vk_command_buffer->command_buffer, vk_render_primitive->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(vk_command_buffer->command_buffer, vk_render_primitive->index_buffer->num_indices, 1, 0, 0, 0);
+		uint32_t num_indices = vk_render_primitive->index_buffer->num_indices;
+		uint32_t num_instances = 1;
+		uint32_t base_instance = 0;
+		vkCmdDrawIndexed(vk_command_buffer->command_buffer, num_indices, num_instances, base_index, vertex_offset, base_instance);
 	}
 
 	void Driver::drawIndexedPrimitiveInstanced(

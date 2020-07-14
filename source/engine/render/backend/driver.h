@@ -229,7 +229,7 @@ enum class BlendFactor : uint8_t
 // C opaque structs
 struct VertexBuffer {};
 struct IndexBuffer {};
-struct RenderPrimitive {};
+struct RenderPrimitive {}; // TODO: make this a simple struct
 
 struct Texture {};
 struct FrameBuffer {};
@@ -524,6 +524,20 @@ public:
 
 public:
 	// render state
+	virtual void setViewport(
+		float x,
+		float y,
+		float width,
+		float height
+	) = 0;
+
+	virtual void setScissor(
+		int32_t x,
+		int32_t y,
+		uint32_t width,
+		uint32_t height
+	) = 0;
+
 	virtual void setCullMode(
 		CullMode mode
 	) = 0;
@@ -591,7 +605,9 @@ public:
 
 	virtual void drawIndexedPrimitive(
 		CommandBuffer *command_buffer,
-		const RenderPrimitive *render_primitive
+		const RenderPrimitive *render_primitive,
+		uint32_t base_index = 0,
+		int32_t vertex_offset = 0
 	) = 0;
 
 	virtual void drawIndexedPrimitiveInstanced(
