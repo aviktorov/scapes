@@ -113,6 +113,37 @@ void Application::update()
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
+
+	ImGui::Begin("GBuffer");
+
+	ImTextureID base_color_id = imgui_renderer->fetchTextureID(render_graph->getGBuffer().base_color);
+	ImTextureID normal_id = imgui_renderer->fetchTextureID(render_graph->getGBuffer().normal);
+	ImTextureID depth_id = imgui_renderer->fetchTextureID(render_graph->getGBuffer().depth);
+	ImTextureID shading_id = imgui_renderer->fetchTextureID(render_graph->getGBuffer().shading);
+
+	ImGui::BeginGroup();
+		ImGui::Image(base_color_id, ImVec2(256, 256));
+		ImGui::SameLine();
+		ImGui::Image(normal_id, ImVec2(256, 256));
+		ImGui::Image(depth_id, ImVec2(256, 256));
+		ImGui::SameLine();
+		ImGui::Image(shading_id, ImVec2(256, 256));
+	ImGui::EndGroup();
+
+	ImGui::End();
+
+	ImGui::Begin("LBuffer");
+
+	ImTextureID diffuse_id = imgui_renderer->fetchTextureID(render_graph->getLBuffer().diffuse);
+	ImTextureID specular_id = imgui_renderer->fetchTextureID(render_graph->getLBuffer().specular);
+
+	ImGui::BeginGroup();
+		ImGui::Image(diffuse_id, ImVec2(256, 256));
+		ImGui::SameLine();
+		ImGui::Image(specular_id, ImVec2(256, 256));
+	ImGui::EndGroup();
+
+	ImGui::End();
 }
 
 /*
@@ -381,4 +412,5 @@ void Application::recreateSwapChain()
 
 	swap_chain->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	render_graph->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+	imgui_renderer->invalidateTextureIDs();
 }
