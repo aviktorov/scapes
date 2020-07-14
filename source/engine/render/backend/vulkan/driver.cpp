@@ -528,24 +528,6 @@ namespace render::backend::vulkan
 		return result;
 	}
 
-	backend::RenderPrimitive *Driver::createRenderPrimitive(
-		RenderPrimitiveType type,
-		const backend::VertexBuffer *vertex_buffer,
-		const backend::IndexBuffer *index_buffer
-	)
-	{
-		assert(vertex_buffer != nullptr && "Invalid vertex buffer");
-		assert(index_buffer != nullptr && "Invalid vertex buffer");
-
-		RenderPrimitive *result = new RenderPrimitive();
-
-		result->topology = Utils::getPrimitiveTopology(type);
-		result->vertex_buffer = static_cast<const VertexBuffer *>(vertex_buffer);
-		result->index_buffer = static_cast<const IndexBuffer *>(index_buffer);
-
-		return result;
-	}
-
 	backend::Texture *Driver::createTexture2D(
 		uint32_t width,
 		uint32_t height,
@@ -1040,20 +1022,6 @@ namespace render::backend::vulkan
 
 		delete index_buffer;
 		index_buffer = nullptr;
-	}
-
-	void Driver::destroyRenderPrimitive(backend::RenderPrimitive *render_primitive)
-	{
-		if (render_primitive == nullptr)
-			return;
-
-		RenderPrimitive *vk_render_primitive = static_cast<RenderPrimitive *>(render_primitive);
-
-		vk_render_primitive->vertex_buffer = nullptr;
-		vk_render_primitive->index_buffer = nullptr;
-
-		delete render_primitive;
-		render_primitive = nullptr;
 	}
 
 	void Driver::destroyTexture(backend::Texture *texture)
@@ -1807,13 +1775,14 @@ namespace render::backend::vulkan
 		context->setRenderPass(VK_NULL_HANDLE);
 	}
 
-	void Driver::drawIndexedPrimitive(backend::CommandBuffer *command_buffer, const backend::RenderPrimitive *render_primitive, uint32_t base_index, int32_t vertex_offset)
+	void Driver::drawIndexedPrimitive(backend::CommandBuffer *command_buffer, const backend::RenderPrimitive *render_primitive)
 	{
 		if (command_buffer == nullptr)
 			return;
 
 		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
-		const RenderPrimitive *vk_render_primitive = static_cast<const RenderPrimitive *>(render_primitive);
+		const VertexBuffer *vk_vertex_buffer = static_cast<const VertexBuffer *>(render_primitive->vertices);
+		const IndexBuffer *vk_index_buffer = static_cast<const IndexBuffer *>(render_primitive->indices);
 
 		std::vector<VkDescriptorSet> sets(context->getNumBindSets());
 		std::vector<VkWriteDescriptorSet> writes;
@@ -1894,7 +1863,7 @@ namespace render::backend::vulkan
 			vkUpdateDescriptorSets(device->getDevice(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 
 		VkPipelineLayout pipeline_layout = pipeline_layout_cache->fetch(context);
-		VkPipeline pipeline = pipeline_cache->fetch(context, vk_render_primitive);
+		VkPipeline pipeline = pipeline_cache->fetch(context, render_primitive);
 
 		vkCmdBindPipeline(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -1910,16 +1879,15 @@ namespace render::backend::vulkan
 		vkCmdSetViewport(vk_command_buffer->command_buffer, 0, 1, &viewport);
 		vkCmdSetScissor(vk_command_buffer->command_buffer, 0, 1, &scissor);
 
-		VkBuffer vertex_buffers[] = { vk_render_primitive->vertex_buffer->buffer };
+		VkBuffer vertex_buffers[] = { vk_vertex_buffer->buffer };
 		VkDeviceSize offsets[] = { 0 };
 
 		vkCmdBindVertexBuffers(vk_command_buffer->command_buffer, 0, 1, vertex_buffers, offsets);
-		vkCmdBindIndexBuffer(vk_command_buffer->command_buffer, vk_render_primitive->index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(vk_command_buffer->command_buffer, vk_index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		uint32_t num_indices = vk_render_primitive->index_buffer->num_indices;
 		uint32_t num_instances = 1;
 		uint32_t base_instance = 0;
-		vkCmdDrawIndexed(vk_command_buffer->command_buffer, num_indices, num_instances, base_index, vertex_offset, base_instance);
+		vkCmdDrawIndexed(vk_command_buffer->command_buffer, render_primitive->num_indices, num_instances, render_primitive->base_index, render_primitive->vertex_index_offset, base_instance);
 	}
 
 	void Driver::drawIndexedPrimitiveInstanced(
@@ -1934,6 +1902,5 @@ namespace render::backend::vulkan
 			return;
 
 		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
-		const RenderPrimitive *vk_render_primitive = static_cast<const RenderPrimitive *>(render_primitive);
 	}
 }

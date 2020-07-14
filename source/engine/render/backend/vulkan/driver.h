@@ -39,13 +39,6 @@ namespace render::backend::vulkan
 		// TODO: static / dynamic fields
 	};
 
-	struct RenderPrimitive : public render::backend::RenderPrimitive
-	{
-		VkPrimitiveTopology topology {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST};
-		const VertexBuffer *vertex_buffer {nullptr};
-		const IndexBuffer *index_buffer {nullptr};
-	};
-
 	struct Texture : public render::backend::Texture
 	{
 		VkImage image {VK_NULL_HANDLE};
@@ -197,12 +190,6 @@ namespace render::backend::vulkan
 			const void *data
 		) override;
 
-		backend::RenderPrimitive *createRenderPrimitive(
-			RenderPrimitiveType type,
-			const backend::VertexBuffer *vertex_buffer,
-			const backend::IndexBuffer *index_buffer
-		) override;
-
 		backend::Texture *createTexture2D(
 			uint32_t width,
 			uint32_t height,
@@ -282,7 +269,6 @@ namespace render::backend::vulkan
 
 		void destroyVertexBuffer(backend::VertexBuffer *vertex_buffer) override;
 		void destroyIndexBuffer(backend::IndexBuffer *index_buffer) override;
-		void destroyRenderPrimitive(backend::RenderPrimitive *render_primitive) override;
 		void destroyTexture(backend::Texture *texture) override;
 		void destroyFrameBuffer(backend::FrameBuffer *frame_buffer) override;
 		void destroyCommandBuffer(backend::CommandBuffer *command_buffer) override;
@@ -463,17 +449,15 @@ namespace render::backend::vulkan
 
 		void drawIndexedPrimitive(
 			backend::CommandBuffer *command_buffer,
-			const backend::RenderPrimitive *render_primitive,
-			uint32_t base_index,
-			int32_t vertex_offset
+			const backend::RenderPrimitive *render_primitive
 		) override;
 
 		void drawIndexedPrimitiveInstanced(
 			backend::CommandBuffer *command_buffer,
-			const backend::RenderPrimitive *primitive,
+			const backend::RenderPrimitive *render_primitive,
 			const backend::VertexBuffer *instance_buffer,
 			uint32_t num_instances,
-			uint32_t offset
+			uint32_t base_instance
 		) override;
 
 	private:

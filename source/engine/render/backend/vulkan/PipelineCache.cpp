@@ -5,6 +5,7 @@
 #include "render/backend/vulkan/Driver.h"
 #include "render/backend/vulkan/Device.h"
 #include "render/backend/vulkan/Context.h"
+#include "render/backend/vulkan/Utils.h"
 
 #include <vector>
 #include <cassert>
@@ -53,7 +54,7 @@ namespace render::backend::vulkan
 		clear();
 	}
 
-	VkPipeline PipelineCache::fetch(const Context *context, const RenderPrimitive *primitive)
+	VkPipeline PipelineCache::fetch(const Context *context, const backend::RenderPrimitive *primitive)
 	{
 		VkPipelineLayout layout = layout_cache->fetch(context);
 
@@ -82,7 +83,7 @@ namespace render::backend::vulkan
 			builder.addShaderStage(module, toShaderStage(static_cast<ShaderType>(i)));
 		}
 
-		const VertexBuffer *vertex_buffer = primitive->vertex_buffer;
+		const VertexBuffer *vertex_buffer = static_cast<const VertexBuffer *>(primitive->vertices);
 
 		VkVertexInputBindingDescription input_binding = { 0, vertex_buffer->vertex_size, VK_VERTEX_INPUT_RATE_VERTEX };
 		std::vector<VkVertexInputAttributeDescription> attributes(vertex_buffer->num_attributes);
@@ -90,7 +91,7 @@ namespace render::backend::vulkan
 		for (uint8_t i = 0; i < vertex_buffer->num_attributes; ++i)
 			attributes[i] = { i, 0, vertex_buffer->attribute_formats[i], vertex_buffer->attribute_offsets[i] };
 
-		builder.setInputAssemblyState(primitive->topology);
+		builder.setInputAssemblyState(Utils::getPrimitiveTopology(primitive->type));
 		builder.addVertexInput(input_binding, attributes);
 
 		builder.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, context->getCullMode(), VK_FRONT_FACE_COUNTER_CLOCKWISE);
@@ -133,14 +134,14 @@ namespace render::backend::vulkan
 		hashCombine(hash, layout);
 		hashCombine(hash, context->getRenderPass());
 
-		const VertexBuffer *vertex_buffer = primitive->vertex_buffer;
+		const VertexBuffer *vertex_buffer = static_cast<const VertexBuffer *>(primitive->vertices);
 		for (uint8_t i = 0; i < vertex_buffer->num_attributes; ++i)
 		{
 			hashCombine(hash, vertex_buffer->attribute_formats[i]);
 			hashCombine(hash, vertex_buffer->attribute_offsets[i]);
 		}
 
-		hashCombine(hash, primitive->topology);
+		hashCombine(hash, Utils::getPrimitiveTopology(primitive->type));
 
 		for (uint8_t i = 0; i < static_cast<uint8_t>(ShaderType::MAX); ++i)
 		{

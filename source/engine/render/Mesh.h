@@ -27,7 +27,7 @@ namespace render
 		~Mesh();
 
 		inline uint32_t getNumIndices() const { return static_cast<uint32_t>(indices.size()); }
-		inline backend::RenderPrimitive *getRenderPrimitive() const { return render_primitive; }
+		inline const backend::RenderPrimitive *getRenderPrimitive() const { return render_primitive; }
 
 		bool import(const char *path);
 		bool import(const aiMesh *mesh);
@@ -59,8 +59,6 @@ namespace render
 		std::vector<Vertex> vertices;
 		std::vector<uint32_t> indices;
 
-		backend::VertexBuffer *vertex_buffer {nullptr};
-		backend::IndexBuffer *index_buffer {nullptr};
 		backend::RenderPrimitive *render_primitive {nullptr};
 	};
 }

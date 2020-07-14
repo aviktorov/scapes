@@ -3,12 +3,16 @@
 #include <unordered_map>
 #include <volk.h>
 
+namespace render::backend
+{
+	struct RenderPrimitive;
+}
+
 namespace render::backend::vulkan
 {
 	class PipelineLayoutCache;
 	class Device;
 	class Context;
-	struct RenderPrimitive;
 
 	/*
 	 */
@@ -19,11 +23,11 @@ namespace render::backend::vulkan
 			: device(device), layout_cache(layout_cache) { }
 		~PipelineCache();
 
-		VkPipeline fetch(const Context *context, const RenderPrimitive *primitive);
+		VkPipeline fetch(const Context *context, const backend::RenderPrimitive *primitive);
 		void clear();
 
 	private:
-		uint64_t getHash(VkPipelineLayout layout, const Context *context, const RenderPrimitive *primitive) const;
+		uint64_t getHash(VkPipelineLayout layout, const Context *context, const backend::RenderPrimitive *primitive) const;
 
 	private:
 		const Device *device {nullptr};

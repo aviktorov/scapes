@@ -229,7 +229,6 @@ enum class BlendFactor : uint8_t
 // C opaque structs
 struct VertexBuffer {};
 struct IndexBuffer {};
-struct RenderPrimitive {}; // TODO: make this a simple struct
 
 struct Texture {};
 struct FrameBuffer {};
@@ -245,6 +244,16 @@ struct BindSet {};
 struct SwapChain {};
 
 // C structs
+struct RenderPrimitive
+{
+	RenderPrimitiveType type {RenderPrimitiveType::TRIANGLE_LIST};
+	VertexBuffer *vertices {nullptr};
+	IndexBuffer *indices {nullptr};
+	uint32_t num_indices {0};
+	uint32_t base_index {0};
+	int32_t vertex_index_offset {0};
+};
+
 struct VertexAttribute
 {
 	Format format {Format::UNDEFINED};
@@ -340,12 +349,6 @@ public:
 		const void *data
 	) = 0;
 
-	virtual RenderPrimitive *createRenderPrimitive(
-		RenderPrimitiveType type,
-		const VertexBuffer *vertex_buffer,
-		const IndexBuffer *index_buffer
-	) = 0;
-
 	virtual Texture *createTexture2D(
 		uint32_t width,
 		uint32_t height,
@@ -425,7 +428,6 @@ public:
 
 	virtual void destroyVertexBuffer(VertexBuffer *vertex_buffer) = 0;
 	virtual void destroyIndexBuffer(IndexBuffer *index_buffer) = 0;
-	virtual void destroyRenderPrimitive(RenderPrimitive *render_primitive) = 0;
 	virtual void destroyTexture(Texture *texture) = 0;
 	virtual void destroyFrameBuffer(FrameBuffer *frame_buffer) = 0;
 	virtual void destroyCommandBuffer(CommandBuffer *command_buffer) = 0;
@@ -605,17 +607,15 @@ public:
 
 	virtual void drawIndexedPrimitive(
 		CommandBuffer *command_buffer,
-		const RenderPrimitive *render_primitive,
-		uint32_t base_index = 0,
-		int32_t vertex_offset = 0
+		const RenderPrimitive *render_primitive
 	) = 0;
 
 	virtual void drawIndexedPrimitiveInstanced(
 		CommandBuffer *command_buffer,
-		const RenderPrimitive *primitive,
+		const RenderPrimitive *render_primitive,
 		const VertexBuffer *instance_buffer,
 		uint32_t num_instances,
-		uint32_t offset
+		uint32_t base_instance
 	) = 0;
 };
 
