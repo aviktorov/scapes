@@ -287,7 +287,7 @@ struct FrameBufferAttachment
 	struct SwapChainColor
 	{
 		const SwapChain *swap_chain {nullptr};
-		int base_image {0};
+		uint32_t base_image {0};
 		bool resolve_attachment {false};
 	};
 

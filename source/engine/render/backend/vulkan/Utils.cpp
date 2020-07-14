@@ -195,6 +195,9 @@ namespace render::backend::vulkan
 		if ((type == VK_IMAGE_TYPE_3D) && (num_layers == 1) && (flags == 0))
 			return VK_IMAGE_VIEW_TYPE_3D;
 
+		if (type == VK_IMAGE_TYPE_2D && (num_layers == 1) && (flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT))
+			return VK_IMAGE_VIEW_TYPE_2D;
+
 		if (type == VK_IMAGE_TYPE_2D && num_layers == 6 && (flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT))
 			return VK_IMAGE_VIEW_TYPE_CUBE;
 

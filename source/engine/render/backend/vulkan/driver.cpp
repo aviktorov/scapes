@@ -3,6 +3,7 @@
 #include "render/backend/vulkan/Device.h"
 #include "render/backend/vulkan/Platform.h"
 #include "render/backend/vulkan/DescriptorSetLayoutCache.h"
+#include "render/backend/vulkan/ImageViewCache.h"
 #include "render/backend/vulkan/PipelineLayoutCache.h"
 #include "render/backend/vulkan/PipelineCache.h"
 #include "render/backend/vulkan/RenderPassCache.h"
@@ -184,17 +185,7 @@ namespace render::backend::vulkan
 				0, texture->num_layers
 			);
 
-			// create base view & sampler
-			texture->view = Utils::createImageView(
-				device,
-				texture->image,
-				texture->format,
-				Utils::getImageAspectFlags(texture->format),
-				Utils::getImageBaseViewType(texture->type, texture->flags, texture->num_layers),
-				0, texture->num_mipmaps,
-				0, texture->num_layers
-			);
-
+			// create base sampler
 			texture->sampler = Utils::createSampler(device, 0, texture->num_mipmaps);
 		}
 
@@ -335,14 +326,6 @@ namespace render::backend::vulkan
 			// Create frame objects
 			for (size_t i = 0; i < swap_chain->num_images; i++)
 			{
-				swap_chain->views[i] = Utils::createImageView(
-					device,
-					swap_chain->images[i],
-					swap_chain->surface_format.format,
-					VK_IMAGE_ASPECT_COLOR_BIT,
-					VK_IMAGE_VIEW_TYPE_2D
-				);
-
 				VkSemaphoreCreateInfo semaphore_info = {};
 				semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -360,9 +343,7 @@ namespace render::backend::vulkan
 		{
 			for (size_t i = 0; i < swap_chain->num_images; ++i)
 			{
-				vkDestroyImageView(device->getDevice(), swap_chain->views[i], nullptr);
 				swap_chain->images[i] = VK_NULL_HANDLE;
-				swap_chain->views[i] = VK_NULL_HANDLE;
 
 				vkDestroySemaphore(device->getDevice(), swap_chain->image_available_gpu[i], nullptr);
 				swap_chain->image_available_gpu[i] = VK_NULL_HANDLE;
@@ -408,6 +389,7 @@ namespace render::backend::vulkan
 
 		context = new Context();
 		descriptor_set_layout_cache = new DescriptorSetLayoutCache(device);
+		image_view_cache = new ImageViewCache(device);
 		pipeline_layout_cache = new PipelineLayoutCache(device, descriptor_set_layout_cache);
 		pipeline_cache = new PipelineCache(device, pipeline_layout_cache);
 		render_pass_cache = new RenderPassCache(device);
@@ -423,6 +405,9 @@ namespace render::backend::vulkan
 
 		delete descriptor_set_layout_cache;
 		descriptor_set_layout_cache = nullptr;
+
+		delete image_view_cache;
+		image_view_cache = nullptr;
 
 		delete render_pass_cache;
 		render_pass_cache = nullptr;
@@ -697,13 +682,7 @@ namespace render::backend::vulkan
 				const Texture *color_texture = static_cast<const Texture *>(color.texture);
 				VkImageAspectFlags flags = Utils::getImageAspectFlags(color_texture->format);
 
-				view = Utils::createImageView(
-					device,
-					color_texture->image, color_texture->format,
-					flags, VK_IMAGE_VIEW_TYPE_2D,
-					color.base_mip, color.num_mips,
-					color.base_layer, color.num_layers
-				);
+				view = image_view_cache->fetch(color_texture, color.base_mip, color.num_mips, color.base_layer, color.num_layers);
 
 				width = std::max<int>(1, color_texture->width / (1 << color.base_mip));
 				height = std::max<int>(1, color_texture->height / (1 << color.base_mip));
@@ -729,11 +708,7 @@ namespace render::backend::vulkan
 				const Texture *depth_texture = static_cast<const Texture *>(depth.texture);
 				VkImageAspectFlags flags = Utils::getImageAspectFlags(depth_texture->format);
 
-				view = Utils::createImageView(
-					device,
-					depth_texture->image, depth_texture->format,
-					flags, VK_IMAGE_VIEW_TYPE_2D
-				);
+				view = image_view_cache->fetch(depth_texture);
 
 				width = depth_texture->width;
 				height = depth_texture->height;
@@ -749,11 +724,7 @@ namespace render::backend::vulkan
 				const SwapChain *swap_chain = static_cast<const SwapChain *>(swap_chain_color.swap_chain);
 				VkImageAspectFlags flags = Utils::getImageAspectFlags(swap_chain->surface_format.format);
 
-				view = Utils::createImageView(
-					device,
-					swap_chain->images[swap_chain_color.base_image], swap_chain->surface_format.format,
-					flags, VK_IMAGE_VIEW_TYPE_2D
-				);
+				view = image_view_cache->fetch(swap_chain, swap_chain_color.base_image);
 
 				width = swap_chain->sizes.width;
 				height = swap_chain->sizes.height;
@@ -1056,10 +1027,7 @@ namespace render::backend::vulkan
 		FrameBuffer *vk_frame_buffer = static_cast<FrameBuffer *>(frame_buffer);
 
 		for (uint8_t i = 0; i < vk_frame_buffer->num_attachments; ++i)
-		{
-			vkDestroyImageView(device->getDevice(), vk_frame_buffer->attachments[i], nullptr);
 			vk_frame_buffer->attachments[i] = VK_NULL_HANDLE;
-		}
 
 		vkDestroyFramebuffer(device->getDevice(), vk_frame_buffer->framebuffer, nullptr);
 		vk_frame_buffer->framebuffer = VK_NULL_HANDLE;
@@ -1138,7 +1106,6 @@ namespace render::backend::vulkan
 				continue;
 
 			BindSet::Data &data = vk_bind_set->binding_data[i];
-			vkDestroyImageView(device->getDevice(), data.texture.view, nullptr);
 		}
 
 		if (vk_bind_set->set != VK_NULL_HANDLE)
@@ -1463,15 +1430,11 @@ namespace render::backend::vulkan
 		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
 		BindSet::Data &data = vk_bind_set->binding_data[binding];
 
-		if (vk_bind_set->binding_used[binding] && info.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-		{
-			vkDestroyImageView(device->getDevice(), data.texture.view, nullptr);
-			info = {};
-			data = {};
-		}
+		bool buffer_changed = (data.ubo.buffer != vk_uniform_buffer->buffer) || (data.ubo.size != vk_uniform_buffer->size);
+		bool type_changed = (info.descriptorType != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 		vk_bind_set->binding_used[binding] = (vk_uniform_buffer != nullptr);
-		vk_bind_set->binding_dirty[binding] = true;
+		vk_bind_set->binding_dirty[binding] = type_changed || buffer_changed;
 
 		if (vk_uniform_buffer == nullptr)
 			return;
@@ -1528,32 +1491,20 @@ namespace render::backend::vulkan
 		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
 		BindSet::Data &data = vk_bind_set->binding_data[binding];
 
-		if (vk_bind_set->binding_used[binding] && info.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-		{
-			vkDestroyImageView(device->getDevice(), data.texture.view, nullptr);
-			info = {};
-			data = {};
-		}
-
 		VkImageView view = VK_NULL_HANDLE;
 		VkSampler sampler = VK_NULL_HANDLE;
 
 		if (vk_texture)
 		{
-			view = Utils::createImageView(
-				device,
-				vk_texture->image,
-				vk_texture->format,
-				Utils::getImageAspectFlags(vk_texture->format),
-				Utils::getImageBaseViewType(vk_texture->type, vk_texture->flags, num_layers),
-				base_mip, num_mipmaps,
-				base_layer, num_layers
-			);
+			view = image_view_cache->fetch(vk_texture, base_mip, num_mipmaps, base_layer, num_layers);
 			sampler = vk_texture->sampler;
 		}
 
+		bool texture_changed = (data.texture.view != view) || (data.texture.sampler != sampler);
+		bool type_changed = (info.descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
 		vk_bind_set->binding_used[binding] = (vk_texture != nullptr);
-		vk_bind_set->binding_dirty[binding] = true;
+		vk_bind_set->binding_dirty[binding] = type_changed || texture_changed;
 
 		data.texture.view = view;
 		data.texture.sampler = sampler;

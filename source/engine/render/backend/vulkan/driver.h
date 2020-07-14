@@ -10,6 +10,7 @@ namespace render::backend::vulkan
 	class Context;
 	class DescriptorSetCache;
 	class DescriptorSetLayoutCache;
+	class ImageViewCache;
 	class PipelineLayoutCache;
 	class PipelineCache;
 	class RenderPassCache;
@@ -43,7 +44,6 @@ namespace render::backend::vulkan
 	struct Texture : public render::backend::Texture
 	{
 		VkImage image {VK_NULL_HANDLE};
-		VkImageView view {VK_NULL_HANDLE};
 		VkSampler sampler {VK_NULL_HANDLE};
 		VmaAllocation memory {VK_NULL_HANDLE};
 		VkImageType type {VK_IMAGE_TYPE_2D};
@@ -163,7 +163,6 @@ namespace render::backend::vulkan
 
 		VkSemaphore image_available_gpu[SwapChain::MAX_IMAGES];
 		VkImage images[SwapChain::MAX_IMAGES];
-		VkImageView views[SwapChain::MAX_IMAGES];
 	};
 
 	class Driver : public backend::Driver
@@ -471,6 +470,7 @@ namespace render::backend::vulkan
 		Device *device {nullptr};
 		Context *context {nullptr};
 		DescriptorSetLayoutCache *descriptor_set_layout_cache {nullptr};
+		ImageViewCache *image_view_cache {nullptr};
 		PipelineLayoutCache *pipeline_layout_cache {nullptr};
 		PipelineCache *pipeline_cache {nullptr};
 		RenderPassCache *render_pass_cache {nullptr};
