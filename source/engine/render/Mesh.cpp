@@ -195,7 +195,7 @@ namespace render
 
 		render_primitive->indices = driver->createIndexBuffer(
 			render::backend::BufferType::STATIC,
-			render::backend::IndexSize::UINT32,
+			render::backend::IndexFormat::UINT32,
 			render_primitive->num_indices,
 			indices.data()
 		);

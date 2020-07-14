@@ -21,6 +21,7 @@ namespace render::backend::vulkan
 			MAX_ATTRIBUTES = 16,
 		};
 
+		BufferType type {BufferType::STATIC};
 		VkBuffer buffer {VK_NULL_HANDLE};
 		VmaAllocation memory {VK_NULL_HANDLE};
 		uint16_t vertex_size {0};
@@ -32,11 +33,11 @@ namespace render::backend::vulkan
 
 	struct IndexBuffer : public render::backend::IndexBuffer
 	{
+		BufferType type {BufferType::STATIC};
 		VkBuffer buffer {VK_NULL_HANDLE};
 		VmaAllocation memory {VK_NULL_HANDLE};
-		VkIndexType type {VK_INDEX_TYPE_UINT16};
+		VkIndexType index_type {VK_INDEX_TYPE_UINT16};
 		uint32_t num_indices {0};
-		// TODO: static / dynamic fields
 	};
 
 	struct Texture : public render::backend::Texture
@@ -87,10 +88,10 @@ namespace render::backend::vulkan
 
 	struct UniformBuffer : public render::backend::UniformBuffer
 	{
+		BufferType type {BufferType::STATIC};
 		VkBuffer buffer {VK_NULL_HANDLE};
 		VmaAllocation memory {VK_NULL_HANDLE};
 		uint32_t size {0};
-		void *pointer {nullptr};
 		// TODO: static / dynamic fields
 	};
 
@@ -185,7 +186,7 @@ namespace render::backend::vulkan
 
 		backend::IndexBuffer *createIndexBuffer(
 			BufferType type,
-			IndexSize index_size,
+			IndexFormat index_format,
 			uint32_t num_indices,
 			const void *data
 		) override;
@@ -286,6 +287,12 @@ namespace render::backend::vulkan
 
 	public:
 		void generateTexture2DMipmaps(backend::Texture *texture) override;
+
+		void *map(backend::VertexBuffer *vertex_buffer) override;
+		void unmap(backend::VertexBuffer *vertex_buffer) override;
+
+		void *map(backend::IndexBuffer *index_buffer) override;
+		void unmap(backend::IndexBuffer *index_buffer) override;
 
 		void *map(backend::UniformBuffer *uniform_buffer) override;
 		void unmap(backend::UniformBuffer *uniform_buffer) override;

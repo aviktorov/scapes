@@ -43,11 +43,11 @@ namespace render::backend::vulkan
 		);
 		
 		static VkIndexType getIndexType(
-			IndexSize size
+			IndexFormat format
 		);
 		
 		static uint8_t getIndexSize(
-			IndexSize size
+			IndexFormat format
 		);
 		
 		static VkPrimitiveTopology getPrimitiveTopology(
@@ -112,7 +112,7 @@ namespace render::backend::vulkan
 		);
 
 		static void createBuffer(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			VkDeviceSize size,
 			VkBufferUsageFlags usage,
 			VkMemoryPropertyFlags memoryProperties,
@@ -120,21 +120,28 @@ namespace render::backend::vulkan
 			VmaAllocation &memory
 		);
 
-		static void fillBuffer(
-			const render::backend::vulkan::Device *device,
+		static void fillDeviceLocalBuffer(
+			const Device *device,
 			VkBuffer buffer,
 			VkDeviceSize size,
 			const void *data
 		);
 
+		static void fillHostVisibleBuffer(
+			const Device *device,
+			VmaAllocation memory,
+			VkDeviceSize size,
+			const void *data
+		);
+
 		static VkShaderModule createShaderModule(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			const uint32_t *bytecode,
 			size_t bytecodeSize
 		);
 
 		static void createImage(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			VkImageType type,
 			uint32_t width,
 			uint32_t height,
@@ -152,7 +159,7 @@ namespace render::backend::vulkan
 		);
 
 		static void createImageCube(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			uint32_t width,
 			uint32_t height,
 			uint32_t mipLevels,
@@ -166,7 +173,7 @@ namespace render::backend::vulkan
 		);
 
 		static void createImage2D(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			uint32_t width,
 			uint32_t height,
 			uint32_t mipLevels,
@@ -180,7 +187,7 @@ namespace render::backend::vulkan
 		);
 
 		static void createImage2D(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			uint32_t width,
 			uint32_t height,
 			uint32_t mipLevels,
@@ -195,7 +202,7 @@ namespace render::backend::vulkan
 		);
 
 		static VkImageView createImageView(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			VkImage image,
 			VkFormat format,
 			VkImageAspectFlags aspectFlags,
@@ -207,13 +214,13 @@ namespace render::backend::vulkan
 		);
 
 		static VkSampler createSampler(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			uint32_t minMipLevel,
 			uint32_t maxMipLevel 
 		);
 
 		static void fillImage(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			VkImage image,
 			uint32_t width,
 			uint32_t height,
@@ -228,7 +235,7 @@ namespace render::backend::vulkan
 		);
 
 		static void generateImage2DMipmaps(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			VkImage image,
 			VkFormat imageFormat,
 			uint32_t width,
@@ -239,7 +246,7 @@ namespace render::backend::vulkan
 		);
 
 		static void transitionImageLayout(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			VkImage image,
 			VkFormat format,
 			VkImageLayout oldLayout,
@@ -251,11 +258,11 @@ namespace render::backend::vulkan
 		);
 
 		static VkCommandBuffer beginSingleTimeCommands(
-			const render::backend::vulkan::Device *context
+			const Device *context
 		);
 
 		static void endSingleTimeCommands(
-			const render::backend::vulkan::Device *device,
+			const Device *device,
 			VkCommandBuffer commandBuffer
 		);
 	};

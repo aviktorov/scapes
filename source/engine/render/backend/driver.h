@@ -36,7 +36,7 @@ enum class RenderPrimitiveType : uint8_t
 	MAX,
 };
 
-enum class IndexSize : uint8_t
+enum class IndexFormat : uint8_t
 {
 	UINT16 = 0,
 	UINT32,
@@ -344,7 +344,7 @@ public:
 
 	virtual IndexBuffer *createIndexBuffer(
 		BufferType type,
-		IndexSize index_size,
+		IndexFormat index_format,
 		uint32_t num_indices,
 		const void *data
 	) = 0;
@@ -445,6 +445,12 @@ public:
 
 public:
 	virtual void generateTexture2DMipmaps(Texture *texture) = 0;
+
+	virtual void *map(VertexBuffer *vertex_buffer) = 0;
+	virtual void unmap(VertexBuffer *vertex_buffer) = 0;
+
+	virtual void *map(IndexBuffer *index_buffer) = 0;
+	virtual void unmap(IndexBuffer *index_buffer) = 0;
 
 	virtual void *map(UniformBuffer *uniform_buffer) = 0;
 	virtual void unmap(UniformBuffer *uniform_buffer) = 0;

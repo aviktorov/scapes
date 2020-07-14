@@ -449,8 +449,6 @@ namespace render::backend::vulkan
 		const void *data
 	)
 	{
-		assert(type == BufferType::STATIC && "Only static buffers are implemented at the moment");
-		assert(data != nullptr && "Invalid vertex data");
 		assert(num_vertices != 0 && "Invalid vertex count");
 		assert(vertex_size != 0 && "Invalid vertex size");
 		assert(num_attributes <= VertexBuffer::MAX_ATTRIBUTES && "Vertex attributes are limited to 16");
@@ -458,6 +456,7 @@ namespace render::backend::vulkan
 		VkDeviceSize buffer_size = vertex_size * num_vertices;
 
 		VertexBuffer *result = new VertexBuffer();
+		result->type = type;
 		result->vertex_size = vertex_size;
 		result->num_vertices = num_vertices;
 		result->num_attributes = num_attributes;
@@ -469,61 +468,72 @@ namespace render::backend::vulkan
 			result->attribute_offsets[i] = attributes[i].offset;
 		}
 
-		// create vertex buffer
-		Utils::createBuffer(
-			device,
-			buffer_size,
-			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			result->buffer,
-			result->memory
-		);
+		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		VkMemoryPropertyFlags memory_flags = 0;
 
-		// fill vertex buffer
-		Utils::fillBuffer(
-			device,
-			result->buffer,
-			buffer_size,
-			data
-		);
+		if (type == BufferType::STATIC)
+		{
+			usage_flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			memory_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		}
+		else if (type == BufferType::DYNAMIC)
+		{
+			memory_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		}
+
+		// create vertex buffer
+		Utils::createBuffer(device, buffer_size, usage_flags, memory_flags, result->buffer, result->memory);
+
+		if (data)
+		{
+			if (type == BufferType::STATIC)
+				Utils::fillDeviceLocalBuffer(device, result->buffer, buffer_size, data);
+			else if (type == BufferType::DYNAMIC)
+				Utils::fillHostVisibleBuffer(device, result->memory, buffer_size, data);
+		}
 
 		return result;
 	}
 
 	backend::IndexBuffer *Driver::createIndexBuffer(
 		BufferType type,
-		IndexSize index_size,
+		IndexFormat index_format,
 		uint32_t num_indices,
 		const void *data
 	)
 	{
-		assert(type == BufferType::STATIC && "Only static buffers are implemented at the moment");
-		assert(data != nullptr && "Invalid index data");
 		assert(num_indices != 0 && "Invalid index count");
 
-		VkDeviceSize buffer_size = Utils::getIndexSize(index_size) * num_indices;
+		VkDeviceSize buffer_size = Utils::getIndexSize(index_format) * num_indices;
 
 		IndexBuffer *result = new IndexBuffer();
-		result->type = Utils::getIndexType(index_size);
+		result->type = type;
+		result->index_type = Utils::getIndexType(index_format);
 		result->num_indices = num_indices;
 
-		// create index buffer
-		Utils::createBuffer(
-			device,
-			buffer_size,
-			VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			result->buffer,
-			result->memory
-		);
+		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		VkMemoryPropertyFlags memory_flags = 0;
 
-		// fill vertex buffer
-		Utils::fillBuffer(
-			device,
-			result->buffer,
-			buffer_size,
-			data
-		);
+		if (type == BufferType::STATIC)
+		{
+			usage_flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			memory_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		}
+		else if (type == BufferType::DYNAMIC)
+		{
+			memory_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		}
+
+		// create index buffer
+		Utils::createBuffer(device, buffer_size, usage_flags, memory_flags, result->buffer, result->memory);
+
+		if (data)
+		{
+			if (type == BufferType::STATIC)
+				Utils::fillDeviceLocalBuffer(device, result->buffer, buffer_size, data);
+			else if (type == BufferType::DYNAMIC)
+				Utils::fillHostVisibleBuffer(device, result->memory, buffer_size, data);
+		}
 
 		return result;
 	}
@@ -853,6 +863,7 @@ namespace render::backend::vulkan
 		assert(size != 0 && "Invalid size");
 
 		UniformBuffer *result = new UniformBuffer();
+		result->type = type;
 		result->size = size;
 
 		Utils::createBuffer(
@@ -864,15 +875,8 @@ namespace render::backend::vulkan
 			result->memory
 		);
 
-		if (vmaMapMemory(device->getVRAMAllocator(), result->memory, &result->pointer) != VK_SUCCESS)
-		{
-			// TODO: log error
-			delete result;
-			return nullptr;
-		}
-
 		if (data != nullptr)
-			memcpy(result->pointer, data, static_cast<size_t>(size));
+			Utils::fillHostVisibleBuffer(device, result->memory, size, data);
 
 		return result;
 	}
@@ -884,6 +888,9 @@ namespace render::backend::vulkan
 		const char *path
 	)
 	{
+		if (path == nullptr)
+			path = "memory";
+
 		// convert GLSL/HLSL code to SPIR-V bytecode
 		shaderc_compiler_t compiler = shaderc_compiler_initialize();
 		shaderc_compile_options_t options = shaderc_compile_options_initialize();
@@ -1091,7 +1098,6 @@ namespace render::backend::vulkan
 
 		UniformBuffer *vk_uniform_buffer = static_cast<UniformBuffer *>(uniform_buffer);
 
-		vmaUnmapMemory(device->getVRAMAllocator(), vk_uniform_buffer->memory);
 		vmaDestroyBuffer(device->getVRAMAllocator(), vk_uniform_buffer->buffer, vk_uniform_buffer->memory);
 
 		vk_uniform_buffer->buffer = VK_NULL_HANDLE;
@@ -1240,25 +1246,82 @@ namespace render::backend::vulkan
 		);
 	}
 
+	void *Driver::map(backend::VertexBuffer *vertex_buffer)
+	{
+		assert(vertex_buffer != nullptr && "Invalid buffer");
+
+		VertexBuffer *vk_vertex_buffer = static_cast<VertexBuffer *>(vertex_buffer);
+		assert(vk_vertex_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
+
+		void *result = nullptr;
+		if (vmaMapMemory(device->getVRAMAllocator(), vk_vertex_buffer->memory, &result) != VK_SUCCESS)
+		{
+			// TODO: log error
+		}
+
+		return result;
+	}
+
+	void Driver::unmap(backend::VertexBuffer *vertex_buffer)
+	{
+		assert(vertex_buffer != nullptr && "Invalid buffer");
+
+		VertexBuffer *vk_vertex_buffer = static_cast<VertexBuffer *>(vertex_buffer);
+		assert(vk_vertex_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
+
+		vmaUnmapMemory(device->getVRAMAllocator(), vk_vertex_buffer->memory);
+	}
+
+	void *Driver::map(backend::IndexBuffer *index_buffer)
+	{
+		assert(index_buffer != nullptr && "Invalid uniform buffer");
+
+		IndexBuffer *vk_index_buffer = static_cast<IndexBuffer *>(index_buffer);
+		assert(vk_index_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
+
+		void *result = nullptr;
+		if (vmaMapMemory(device->getVRAMAllocator(), vk_index_buffer->memory, &result) != VK_SUCCESS)
+		{
+			// TODO: log error
+		}
+
+		return result;
+	}
+
+	void Driver::unmap(backend::IndexBuffer *index_buffer)
+	{
+		assert(index_buffer != nullptr && "Invalid buffer");
+
+		IndexBuffer *vk_index_buffer = static_cast<IndexBuffer *>(index_buffer);
+		assert(vk_index_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
+
+		vmaUnmapMemory(device->getVRAMAllocator(), vk_index_buffer->memory);
+	}
+
 	void *Driver::map(backend::UniformBuffer *uniform_buffer)
 	{
 		assert(uniform_buffer != nullptr && "Invalid uniform buffer");
-		// TODO: check DYNAMIC buffer type
 
 		UniformBuffer *vk_uniform_buffer = static_cast<UniformBuffer *>(uniform_buffer);
+		assert(vk_uniform_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
 
-		// NOTE: here we should call vkMapMemory but since it was called during UBO creation, we do nothing here.
-		//       It's important to do a proper stress test to see if we can map all previously created UBOs.
-		return vk_uniform_buffer->pointer;
+		void *result = nullptr;
+		if (vmaMapMemory(device->getVRAMAllocator(), vk_uniform_buffer->memory, &result) != VK_SUCCESS)
+		{
+			// TODO: log error
+		}
+
+		return result;
 	}
 
 	void Driver::unmap(backend::UniformBuffer *uniform_buffer)
 	{
-		assert(uniform_buffer != nullptr && "Invalid uniform buffer");
-		// TODO: check DYNAMIC buffer type
+		assert(uniform_buffer != nullptr && "Invalid buffer");
 
-		// NOTE: here we should call vkUnmapMemory but let's try to keep all UBOs mapped to memory.
-		//       It's important to do a proper stress test to see if we can map all previously created UBOs.
+		UniformBuffer *vk_uniform_buffer = static_cast<UniformBuffer *>(uniform_buffer);
+		assert(vk_uniform_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
+
+		vmaUnmapMemory(device->getVRAMAllocator(), vk_uniform_buffer->memory);
 	}
 
 	void Driver::wait()
@@ -1883,7 +1946,7 @@ namespace render::backend::vulkan
 		VkDeviceSize offsets[] = { 0 };
 
 		vkCmdBindVertexBuffers(vk_command_buffer->command_buffer, 0, 1, vertex_buffers, offsets);
-		vkCmdBindIndexBuffer(vk_command_buffer->command_buffer, vk_index_buffer->buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindIndexBuffer(vk_command_buffer->command_buffer, vk_index_buffer->buffer, 0, vk_index_buffer->index_type);
 
 		uint32_t num_instances = 1;
 		uint32_t base_instance = 0;

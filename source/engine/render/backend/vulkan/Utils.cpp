@@ -236,24 +236,24 @@ namespace render::backend::vulkan
 
 	/*
 	 */
-	VkIndexType Utils::getIndexType(IndexSize size)
+	VkIndexType Utils::getIndexType(IndexFormat format)
 	{
-		static VkIndexType supported_sizes[static_cast<int>(IndexSize::MAX)] =
+		static VkIndexType supported_formats[static_cast<int>(IndexFormat::MAX)] =
 		{
 			VK_INDEX_TYPE_UINT16, VK_INDEX_TYPE_UINT32,
 		};
 
-		return supported_sizes[static_cast<int>(size)];
+		return supported_formats[static_cast<int>(format)];
 	}
 
-	uint8_t Utils::getIndexSize(IndexSize size)
+	uint8_t Utils::getIndexSize(IndexFormat format)
 	{
-		static uint8_t supported_sizes[static_cast<int>(IndexSize::MAX)] =
+		static uint8_t supported_formats[static_cast<int>(IndexFormat::MAX)] =
 		{
 			2, 4
 		};
 
-		return supported_sizes[static_cast<int>(size)];
+		return supported_formats[static_cast<int>(format)];
 	}
 
 	/*
@@ -583,7 +583,7 @@ namespace render::backend::vulkan
 	/*
 	 */
 	void Utils::createBuffer(
-		const render::backend::vulkan::Device *device,
+		const Device *device,
 		VkDeviceSize size,
 		VkBufferUsageFlags usage,
 		VkMemoryPropertyFlags memoryProperties,
@@ -607,8 +607,8 @@ namespace render::backend::vulkan
 		}
 	}
 
-	void Utils::fillBuffer(
-		const render::backend::vulkan::Device *device,
+	void Utils::fillDeviceLocalBuffer(
+		const Device *device,
 		VkBuffer buffer,
 		VkDeviceSize size,
 		const void *data
@@ -651,10 +651,24 @@ namespace render::backend::vulkan
 		vmaDestroyBuffer(device->getVRAMAllocator(), staging_buffer, staging_memory);
 	}
 
+	void Utils::fillHostVisibleBuffer(
+		const Device *device,
+		VmaAllocation memory,
+		VkDeviceSize size,
+		const void *data
+	)
+	{
+		// Fill buffer
+		void *buffer_data = nullptr;
+		vmaMapMemory(device->getVRAMAllocator(), memory, &buffer_data);
+		memcpy(buffer_data, data, static_cast<size_t>(size));
+		vmaUnmapMemory(device->getVRAMAllocator(), memory);
+	}
+
 	/*
 	 */
 	VkShaderModule Utils::createShaderModule(
-		const render::backend::vulkan::Device *device,
+		const Device *device,
 		const uint32_t *bytecode,
 		size_t bytecodeSize
 	)
@@ -674,7 +688,7 @@ namespace render::backend::vulkan
 	/*
 	 */
 	void Utils::createImage(
-		const render::backend::vulkan::Device *device,
+		const Device *device,
 		VkImageType type,
 		uint32_t width,
 		uint32_t height,
@@ -718,7 +732,7 @@ namespace render::backend::vulkan
 	}
 
 	void Utils::createImageCube(
-		const render::backend::vulkan::Device *device,
+		const Device *device,
 		uint32_t width,
 		uint32_t height,
 		uint32_t mipLevels,
@@ -744,7 +758,7 @@ namespace render::backend::vulkan
 	}
 
 	void Utils::createImage2D(
-		const render::backend::vulkan::Device *device,
+		const Device *device,
 		uint32_t width,
 		uint32_t height,
 		uint32_t mipLevels,
@@ -770,7 +784,7 @@ namespace render::backend::vulkan
 	}
 
 	VkImageView Utils::createImageView(
-		const render::backend::vulkan::Device *device,
+		const Device *device,
 		VkImage image,
 		VkFormat format,
 		VkImageAspectFlags aspectFlags,
@@ -801,7 +815,7 @@ namespace render::backend::vulkan
 	}
 
 	VkSampler Utils::createSampler(
-		const render::backend::vulkan::Device *device,
+		const Device *device,
 		uint32_t minMipLevel,
 		uint32_t maxMipLevel
 	)
@@ -833,7 +847,7 @@ namespace render::backend::vulkan
 	/*
 	 */
 	void Utils::fillImage(
-		const render::backend::vulkan::Device *device,
+		const Device *device,
 		VkImage image,
 		uint32_t width,
 		uint32_t height,
@@ -927,7 +941,7 @@ namespace render::backend::vulkan
 	}
 
 	void Utils::generateImage2DMipmaps(
-		const render::backend::vulkan::Device *device,
+		const Device *device,
 		VkImage image,
 		VkFormat imageFormat,
 		uint32_t width,
@@ -1032,7 +1046,7 @@ namespace render::backend::vulkan
 	/*
 	 */
 	void Utils::transitionImageLayout(
-		const render::backend::vulkan::Device *device,
+		const Device *device,
 		VkImage image,
 		VkFormat format,
 		VkImageLayout old_layout,
@@ -1118,7 +1132,7 @@ namespace render::backend::vulkan
 
 	/*
 	 */
-	VkCommandBuffer Utils::beginSingleTimeCommands(const render::backend::vulkan::Device *device)
+	VkCommandBuffer Utils::beginSingleTimeCommands(const Device *device)
 	{
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1138,7 +1152,7 @@ namespace render::backend::vulkan
 		return commandBuffer;
 	}
 
-	void Utils::endSingleTimeCommands(const render::backend::vulkan::Device *device, VkCommandBuffer commandBuffer)
+	void Utils::endSingleTimeCommands(const Device *device, VkCommandBuffer commandBuffer)
 	{
 		vkEndCommandBuffer(commandBuffer);
 
