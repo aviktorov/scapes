@@ -146,6 +146,11 @@ void RenderGraph::renderGBuffer(const Scene *scene, const render::RenderFrame &f
 	driver->setShader(render::backend::ShaderType::VERTEX, gbuffer_pass_vertex->getBackend());
 	driver->setShader(render::backend::ShaderType::FRAGMENT, gbuffer_pass_fragment->getBackend());
 
+	driver->setBlending(false);
+	driver->setCullMode(render::backend::CullMode::BACK);
+	driver->setDepthWrite(true);
+	driver->setDepthTest(true);
+
 	for (size_t i = 0; i < scene->getNumNodes(); ++i)
 	{
 		const render::Mesh *node_mesh = scene->getNodeMesh(i);

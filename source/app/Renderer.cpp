@@ -58,6 +58,11 @@ void Renderer::render(const ApplicationResources *scene, const SkyLight *sky_lig
 	const Mesh *skybox = scene->getSkybox();
 	const Mesh *mesh = scene->getMesh();
 
+	driver->setBlending(false);
+	driver->setCullMode(backend::CullMode::BACK);
+	driver->setDepthWrite(true);
+	driver->setDepthTest(true);
+
 	driver->clearPushConstants();
 	driver->clearBindSets();
 	driver->pushBindSet(frame.bind_set);
