@@ -1,3 +1,7 @@
+#if defined(SCAPES_PLATFORM_WIN32)
+	#define GLFW_EXPOSE_NATIVE_WIN32
+#endif
+
 #include "Application.h"
 #include "ApplicationResources.h"
 
@@ -375,7 +379,7 @@ void Application::shutdownDriver()
  */
 void Application::initSwapChain()
 {
-#if defined(PBR_SANDBOX_WIN32)
+#if defined(SCAPES_PLATFORM_WIN32)
 	void *nativeWindow = glfwGetWin32Window(window);
 #else
 	void *nativeWindow = nullptr;

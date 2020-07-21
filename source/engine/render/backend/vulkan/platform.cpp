@@ -7,7 +7,7 @@ namespace render::backend::vulkan
 {
 	const char *Platform::getInstanceExtension()
 	{
-		#if defined(PBR_SANDBOX_WIN32)
+		#if defined(SCAPES_PLATFORM_WIN32)
 			return "VK_KHR_win32_surface";
 		#else
 			#error "Platform::getInstanceExtension(): not supported on this platform"
@@ -18,7 +18,7 @@ namespace render::backend::vulkan
 	{
 		VkSurfaceKHR surface = VK_NULL_HANDLE;
 
-		#if defined(VK_USE_PLATFORM_WIN32_KHR)
+		#if defined(SCAPES_PLATFORM_WIN32)
 			VkWin32SurfaceCreateInfoKHR surfaceInfo = {};
 			surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 			surfaceInfo.hwnd = reinterpret_cast<HWND>(native_window);

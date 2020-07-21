@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <volk.h>
 #include "render/backend/vulkan/driver.h"
 

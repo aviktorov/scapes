@@ -1,34 +1,37 @@
 cmake_minimum_required(VERSION 3.10)
 project(app)
-set(TARGET app)
 
 file(GLOB SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 	${THIRDPARTY_DIR}/imgui/examples/imgui_impl_glfw.cpp
+	${THIRDPARTY_DIR}/imgui/imgui.cpp
+	${THIRDPARTY_DIR}/imgui/imgui_draw.cpp
+	${THIRDPARTY_DIR}/imgui/imgui_widgets.cpp
 )
 
 file(GLOB HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/*.h
 )
 
-add_executable(${TARGET} ${SOURCES} ${HEADERS})
+set (DEFINES
+	SCAPES_PLATFORM_WIN32
+)
 
-target_compile_definitions(${TARGET} PUBLIC GLFW_EXPOSE_NATIVE_WIN32)
+add_executable(app ${SOURCES} ${HEADERS})
 
-target_link_libraries(${TARGET} PUBLIC glfw3 scapes)
-
-# TODO: remove this once engine get public API
-target_include_directories(${TARGET} PUBLIC ${API_DIR})
+target_include_directories(app PUBLIC ${API_DIR})
+target_compile_definitions(app PUBLIC ${DEFINES})
+target_link_libraries(app PUBLIC glfw3 scapes)
 
 add_custom_command(
-	TARGET ${TARGET} POST_BUILD
+	TARGET app POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
 		${THIRDPARTY_DIR}/assimp/lib/assimp-vc141-mt.dll
 		${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/assimp-vc141-mt.dll
 )
 
 add_custom_command(
-	TARGET ${TARGET} POST_BUILD
+	TARGET app POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
 		${THIRDPARTY_DIR}/shaderc/lib/shaderc_shared.dll
 		${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/shaderc_shared.dll
