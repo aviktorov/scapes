@@ -180,7 +180,11 @@ bool Scene::import(const char *path)
 
 	// import nodes
 	const aiNode * root = scene->mRootNode;
-	importNodes(scene, root, toGlm(root->mTransformation));
+
+	// TODO: remove later
+	aiMatrix4x4 rotation = aiMatrix4x4::RotationX(AI_DEG_TO_RAD(90.0f), aiMatrix4x4());
+
+	importNodes(scene, root, toGlm(root->mTransformation * rotation));
 
 	return true;
 }
