@@ -31,7 +31,7 @@ PBR Sandbox:
     Improvements:
         ✔ Remove vulkan dependencies from VulkanTexture @done (7/7/2020, 10:17:57 PM)
         ✔ Migrate ImGui renderer to backend @done (7/14/2020, 8:48:46 PM)
-        ☐ Create separate cmake script for backend
+        ✔ Create separate cmake script for backend @done (7/26/2020, 10:19:07 PM)
         ✔ Organize, move & renames files in vulkan backend @done (7/14/2020, 8:48:45 PM)
         ✔ Organize files in the engine @done (7/7/2020, 10:17:53 PM)
     Future:
@@ -42,20 +42,22 @@ PBR Sandbox:
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add support for other platforms (Linux, MacOS, iOS, Android)
         ☐ Add simple FileSystem with data root path for simplified content loading
+    Next Up:
+        ☐ Directional light & shadows
+        ☐ Environment / Reflection probes
+        ☐ Area lights
+        ☐ SSAO / HBAO
+        ☐ SSR
+    Stream 40:
+        ☐ Intergrate microprofile for CPU / GPU profiling
         ☐ Improve microfacet BRDFs
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
-    Next Up:
-        ☐ Directional light & shadows
-        ☐ SSAO / HBAO
-        ☐ SSR
-        ☐ Environment probe
-        ☐ Area lights?
-        ☐ Intergrate microprofile for CPU
+            ☐ Clamp roughness + transform to perceived roughness
     Stream 39:
-        ☐ Split HDR, tonemapping & gamma correction to render passes
-            ☐ Add composite pass with tonemapping
-            ☐ Add post processing passes
+        ✔ Split HDR, tonemapping & gamma correction to render passes @done (7/27/2020, 2:28:17 AM)
+            ✔ Add composite pass with tonemapping @done (7/27/2020, 2:28:17 AM)
+            ✔ Add post processing passes @done (7/27/2020, 2:28:18 AM)
     Stream 38:
         ✔ Extract SkyLight fron Renderer @done (7/8/2020, 11:49:20 PM)
         ✔ Add lbuffer pass and fill it with SkyLight @done (7/9/2020, 3:13:26 AM)
