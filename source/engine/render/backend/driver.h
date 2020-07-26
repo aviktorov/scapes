@@ -252,6 +252,7 @@ struct RenderPrimitive
 	uint32_t num_indices {0};
 	uint32_t base_index {0};
 	int32_t vertex_index_offset {0};
+	// TODO: instancing
 };
 
 struct VertexAttribute
@@ -614,14 +615,6 @@ public:
 	virtual void drawIndexedPrimitive(
 		CommandBuffer *command_buffer,
 		const RenderPrimitive *render_primitive
-	) = 0;
-
-	virtual void drawIndexedPrimitiveInstanced(
-		CommandBuffer *command_buffer,
-		const RenderPrimitive *render_primitive,
-		const VertexBuffer *instance_buffer,
-		uint32_t num_instances,
-		uint32_t base_instance
 	) = 0;
 };
 

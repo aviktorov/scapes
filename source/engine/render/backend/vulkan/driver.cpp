@@ -1758,7 +1758,7 @@ namespace render::backend::vulkan
 
 		if (command_buffer == nullptr)
 			return;
-		
+
 		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 		const FrameBuffer *vk_frame_buffer = static_cast<const FrameBuffer *>(frame_buffer);
 
@@ -1902,19 +1902,5 @@ namespace render::backend::vulkan
 		uint32_t num_instances = 1;
 		uint32_t base_instance = 0;
 		vkCmdDrawIndexed(vk_command_buffer->command_buffer, render_primitive->num_indices, num_instances, render_primitive->base_index, render_primitive->vertex_index_offset, base_instance);
-	}
-
-	void Driver::drawIndexedPrimitiveInstanced(
-		backend::CommandBuffer *command_buffer,
-		const backend::RenderPrimitive *render_primitive,
-		const backend::VertexBuffer *instance_buffer,
-		uint32_t num_instances,
-		uint32_t offset
-	)
-	{
-		if (command_buffer == nullptr)
-			return;
-
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 	}
 }

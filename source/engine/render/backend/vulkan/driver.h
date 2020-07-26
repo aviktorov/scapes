@@ -458,14 +458,6 @@ namespace render::backend::vulkan
 			const backend::RenderPrimitive *render_primitive
 		) override;
 
-		void drawIndexedPrimitiveInstanced(
-			backend::CommandBuffer *command_buffer,
-			const backend::RenderPrimitive *render_primitive,
-			const backend::VertexBuffer *instance_buffer,
-			uint32_t num_instances,
-			uint32_t base_instance
-		) override;
-
 	private:
 		Device *device {nullptr};
 		Context *context {nullptr};
