@@ -9,7 +9,6 @@
 #include <render/SwapChain.h>
 
 #include "SkyLight.h"
-#include "ImGuiRenderer.h"
 #include "Renderer.h"
 #include "RenderGraph.h"
 #include "Scene.h"
@@ -75,6 +74,7 @@ void Application::update()
 
 	state.world = glm::mat4(1.0f);
 	state.view = glm::lookAt(cameraPos, zero, up);
+	state.invView = glm::inverse(state.view);
 	state.proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
 	state.proj[1][1] *= -1;
 	state.invProj = glm::inverse(state.proj);
@@ -120,10 +120,10 @@ void Application::update()
 
 	ImGui::Begin("GBuffer");
 
-	ImTextureID base_color_id = imgui_renderer->fetchTextureID(render_graph->getGBuffer().base_color);
-	ImTextureID normal_id = imgui_renderer->fetchTextureID(render_graph->getGBuffer().normal);
-	ImTextureID depth_id = imgui_renderer->fetchTextureID(render_graph->getGBuffer().depth);
-	ImTextureID shading_id = imgui_renderer->fetchTextureID(render_graph->getGBuffer().shading);
+	ImTextureID base_color_id = render_graph->fetchTextureID(render_graph->getGBuffer().base_color);
+	ImTextureID normal_id = render_graph->fetchTextureID(render_graph->getGBuffer().normal);
+	ImTextureID depth_id = render_graph->fetchTextureID(render_graph->getGBuffer().depth);
+	ImTextureID shading_id = render_graph->fetchTextureID(render_graph->getGBuffer().shading);
 
 	ImGui::BeginGroup();
 		ImGui::Image(base_color_id, ImVec2(256, 256));
@@ -138,13 +138,13 @@ void Application::update()
 
 	ImGui::Begin("LBuffer");
 
-	ImTextureID diffuse_id = imgui_renderer->fetchTextureID(render_graph->getLBuffer().diffuse);
-	ImTextureID specular_id = imgui_renderer->fetchTextureID(render_graph->getLBuffer().specular);
+	ImTextureID diffuse_id = render_graph->fetchTextureID(render_graph->getLBuffer().diffuse);
+	ImTextureID specular_id = render_graph->fetchTextureID(render_graph->getLBuffer().specular);
 
 	ImGui::BeginGroup();
-		ImGui::Image(diffuse_id, ImVec2(256, 256));
+		ImGui::Image(diffuse_id, ImVec2(512, 512));
 		ImGui::SameLine();
-		ImGui::Image(specular_id, ImVec2(256, 256));
+		ImGui::Image(specular_id, ImVec2(512, 512));
 	ImGui::EndGroup();
 
 	ImGui::End();
@@ -162,32 +162,8 @@ void Application::render()
 	}
 
 	memcpy(frame.uniform_buffer_data, &state, sizeof(ApplicationState));
-	driver->resetCommandBuffer(frame.command_buffer);
-	driver->beginCommandBuffer(frame.command_buffer);
-
 	render_graph->render(sponza, frame);
 
-	RenderPassClearValue clear_values[3];
-	clear_values[0].color = {0.2f, 0.2f, 0.2f, 1.0f};
-	clear_values[1].color = {0.0f, 0.0f, 0.0f, 1.0f};
-	clear_values[2].depth_stencil = {1.0f, 0};
-
-	RenderPassLoadOp load_ops[3] = { RenderPassLoadOp::CLEAR, RenderPassLoadOp::DONT_CARE, RenderPassLoadOp::CLEAR };
-	RenderPassStoreOp store_ops[3] = { RenderPassStoreOp::STORE, RenderPassStoreOp::STORE, RenderPassStoreOp::DONT_CARE };
-
-	RenderPassInfo info;
-	info.load_ops = load_ops;
-	info.store_ops = store_ops;
-	info.clear_values = clear_values;
-
-	driver->beginRenderPass(frame.command_buffer, frame.frame_buffer, &info);
-
-	renderer->render(resources, sky_light, frame);
-	imgui_renderer->render(frame);
-
-	driver->endRenderPass(frame.command_buffer);
-
-	driver->endCommandBuffer(frame.command_buffer);
 	driver->submitSyncked(frame.command_buffer, swap_chain->getBackend());
 
 	if (!swap_chain->present(frame) || windowResized)
@@ -323,24 +299,12 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	renderer = new Renderer(driver);
-	renderer->init(resources);
-
-	imgui_renderer = new ImGuiRenderer(driver);
-	imgui_renderer->init(ImGui::GetCurrentContext());
-
 	render_graph = new RenderGraph(driver);
 	render_graph->init(resources, swap_chain->getWidth(), swap_chain->getHeight());
 }
 
 void Application::shutdownRenderers()
 {
-	delete renderer;
-	renderer = nullptr;
-
-	delete imgui_renderer;
-	imgui_renderer = nullptr;
-
 	delete render_graph;
 	render_graph = nullptr;
 }
@@ -416,5 +380,4 @@ void Application::recreateSwapChain()
 
 	swap_chain->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	render_graph->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-	imgui_renderer->invalidateTextureIDs();
 }

@@ -17,12 +17,15 @@ layout(location = 4) in vec3 fragNormalVS;
 layout(location = 5) in vec3 fragPositionVS;
 
 layout(location = 0) out vec4 outBaseColor;
-layout(location = 1) out float outDepth;
-layout(location = 2) out vec2 outNormal;
-layout(location = 3) out vec2 outShading;
+layout(location = 1) out vec2 outNormal;
+layout(location = 2) out vec2 outShading;
 
 void main()
 {
+	vec4 albedo = texture(albedoSampler, fragTexCoord);
+	if (albedo.a < 0.5f)
+		discard;
+
 	vec3 normalTS = texture(normalSampler, fragTexCoord).xyz * 2.0f - vec3(1.0f);
 
 	mat3 TSToVS;
@@ -31,14 +34,12 @@ void main()
 	TSToVS[2] = normalize(fragNormalVS);
 
 	vec3 normalVS = normalize(TSToVS * normalTS);
-	vec3 albedo = texture(albedoSampler, fragTexCoord).rgb;
 	float roughness = texture(roughnessSampler, fragTexCoord).r;
 	float metalness = texture(metalnessSampler, fragTexCoord).r;
 
-	outBaseColor.rgb = albedo;
+	outBaseColor.rgb = albedo.rgb;
 	outBaseColor.a = 1.0f;
 
 	outNormal = normalVS.xy * 0.5f + vec2(0.5f);
-	outDepth = length(fragPositionVS);
 	outShading = vec2(roughness, metalness);
 }

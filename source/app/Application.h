@@ -29,6 +29,7 @@ struct ApplicationState
 {
 	glm::mat4 world;
 	glm::mat4 view;
+	glm::mat4 invView;
 	glm::mat4 proj;
 	glm::mat4 invProj;
 	glm::vec4 cameraParams;
@@ -104,9 +105,6 @@ private:
 	ApplicationState state;
 	CameraState camera;
 	InputState input;
-
-	Renderer *renderer {nullptr};
-	ImGuiRenderer *imgui_renderer {nullptr};
 
 	render::SwapChain *swap_chain {nullptr};
 	render::backend::Driver *driver {nullptr};

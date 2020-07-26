@@ -22,10 +22,14 @@ namespace config
 		DiffuseIrradianceFragment,
 		BakedBRDFVertex,
 		BakedBRDFFragment,
-		GBufferVertex,
-		GBufferFragment,
 		SkyLightVertex,
 		SkyLightFragment,
+		PassGBufferVertex,
+		PassGBufferFragment,
+		PassCompositeVertex,
+		PassCompositeFragment,
+		PassFinalVertex,
+		PassFinalFragment,
 	};
 
 	enum Textures
@@ -65,8 +69,14 @@ public:
 	inline const render::Shader *getBakedBRDFVertexShader() const { return resources.getShader(config::Shaders::BakedBRDFVertex); }
 	inline const render::Shader *getBakedBRDFFragmentShader() const { return resources.getShader(config::Shaders::BakedBRDFFragment); }
 
-	inline const render::Shader *getGBufferVertexShader() const { return resources.getShader(config::Shaders::GBufferVertex); }
-	inline const render::Shader *getGBufferFragmentShader() const { return resources.getShader(config::Shaders::GBufferFragment); }
+	inline const render::Shader *getGBufferVertexShader() const { return resources.getShader(config::Shaders::PassGBufferVertex); }
+	inline const render::Shader *getGBufferFragmentShader() const { return resources.getShader(config::Shaders::PassGBufferFragment); }
+
+	inline const render::Shader *getCompositeVertexShader() const { return resources.getShader(config::Shaders::PassCompositeVertex); }
+	inline const render::Shader *getCompositeFragmentShader() const { return resources.getShader(config::Shaders::PassCompositeFragment); }
+
+	inline const render::Shader *getFinalVertexShader() const { return resources.getShader(config::Shaders::PassFinalVertex); }
+	inline const render::Shader *getFinalFragmentShader() const { return resources.getShader(config::Shaders::PassFinalFragment); }
 
 	inline const render::Shader *getSkyLightVertexShader() const { return resources.getShader(config::Shaders::SkyLightVertex); }
 	inline const render::Shader *getSkyLightFragmentShader() const { return resources.getShader(config::Shaders::SkyLightFragment); }
