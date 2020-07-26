@@ -17,16 +17,28 @@ layout(location = 0) in vec2 fragTexCoord;
 layout(location = 0) out vec4 outDiffuse;
 layout(location = 1) out vec4 outSpecular;
 
+vec3 getNormal()
+{
+	vec3 normalVS = texture(gbufferNormal, fragTexCoord).xyz * 2.0f - vec3(1.0f);
+	normalVS.z = sqrt(max(0.0f, 1.0f - dot(normalVS.xy, normalVS.xy)));
+
+	return normalize(vec3(ubo.invView * vec4(normalVS, 0.0f)));
+}
+
+vec3 getView()
+{
+	float depth = texture(gbufferDepth, fragTexCoord).r;
+
+	vec4 viewPos = ubo.invProj * vec4(fragTexCoord * 2.0f - vec2(1.0f), depth, 1.0f);
+	viewPos.xyz /= viewPos.w;
+
+	return normalize(vec3(ubo.invView * vec4(-viewPos.xyz, 0.0f)));
+}
+
 void main()
 {
-	vec3 normalVS = texture(gbufferBaseColor, fragTexCoord).xyz;
-	normalVS.z = sqrt(1.0f - dot(normalVS.xy, normalVS.xy));
-	normalVS = normalize(normalVS);
-
-	float linear_depth = texture(gbufferDepth, fragTexCoord).r;
-	float normalized_depth = (linear_depth - ubo.cameraParams.x) / (ubo.cameraParams.y - ubo.cameraParams.x);
-
-	vec3 viewVS = normalize(vec3(ubo.invProj * vec4(fragTexCoord.x, fragTexCoord.y, normalized_depth, 1.0f)));
+	vec3 normalWS = getNormal();
+	vec3 viewWS = getView();
 
 	vec2 shading = texture(gbufferShading, fragTexCoord).rg;
 
@@ -35,10 +47,15 @@ void main()
 	material.roughness = shading.r;
 	material.metalness = shading.g;
 	material.ao = 1.0f;
+
+	material.albedo = lerp(material.albedo, vec3(0.5f, 0.5f, 0.5f), ubo.lerpUserValues);
+	material.roughness = lerp(material.roughness, ubo.userRoughness, ubo.lerpUserValues);
+	material.metalness = lerp(material.metalness, ubo.userMetalness, ubo.lerpUserValues);
+
 	material.f0 = lerp(vec3(0.04f), material.albedo, material.metalness);
 
-	outDiffuse.rgb = SkyLight_Diffuse(normalVS, viewVS, material);
-	outSpecular.rgb = SkyLight_Specular(normalVS, viewVS, material);
+	outDiffuse.rgb = SkyLight_Diffuse(normalWS, viewWS, material);
+	outSpecular.rgb = SkyLight_Specular(normalWS, viewWS, material);
 
 	outDiffuse.a = 1.0f;
 	outSpecular.a = 1.0f;
