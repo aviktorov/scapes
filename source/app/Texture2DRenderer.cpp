@@ -12,22 +12,19 @@ Texture2DRenderer::Texture2DRenderer(Driver *driver)
 	: driver(driver)
 	, quad(driver)
 {
+	quad.createQuad(2.0f);
+	command_buffer = driver->createCommandBuffer(CommandBufferType::PRIMARY);
 }
 
 /*
  */
-void Texture2DRenderer::init(const render::Texture *target_texture)
+void Texture2DRenderer::init(const render::backend::Texture *target_texture)
 {
 	assert(target_texture != nullptr);
 
-	quad.createQuad(2.0f);
-
 	// Create framebuffer
-	FrameBufferAttachment attachment = { FrameBufferAttachmentType::COLOR, target_texture->getBackend(), 0, 1, 0, 1};
+	FrameBufferAttachment attachment = { FrameBufferAttachmentType::COLOR, target_texture, 0, 1, 0, 1};
 	framebuffer = driver->createFrameBuffer(1, &attachment);
-
-	// Create command buffer
-	command_buffer = driver->createCommandBuffer(CommandBufferType::PRIMARY);
 }
 
 void Texture2DRenderer::shutdown()
@@ -45,8 +42,8 @@ void Texture2DRenderer::shutdown()
 /*
  */
 void Texture2DRenderer::render(
-	const render::Shader *vertex_shader,
-	const render::Shader *fragment_shader
+	const render::backend::Shader *vertex_shader,
+	const render::backend::Shader *fragment_shader
 )
 {
 	assert(vertex_shader != nullptr);
@@ -69,8 +66,8 @@ void Texture2DRenderer::render(
 	driver->beginRenderPass(command_buffer, framebuffer, &info);
 
 	driver->clearShaders();
-	driver->setShader(ShaderType::VERTEX, vertex_shader->getBackend());
-	driver->setShader(ShaderType::FRAGMENT, fragment_shader->getBackend());
+	driver->setShader(ShaderType::VERTEX, vertex_shader);
+	driver->setShader(ShaderType::FRAGMENT, fragment_shader);
 
 	driver->drawIndexedPrimitive(command_buffer, quad.getRenderPrimitive());
 
