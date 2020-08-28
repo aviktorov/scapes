@@ -4,6 +4,8 @@
 #include "SkyLight.h"
 #include "ApplicationResources.h"
 
+#include <Tracy.hpp>
+
 #include "ImGuiRenderer.h"
 #include "imgui.h"
 
@@ -184,21 +186,39 @@ void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame)
 	driver->resetCommandBuffer(frame.command_buffer);
 	driver->beginCommandBuffer(frame.command_buffer);
 
-	driver->setBlending(false);
-	driver->setCullMode(render::backend::CullMode::BACK);
-	driver->setDepthWrite(true);
-	driver->setDepthTest(true);
+	{
+		ZoneScopedN("GBuffer pass");
 
-	renderGBuffer(scene, frame);
+		driver->setBlending(false);
+		driver->setCullMode(render::backend::CullMode::BACK);
+		driver->setDepthWrite(true);
+		driver->setDepthTest(true);
 
-	driver->setBlending(false);
-	driver->setCullMode(render::backend::CullMode::NONE);
-	driver->setDepthWrite(false);
-	driver->setDepthTest(false);
+		renderGBuffer(scene, frame);
+	}
 
-	renderLBuffer(scene, frame);
-	renderComposite(scene, frame);
-	renderFinal(scene, frame);
+	{
+		ZoneScopedN("LBuffer pass");
+
+		driver->setBlending(false);
+		driver->setCullMode(render::backend::CullMode::NONE);
+		driver->setDepthWrite(false);
+		driver->setDepthTest(false);
+
+		renderLBuffer(scene, frame);
+	}
+
+	{
+		ZoneScopedN("Composite pass");
+
+		renderComposite(scene, frame);
+	}
+
+	{
+		ZoneScopedN("Final pass");
+
+		renderFinal(scene, frame);
+	}
 
 	driver->endCommandBuffer(frame.command_buffer);
 }
