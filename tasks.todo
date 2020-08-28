@@ -13,7 +13,7 @@ Vulkan specific:
 
 DX12 specific:
     - DirectX 12 SDK: (https://www.microsoft.com/en-us/download/details.aspx?id=6812)
-        - D3D12 helper library: D3DX12 (https://github.com/Microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12)
+    - D3D12 helper library: D3DX12 (https://github.com/Microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12)
 
 Vulkan backend challenges:
     ✔ Video memory allocation (VMA aka Vulkan Memory Allocator) @done (7/7/2020, 10:18:02 PM)
@@ -46,14 +46,17 @@ PBR Sandbox:
         ☐ Directional light & shadows
         ☐ Environment / Reflection probes
         ☐ Area lights
-        ☐ SSAO / HBAO
         ☐ SSR
-    Stream 40:
-        ☐ Intergrate microprofile for CPU / GPU profiling
+        ☐ Add separate profiler.dll & link with Tracy
+    Stream 41:
+        ☐ SSAO / HBAO
         ☐ Improve microfacet BRDFs
             ☐ Different impls for D/F/G specular factors
             ☐ Multiscattering GGX + Shlick
             ☐ Clamp roughness + transform to perceived roughness
+    Stream 40:
+        ✔ Integrate tracy for CPU / GPU profiling @done (8/28/2020, 9:10:05 PM)
+        ✔ Identify bottlenecks @done (8/28/2020, 9:10:06 PM)
     Stream 39:
         ✔ Split HDR, tonemapping & gamma correction to render passes @done (7/27/2020, 2:28:17 AM)
             ✔ Add composite pass with tonemapping @done (7/27/2020, 2:28:17 AM)
