@@ -24,6 +24,7 @@ namespace render::backend::vulkan
 		~PipelineCache();
 
 		VkPipeline fetch(const Context *context, const backend::RenderPrimitive *primitive);
+		VkPipeline fetch(VkPipelineLayout layout, const Context *context, const backend::RenderPrimitive *primitive);
 		void clear();
 
 	private:

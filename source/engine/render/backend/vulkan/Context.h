@@ -11,6 +11,13 @@ namespace render::backend::vulkan
 	class Context
 	{
 	public:
+		enum
+		{
+			MAX_SETS = 16,
+			MAX_PUSH_CONSTANT_SIZE = 128, // TODO: use HW device capabilities for upper limit
+		};
+
+	public:
 		Context() { clear(); }
 		~Context() { clear(); }
 
@@ -86,11 +93,6 @@ namespace render::backend::vulkan
 		};
 
 	private:
-		enum
-		{
-			MAX_SETS = 16,
-			MAX_PUSH_CONSTANT_SIZE = 128, // TODO: use HW device capabilities for upper limit
-		};
 
 		uint8_t push_constants[MAX_PUSH_CONSTANT_SIZE];
 		uint8_t push_constants_size {0};

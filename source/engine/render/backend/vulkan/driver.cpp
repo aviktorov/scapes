@@ -11,6 +11,7 @@
 #include "render/backend/vulkan/Utils.h"
 
 #include <shaderc/shaderc.h>
+#include <Tracy.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -1791,6 +1792,8 @@ namespace render::backend::vulkan
 
 	void Driver::drawIndexedPrimitive(backend::CommandBuffer *command_buffer, const backend::RenderPrimitive *render_primitive)
 	{
+		ZoneScoped;
+
 		if (command_buffer == nullptr)
 			return;
 
@@ -1798,14 +1801,15 @@ namespace render::backend::vulkan
 		const VertexBuffer *vk_vertex_buffer = static_cast<const VertexBuffer *>(render_primitive->vertices);
 		const IndexBuffer *vk_index_buffer = static_cast<const IndexBuffer *>(render_primitive->indices);
 
-		std::vector<VkDescriptorSet> sets(context->getNumBindSets());
-		std::vector<VkWriteDescriptorSet> writes;
-		std::vector<VkDescriptorImageInfo> image_infos;
-		std::vector<VkDescriptorBufferInfo> buffer_infos;
+		std::array<VkDescriptorSet, Context::MAX_SETS> sets;
+		std::array<VkWriteDescriptorSet, BindSet::MAX_BINDINGS * Context::MAX_SETS> writes;
+		std::array<VkDescriptorImageInfo, BindSet::MAX_BINDINGS * Context::MAX_SETS> image_infos;
+		std::array<VkDescriptorBufferInfo, BindSet::MAX_BINDINGS * Context::MAX_SETS> buffer_infos;
 
-		writes.reserve(BindSet::MAX_BINDINGS * context->getNumBindSets());
-		image_infos.reserve(BindSet::MAX_BINDINGS * context->getNumBindSets());
-		buffer_infos.reserve(BindSet::MAX_BINDINGS * context->getNumBindSets());
+		size_t set_size = 0;
+		size_t write_size = 0;
+		size_t image_size = 0;
+		size_t buffer_size = 0;
 
 		for (uint8_t i = 0; i < context->getNumBindSets(); ++i)
 		{
@@ -1814,7 +1818,7 @@ namespace render::backend::vulkan
 			VkDescriptorSetLayout new_layout = descriptor_set_layout_cache->fetch(bind_set);
 			helpers::updateBindSetLayout(device, bind_set, new_layout);
 
-			sets[i] = bind_set->set;
+			sets[set_size++] = bind_set->set;
 
 			for (uint8_t j = 0; j < BindSet::MAX_BINDINGS; ++j)
 			{
@@ -1842,8 +1846,8 @@ namespace render::backend::vulkan
 						info.imageView = data.texture.view;
 						info.sampler = data.texture.sampler;
 
-						image_infos.push_back(info);
-						write_set.pImageInfo = &image_infos[image_infos.size() - 1];
+						image_infos[image_size++] = info;
+						write_set.pImageInfo = &image_infos[image_size - 1];
 					}
 					break;
 					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -1853,8 +1857,8 @@ namespace render::backend::vulkan
 						info.offset = data.ubo.offset;
 						info.range = data.ubo.size;
 
-						buffer_infos.push_back(info);
-						write_set.pBufferInfo = &buffer_infos[buffer_infos.size() - 1];
+						buffer_infos[buffer_size++] = info;
+						write_set.pBufferInfo = &buffer_infos[buffer_size - 1];
 					}
 					break;
 					default:
@@ -1867,25 +1871,27 @@ namespace render::backend::vulkan
 				write_set.descriptorType = descriptor_type;
 				write_set.descriptorCount = 1;
 
-				writes.push_back(write_set);
+				writes[write_size++] = write_set;
 
 				bind_set->binding_dirty[j] = false;
 			}
 		}
 
-		if (writes.size() > 0)
-			vkUpdateDescriptorSets(device->getDevice(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+		if (write_size > 0)
+			vkUpdateDescriptorSets(device->getDevice(), static_cast<uint32_t>(write_size), writes.data(), 0, nullptr);
 
-		VkPipelineLayout pipeline_layout = pipeline_layout_cache->fetch(context);
-		VkPipeline pipeline = pipeline_cache->fetch(context, render_primitive);
+		ZoneNamedN(actual_draw_call, "Actual draw call", true);
+
+		VkPipelineLayout pipeline_layout = pipeline_layout = pipeline_layout_cache->fetch(context);
+		VkPipeline pipeline = pipeline_cache->fetch(pipeline_layout, context, render_primitive);
 
 		vkCmdBindPipeline(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
 		if (context->getPushConstantsSize() > 0)
 			vkCmdPushConstants(vk_command_buffer->command_buffer, pipeline_layout, VK_SHADER_STAGE_ALL, 0, context->getPushConstantsSize(), context->getPushConstants());
 
-		if (sets.size() > 0)
-			vkCmdBindDescriptorSets(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
+		if (set_size > 0)
+			vkCmdBindDescriptorSets(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(set_size), sets.data(), 0, nullptr);
 
 		VkViewport viewport = context->getViewport();
 		VkRect2D scissor = context->getScissor();

@@ -57,7 +57,11 @@ namespace render::backend::vulkan
 	VkPipeline PipelineCache::fetch(const Context *context, const backend::RenderPrimitive *primitive)
 	{
 		VkPipelineLayout layout = layout_cache->fetch(context);
+		return fetch(layout, context, primitive);
+	}
 
+	VkPipeline PipelineCache::fetch(VkPipelineLayout layout, const Context *context, const backend::RenderPrimitive *primitive)
+	{
 		assert(layout != VK_NULL_HANDLE);
 		assert(context->getRenderPass() != VK_NULL_HANDLE);
 

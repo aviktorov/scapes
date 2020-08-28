@@ -6,6 +6,7 @@
 #include "render/backend/vulkan/Device.h"
 #include "render/backend/vulkan/Context.h"
 
+#include <array>
 #include <vector>
 #include <cassert>
 
@@ -28,9 +29,12 @@ namespace render::backend::vulkan
 		uint8_t push_constants_size = context->getPushConstantsSize();
 		uint8_t num_bind_sets = context->getNumBindSets();
 
-		std::vector<VkDescriptorSetLayout> layouts(num_bind_sets);
+		std::array<VkDescriptorSetLayout, Context::MAX_SETS> layouts;
 		for (uint8_t i = 0; i < num_bind_sets; ++i)
-			layouts[i] = layout_cache->fetch(context->getBindSet(i));
+		{
+			const BindSet *bind_set = context->getBindSet(i);
+			layouts[i] = (bind_set) ? bind_set->set_layout : VK_NULL_HANDLE;
+		}
 
 		uint64_t hash = getHash(num_bind_sets, layouts.data(), push_constants_size);
 

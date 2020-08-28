@@ -3,6 +3,18 @@ project(scapes)
 
 option(USE_RENDER_BACKEND_VK "Include Vulkan rendering backend" TRUE)
 
+file(GLOB PROFILER_SOURCES
+	${THIRDPARTY_DIR}/tracy/TracyClient.cpp
+)
+
+file(GLOB PROFILER_HEADERS
+	${THIRDPARTY_DIR}/tracy/Tracy.hpp
+)
+
+set(PROFILER_DEFINES
+	TRACY_ENABLE
+)
+
 file(GLOB RENDER_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/render/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/*.cpp
@@ -33,10 +45,10 @@ if (USE_RENDER_BACKEND_VK)
 	list(APPEND RENDER_DEFINES VK_USE_PLATFORM_WIN32_KHR)
 endif()
 
-add_library(scapes STATIC ${RENDER_SOURCES} ${RENDER_HEADERS})
+add_library(scapes STATIC ${RENDER_SOURCES} ${RENDER_HEADERS} ${PROFILER_SOURCES} ${PROFILER_HEADERS})
 
 target_include_directories(scapes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_definitions(scapes PUBLIC ${RENDER_DEFINES})
+target_compile_definitions(scapes PUBLIC ${RENDER_DEFINES} ${PROFILER_DEFINES})
 target_link_libraries(scapes PUBLIC assimp-vc141-mt IrrXml zlibstatic shaderc_shared)
 
 # TODO: add common library for all engine modules
