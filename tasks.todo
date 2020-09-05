@@ -27,6 +27,7 @@ PBR Sandbox:
         ✔ Figure out why context swap recreation is broken during resize event @done (6/5/2020, 10:54:32 PM)
         ✔ Figure out why render pass doesn't clear depth correctly @done (6/27/2020, 5:47:13 PM)
         ☐ Figure out why creating a 1024x1024 rgba32f texture crashes the app
+        ☐ Figure out why it's not possible to create rgb16f texture for normals
         ✔ Fix broken mipmap generation @done (7/8/2020, 7:05:02 PM)
     Improvements:
         ✔ Remove vulkan dependencies from VulkanTexture @done (7/7/2020, 10:17:57 PM)
@@ -47,13 +48,17 @@ PBR Sandbox:
         ☐ Environment / Reflection probes
         ☐ Area lights
         ☐ SSR
+        ☐ HBAO / HBAO+
+        ☐ VXAO
+        ☐ Multiscattering GGX + Shlick
+    Stream 42:
         ☐ Add separate profiler.dll & link with Tracy
-    Stream 41:
-        ☐ SSAO / HBAO
         ☐ Improve microfacet BRDFs
             ☐ Different impls for D/F/G specular factors
-            ☐ Multiscattering GGX + Shlick
             ☐ Clamp roughness + transform to perceived roughness
+    Stream 41:
+        ✔ Fix gbuffer normal storage @done (9/6/2020, 1:41:26 AM)
+        ✔ SSAO @done (9/6/2020, 1:23:36 AM)
     Stream 40:
         ✔ Integrate tracy for CPU / GPU profiling @done (8/28/2020, 9:10:05 PM)
         ✔ Identify bottlenecks @done (8/28/2020, 9:10:06 PM)
