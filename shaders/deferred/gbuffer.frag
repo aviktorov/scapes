@@ -17,7 +17,7 @@ layout(location = 4) in vec3 fragNormalVS;
 layout(location = 5) in vec3 fragPositionVS;
 
 layout(location = 0) out vec4 outBaseColor;
-layout(location = 1) out vec2 outNormal;
+layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outShading;
 
 void main()
@@ -40,6 +40,6 @@ void main()
 	outBaseColor.rgb = albedo.rgb;
 	outBaseColor.a = 1.0f;
 
-	outNormal = normalVS.xy * 0.5f + vec2(0.5f);
+	outNormal = normalVS.xyz;
 	outShading = vec2(roughness, metalness);
 }

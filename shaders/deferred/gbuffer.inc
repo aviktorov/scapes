@@ -8,9 +8,7 @@ layout(set = GBUFFER_SET, binding = 3) uniform sampler2D gbufferDepth;
 
 vec3 getNormalVS(vec2 uv)
 {
-	vec3 normalVS = texture(gbufferNormal, uv).xyz * 2.0f - vec3(1.0f);
-	normalVS.z = sqrt(max(0.0f, 1.0f - dot(normalVS.xy, normalVS.xy)));
-
+	vec3 normalVS = texture(gbufferNormal, uv).xyz;
 	return normalize(normalVS);
 }
 
