@@ -16,6 +16,6 @@ void main()
 	float ao = texture(ssaoTexture, fragTexCoord).r;
 
 	outHdrColor = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-	outHdrColor += texture(lbufferDiffuse, fragTexCoord) * pow(ao, ssao.intensity);
+	outHdrColor += texture(lbufferDiffuse, fragTexCoord) * ao;
 	outHdrColor += texture(lbufferSpecular, fragTexCoord);
 }

@@ -64,4 +64,5 @@ void main()
 	float occlusion = getOcclusion(originVS, TBN, ssao.radius, 3.0f, ssao.num_samples);
 
 	outSSAO = 1.0f - occlusion / ssao.num_samples;
+	outSSAO = pow(outSSAO, ssao.intensity);
 }
