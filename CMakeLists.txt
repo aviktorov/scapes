@@ -23,6 +23,7 @@ include_directories("3rdparty/volk")
 include_directories("3rdparty/vma")
 include_directories("3rdparty/imgui")
 include_directories("3rdparty/imgui/examples")
+include_directories("3rdparty/tracy")
 
 link_directories("3rdparty/assimp/lib")
 link_directories("3rdparty/glfw/lib")
