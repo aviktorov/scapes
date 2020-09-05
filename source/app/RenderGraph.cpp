@@ -88,7 +88,7 @@ void RenderGraph::shutdown()
 void RenderGraph::initGBuffer(uint32_t width, uint32_t height)
 {
 	gbuffer.base_color = driver->createTexture2D(width, height, 1, Format::R8G8B8A8_UNORM);
-	gbuffer.normal = driver->createTexture2D(width, height, 1, Format::R16G16_SFLOAT);
+	gbuffer.normal = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
 	gbuffer.shading = driver->createTexture2D(width, height, 1, Format::R8G8_UNORM);
 	gbuffer.depth = driver->createTexture2D(width, height, 1, Format::D32_SFLOAT);
 
@@ -162,6 +162,7 @@ void RenderGraph::initSSAO(uint32_t width, uint32_t height)
 
 void RenderGraph::shutdownSSAO()
 {
+	driver->unmap(ssao.gpu_data);
 	driver->destroyTexture(ssao.texture);
 	driver->destroyFrameBuffer(ssao.framebuffer);
 	driver->destroyUniformBuffer(ssao.gpu_data);
