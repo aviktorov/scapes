@@ -19,6 +19,11 @@
 
 using namespace render::backend;
 
+static float randf()
+{
+	return static_cast<float>(static_cast<double>(rand()) / RAND_MAX);
+}
+
 /*
  */
 RenderGraph::~RenderGraph()
@@ -34,6 +39,7 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	imgui_renderer->init(ImGui::GetCurrentContext());
 
 	initGBuffer(width, height);
+	initSSAO(width, height);
 	initLBuffer(width, height);
 	initComposite(width, height);
 
@@ -42,6 +48,9 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 
 	gbuffer_pass_vertex = resources->getGBufferVertexShader();
 	gbuffer_pass_fragment = resources->getGBufferFragmentShader();
+
+	ssao_pass_vertex = resources->getSSAOVertexShader();
+	ssao_pass_fragment = resources->getSSAOFragmentShader();
 
 	composite_pass_vertex = resources->getCompositeVertexShader();
 	composite_pass_fragment = resources->getCompositeFragmentShader();
@@ -53,6 +62,7 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 void RenderGraph::shutdown()
 {
 	shutdownGBuffer();
+	shutdownSSAO();
 	shutdownLBuffer();
 	shutdownComposite();
 
@@ -64,6 +74,9 @@ void RenderGraph::shutdown()
 
 	gbuffer_pass_vertex = nullptr;
 	gbuffer_pass_fragment = nullptr;
+
+	ssao_pass_vertex = nullptr;
+	ssao_pass_fragment = nullptr;
 
 	composite_pass_vertex = nullptr;
 	composite_pass_fragment = nullptr;
@@ -105,6 +118,57 @@ void RenderGraph::shutdownGBuffer()
 	driver->destroyBindSet(gbuffer.bindings);
 
 	memset(&gbuffer, 0, sizeof(GBuffer));
+}
+
+void RenderGraph::initSSAO(uint32_t width, uint32_t height)
+{
+	ssao.gpu_data = driver->createUniformBuffer(BufferType::DYNAMIC, sizeof(SSAO::CPUData));
+	ssao.cpu_data = reinterpret_cast<SSAO::CPUData *>(driver->map(ssao.gpu_data));
+
+	ssao.texture = driver->createTexture2D(width, height, 1, Format::R8_UNORM);
+
+	FrameBufferAttachment ssao_attachments[1] = {
+		{ FrameBufferAttachmentType::COLOR, ssao.texture },
+	};
+
+	ssao.framebuffer = driver->createFrameBuffer(1, ssao_attachments);
+	ssao.bindings = driver->createBindSet();
+	ssao.internal_bindings = driver->createBindSet();
+
+	driver->bindTexture(ssao.bindings, 1, ssao.texture);
+	driver->bindUniformBuffer(ssao.bindings, 0, ssao.gpu_data);
+	driver->bindUniformBuffer(ssao.internal_bindings, 0, ssao.gpu_data);
+
+	ssao.cpu_data->num_samples = 32;
+	ssao.cpu_data->intensity = 1.0f;
+	ssao.cpu_data->radius = 1.0f;
+
+	for (uint32_t i = 0; i < SSAO::CPUData::MAX_SAMPLES; ++i)
+	{
+		glm::vec4 sample;
+		float radius = randf();
+		radius = pow(radius, 3.0f);
+		float phi = glm::radians(randf() * 360.0f);
+		float theta = glm::radians(randf() * 90.0f);
+
+		sample.x = cos(phi) * cos(theta) * radius;
+		sample.y = sin(phi) * cos(theta) * radius;
+		sample.z = sin(theta) * radius;
+		sample.w = 1.0f;
+
+		ssao.cpu_data->samples[i] = sample;
+	}
+}
+
+void RenderGraph::shutdownSSAO()
+{
+	driver->destroyTexture(ssao.texture);
+	driver->destroyFrameBuffer(ssao.framebuffer);
+	driver->destroyUniformBuffer(ssao.gpu_data);
+	driver->destroyBindSet(ssao.internal_bindings);
+	driver->destroyBindSet(ssao.bindings);
+
+	memset(&ssao, 0, sizeof(SSAO));
 }
 
 void RenderGraph::initLBuffer(uint32_t width, uint32_t height)
@@ -198,12 +262,18 @@ void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame)
 	}
 
 	{
-		ZoneScopedN("LBuffer pass");
+		ZoneScopedN("SSAO");
 
 		driver->setBlending(false);
 		driver->setCullMode(render::backend::CullMode::NONE);
 		driver->setDepthWrite(false);
 		driver->setDepthTest(false);
+
+		renderSSAO(scene, frame);
+	}
+
+	{
+		ZoneScopedN("LBuffer pass");
 
 		renderLBuffer(scene, frame);
 	}
@@ -266,6 +336,34 @@ void RenderGraph::renderGBuffer(const Scene *scene, const render::RenderFrame &f
 	driver->endRenderPass(frame.command_buffer);
 }
 
+void RenderGraph::renderSSAO(const Scene *scene, const render::RenderFrame &frame)
+{
+	RenderPassClearValue clear_value = {};
+
+	RenderPassLoadOp load_op = RenderPassLoadOp::DONT_CARE;
+	RenderPassStoreOp store_op = RenderPassStoreOp::STORE;
+
+	RenderPassInfo info;
+	info.clear_values = &clear_value;
+	info.load_ops = &load_op;
+	info.store_ops = &store_op;
+
+	driver->beginRenderPass(frame.command_buffer, ssao.framebuffer, &info);
+
+	driver->clearPushConstants();
+	driver->allocateBindSets(3);
+	driver->setBindSet(0, frame.bind_set);
+	driver->setBindSet(1, gbuffer.bindings);
+	driver->setBindSet(2, ssao.internal_bindings);
+
+	driver->clearShaders();
+	driver->setShader(render::backend::ShaderType::VERTEX, ssao_pass_vertex->getBackend());
+	driver->setShader(render::backend::ShaderType::FRAGMENT, ssao_pass_fragment->getBackend());
+
+	driver->drawIndexedPrimitive(frame.command_buffer, quad->getRenderPrimitive());
+	driver->endRenderPass(frame.command_buffer);
+}
+
 void RenderGraph::renderLBuffer(const Scene *scene, const render::RenderFrame &frame)
 {
 	RenderPassClearValue clear_values[2];
@@ -325,8 +423,9 @@ void RenderGraph::renderComposite(const Scene *scene, const render::RenderFrame 
 	driver->beginRenderPass(frame.command_buffer, composite.framebuffer, &info);
 
 	driver->clearPushConstants();
-	driver->allocateBindSets(1);
+	driver->allocateBindSets(2);
 	driver->setBindSet(0, lbuffer.bindings);
+	driver->setBindSet(1, ssao.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, composite_pass_vertex->getBackend());

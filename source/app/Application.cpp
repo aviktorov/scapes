@@ -59,7 +59,7 @@ void Application::update()
 
 	const float aspect = swap_chain->getWidth() / (float)swap_chain->getHeight();
 	const float zNear = 0.1f;
-	const float zFar = 100000.0f;
+	const float zFar = 10000.0f;
 
 	glm::vec3 cameraPos;
 	cameraPos.x = static_cast<float>(glm::cos(camera.phi) * glm::cos(camera.theta) * camera.radius);
@@ -115,6 +115,10 @@ void Application::update()
 	ImGui::SliderFloat("Metalness", &state.userMetalness, 0.0f, 1.0f);
 	ImGui::SliderFloat("Roughness", &state.userRoughness, 0.0f, 1.0f);
 
+	ImGui::SliderFloat("Radius", &render_graph->getSSAO().cpu_data->radius, 0.0f, 100.0f);
+	ImGui::SliderFloat("Intensity", &render_graph->getSSAO().cpu_data->intensity, 0.0f, 100.0f);
+	ImGui::SliderInt("Samples", (int*)&render_graph->getSSAO().cpu_data->num_samples, 32, 256);
+
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
@@ -140,11 +144,13 @@ void Application::update()
 
 	ImTextureID diffuse_id = render_graph->fetchTextureID(render_graph->getLBuffer().diffuse);
 	ImTextureID specular_id = render_graph->fetchTextureID(render_graph->getLBuffer().specular);
+	ImTextureID ssao_id = render_graph->fetchTextureID(render_graph->getSSAO().texture);
 
 	ImGui::BeginGroup();
-		ImGui::Image(diffuse_id, ImVec2(512, 512));
+		ImGui::Image(diffuse_id, ImVec2(256, 256));
 		ImGui::SameLine();
-		ImGui::Image(specular_id, ImVec2(512, 512));
+		ImGui::Image(specular_id, ImVec2(256, 256));
+		ImGui::Image(ssao_id, ImVec2(256, 256));
 	ImGui::EndGroup();
 
 	ImGui::End();

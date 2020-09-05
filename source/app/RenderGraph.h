@@ -1,6 +1,7 @@
 #pragma once
 
 #include <render/backend/driver.h>
+#include <glm/vec4.hpp>
 
 class ApplicationResources;
 class Scene;
@@ -33,7 +34,32 @@ struct LBuffer
 	render::backend::BindSet *bindings {nullptr};
 };
 
-// TODO: SSAO
+struct SSAO
+{
+	struct CPUData
+	{
+		enum
+		{
+			MAX_SAMPLES = 256,
+		};
+
+		uint32_t num_samples {32};
+		float radius {1.0f};
+		float intensity {1.0f};
+		float alignment[1]; // we need 16 byte alignment
+		glm::vec4 samples[MAX_SAMPLES];
+	};
+
+	CPUData *cpu_data {nullptr};
+	render::backend::UniformBuffer *gpu_data {nullptr};
+	render::backend::BindSet *internal_bindings {nullptr};
+
+	render::backend::Texture *texture {nullptr};
+	render::backend::FrameBuffer *framebuffer {nullptr};
+	render::backend::BindSet *bindings {nullptr};
+
+};
+
 // TODO: SSR
 
 struct Composite
@@ -62,10 +88,15 @@ public:
 
 	const GBuffer &getGBuffer() const { return gbuffer; }
 	const LBuffer &getLBuffer() const { return lbuffer; }
+	const SSAO &getSSAO() const { return ssao; }
+	SSAO &getSSAO() { return ssao; }
 
 private:
 	void initGBuffer(uint32_t width, uint32_t height);
 	void shutdownGBuffer();
+
+	void initSSAO(uint32_t width, uint32_t height);
+	void shutdownSSAO();
 
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
@@ -74,6 +105,7 @@ private:
 	void shutdownComposite();
 
 	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame);
+	void renderSSAO(const Scene *scene, const render::RenderFrame &frame);
 	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
 	void renderFinal(const Scene *scene, const render::RenderFrame &frame);
@@ -82,6 +114,7 @@ private:
 	render::backend::Driver *driver {nullptr};
 
 	GBuffer gbuffer;
+	SSAO ssao;
 	LBuffer lbuffer;
 	Composite composite;
 
@@ -90,6 +123,9 @@ private:
 
 	const render::Shader *gbuffer_pass_vertex {nullptr};
 	const render::Shader *gbuffer_pass_fragment {nullptr};
+
+	const render::Shader *ssao_pass_vertex {nullptr};
+	const render::Shader *ssao_pass_fragment {nullptr};
 
 	const render::Shader *composite_pass_vertex {nullptr};
 	const render::Shader *composite_pass_fragment {nullptr};
