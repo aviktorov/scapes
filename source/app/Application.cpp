@@ -115,9 +115,12 @@ void Application::update()
 	ImGui::SliderFloat("Metalness", &state.userMetalness, 0.0f, 1.0f);
 	ImGui::SliderFloat("Roughness", &state.userRoughness, 0.0f, 1.0f);
 
-	ImGui::SliderFloat("Radius", &render_graph->getSSAO().cpu_data->radius, 0.0f, 100.0f);
-	ImGui::SliderFloat("Intensity", &render_graph->getSSAO().cpu_data->intensity, 0.0f, 100.0f);
-	ImGui::SliderInt("Samples", (int*)&render_graph->getSSAO().cpu_data->num_samples, 32, 256);
+	ImGui::SliderFloat("Radius", &render_graph->getSSAOKernel().cpu_data->radius, 0.0f, 100.0f);
+	ImGui::SliderFloat("Intensity", &render_graph->getSSAOKernel().cpu_data->intensity, 0.0f, 100.0f);
+	if (ImGui::SliderInt("Samples", (int*)&render_graph->getSSAOKernel().cpu_data->num_samples, 32, 256))
+	{
+		render_graph->buildSSAOKernel();
+	}
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
@@ -144,13 +147,16 @@ void Application::update()
 
 	ImTextureID diffuse_id = render_graph->fetchTextureID(render_graph->getLBuffer().diffuse);
 	ImTextureID specular_id = render_graph->fetchTextureID(render_graph->getLBuffer().specular);
-	ImTextureID ssao_id = render_graph->fetchTextureID(render_graph->getSSAO().texture);
+	ImTextureID ssao_noised_id = render_graph->fetchTextureID(render_graph->getSSAONoised().texture);
+	ImTextureID ssao_blurred_id = render_graph->fetchTextureID(render_graph->getSSAOBlurred().texture);
 
 	ImGui::BeginGroup();
 		ImGui::Image(diffuse_id, ImVec2(256, 256));
 		ImGui::SameLine();
 		ImGui::Image(specular_id, ImVec2(256, 256));
-		ImGui::Image(ssao_id, ImVec2(256, 256));
+		ImGui::Image(ssao_noised_id, ImVec2(256, 256));
+		ImGui::SameLine();
+		ImGui::Image(ssao_blurred_id, ImVec2(256, 256));
 	ImGui::EndGroup();
 
 	ImGui::End();

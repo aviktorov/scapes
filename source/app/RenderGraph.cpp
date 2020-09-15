@@ -22,7 +22,9 @@ using namespace render::backend;
 static float randf()
 {
 	return static_cast<float>(static_cast<double>(rand()) / RAND_MAX);
-}
+};
+
+
 
 /*
  */
@@ -39,7 +41,9 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	imgui_renderer->init(ImGui::GetCurrentContext());
 
 	initGBuffer(width, height);
-	initSSAO(width, height);
+	initSSAOKernel();
+	initSSAO(ssao_noised, width, height);
+	initSSAO(ssao_blurred, width, height);
 	initLBuffer(width, height);
 	initComposite(width, height);
 
@@ -52,6 +56,9 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	ssao_pass_vertex = resources->getSSAOVertexShader();
 	ssao_pass_fragment = resources->getSSAOFragmentShader();
 
+	ssao_blur_pass_vertex = resources->getSSAOBlurVertexShader();
+	ssao_blur_pass_fragment = resources->getSSAOBlurFragmentShader();
+
 	composite_pass_vertex = resources->getCompositeVertexShader();
 	composite_pass_fragment = resources->getCompositeFragmentShader();
 
@@ -62,7 +69,9 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 void RenderGraph::shutdown()
 {
 	shutdownGBuffer();
-	shutdownSSAO();
+	shutdownSSAOKernel();
+	shutdownSSAO(ssao_noised);
+	shutdownSSAO(ssao_blurred);
 	shutdownLBuffer();
 	shutdownComposite();
 
@@ -120,11 +129,70 @@ void RenderGraph::shutdownGBuffer()
 	memset(&gbuffer, 0, sizeof(GBuffer));
 }
 
-void RenderGraph::initSSAO(uint32_t width, uint32_t height)
+void RenderGraph::initSSAOKernel()
 {
-	ssao.gpu_data = driver->createUniformBuffer(BufferType::DYNAMIC, sizeof(SSAO::CPUData));
-	ssao.cpu_data = reinterpret_cast<SSAO::CPUData *>(driver->map(ssao.gpu_data));
+	ssao_kernel.gpu_data = driver->createUniformBuffer(BufferType::DYNAMIC, sizeof(SSAOKernel::CPUData));
+	ssao_kernel.cpu_data = reinterpret_cast<SSAOKernel::CPUData *>(driver->map(ssao_kernel.gpu_data));
 
+	uint32_t data[SSAOKernel::MAX_NOISE_SAMPLES];
+	for (int i = 0; i < SSAOKernel::MAX_NOISE_SAMPLES; ++i)
+	{
+		const glm::vec3 &noise = glm::normalize(glm::vec3(randf(), randf(), 0.0f));
+		data[i] = glm::packHalf2x16(noise);
+	}
+
+	ssao_kernel.noise_texture = driver->createTexture2D(4, 4, 1, Format::R16G16_SFLOAT, Multisample::COUNT_1, data);
+
+	ssao_kernel.cpu_data->num_samples = 32;
+	ssao_kernel.cpu_data->intensity = 1.0f;
+	ssao_kernel.cpu_data->radius = 1.0f;
+
+	buildSSAOKernel();
+
+	ssao_kernel.bindings = driver->createBindSet();
+
+	driver->bindUniformBuffer(ssao_kernel.bindings, 0, ssao_kernel.gpu_data);
+	driver->bindTexture(ssao_kernel.bindings, 1, ssao_kernel.noise_texture);
+}
+
+void RenderGraph::buildSSAOKernel()
+{
+	uint32_t num_samples = ssao_kernel.cpu_data->num_samples;
+	float inum_samples = 1.0f / static_cast<float>(num_samples);
+
+	for (uint32_t i = 0; i < num_samples; ++i)
+	{
+		glm::vec4 sample;
+		float radius = randf();
+		float phi = glm::radians(randf() * 360.0f);
+		float theta = glm::radians(randf() * 90.0f);
+
+		float scale = i * inum_samples;
+		scale = glm::mix(0.1f, 1.0f, scale * scale);
+
+		radius *= scale;
+
+		sample.x = cos(phi) * cos(theta) * radius;
+		sample.y = sin(phi) * cos(theta) * radius;
+		sample.z = sin(theta) * radius;
+		sample.w = 1.0f;
+
+		ssao_kernel.cpu_data->samples[i] = sample;
+	}
+}
+
+void RenderGraph::shutdownSSAOKernel()
+{
+	driver->unmap(ssao_kernel.gpu_data);
+	driver->destroyUniformBuffer(ssao_kernel.gpu_data);
+	driver->destroyTexture(ssao_kernel.noise_texture);
+	driver->destroyBindSet(ssao_kernel.bindings);
+
+	memset(&ssao_kernel, 0, sizeof(SSAOKernel));
+}
+
+void RenderGraph::initSSAO(SSAO &ssao, uint32_t width, uint32_t height)
+{
 	ssao.texture = driver->createTexture2D(width, height, 1, Format::R8_UNORM);
 
 	FrameBufferAttachment ssao_attachments[1] = {
@@ -133,40 +201,14 @@ void RenderGraph::initSSAO(uint32_t width, uint32_t height)
 
 	ssao.framebuffer = driver->createFrameBuffer(1, ssao_attachments);
 	ssao.bindings = driver->createBindSet();
-	ssao.internal_bindings = driver->createBindSet();
 
-	driver->bindTexture(ssao.bindings, 1, ssao.texture);
-	driver->bindUniformBuffer(ssao.bindings, 0, ssao.gpu_data);
-	driver->bindUniformBuffer(ssao.internal_bindings, 0, ssao.gpu_data);
-
-	ssao.cpu_data->num_samples = 32;
-	ssao.cpu_data->intensity = 1.0f;
-	ssao.cpu_data->radius = 1.0f;
-
-	for (uint32_t i = 0; i < SSAO::CPUData::MAX_SAMPLES; ++i)
-	{
-		glm::vec4 sample;
-		float radius = randf();
-		radius = pow(radius, 3.0f);
-		float phi = glm::radians(randf() * 360.0f);
-		float theta = glm::radians(randf() * 90.0f);
-
-		sample.x = cos(phi) * cos(theta) * radius;
-		sample.y = sin(phi) * cos(theta) * radius;
-		sample.z = sin(theta) * radius;
-		sample.w = 1.0f;
-
-		ssao.cpu_data->samples[i] = sample;
-	}
+	driver->bindTexture(ssao.bindings, 0, ssao.texture);
 }
 
-void RenderGraph::shutdownSSAO()
+void RenderGraph::shutdownSSAO(SSAO &ssao)
 {
-	driver->unmap(ssao.gpu_data);
 	driver->destroyTexture(ssao.texture);
 	driver->destroyFrameBuffer(ssao.framebuffer);
-	driver->destroyUniformBuffer(ssao.gpu_data);
-	driver->destroyBindSet(ssao.internal_bindings);
 	driver->destroyBindSet(ssao.bindings);
 
 	memset(&ssao, 0, sizeof(SSAO));
@@ -230,9 +272,15 @@ void RenderGraph::resize(uint32_t width, uint32_t height)
 	shutdownLBuffer();
 	shutdownComposite();
 
+	shutdownSSAO(ssao_noised);
+	shutdownSSAO(ssao_blurred);
+
 	initGBuffer(width, height);
 	initLBuffer(width, height);
 	initComposite(width, height);
+
+	initSSAO(ssao_noised, width, height);
+	initSSAO(ssao_blurred, width, height);
 }
 
 /*
@@ -271,6 +319,17 @@ void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame)
 		driver->setDepthTest(false);
 
 		renderSSAO(scene, frame);
+	}
+
+	{
+		ZoneScopedN("SSAO Blur");
+
+		driver->setBlending(false);
+		driver->setCullMode(render::backend::CullMode::NONE);
+		driver->setDepthWrite(false);
+		driver->setDepthTest(false);
+
+		renderSSAOBlur(scene, frame);
 	}
 
 	{
@@ -349,17 +408,44 @@ void RenderGraph::renderSSAO(const Scene *scene, const render::RenderFrame &fram
 	info.load_ops = &load_op;
 	info.store_ops = &store_op;
 
-	driver->beginRenderPass(frame.command_buffer, ssao.framebuffer, &info);
+	driver->beginRenderPass(frame.command_buffer, ssao_noised.framebuffer, &info);
 
 	driver->clearPushConstants();
 	driver->allocateBindSets(3);
 	driver->setBindSet(0, frame.bind_set);
 	driver->setBindSet(1, gbuffer.bindings);
-	driver->setBindSet(2, ssao.internal_bindings);
+	driver->setBindSet(2, ssao_kernel.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, ssao_pass_vertex->getBackend());
 	driver->setShader(render::backend::ShaderType::FRAGMENT, ssao_pass_fragment->getBackend());
+
+	driver->drawIndexedPrimitive(frame.command_buffer, quad->getRenderPrimitive());
+	driver->endRenderPass(frame.command_buffer);
+}
+
+void RenderGraph::renderSSAOBlur(const Scene *scene, const render::RenderFrame &frame)
+{
+	RenderPassClearValue clear_value = {};
+
+	RenderPassLoadOp load_op = RenderPassLoadOp::DONT_CARE;
+	RenderPassStoreOp store_op = RenderPassStoreOp::STORE;
+
+	RenderPassInfo info;
+	info.clear_values = &clear_value;
+	info.load_ops = &load_op;
+	info.store_ops = &store_op;
+
+	driver->beginRenderPass(frame.command_buffer, ssao_blurred.framebuffer, &info);
+
+	driver->clearPushConstants();
+	driver->allocateBindSets(2);
+	driver->setBindSet(0, frame.bind_set);
+	driver->setBindSet(1, ssao_noised.bindings);
+
+	driver->clearShaders();
+	driver->setShader(render::backend::ShaderType::VERTEX, ssao_blur_pass_vertex->getBackend());
+	driver->setShader(render::backend::ShaderType::FRAGMENT, ssao_blur_pass_fragment->getBackend());
 
 	driver->drawIndexedPrimitive(frame.command_buffer, quad->getRenderPrimitive());
 	driver->endRenderPass(frame.command_buffer);
@@ -426,14 +512,13 @@ void RenderGraph::renderComposite(const Scene *scene, const render::RenderFrame 
 	driver->clearPushConstants();
 	driver->allocateBindSets(2);
 	driver->setBindSet(0, lbuffer.bindings);
-	driver->setBindSet(1, ssao.bindings);
+	driver->setBindSet(1, ssao_blurred.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, composite_pass_vertex->getBackend());
 	driver->setShader(render::backend::ShaderType::FRAGMENT, composite_pass_fragment->getBackend());
 
-	// TODO: SSAO
-	// TODO: IBL + GI
+	// TODO: GI
 	// TODO: SSR
 
 	driver->drawIndexedPrimitive(frame.command_buffer, quad->getRenderPrimitive());

@@ -7,9 +7,8 @@
 #define GBUFFER_SET 1
 #include <deferred/gbuffer.inc>
 
-#define SSAO_INTERNAL
-#define SSAO_SET 2
-#include <deferred/ssao.inc>
+#define SSAO_KERNEL_SET 2
+#include <deferred/ssao_kernel.inc>
 
 #include <common/brdf.inc>
 
@@ -24,7 +23,7 @@ float getOcclusion(vec3 originVS, mat3 TBN, float radius, float bias, int num_sa
 
 	for (int i = 0; i < num_samples; ++i)
 	{
-		vec3 offset = ssao.samples[i].xyz;
+		vec3 offset = ssao_kernel.samples[i].xyz;
 		vec3 sample_positionVS = originVS + TBN * offset * radius;
 
 		vec4 ndc = ubo.proj * vec4(sample_positionVS, 1.0f);
@@ -53,16 +52,17 @@ void main()
 {
 	vec3 originVS = getPositionVS(fragTexCoord, ubo.invProj);
 
-	vec3 random_direction = normalize(vec3(mod(fragTexCoord * 100.0f, 1.0f), 0.0f));
+	vec2 noise_uv = fragTexCoord * textureSize(gbufferBaseColor, 0) / textureSize(ssaoKernelNoiseTexture, 0).xy;
+	vec3 random_direction = vec3(texture(ssaoKernelNoiseTexture, noise_uv).xy, 0.0f);
 
 	vec3 normalVS = getNormalVS(fragTexCoord);
 	vec3 tangentVS   = normalize(random_direction - normalVS * dot(random_direction, normalVS));
 	vec3 binormalVS = cross(normalVS, tangentVS);
 
-	mat3 TBN = mat3(tangentVS, binormalVS, normalVS); 
+	mat3 TBN = mat3(tangentVS, binormalVS, normalVS);
 
-	float occlusion = getOcclusion(originVS, TBN, ssao.radius, 3.0f, ssao.num_samples);
+	float occlusion = getOcclusion(originVS, TBN, ssao_kernel.radius, 3.0f, ssao_kernel.num_samples);
 
-	outSSAO = 1.0f - occlusion / ssao.num_samples;
-	outSSAO = pow(outSSAO, ssao.intensity);
+	outSSAO = 1.0f - occlusion / ssao_kernel.num_samples;
+	outSSAO = pow(outSSAO, ssao_kernel.intensity);
 }

@@ -34,15 +34,16 @@ struct LBuffer
 	render::backend::BindSet *bindings {nullptr};
 };
 
-struct SSAO
+struct SSAOKernel
 {
+	enum
+	{
+		MAX_SAMPLES = 256,
+		MAX_NOISE_SAMPLES = 16,
+	};
+
 	struct CPUData
 	{
-		enum
-		{
-			MAX_SAMPLES = 256,
-		};
-
 		uint32_t num_samples {32};
 		float radius {1.0f};
 		float intensity {1.0f};
@@ -52,12 +53,15 @@ struct SSAO
 
 	CPUData *cpu_data {nullptr};
 	render::backend::UniformBuffer *gpu_data {nullptr};
-	render::backend::BindSet *internal_bindings {nullptr};
+	render::backend::Texture *noise_texture {nullptr};
+	render::backend::BindSet *bindings {nullptr};
+};
 
+struct SSAO
+{
+	render::backend::BindSet *bindings {nullptr};
 	render::backend::Texture *texture {nullptr};
 	render::backend::FrameBuffer *framebuffer {nullptr};
-	render::backend::BindSet *bindings {nullptr};
-
 };
 
 // TODO: SSR
@@ -88,15 +92,24 @@ public:
 
 	const GBuffer &getGBuffer() const { return gbuffer; }
 	const LBuffer &getLBuffer() const { return lbuffer; }
-	const SSAO &getSSAO() const { return ssao; }
-	SSAO &getSSAO() { return ssao; }
+
+	const SSAOKernel &getSSAOKernel() const { return ssao_kernel; }
+	SSAOKernel &getSSAOKernel() { return ssao_kernel; }
+
+	const SSAO &getSSAONoised() const { return ssao_noised; }
+	const SSAO &getSSAOBlurred() const { return ssao_blurred; }
+
+	void buildSSAOKernel();
 
 private:
 	void initGBuffer(uint32_t width, uint32_t height);
 	void shutdownGBuffer();
 
-	void initSSAO(uint32_t width, uint32_t height);
-	void shutdownSSAO();
+	void initSSAOKernel();
+	void shutdownSSAOKernel();
+
+	void initSSAO(SSAO &ssao, uint32_t width, uint32_t height);
+	void shutdownSSAO(SSAO &ssao);
 
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
@@ -106,6 +119,7 @@ private:
 
 	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderSSAO(const Scene *scene, const render::RenderFrame &frame);
+	void renderSSAOBlur(const Scene *scene, const render::RenderFrame &frame);
 	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
 	void renderFinal(const Scene *scene, const render::RenderFrame &frame);
@@ -114,7 +128,9 @@ private:
 	render::backend::Driver *driver {nullptr};
 
 	GBuffer gbuffer;
-	SSAO ssao;
+	SSAOKernel ssao_kernel;
+	SSAO ssao_noised;
+	SSAO ssao_blurred;
 	LBuffer lbuffer;
 	Composite composite;
 
@@ -126,6 +142,9 @@ private:
 
 	const render::Shader *ssao_pass_vertex {nullptr};
 	const render::Shader *ssao_pass_fragment {nullptr};
+
+	const render::Shader *ssao_blur_pass_vertex {nullptr};
+	const render::Shader *ssao_blur_pass_fragment {nullptr};
 
 	const render::Shader *composite_pass_vertex {nullptr};
 	const render::Shader *composite_pass_fragment {nullptr};
