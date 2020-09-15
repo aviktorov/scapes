@@ -35,6 +35,7 @@ PBR Sandbox:
         ✔ Create separate cmake script for backend @done (7/26/2020, 10:19:07 PM)
         ✔ Organize, move & renames files in vulkan backend @done (7/14/2020, 8:48:45 PM)
         ✔ Organize files in the engine @done (7/7/2020, 10:17:53 PM)
+        ☐ Fix artifacts for roughness set to 0 and 1
     Future:
         ☐ Figure out different probability density functions for different NDF
         ☐ Implement Oren-Nayar diffuse BRDF
@@ -47,15 +48,14 @@ PBR Sandbox:
         ☐ Directional light & shadows
         ☐ Environment / Reflection probes
         ☐ Area lights
-        ☐ SSR
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
+    Stream 43:
+        ☐ SSR
     Stream 42:
-        ☐ Add separate profiler.dll & link with Tracy
-        ☐ Improve microfacet BRDFs
-            ☐ Different impls for D/F/G specular factors
-            ☐ Clamp roughness + transform to perceived roughness
+        ✔ Add random rotation vectors to SSAO kernel @done (9/15/2020, 8:13:05 PM)
+        ✔ Add SSAO blur pass @done (9/15/2020, 9:09:58 PM)
     Stream 41:
         ✔ Fix gbuffer normal storage @done (9/6/2020, 1:41:26 AM)
         ✔ SSAO @done (9/6/2020, 1:23:36 AM)
