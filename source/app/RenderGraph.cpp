@@ -44,6 +44,8 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	initSSAOKernel();
 	initSSAO(ssao_noised, width, height);
 	initSSAO(ssao_blurred, width, height);
+	initSSRData();
+	initSSR(width, height);
 	initLBuffer(width, height);
 	initComposite(width, height);
 
@@ -59,6 +61,9 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	ssao_blur_pass_vertex = resources->getSSAOBlurVertexShader();
 	ssao_blur_pass_fragment = resources->getSSAOBlurFragmentShader();
 
+	ssr_pass_vertex = resources->getSSRVertexShader();
+	ssr_pass_fragment = resources->getSSRFragmentShader();
+
 	composite_pass_vertex = resources->getCompositeVertexShader();
 	composite_pass_fragment = resources->getCompositeFragmentShader();
 
@@ -72,6 +77,8 @@ void RenderGraph::shutdown()
 	shutdownSSAOKernel();
 	shutdownSSAO(ssao_noised);
 	shutdownSSAO(ssao_blurred);
+	shutdownSSRData();
+	shutdownSSR();
 	shutdownLBuffer();
 	shutdownComposite();
 
@@ -86,6 +93,12 @@ void RenderGraph::shutdown()
 
 	ssao_pass_vertex = nullptr;
 	ssao_pass_fragment = nullptr;
+
+	ssao_blur_pass_vertex = nullptr;
+	ssao_blur_pass_fragment = nullptr;
+
+	ssr_pass_vertex = nullptr;
+	ssr_pass_fragment = nullptr;
 
 	composite_pass_vertex = nullptr;
 	composite_pass_fragment = nullptr;
@@ -214,6 +227,51 @@ void RenderGraph::shutdownSSAO(SSAO &ssao)
 	memset(&ssao, 0, sizeof(SSAO));
 }
 
+void RenderGraph::initSSRData()
+{
+	ssr_data.gpu_data = driver->createUniformBuffer(BufferType::DYNAMIC, sizeof(SSRData::CPUData));
+	ssr_data.cpu_data = reinterpret_cast<SSRData::CPUData *>(driver->map(ssr_data.gpu_data));
+
+	ssr_data.cpu_data->step = 1.0f;
+	ssr_data.cpu_data->num_steps = 8;
+
+	ssr_data.bindings = driver->createBindSet();
+
+	driver->bindUniformBuffer(ssr_data.bindings, 0, ssr_data.gpu_data);
+}
+
+void RenderGraph::shutdownSSRData()
+{
+	driver->unmap(ssr_data.gpu_data);
+	driver->destroyUniformBuffer(ssr_data.gpu_data);
+	driver->destroyBindSet(ssr_data.bindings);
+
+	memset(&ssr_data, 0, sizeof(SSRData));
+}
+
+void RenderGraph::initSSR(uint32_t width, uint32_t height)
+{
+	ssr.texture = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
+
+	FrameBufferAttachment ssr_attachments[1] = {
+		{ FrameBufferAttachmentType::COLOR, ssr.texture },
+	};
+
+	ssr.framebuffer = driver->createFrameBuffer(1, ssr_attachments);
+	ssr.bindings = driver->createBindSet();
+
+	driver->bindTexture(ssr.bindings, 0, ssr.texture);
+}
+
+void RenderGraph::shutdownSSR()
+{
+	driver->destroyTexture(ssr.texture);
+	driver->destroyFrameBuffer(ssr.framebuffer);
+	driver->destroyBindSet(ssr.bindings);
+
+	memset(&ssr, 0, sizeof(SSR));
+}
+
 void RenderGraph::initLBuffer(uint32_t width, uint32_t height)
 {
 	lbuffer.diffuse = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
@@ -275,12 +333,16 @@ void RenderGraph::resize(uint32_t width, uint32_t height)
 	shutdownSSAO(ssao_noised);
 	shutdownSSAO(ssao_blurred);
 
+	shutdownSSR();
+
 	initGBuffer(width, height);
 	initLBuffer(width, height);
 	initComposite(width, height);
 
 	initSSAO(ssao_noised, width, height);
 	initSSAO(ssao_blurred, width, height);
+
+	initSSR(width, height);
 }
 
 /*
@@ -336,6 +398,17 @@ void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame)
 		ZoneScopedN("LBuffer pass");
 
 		renderLBuffer(scene, frame);
+	}
+
+	{
+		ZoneScopedN("SSR");
+
+		driver->setBlending(false);
+		driver->setCullMode(render::backend::CullMode::NONE);
+		driver->setDepthWrite(false);
+		driver->setDepthTest(false);
+
+		renderSSR(scene, frame);
 	}
 
 	{
@@ -451,6 +524,35 @@ void RenderGraph::renderSSAOBlur(const Scene *scene, const render::RenderFrame &
 	driver->endRenderPass(frame.command_buffer);
 }
 
+void RenderGraph::renderSSR(const Scene *scene, const render::RenderFrame &frame)
+{
+	RenderPassClearValue clear_value = {};
+
+	RenderPassLoadOp load_op = RenderPassLoadOp::DONT_CARE;
+	RenderPassStoreOp store_op = RenderPassStoreOp::STORE;
+
+	RenderPassInfo info;
+	info.clear_values = &clear_value;
+	info.load_ops = &load_op;
+	info.store_ops = &store_op;
+
+	driver->beginRenderPass(frame.command_buffer, ssr.framebuffer, &info);
+
+	driver->clearPushConstants();
+	driver->allocateBindSets(4);
+	driver->setBindSet(0, frame.bind_set);
+	driver->setBindSet(1, gbuffer.bindings);
+	driver->setBindSet(2, ssr_data.bindings);
+	driver->setBindSet(3, lbuffer.bindings);
+
+	driver->clearShaders();
+	driver->setShader(render::backend::ShaderType::VERTEX, ssr_pass_vertex->getBackend());
+	driver->setShader(render::backend::ShaderType::FRAGMENT, ssr_pass_fragment->getBackend());
+
+	driver->drawIndexedPrimitive(frame.command_buffer, quad->getRenderPrimitive());
+	driver->endRenderPass(frame.command_buffer);
+}
+
 void RenderGraph::renderLBuffer(const Scene *scene, const render::RenderFrame &frame)
 {
 	RenderPassClearValue clear_values[2];
@@ -510,16 +612,16 @@ void RenderGraph::renderComposite(const Scene *scene, const render::RenderFrame 
 	driver->beginRenderPass(frame.command_buffer, composite.framebuffer, &info);
 
 	driver->clearPushConstants();
-	driver->allocateBindSets(2);
+	driver->allocateBindSets(3);
 	driver->setBindSet(0, lbuffer.bindings);
 	driver->setBindSet(1, ssao_blurred.bindings);
+	driver->setBindSet(2, ssr.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, composite_pass_vertex->getBackend());
 	driver->setShader(render::backend::ShaderType::FRAGMENT, composite_pass_fragment->getBackend());
 
 	// TODO: GI
-	// TODO: SSR
 
 	driver->drawIndexedPrimitive(frame.command_buffer, quad->getRenderPrimitive());
 	driver->endRenderPass(frame.command_buffer);

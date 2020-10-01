@@ -30,6 +30,8 @@ namespace config
 		PassSSAOFragment,
 		PassSSAOBlurVertex,
 		PassSSAOBlurFragment,
+		PassSSRVertex,
+		PassSSRFragment,
 		PassCompositeVertex,
 		PassCompositeFragment,
 		PassFinalVertex,
@@ -81,6 +83,9 @@ public:
 
 	inline const render::Shader *getSSAOBlurVertexShader() const { return resources.getShader(config::Shaders::PassSSAOBlurVertex); }
 	inline const render::Shader *getSSAOBlurFragmentShader() const { return resources.getShader(config::Shaders::PassSSAOBlurFragment); }
+
+	inline const render::Shader *getSSRVertexShader() const { return resources.getShader(config::Shaders::PassSSRVertex); }
+	inline const render::Shader *getSSRFragmentShader() const { return resources.getShader(config::Shaders::PassSSRFragment); }
 
 	inline const render::Shader *getCompositeVertexShader() const { return resources.getShader(config::Shaders::PassCompositeVertex); }
 	inline const render::Shader *getCompositeFragmentShader() const { return resources.getShader(config::Shaders::PassCompositeFragment); }

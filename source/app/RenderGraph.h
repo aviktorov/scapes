@@ -53,18 +53,43 @@ struct SSAOKernel
 
 	CPUData *cpu_data {nullptr};
 	render::backend::UniformBuffer *gpu_data {nullptr};
-	render::backend::Texture *noise_texture {nullptr};
+	render::backend::Texture *noise_texture {nullptr}; // rg16f, random basis rotation in screen-space
 	render::backend::BindSet *bindings {nullptr};
 };
 
 struct SSAO
 {
 	render::backend::BindSet *bindings {nullptr};
-	render::backend::Texture *texture {nullptr};
+	render::backend::Texture *texture {nullptr};       // r8, ao factor for indirect diffuse
 	render::backend::FrameBuffer *framebuffer {nullptr};
 };
 
-// TODO: SSR
+struct SSRData
+{
+	enum
+	{
+		MAX_SAMPLES = 256,
+		MAX_NOISE_SAMPLES = 16,
+	};
+
+	struct CPUData
+	{
+		float step {1.0f};
+		uint32_t num_steps {8};
+		float alignment[2]; // we need 16 byte alignment
+	};
+
+	CPUData *cpu_data {nullptr};
+	render::backend::UniformBuffer *gpu_data {nullptr};
+	render::backend::BindSet *bindings {nullptr};
+};
+
+struct SSR
+{
+	render::backend::BindSet *bindings {nullptr};
+	render::backend::Texture *texture {nullptr};         // rga16f, indirect specular
+	render::backend::FrameBuffer *framebuffer {nullptr};
+};
 
 struct Composite
 {
@@ -99,6 +124,11 @@ public:
 	const SSAO &getSSAONoised() const { return ssao_noised; }
 	const SSAO &getSSAOBlurred() const { return ssao_blurred; }
 
+	const SSRData &getSSRData() const { return ssr_data; }
+	SSRData &getSSRData() { return ssr_data; }
+
+	const SSR &getSSR() const { return ssr; }
+
 	void buildSSAOKernel();
 
 private:
@@ -111,6 +141,12 @@ private:
 	void initSSAO(SSAO &ssao, uint32_t width, uint32_t height);
 	void shutdownSSAO(SSAO &ssao);
 
+	void initSSRData();
+	void shutdownSSRData();
+
+	void initSSR(uint32_t width, uint32_t height);
+	void shutdownSSR();
+
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
@@ -120,6 +156,7 @@ private:
 	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderSSAO(const Scene *scene, const render::RenderFrame &frame);
 	void renderSSAOBlur(const Scene *scene, const render::RenderFrame &frame);
+	void renderSSR(const Scene *scene, const render::RenderFrame &frame);
 	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
 	void renderFinal(const Scene *scene, const render::RenderFrame &frame);
@@ -128,9 +165,14 @@ private:
 	render::backend::Driver *driver {nullptr};
 
 	GBuffer gbuffer;
+
 	SSAOKernel ssao_kernel;
 	SSAO ssao_noised;
 	SSAO ssao_blurred;
+
+	SSRData ssr_data;
+	SSR ssr;
+
 	LBuffer lbuffer;
 	Composite composite;
 
@@ -145,6 +187,9 @@ private:
 
 	const render::Shader *ssao_blur_pass_vertex {nullptr};
 	const render::Shader *ssao_blur_pass_fragment {nullptr};
+
+	const render::Shader *ssr_pass_vertex {nullptr};
+	const render::Shader *ssr_pass_fragment {nullptr};
 
 	const render::Shader *composite_pass_vertex {nullptr};
 	const render::Shader *composite_pass_fragment {nullptr};

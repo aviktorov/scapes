@@ -122,6 +122,9 @@ void Application::update()
 		render_graph->buildSSAOKernel();
 	}
 
+	ImGui::SliderFloat("SSR Step", &render_graph->getSSRData().cpu_data->step, 0.0f, 100.0f);
+	ImGui::SliderInt("SSR Num Steps", (int*)&render_graph->getSSRData().cpu_data->num_steps, 0, 128);
+
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
@@ -147,14 +150,14 @@ void Application::update()
 
 	ImTextureID diffuse_id = render_graph->fetchTextureID(render_graph->getLBuffer().diffuse);
 	ImTextureID specular_id = render_graph->fetchTextureID(render_graph->getLBuffer().specular);
-	ImTextureID ssao_noised_id = render_graph->fetchTextureID(render_graph->getSSAONoised().texture);
+	ImTextureID ssr_id = render_graph->fetchTextureID(render_graph->getSSR().texture);
 	ImTextureID ssao_blurred_id = render_graph->fetchTextureID(render_graph->getSSAOBlurred().texture);
 
 	ImGui::BeginGroup();
 		ImGui::Image(diffuse_id, ImVec2(256, 256));
 		ImGui::SameLine();
 		ImGui::Image(specular_id, ImVec2(256, 256));
-		ImGui::Image(ssao_noised_id, ImVec2(256, 256));
+		ImGui::Image(ssr_id, ImVec2(256, 256));
 		ImGui::SameLine();
 		ImGui::Image(ssao_blurred_id, ImVec2(256, 256));
 	ImGui::EndGroup();
