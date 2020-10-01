@@ -51,8 +51,13 @@ PBR Sandbox:
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
+        ☐ Add old color reprojection
+    Stream 44:
+        ☐ Add precision steps for refined SSR intersections
+        ☐ Mix SSR according to gbuffer shading
+        ☐ Blur SSR according to roughness
     Stream 43:
-        ☐ SSR
+        ✔ Implement simple SSR ray tracing @done (10/1/2020, 9:31:31 PM)
     Stream 42:
         ✔ Add random rotation vectors to SSAO kernel @done (9/15/2020, 8:13:05 PM)
         ✔ Add SSAO blur pass @done (9/15/2020, 9:09:58 PM)
