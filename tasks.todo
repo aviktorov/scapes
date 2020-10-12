@@ -35,7 +35,6 @@ PBR Sandbox:
         ✔ Create separate cmake script for backend @done (7/26/2020, 10:19:07 PM)
         ✔ Organize, move & renames files in vulkan backend @done (7/14/2020, 8:48:45 PM)
         ✔ Organize files in the engine @done (7/7/2020, 10:17:53 PM)
-        ☐ Fix artifacts for roughness set to 0 and 1
     Future:
         ☐ Figure out different probability density functions for different NDF
         ☐ Implement Oren-Nayar diffuse BRDF
@@ -52,10 +51,12 @@ PBR Sandbox:
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
         ☐ Add old color reprojection
-    Stream 44:
-        ☐ Add precision steps for refined SSR intersections
-        ☐ Mix SSR according to gbuffer shading
+    Stream 45:
         ☐ Blur SSR according to roughness
+        ☐ Fix artifacts for roughness set to 0 and 1
+    Stream 44:
+        ✔ Add precision steps for refined SSR intersections @done (10/12/2020, 7:55:57 PM)
+        ✔ Mix SSR according to gbuffer shading @done (10/12/2020, 8:26:18 PM)
     Stream 43:
         ✔ Implement simple SSR ray tracing @done (10/1/2020, 9:31:31 PM)
     Stream 42:
