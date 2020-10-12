@@ -157,8 +157,8 @@ void RenderGraph::initSSAOKernel()
 	ssao_kernel.noise_texture = driver->createTexture2D(4, 4, 1, Format::R16G16_SFLOAT, Multisample::COUNT_1, data);
 
 	ssao_kernel.cpu_data->num_samples = 32;
-	ssao_kernel.cpu_data->intensity = 1.0f;
-	ssao_kernel.cpu_data->radius = 1.0f;
+	ssao_kernel.cpu_data->intensity = 1.5f;
+	ssao_kernel.cpu_data->radius = 100.0f;
 
 	buildSSAOKernel();
 
@@ -232,8 +232,11 @@ void RenderGraph::initSSRData()
 	ssr_data.gpu_data = driver->createUniformBuffer(BufferType::DYNAMIC, sizeof(SSRData::CPUData));
 	ssr_data.cpu_data = reinterpret_cast<SSRData::CPUData *>(driver->map(ssr_data.gpu_data));
 
-	ssr_data.cpu_data->step = 1.0f;
+	ssr_data.cpu_data->step = 100.0f;
 	ssr_data.cpu_data->num_steps = 8;
+	ssr_data.cpu_data->num_precision_steps = 8;
+	ssr_data.cpu_data->precision_step_depth_threshold = 0.01f;
+	ssr_data.cpu_data->bypass_depth_threshold = 1.0f;
 
 	ssr_data.bindings = driver->createBindSet();
 

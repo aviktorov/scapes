@@ -32,11 +32,6 @@ void main()
 	material.roughness = shading.r;
 	material.metalness = shading.g;
 	material.ao = 1.0f;
-
-	material.albedo = lerp(material.albedo, vec3(0.5f, 0.5f, 0.5f), ubo.lerpUserValues);
-	material.roughness = lerp(material.roughness, ubo.userRoughness, ubo.lerpUserValues);
-	material.metalness = lerp(material.metalness, ubo.userMetalness, ubo.lerpUserValues);
-
 	material.f0 = lerp(vec3(0.04f), material.albedo, material.metalness);
 
 	outDiffuse.rgb = SkyLight_Diffuse(normalWS, directionWS, material);

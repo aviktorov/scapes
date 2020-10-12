@@ -37,6 +37,10 @@ void main()
 	float roughness = texture(roughnessSampler, fragTexCoord).r;
 	float metalness = texture(metalnessSampler, fragTexCoord).r;
 
+	albedo.rgb = lerp(albedo.rgb, vec3(0.5f, 0.5f, 0.5f), ubo.lerpUserValues);
+	roughness = lerp(roughness, ubo.userRoughness, ubo.lerpUserValues);
+	metalness = lerp(metalness, ubo.userMetalness, ubo.lerpUserValues);
+
 	outBaseColor.rgb = albedo.rgb;
 	outBaseColor.a = 1.0f;
 

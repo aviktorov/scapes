@@ -76,7 +76,9 @@ struct SSRData
 	{
 		float step {1.0f};
 		uint32_t num_steps {8};
-		float alignment[2]; // we need 16 byte alignment
+		uint32_t num_precision_steps {8};
+		float precision_step_depth_threshold {0.01f};
+		float bypass_depth_threshold {0.5f};
 	};
 
 	CPUData *cpu_data {nullptr};
