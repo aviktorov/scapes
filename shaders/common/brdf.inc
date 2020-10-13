@@ -91,14 +91,16 @@ vec3 ImportanceSamplingGGX(vec2 Xi, vec3 normal, float roughness)
 
 float D_GGX(Surface surface, float roughness)
 {
-	float alpha2 = saturate(sqr(roughness * roughness));
+	float alpha = sqr(roughness * roughness);
+	float alpha2 = saturate(sqr(alpha));
 
 	return alpha2 / (PI * sqr(1.0f + surface.dotNH * surface.dotNH * (alpha2 - 1.0f)));
 }
 
 float G_SmithGGX_Normalized(Surface surface, float roughness)
 {
-	float alpha2 = saturate(sqr(roughness * roughness));
+	float alpha = sqr(roughness * roughness);
+	float alpha2 = saturate(sqr(alpha));
 
 	float ggx_NV = surface.dotNV + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNV * surface.dotNV);
 	float ggx_NL = surface.dotNL + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNL * surface.dotNL);
