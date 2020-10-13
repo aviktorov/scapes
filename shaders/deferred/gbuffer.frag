@@ -4,7 +4,7 @@
 #include <common/RenderState.inc>
 #include <common/brdf.inc>
 
-layout(set = 1, binding = 0) uniform sampler2D albedoSampler;
+layout(set = 1, binding = 0) uniform sampler2D baseColorSampler;
 layout(set = 1, binding = 1) uniform sampler2D normalSampler;
 layout(set = 1, binding = 2) uniform sampler2D roughnessSampler;
 layout(set = 1, binding = 3) uniform sampler2D metalnessSampler;
@@ -22,8 +22,8 @@ layout(location = 2) out vec2 outShading;
 
 void main()
 {
-	vec4 albedo = texture(albedoSampler, fragTexCoord);
-	if (albedo.a < 0.5f)
+	vec4 baseColor = texture(baseColorSampler, fragTexCoord);
+	if (baseColor.a < 0.5f)
 		discard;
 
 	vec3 normalTS = texture(normalSampler, fragTexCoord).xyz * 2.0f - vec3(1.0f);
@@ -37,11 +37,11 @@ void main()
 	float roughness = texture(roughnessSampler, fragTexCoord).r;
 	float metalness = texture(metalnessSampler, fragTexCoord).r;
 
-	albedo.rgb = lerp(albedo.rgb, vec3(0.5f, 0.5f, 0.5f), ubo.lerpUserValues);
+	baseColor.rgb = lerp(baseColor.rgb, vec3(0.5f, 0.5f, 0.5f), ubo.lerpUserValues);
 	roughness = lerp(roughness, ubo.userRoughness, ubo.lerpUserValues);
 	metalness = lerp(metalness, ubo.userMetalness, ubo.lerpUserValues);
 
-	outBaseColor.rgb = albedo.rgb;
+	outBaseColor.rgb = baseColor.rgb;
 	outBaseColor.a = 1.0f;
 
 	outNormal = normalVS.xyz;
