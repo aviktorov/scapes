@@ -1016,6 +1016,9 @@ namespace render::backend::vulkan
 		vk_texture->memory = VK_NULL_HANDLE;
 		vk_texture->format = VK_FORMAT_UNDEFINED;
 
+		vkDestroySampler(device->getDevice(), vk_texture->sampler, nullptr);
+		vk_texture->sampler = VK_NULL_HANDLE;
+
 		delete texture;
 		texture = nullptr;
 	}
@@ -1171,6 +1174,18 @@ namespace render::backend::vulkan
 		const SwapChain *vk_swap_chain = static_cast<const SwapChain *>(swap_chain);
 
 		return vk_swap_chain->num_images;
+	}
+
+	void Driver::setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode)
+	{
+		assert(texture != nullptr && "Invalid swap chain");
+		Texture *vk_texture = static_cast<Texture *>(texture);
+
+		vkDestroySampler(device->getDevice(), vk_texture->sampler, nullptr);
+		vk_texture->sampler = VK_NULL_HANDLE;
+
+		VkSamplerAddressMode sampler_mode = Utils::getSamplerAddressMode(mode);
+		vk_texture->sampler = Utils::createSampler(device, 0, vk_texture->num_mipmaps, sampler_mode, sampler_mode, sampler_mode);
 	}
 
 	void Driver::generateTexture2DMipmaps(backend::Texture *texture)

@@ -57,6 +57,14 @@ enum class Multisample : uint8_t
 	MAX,
 };
 
+enum class SamplerWrapMode
+{
+	REPEAT,
+	CLAMP_TO_EDGE,
+
+	MAX,
+};
+
 enum class Format : uint16_t
 {
 	UNDEFINED = 0,
@@ -443,6 +451,8 @@ public:
 
 	virtual Format getSwapChainImageFormat(const SwapChain *swap_chain) = 0;
 	virtual uint32_t getNumSwapChainImages(const SwapChain *swap_chain) = 0;
+
+	virtual void setTextureSamplerWrapMode(Texture *texture, SamplerWrapMode mode) = 0;
 
 public:
 	virtual void generateTexture2DMipmaps(Texture *texture) = 0;

@@ -73,6 +73,16 @@ namespace render
 
 	/*
 	 */
+	void Texture::setSamplerWrapMode(render::backend::SamplerWrapMode mode)
+	{
+		if (!texture)
+			return;
+
+		driver->setTextureSamplerWrapMode(texture, mode);
+	}
+
+	/*
+	 */
 	bool Texture::import(const char *path)
 	{
 		if (stbi_info(path, nullptr, nullptr, nullptr) == 0)

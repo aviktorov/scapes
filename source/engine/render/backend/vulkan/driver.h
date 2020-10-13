@@ -284,6 +284,8 @@ namespace render::backend::vulkan
 		Format getSwapChainImageFormat(const backend::SwapChain *swap_chain) override;
 		uint32_t getNumSwapChainImages(const backend::SwapChain *swap_chain) override;
 
+		void setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode) override;
+
 	public:
 		void generateTexture2DMipmaps(backend::Texture *texture) override;
 

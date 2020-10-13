@@ -9,6 +9,21 @@ namespace render::backend::vulkan
 {
 	/*
 	 */
+	VkSamplerAddressMode Utils::getSamplerAddressMode(
+		SamplerWrapMode mode
+	)
+	{
+		static VkSamplerAddressMode supported_wrap_modes[static_cast<int>(SamplerWrapMode::MAX)] =
+		{
+			VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		};
+
+		return supported_wrap_modes[static_cast<int>(mode)];
+	}
+
+	/*
+	 */
 	VkFormat Utils::getFormat(Format format)
 	{
 		static VkFormat supported_formats[static_cast<int>(Format::MAX)] =
@@ -820,16 +835,19 @@ namespace render::backend::vulkan
 	VkSampler Utils::createSampler(
 		const Device *device,
 		uint32_t minMipLevel,
-		uint32_t maxMipLevel
+		uint32_t maxMipLevel,
+		VkSamplerAddressMode addressModeU,
+		VkSamplerAddressMode addressModeV,
+		VkSamplerAddressMode addressModeW
 	)
 	{
 		VkSamplerCreateInfo samplerInfo = {};
 		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 		samplerInfo.magFilter = VK_FILTER_LINEAR;
 		samplerInfo.minFilter = VK_FILTER_LINEAR;
-		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeU = addressModeU;
+		samplerInfo.addressModeV = addressModeV;
+		samplerInfo.addressModeW = addressModeW;
 		samplerInfo.anisotropyEnable = VK_FALSE;
 		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;

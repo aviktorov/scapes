@@ -10,6 +10,10 @@ namespace render::backend::vulkan
 	class Utils
 	{
 	public:
+		static VkSamplerAddressMode getSamplerAddressMode(
+			SamplerWrapMode mode
+		);
+
 		static VkFormat getFormat(
 			Format format
 		);
@@ -216,7 +220,10 @@ namespace render::backend::vulkan
 		static VkSampler createSampler(
 			const Device *device,
 			uint32_t minMipLevel,
-			uint32_t maxMipLevel 
+			uint32_t maxMipLevel,
+			VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
 		);
 
 		static void fillImage(

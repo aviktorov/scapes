@@ -27,6 +27,8 @@ namespace render
 		void create2D(backend::Format format, int width, int height, int num_mips);
 		void createCube(backend::Format format, int width, int height, int num_mips);
 
+		void setSamplerWrapMode(backend::SamplerWrapMode mode);
+
 		bool import(const char *path);
 
 		void clearGPUData();
