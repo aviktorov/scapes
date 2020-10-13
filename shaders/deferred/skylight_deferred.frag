@@ -20,7 +20,7 @@ layout(location = 1) out vec4 outSpecular;
 void main()
 {
 	vec3 normalVS = getNormalVS(fragTexCoord);
-	vec3 directionVS = getDirectionVS(fragTexCoord, ubo.invProj);
+	vec3 directionVS = -getDirectionVS(fragTexCoord, ubo.invProj);
 
 	vec3 normalWS = normalize(vec3(ubo.invView * vec4(normalVS, 0.0f)));
 	vec3 directionWS = normalize(vec3(ubo.invView * vec4(directionVS, 0.0f)));
