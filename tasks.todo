@@ -51,9 +51,13 @@ PBR Sandbox:
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
         ☐ Add old color reprojection
-    Stream 45:
+    Stream 46:
         ☐ Blur SSR according to roughness
-        ☐ Fix artifacts for roughness set to 0 and 1
+        ☐ Fade SSR near uv borders
+        ☐ Fade SSR negative z reflection vectors
+    Stream 45:
+        ✔ Fix skylight shading @done (10/13/2020, 8:08:55 PM)
+        ✔ Fix artifacts for roughness set to 0 and 1 @done (10/13/2020, 9:08:25 PM)
     Stream 44:
         ✔ Add precision steps for refined SSR intersections @done (10/12/2020, 7:55:57 PM)
         ✔ Mix SSR according to gbuffer shading @done (10/12/2020, 8:26:18 PM)
