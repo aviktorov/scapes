@@ -130,6 +130,8 @@ void ApplicationResources::init()
 		resources.getShader(config::Shaders::BakedBRDFFragment)
 	);
 
+	baked_brdf->setSamplerWrapMode(render::backend::SamplerWrapMode::CLAMP_TO_EDGE);
+
 	environment_cubemaps.resize(config::hdrTextures.size());
 	irradiance_cubemaps.resize(config::hdrTextures.size());
 
