@@ -52,15 +52,12 @@ void main()
 	vec3 F = F_Shlick(dotNV, material.f0, material.roughness);
 
 	// Coarse tracing
-	int intersection_index = -1;
+	int intersection_index = ssr_data.num_steps;
 
 	for (int i = 1; i <= ssr_data.num_steps; i++)
 	{
 		vec3 ray_positionVS = positionVS + reflectionVS * ssr_data.step * i;
-
 		vec2 uv = getUV(ray_positionVS);
-		if (uv.x < 0.0f || uv.x > 1.0f || uv.y < 0.0f || uv.y > 1.0f)
-			discard;
 
 		vec3 gbuffer_sample_positionVS = getPositionVS(uv, ubo.invProj);
 
@@ -74,20 +71,15 @@ void main()
 		}
 	}
 
-	if (intersection_index == -1)
-		discard;
-
 	// Precise tracing
 	vec3 start = positionVS + reflectionVS * ssr_data.step * (intersection_index - 1);
 	vec3 end = positionVS + reflectionVS * ssr_data.step * intersection_index;
+	vec2 uv = vec2(0.0f, 0.0f);
 
 	for (int i = 0; i < ssr_data.num_precision_steps; i++)
 	{
 		vec3 mid = (start + end) * 0.5f;
-
-		vec2 uv = getUV(mid);
-		if (uv.x < 0.0f || uv.x > 1.0f || uv.y < 0.0f || uv.y > 1.0f)
-			discard;
+		uv = getUV(mid);
 
 		vec3 gbuffer_sample_positionVS = getPositionVS(uv, ubo.invProj);
 
@@ -99,28 +91,16 @@ void main()
 			end = mid;
 		else
 			start = mid;
-
-		if (abs(delta) < ssr_data.precision_step_depth_threshold)
-			break;
 	}
-
-	vec3 intersection = (start + end) * 0.5f;
-	vec2 uv = getUV(intersection);
-	if (uv.x < 0.0f || uv.x > 1.0f || uv.y < 0.0f || uv.y > 1.0f)
-		discard;
-
-	vec3 gbuffer_sample_positionVS = getPositionVS(uv, ubo.invProj);
-
-	float sample_depth = intersection.z;
-	float gbuffer_depth = gbuffer_sample_positionVS.z;
-
-	float delta = abs(sample_depth - gbuffer_depth);
-
-	if (delta > ssr_data.bypass_depth_threshold)
-		discard;
 
 	vec3 color = texture(lbufferDiffuse, uv).rgb + texture(lbufferSpecular, uv).rgb;
 
+	float factor_border = 1.0f - pow(saturate(length(uv - vec2(0.5f, 0.5f)) * 2.0f), 1.0f);
+
+	float facing_threshold = ssr_data.precision_step_depth_threshold; // TODO: replace by another threshold
+	float facing_dot = max(0.0f, dot(viewVS, reflectionVS));
+	float facing_factor = 1.0f - saturate((facing_dot - facing_threshold) / (1.0f - facing_threshold));
+
 	outSSR.rgb = color * F;
-	outSSR.a = 1.0f;
+	outSSR.a = facing_factor * factor_border;
 }
