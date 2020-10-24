@@ -12,10 +12,12 @@ vec3 SkyLight_Diffuse(vec3 normalWS, vec3 viewWS, SurfaceMaterial material)
 	float dotNV = max(0.0f, dot(normalWS, viewWS));
 
 	vec3 F = F_Shlick(dotNV, material.f0, material.roughness);
-	vec3 irradiance = texture(skyLightIrradianceCube, normalWS).rgb * material.ao;
-	vec3 result = irradiance * material.albedo;
+	vec3 irradiance = texture(skyLightIrradianceCube, normalWS).rgb;
 
+	vec3 result = material.albedo * material.ao;
 	result *= lerp(vec3(1.0f) - F, vec3(0.0f), material.metalness);
+	result *= irradiance;
+
 	return result;
 }
 
