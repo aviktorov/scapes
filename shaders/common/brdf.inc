@@ -67,7 +67,7 @@ vec2 Hammersley(uint i, uint N)
 
 vec3 ImportanceSamplingGGX(vec2 Xi, vec3 normal, float roughness)
 {
-	float alpha = sqr(roughness * roughness);
+	float alpha = roughness * roughness;
 	float alpha2 = saturate(sqr(alpha));
 
 	float phi = PI2 * Xi.x;
@@ -81,17 +81,17 @@ vec3 ImportanceSamplingGGX(vec2 Xi, vec3 normal, float roughness)
 	H.z = cosTheta;
 
 	// from tangent-space vector to world-space sample vector
-	vec3 up        = abs(normal.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-	vec3 tangent   = normalize(cross(up, normal));
-	vec3 bitangent = cross(normal, tangent);
+	vec3 up = abs(normal.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+	vec3 tangent = normalize(cross(up, normal));
+	vec3 binormal = cross(normal, tangent);
 
-	vec3 sampleVec = tangent * H.x + bitangent * H.y + normal * H.z;
-	return normalize(sampleVec);
+	vec3 direction = tangent * H.x + binormal * H.y + normal * H.z;
+	return normalize(direction);
 }
 
 float D_GGX(Surface surface, float roughness)
 {
-	float alpha = sqr(roughness * roughness);
+	float alpha = roughness * roughness;
 	float alpha2 = saturate(sqr(alpha));
 
 	return alpha2 / (PI * sqr(1.0f + surface.dotNH * surface.dotNH * (alpha2 - 1.0f)));
@@ -99,7 +99,7 @@ float D_GGX(Surface surface, float roughness)
 
 float G_SmithGGX_Normalized(Surface surface, float roughness)
 {
-	float alpha = sqr(roughness * roughness);
+	float alpha = roughness * roughness;
 	float alpha2 = saturate(sqr(alpha));
 
 	float ggx_NV = surface.dotNV + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNV * surface.dotNV);
