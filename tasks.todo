@@ -51,10 +51,13 @@ PBR Sandbox:
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
         ☐ Add old color reprojection
+    Stream 47:
+        ✔ Get random microfacet normal in roughness cone for SSR @done (10/24/2020, 6:09:31 PM)
+        ✔ Split SSR into trace & resolve passes @done (10/24/2020, 7:23:14 PM)
     Stream 46:
-        ☐ Blur SSR according to roughness
-        ☐ Fade SSR near uv borders
-        ☐ Fade SSR negative z reflection vectors
+        ✘ Blur SSR according to roughness @cancelled (10/14/2020, 8:34:15 PM)
+        ✔ Fade SSR near uv borders @done (10/14/2020, 8:20:27 PM)
+        ✔ Fade SSR negative z reflection vectors @done (10/14/2020, 8:20:26 PM)
     Stream 45:
         ✔ Fix skylight shading @done (10/13/2020, 8:08:55 PM)
         ✔ Fix artifacts for roughness set to 0 and 1 @done (10/13/2020, 9:08:25 PM)
