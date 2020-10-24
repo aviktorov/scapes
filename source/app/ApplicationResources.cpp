@@ -125,7 +125,7 @@ void ApplicationResources::init()
 	baked_brdf = RenderUtils::createTexture2D(
 		driver,
 		render::backend::Format::R16G16_SFLOAT,
-		256, 256, 1,
+		512, 512, 1,
 		resources.getShader(config::Shaders::BakedBRDFVertex),
 		resources.getShader(config::Shaders::BakedBRDFFragment)
 	);
