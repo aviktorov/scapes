@@ -122,8 +122,8 @@ void Application::update()
 		render_graph->buildSSAOKernel();
 	}
 
-	ImGui::SliderFloat("SSR Step", &render_graph->getSSRData().cpu_data->step, 0.0f, 100.0f);
-	ImGui::SliderInt("SSR Num Steps", (int*)&render_graph->getSSRData().cpu_data->num_steps, 0, 128);
+	ImGui::SliderFloat("SSR Coarse Step Size", &render_graph->getSSRData().cpu_data->coarse_step_size, 0.0f, 200.0f);
+	ImGui::SliderInt("SSR Num Coarse Steps", (int*)&render_graph->getSSRData().cpu_data->num_coarse_steps, 0, 128);
 	ImGui::SliderInt("SSR Num Precision Steps", (int*)&render_graph->getSSRData().cpu_data->num_precision_steps, 0, 128);
 	ImGui::SliderFloat("SSR Precision Step Depth Threshold", (float*)&render_graph->getSSRData().cpu_data->precision_step_depth_threshold, 0.0f, 1.0f);
 	ImGui::SliderFloat("SSR Bypass Depth Threshold", (float*)&render_graph->getSSRData().cpu_data->bypass_depth_threshold, 0.0f, 5.0f);

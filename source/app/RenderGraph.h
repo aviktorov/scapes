@@ -74,8 +74,8 @@ struct SSRData
 
 	struct CPUData
 	{
-		float step {1.0f};
-		uint32_t num_steps {8};
+		float coarse_step_size {1.0f};
+		uint32_t num_coarse_steps {8};
 		uint32_t num_precision_steps {8};
 		float precision_step_depth_threshold {0.01f};
 		float bypass_depth_threshold {0.5f};
@@ -83,6 +83,7 @@ struct SSRData
 
 	CPUData *cpu_data {nullptr};
 	render::backend::UniformBuffer *gpu_data {nullptr};
+	render::backend::Texture *noise_texture {nullptr}; // rg16f, random 2d vector in screen-space
 	render::backend::BindSet *bindings {nullptr};
 };
 
