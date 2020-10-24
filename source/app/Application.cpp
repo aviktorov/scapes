@@ -153,7 +153,7 @@ void Application::update()
 
 	ImTextureID diffuse_id = render_graph->fetchTextureID(render_graph->getLBuffer().diffuse);
 	ImTextureID specular_id = render_graph->fetchTextureID(render_graph->getLBuffer().specular);
-	ImTextureID ssr_id = render_graph->fetchTextureID(render_graph->getSSR().texture);
+	ImTextureID ssr_id = render_graph->fetchTextureID(render_graph->getSSRTrace().texture);
 	ImTextureID ssao_blurred_id = render_graph->fetchTextureID(render_graph->getSSAOBlurred().texture);
 
 	ImGui::BeginGroup();
@@ -219,7 +219,7 @@ void Application::mainloop()
 void Application::initWindow()
 {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(1024, 768, "Vulkan", nullptr, nullptr);
+	window = glfwCreateWindow(1920, 1080, "Vulkan", nullptr, nullptr);
 
 	glfwSetWindowUserPointer(window, this);
 

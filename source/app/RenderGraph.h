@@ -13,6 +13,7 @@ namespace render
 {
 	class Shader;
 	class Mesh;
+	class Texture;
 	struct RenderFrame;
 }
 
@@ -69,7 +70,7 @@ struct SSRData
 	enum
 	{
 		MAX_SAMPLES = 256,
-		MAX_NOISE_SAMPLES = 16,
+		NOISE_TEXTURE_SIZE = 16,
 	};
 
 	struct CPUData
@@ -90,7 +91,7 @@ struct SSRData
 struct SSR
 {
 	render::backend::BindSet *bindings {nullptr};
-	render::backend::Texture *texture {nullptr};         // rga16f, indirect specular
+	render::backend::Texture *texture {nullptr};         // rgba16f, combined indirect specular or rgba8, trace data
 	render::backend::FrameBuffer *framebuffer {nullptr};
 };
 
@@ -130,7 +131,7 @@ public:
 	const SSRData &getSSRData() const { return ssr_data; }
 	SSRData &getSSRData() { return ssr_data; }
 
-	const SSR &getSSR() const { return ssr; }
+	const SSR &getSSRTrace() const { return ssr_trace; }
 
 	void buildSSAOKernel();
 
@@ -144,11 +145,11 @@ private:
 	void initSSAO(SSAO &ssao, uint32_t width, uint32_t height);
 	void shutdownSSAO(SSAO &ssao);
 
-	void initSSRData();
+	void initSSRData(const render::Texture *blue_noise);
 	void shutdownSSRData();
 
-	void initSSR(uint32_t width, uint32_t height);
-	void shutdownSSR();
+	void initSSR(SSR &ssr, render::backend::Format format, uint32_t width, uint32_t height);
+	void shutdownSSR(SSR &ssr);
 
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
@@ -159,7 +160,8 @@ private:
 	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderSSAO(const Scene *scene, const render::RenderFrame &frame);
 	void renderSSAOBlur(const Scene *scene, const render::RenderFrame &frame);
-	void renderSSR(const Scene *scene, const render::RenderFrame &frame);
+	void renderSSRTrace(const Scene *scene, const render::RenderFrame &frame);
+	void renderSSRResolve(const Scene *scene, const render::RenderFrame &frame);
 	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
 	void renderFinal(const Scene *scene, const render::RenderFrame &frame);
@@ -174,7 +176,8 @@ private:
 	SSAO ssao_blurred;
 
 	SSRData ssr_data;
-	SSR ssr;
+	SSR ssr_trace;
+	SSR ssr_resolve;
 
 	LBuffer lbuffer;
 	Composite composite;
@@ -191,8 +194,11 @@ private:
 	const render::Shader *ssao_blur_pass_vertex {nullptr};
 	const render::Shader *ssao_blur_pass_fragment {nullptr};
 
-	const render::Shader *ssr_pass_vertex {nullptr};
-	const render::Shader *ssr_pass_fragment {nullptr};
+	const render::Shader *ssr_trace_pass_vertex {nullptr};
+	const render::Shader *ssr_trace_pass_fragment {nullptr};
+
+	const render::Shader *ssr_resolve_pass_vertex {nullptr};
+	const render::Shader *ssr_resolve_pass_fragment {nullptr};
 
 	const render::Shader *composite_pass_vertex {nullptr};
 	const render::Shader *composite_pass_fragment {nullptr};

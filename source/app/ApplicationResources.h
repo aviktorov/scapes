@@ -30,8 +30,10 @@ namespace config
 		PassSSAOFragment,
 		PassSSAOBlurVertex,
 		PassSSAOBlurFragment,
-		PassSSRVertex,
-		PassSSRFragment,
+		PassSSRTraceVertex,
+		PassSSRTraceFragment,
+		PassSSRResolveVertex,
+		PassSSRResolveFragment,
 		PassCompositeVertex,
 		PassCompositeFragment,
 		PassFinalVertex,
@@ -84,8 +86,11 @@ public:
 	inline const render::Shader *getSSAOBlurVertexShader() const { return resources.getShader(config::Shaders::PassSSAOBlurVertex); }
 	inline const render::Shader *getSSAOBlurFragmentShader() const { return resources.getShader(config::Shaders::PassSSAOBlurFragment); }
 
-	inline const render::Shader *getSSRVertexShader() const { return resources.getShader(config::Shaders::PassSSRVertex); }
-	inline const render::Shader *getSSRFragmentShader() const { return resources.getShader(config::Shaders::PassSSRFragment); }
+	inline const render::Shader *getSSRTraceVertexShader() const { return resources.getShader(config::Shaders::PassSSRTraceVertex); }
+	inline const render::Shader *getSSRTraceFragmentShader() const { return resources.getShader(config::Shaders::PassSSRTraceFragment); }
+
+	inline const render::Shader *getSSRResolveVertexShader() const { return resources.getShader(config::Shaders::PassSSRResolveVertex); }
+	inline const render::Shader *getSSRResolveFragmentShader() const { return resources.getShader(config::Shaders::PassSSRResolveFragment); }
 
 	inline const render::Shader *getCompositeVertexShader() const { return resources.getShader(config::Shaders::PassCompositeVertex); }
 	inline const render::Shader *getCompositeFragmentShader() const { return resources.getShader(config::Shaders::PassCompositeFragment); }
@@ -101,6 +106,9 @@ public:
 	inline const render::Texture *getAOTexture() const { return resources.getTexture(config::Textures::AO); }
 	inline const render::Texture *getShadingTexture() const { return resources.getTexture(config::Textures::Shading); }
 	inline const render::Texture *getEmissionTexture() const { return resources.getTexture(config::Textures::Emission); }
+
+	inline const render::Texture *getBlueNoiseTexture() const { return blue_noise; }
+
 	inline const render::Texture *getHDRTexture(int index) const { return resources.getTexture(config::Textures::EnvironmentBase + index); }
 	inline const render::Texture *getHDREnvironmentCubemap(int index) const { return environment_cubemaps[index]; }
 	inline const render::Texture *getHDRIrradianceCubemap(int index) const { return irradiance_cubemaps[index]; }
@@ -121,4 +129,6 @@ private:
 	render::Texture *baked_brdf {nullptr};
 	std::vector<render::Texture *> environment_cubemaps;
 	std::vector<render::Texture *> irradiance_cubemaps;
+
+	render::Texture *blue_noise {nullptr};
 };

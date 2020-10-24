@@ -33,8 +33,10 @@ namespace config
 		"shaders/deferred/ssao.frag",
 		"shaders/deferred/ssao_blur.vert",
 		"shaders/deferred/ssao_blur.frag",
-		"shaders/deferred/ssr.vert",
-		"shaders/deferred/ssr.frag",
+		"shaders/deferred/ssr_trace.vert",
+		"shaders/deferred/ssr_trace.frag",
+		"shaders/deferred/ssr_resolve.vert",
+		"shaders/deferred/ssr_resolve.frag",
 		"shaders/deferred/composite.vert",
 		"shaders/deferred/composite.frag",
 		"shaders/deferred/final.vert",
@@ -49,6 +51,8 @@ namespace config
 		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::FRAGMENT,
+		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
@@ -82,6 +86,8 @@ namespace config
 		"textures/environment/umbrellas.hdr",
 		"textures/environment/shanghai_bund_4k.hdr",
 	};
+
+	static const char *blueNoise = "textures/blue_noise.png";
 }
 
 /*
@@ -157,6 +163,9 @@ void ApplicationResources::init()
 			environment_cubemaps[i]
 		);
 	}
+
+	blue_noise = new render::Texture(driver);
+	blue_noise->import(config::blueNoise);
 }
 
 void ApplicationResources::shutdown()
@@ -186,6 +195,8 @@ void ApplicationResources::shutdown()
 
 	environment_cubemaps.clear();
 	irradiance_cubemaps.clear();
+
+	delete blue_noise;
 }
 
 void ApplicationResources::reloadShaders()

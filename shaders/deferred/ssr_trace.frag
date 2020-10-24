@@ -10,14 +10,11 @@
 #define SSR_DATA_SET 2
 #include <deferred/ssr_data.inc>
 
-#define LBUFFER_SET 3
-#include <deferred/lbuffer.inc>
-
 #include <common/brdf.inc>
 
 layout(location = 0) in vec2 fragTexCoord;
 
-layout(location = 0) out vec4 outSSR;
+layout(location = 0) out vec4 outSSRTrace;
 
 vec2 getUV(vec3 positionVS)
 {
@@ -92,25 +89,22 @@ void main()
 
 	// trace pass
 	vec2 noise_uv = fragTexCoord * textureSize(gbufferBaseColor, 0) / textureSize(ssrNoiseTexture, 0).xy;
-	vec2 Xi = texture(ssrNoiseTexture, noise_uv).xy;
+	vec4 blue_noise = texture(ssrNoiseTexture, noise_uv);
+
+	vec2 Xi = blue_noise.xy;
 
 	vec3 microfacet_normalVS = ImportanceSamplingGGX(Xi, normalVS, material.roughness);
 	vec3 reflectionVS = -reflect(viewVS, microfacet_normalVS);
 
 	vec2 uv = traceRay(positionVS, reflectionVS, ssr_data.num_coarse_steps, ssr_data.coarse_step_size, ssr_data.num_precision_steps);
 
-	// resolve pass
-	vec3 color = texture(lbufferDiffuse, uv).rgb + texture(lbufferSpecular, uv).rgb;
-
-	float factor_border = 1.0f - pow(saturate(length(uv - vec2(0.5f, 0.5f)) * 2.0f), 1.0f);
+	float border_factor = 1.0f - pow(saturate(length(uv - vec2(0.5f, 0.5f)) * 2.0f), 1.0f);
 
 	float facing_threshold = ssr_data.precision_step_depth_threshold; // TODO: replace by another threshold
 	float facing_dot = max(0.0f, dot(viewVS, reflectionVS));
 	float facing_factor = 1.0f - saturate((facing_dot - facing_threshold) / (1.0f - facing_threshold));
 
-	float dotNV = max(0.0f, dot(normalVS, viewVS));
-	vec3 F = F_Shlick(dotNV, material.f0, material.roughness);
+	float fade = facing_factor * border_factor;
 
-	outSSR.rgb = color * F;
-	outSSR.a = facing_factor * factor_border;
+	outSSRTrace = vec4(uv, fade, 0.0f);
 }
