@@ -50,7 +50,12 @@ PBR Sandbox:
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
-        ☐ Add old color reprojection
+    Stream 49:
+        ✔ Improve trace ray hit mask @done (10/29/2020, 9:32:59 PM)
+        ☐ Sample old color with mips
+    Stream 48:
+        ✔ Add gaussian weighted offsets to resolve pass @done (10/28/2020, 8:58:15 PM)
+        ✔ Sample blue noise & randomly rotate offsets @done (10/28/2020, 8:58:16 PM)
     Stream 47:
         ✔ Get random microfacet normal in roughness cone for SSR @done (10/24/2020, 6:09:31 PM)
         ✔ Split SSR into trace & resolve passes @done (10/24/2020, 7:23:14 PM)
