@@ -606,11 +606,12 @@ void RenderGraph::renderSSRResolve(const Scene *scene, const render::RenderFrame
 	driver->beginRenderPass(frame.command_buffer, ssr_resolve.framebuffer, &info);
 
 	driver->clearPushConstants();
-	driver->allocateBindSets(4);
+	driver->allocateBindSets(5);
 	driver->setBindSet(0, frame.bind_set);
 	driver->setBindSet(1, gbuffer.bindings);
 	driver->setBindSet(2, ssr_trace.bindings);
-	driver->setBindSet(3, lbuffer.bindings);
+	driver->setBindSet(3, ssr_data.bindings);
+	driver->setBindSet(4, lbuffer.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, ssr_resolve_pass_vertex->getBackend());
