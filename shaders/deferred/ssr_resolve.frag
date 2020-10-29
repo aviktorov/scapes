@@ -10,7 +10,10 @@
 #define SSR_SET 2
 #include <deferred/ssr.inc>
 
-#define LBUFFER_SET 3
+#define SSR_DATA_SET 3
+#include <deferred/ssr_data.inc>
+
+#define LBUFFER_SET 4
 #include <deferred/lbuffer.inc>
 
 #include <common/brdf.inc>
@@ -37,6 +40,22 @@ vec4 resolveRay(vec2 uv)
 	return result;
 }
 
+const int num_samples = 5;
+
+const vec2 offsets[5] = 
+{
+	vec2(-2.0f, 0.0f),
+	vec2(-1.0f, 0.0f),
+	vec2( 0.0f, 0.0f),
+	vec2( 1.0f, 0.0f),
+	vec2( 2.0f, 0.0f)
+};
+
+const float weights[5] =
+{
+	0.06136f, 0.24477f, 0.38774f, 0.24477f, 0.06136f,
+};
+
 /*
  */
 void main()
@@ -57,20 +76,21 @@ void main()
 	float dotNV = max(0.0f, dot(normalVS, viewVS));
 	vec3 F = F_Shlick(dotNV, material.f0, material.roughness);
 
-	float radius = 1.0f;
-	float iradius = 1.0f / radius;
-	vec2 uv_offset = 1.0f / vec2(textureSize(ssrTexture, 0)) * radius;
+	vec2 isize = 1.0f / vec2(textureSize(ssrTexture, 0));
+
+	vec2 noise_uv = fragTexCoord * textureSize(gbufferBaseColor, 0) / textureSize(ssrNoiseTexture, 0).xy;
+	vec4 blue_noise = texture(ssrNoiseTexture, noise_uv);
+
+	float sin_theta = blue_noise.x;
+	float cos_theta = blue_noise.y;
+	mat2 rotation = mat2(cos_theta, sin_theta, -sin_theta, cos_theta);
+
 	outSSR = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-
-	// TODO: better resolve
-	float weight = 0.0f;
-	outSSR += resolveRay(fragTexCoord); weight += 1.0f;
-	outSSR += resolveRay(fragTexCoord + vec2( 1.0f,  0.0f) * uv_offset) * iradius; weight += iradius;
-	outSSR += resolveRay(fragTexCoord + vec2(-1.0f,  0.0f) * uv_offset) * iradius; weight += iradius;
-	outSSR += resolveRay(fragTexCoord + vec2( 0.0f,  1.0f) * uv_offset) * iradius; weight += iradius;
-	outSSR += resolveRay(fragTexCoord + vec2( 0.0f, -1.0f) * uv_offset) * iradius; weight += iradius;
-
-	outSSR /= weight;
+	for (int i = 0; i < num_samples; ++i)
+	{
+		vec2 offset = rotation * offsets[i];
+		outSSR += resolveRay(fragTexCoord + offset * isize) * weights[i];
+	}
 
 	outSSR.rgb *= F;
 }
