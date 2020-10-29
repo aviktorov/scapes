@@ -4,6 +4,7 @@
 const float PI =  3.141592653589798979f;
 const float PI2 = 6.283185307179586477f;
 const float iPI = 0.318309886183790672f;
+const float EPSILON = 1e-6f;
 
 struct Surface
 {
@@ -51,6 +52,14 @@ float saturate(float v)
 	return clamp(v, 0.0f, 1.0f);
 }
 
+vec2 saturate(vec2 v)
+{
+	vec2 ret;
+	ret.x = clamp(v.x, 0.0f, 1.0f);
+	ret.y = clamp(v.y, 0.0f, 1.0f);
+	return ret;
+}
+
 vec3 saturate(vec3 v)
 {
 	vec3 ret;
@@ -71,7 +80,7 @@ vec3 ImportanceSamplingGGX(vec2 Xi, vec3 normal, float roughness)
 	float alpha2 = saturate(sqr(alpha));
 
 	float phi = PI2 * Xi.x;
-	float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (alpha2 - 1.0f) * Xi.y));
+	float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (alpha2 - 1.0f) * Xi.y + EPSILON));
 	float sinTheta = sqrt(1.0f - sqr(cosTheta));
 
 	// from spherical coordinates to cartesian coordinates
@@ -105,7 +114,7 @@ float G_SmithGGX_Normalized(Surface surface, float roughness)
 	float ggx_NV = surface.dotNV + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNV * surface.dotNV);
 	float ggx_NL = surface.dotNL + sqrt(alpha2 + (1.0f - alpha2) * surface.dotNL * surface.dotNL);
 
-	return 1.0f / (ggx_NV * ggx_NL);
+	return 1.0f / (ggx_NV * ggx_NL + EPSILON);
 }
 
 float G_SmithGGX(Surface surface, float roughness)
