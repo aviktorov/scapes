@@ -8,6 +8,7 @@ namespace render::backend
 enum class Api : uint8_t
 {
 	VULKAN = 0,
+	OPENGL,
 	DEFAULT = VULKAN,
 
 	MAX,
@@ -25,12 +26,12 @@ enum class RenderPrimitiveType : uint8_t
 {
 	POINT_LIST = 0,
 	LINE_LIST,
-	LINE_PATCH,
 	LINE_STRIP,
+	LINE_PATCH,
 	TRIANGLE_LIST,
-	TRIANGLE_PATCH,
 	TRIANGLE_STRIP,
 	TRIANGLE_FAN,
+	TRIANGLE_PATCH,
 	QUAD_PATCH,
 
 	MAX,
@@ -145,6 +146,7 @@ enum class Format : uint16_t
 	// depth formats
 	D16_UNORM,
 	D16_UNORM_S8_UINT,
+	D24_UNORM,
 	D24_UNORM_S8_UINT,
 	D32_SFLOAT,
 	D32_SFLOAT_S8_UINT,
@@ -390,8 +392,7 @@ public:
 	) = 0;
 
 	virtual Texture *createTextureCube(
-		uint32_t width,
-		uint32_t height,
+		uint32_t size,
 		uint32_t num_mipmaps,
 		Format format,
 		const void *data = nullptr,
@@ -453,10 +454,10 @@ public:
 	virtual uint32_t getNumSwapChainImages(const SwapChain *swap_chain) = 0;
 
 	virtual void setTextureSamplerWrapMode(Texture *texture, SamplerWrapMode mode) = 0;
-
-public:
+	virtual void setTextureSamplerDepthCompare(Texture *texture, bool enabled, DepthCompareFunc func) = 0;
 	virtual void generateTexture2DMipmaps(Texture *texture) = 0;
 
+public:
 	virtual void *map(VertexBuffer *vertex_buffer) = 0;
 	virtual void unmap(VertexBuffer *vertex_buffer) = 0;
 
@@ -466,12 +467,7 @@ public:
 	virtual void *map(UniformBuffer *uniform_buffer) = 0;
 	virtual void unmap(UniformBuffer *uniform_buffer) = 0;
 
-	virtual void wait() = 0;
-	virtual bool wait(
-		uint32_t num_wait_command_buffers,
-		CommandBuffer * const *wait_command_buffers
-	) = 0;
-
+public:
 	virtual bool acquire(
 		SwapChain *swap_chain,
 		uint32_t *new_image
@@ -483,6 +479,11 @@ public:
 		CommandBuffer * const *wait_command_buffers
 	) = 0;
 
+	virtual void wait() = 0;
+	virtual bool wait(
+		uint32_t num_wait_command_buffers,
+		CommandBuffer * const *wait_command_buffers
+	) = 0;
 public:
 	// bindings
 	virtual void bindUniformBuffer(

@@ -622,24 +622,22 @@ namespace render::backend::vulkan
 	}
 
 	backend::Texture *Driver::createTextureCube(
-		uint32_t width,
-		uint32_t height,
+		uint32_t size,
 		uint32_t num_mipmaps,
 		Format format,
 		const void *data,
 		uint32_t num_data_mipmaps
 	)
 	{
-		assert(width != 0 && height != 0 && "Invalid texture size");
-		assert(width == height && "Texture must be square");
+		assert(size != 0 && "Invalid texture size");
 		assert(num_mipmaps != 0 && "Invalid mipmap count");
 		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
 
 		Texture *result = new Texture();
 		result->type = VK_IMAGE_TYPE_2D;
 		result->format = Utils::getFormat(format);
-		result->width = width;
-		result->height = height;
+		result->width = size;
+		result->height = size;
 		result->depth = 1;
 		result->num_mipmaps = num_mipmaps;
 		result->num_layers = 6;
@@ -1144,6 +1142,8 @@ namespace render::backend::vulkan
 		swap_chain = nullptr;
 	}
 
+	/*
+	 */
 	Multisample Driver::getMaxSampleCount()
 	{
 		assert(device != nullptr && "Invalid device");
@@ -1178,7 +1178,7 @@ namespace render::backend::vulkan
 
 	void Driver::setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode)
 	{
-		assert(texture != nullptr && "Invalid swap chain");
+		assert(texture != nullptr && "Invalid texture");
 		Texture *vk_texture = static_cast<Texture *>(texture);
 
 		vkDestroySampler(device->getDevice(), vk_texture->sampler, nullptr);
@@ -1186,6 +1186,19 @@ namespace render::backend::vulkan
 
 		VkSamplerAddressMode sampler_mode = Utils::getSamplerAddressMode(mode);
 		vk_texture->sampler = Utils::createSampler(device, 0, vk_texture->num_mipmaps, sampler_mode, sampler_mode, sampler_mode);
+	}
+
+	void Driver::setTextureSamplerDepthCompare(backend::Texture *texture, bool enabled, DepthCompareFunc func)
+	{
+		assert(texture != nullptr && "Invalid texture");
+		Texture *vk_texture = static_cast<Texture *>(texture);
+
+		vkDestroySampler(device->getDevice(), vk_texture->sampler, nullptr);
+		vk_texture->sampler = VK_NULL_HANDLE;
+
+		VkSamplerAddressMode sampler_mode = Utils::getSamplerAddressMode(SamplerWrapMode::REPEAT);
+		VkCompareOp compare_func = Utils::getDepthCompareFunc(func);
+		vk_texture->sampler = Utils::createSampler(device, 0, vk_texture->num_mipmaps, sampler_mode, sampler_mode, sampler_mode, enabled, compare_func);
 	}
 
 	void Driver::generateTexture2DMipmaps(backend::Texture *texture)
@@ -1229,6 +1242,8 @@ namespace render::backend::vulkan
 		);
 	}
 
+	/*
+	 */
 	void *Driver::map(backend::VertexBuffer *vertex_buffer)
 	{
 		assert(vertex_buffer != nullptr && "Invalid buffer");
@@ -1307,34 +1322,8 @@ namespace render::backend::vulkan
 		vmaUnmapMemory(device->getVRAMAllocator(), vk_uniform_buffer->memory);
 	}
 
-	void Driver::wait()
-	{
-		assert(device != nullptr && "Invalid device");
-
-		device->wait();
-	}
-
-	bool Driver::wait(
-		uint32_t num_wait_command_buffers,
-		backend::CommandBuffer * const *wait_command_buffers
-	)
-	{
-		if (num_wait_command_buffers == 0)
-			return true;
-
-		std::vector<VkFence> wait_fences(num_wait_command_buffers);
-
-		for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
-		{
-			const CommandBuffer *vk_wait_command_buffer = static_cast<const CommandBuffer *>(wait_command_buffers[i]);
-			wait_fences[i] = vk_wait_command_buffer->rendering_finished_cpu;
-		}
-
-		VkResult result = vkWaitForFences(device->getDevice(), num_wait_command_buffers, wait_fences.data(), VK_TRUE, UINT64_MAX);
-
-		return result == VK_SUCCESS;
-	}
-
+	/*
+	 */
 	bool Driver::acquire(backend::SwapChain *swap_chain, uint32_t *new_image)
 	{
 		SwapChain *vk_swap_chain = static_cast<SwapChain *>(swap_chain);
@@ -1425,6 +1414,34 @@ namespace render::backend::vulkan
 		vk_swap_chain->current_image %= vk_swap_chain->num_images;
 
 		return true;
+	}
+
+	void Driver::wait()
+	{
+		assert(device != nullptr && "Invalid device");
+
+		device->wait();
+	}
+
+	bool Driver::wait(
+		uint32_t num_wait_command_buffers,
+		backend::CommandBuffer * const *wait_command_buffers
+	)
+	{
+		if (num_wait_command_buffers == 0)
+			return true;
+
+		std::vector<VkFence> wait_fences(num_wait_command_buffers);
+
+		for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
+		{
+			const CommandBuffer *vk_wait_command_buffer = static_cast<const CommandBuffer *>(wait_command_buffers[i]);
+			wait_fences[i] = vk_wait_command_buffer->rendering_finished_cpu;
+		}
+
+		VkResult result = vkWaitForFences(device->getDevice(), num_wait_command_buffers, wait_fences.data(), VK_TRUE, UINT64_MAX);
+
+		return result == VK_SUCCESS;
 	}
 
 	/*

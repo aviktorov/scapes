@@ -25,7 +25,7 @@ namespace render
 		inline const backend::Texture *getBackend() const { return texture; }
 
 		void create2D(backend::Format format, int width, int height, int num_mips);
-		void createCube(backend::Format format, int width, int height, int num_mips);
+		void createCube(backend::Format format, int size, int num_mips);
 
 		void setSamplerWrapMode(backend::SamplerWrapMode mode);
 

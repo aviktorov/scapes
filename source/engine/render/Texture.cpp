@@ -61,14 +61,14 @@ namespace render
 
 	/*
 	 */
-	void Texture::createCube(render::backend::Format format, int w, int h, int mips)
+	void Texture::createCube(render::backend::Format format, int size, int mips)
 	{
-		width = w;
-		height = h;
+		width = size;
+		height = size;
 		mip_levels = mips;
 		layers = 6;
 
-		texture = driver->createTextureCube(w, h, mips, format);
+		texture = driver->createTextureCube(size, mips, format);
 	}
 
 	/*

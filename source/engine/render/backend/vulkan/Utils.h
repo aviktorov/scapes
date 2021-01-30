@@ -223,7 +223,9 @@ namespace render::backend::vulkan
 			uint32_t maxMipLevel,
 			VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
 			VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
+			VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			bool depthCompareEnabled = false,
+			VkCompareOp depthCompareFunc = VK_COMPARE_OP_ALWAYS
 		);
 
 		static void fillImage(

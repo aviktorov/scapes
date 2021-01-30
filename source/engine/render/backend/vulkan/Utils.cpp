@@ -51,7 +51,7 @@ namespace render::backend::vulkan
 			VK_FORMAT_R32G32B32A32_UINT, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32G32B32A32_SFLOAT,
 
 			// depth formats
-			VK_FORMAT_D16_UNORM, VK_FORMAT_D16_UNORM_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT,
+			VK_FORMAT_D16_UNORM, VK_FORMAT_D16_UNORM_S8_UINT, VK_FORMAT_X8_D24_UNORM_PACK32, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT,
 		};
 
 		return supported_formats[static_cast<int>(format)];
@@ -124,6 +124,7 @@ namespace render::backend::vulkan
 
 			case VK_FORMAT_D16_UNORM: return Format::D16_UNORM;
 			case VK_FORMAT_D16_UNORM_S8_UINT: return Format::D16_UNORM_S8_UINT;
+			case VK_FORMAT_X8_D24_UNORM_PACK32: return Format::D24_UNORM;
 			case VK_FORMAT_D24_UNORM_S8_UINT: return Format::D24_UNORM_S8_UINT;
 			case VK_FORMAT_D32_SFLOAT: return Format::D32_SFLOAT;
 			case VK_FORMAT_D32_SFLOAT_S8_UINT: return Format::D32_SFLOAT_S8_UINT;
@@ -173,9 +174,10 @@ namespace render::backend::vulkan
 		switch (format)
 		{
 			case VK_FORMAT_D16_UNORM:
-			case VK_FORMAT_D32_SFLOAT:
 			case VK_FORMAT_D16_UNORM_S8_UINT:
+			case VK_FORMAT_X8_D24_UNORM_PACK32:
 			case VK_FORMAT_D24_UNORM_S8_UINT:
+			case VK_FORMAT_D32_SFLOAT:
 			case VK_FORMAT_D32_SFLOAT_S8_UINT: return VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		}
 
@@ -190,6 +192,7 @@ namespace render::backend::vulkan
 		switch (format)
 		{
 			case VK_FORMAT_D16_UNORM:
+			case VK_FORMAT_X8_D24_UNORM_PACK32:
 			case VK_FORMAT_D32_SFLOAT: return VK_IMAGE_ASPECT_DEPTH_BIT;
 			case VK_FORMAT_D16_UNORM_S8_UINT:
 			case VK_FORMAT_D24_UNORM_S8_UINT:
@@ -246,7 +249,7 @@ namespace render::backend::vulkan
 			16, 16, 16,
 
 			// depth formats
-			2, 3, 4, 4, 5,
+			2, 3, 4, 4, 4, 5,
 		};
 
 		return supported_formats[static_cast<int>(format)];
@@ -284,10 +287,10 @@ namespace render::backend::vulkan
 			VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
 
 			// lines
-			VK_PRIMITIVE_TOPOLOGY_LINE_LIST, VK_PRIMITIVE_TOPOLOGY_PATCH_LIST, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
+			VK_PRIMITIVE_TOPOLOGY_LINE_LIST, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, VK_PRIMITIVE_TOPOLOGY_PATCH_LIST,
 
 			// triangles
-			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_PRIMITIVE_TOPOLOGY_PATCH_LIST, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,
+			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, VK_PRIMITIVE_TOPOLOGY_PATCH_LIST,
 
 			// quads
 			VK_PRIMITIVE_TOPOLOGY_PATCH_LIST,
@@ -540,7 +543,7 @@ namespace render::backend::vulkan
 	{
 		return selectOptimalImageFormat(
 			physicalDevice,
-			{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+			{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_X8_D24_UNORM_PACK32 },
 			VK_IMAGE_TILING_OPTIMAL,
 			VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
 		);
@@ -838,7 +841,9 @@ namespace render::backend::vulkan
 		uint32_t maxMipLevel,
 		VkSamplerAddressMode addressModeU,
 		VkSamplerAddressMode addressModeV,
-		VkSamplerAddressMode addressModeW
+		VkSamplerAddressMode addressModeW,
+		bool depthCompareEnabled,
+		VkCompareOp depthCompareFunc
 	)
 	{
 		VkSamplerCreateInfo samplerInfo = {};
@@ -851,8 +856,8 @@ namespace render::backend::vulkan
 		samplerInfo.anisotropyEnable = VK_FALSE;
 		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		samplerInfo.unnormalizedCoordinates = VK_FALSE;
-		samplerInfo.compareEnable = VK_FALSE;
-		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.compareEnable = depthCompareEnabled;
+		samplerInfo.compareOp = depthCompareFunc;
 		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 		samplerInfo.mipLodBias = 0.0f;
 		samplerInfo.minLod = static_cast<float>(minMipLevel);
@@ -1200,5 +1205,4 @@ namespace render::backend::vulkan
 
 		vkFreeCommandBuffers(device->getDevice(), device->getCommandPool(), 1, &commandBuffer);
 	}
-
 }

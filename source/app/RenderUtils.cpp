@@ -42,7 +42,7 @@ Texture *RenderUtils::createTextureCube(
 )
 {
 	Texture *result = new Texture(driver);
-	result->createCube(backend::Format::R32G32B32A32_SFLOAT, size, size, mips);
+	result->createCube(backend::Format::R32G32B32A32_SFLOAT, size, mips);
 
 	CubemapRenderer renderer(driver);
 	renderer.init(result, 0);
@@ -66,7 +66,7 @@ Texture *RenderUtils::hdriToCube(
 	uint32_t mips = static_cast<int>(std::floor(std::log2(size)) + 1);
 
 	Texture *result = new Texture(driver);
-	result->createCube(backend::Format::R32G32B32A32_SFLOAT, size, size, mips);
+	result->createCube(backend::Format::R32G32B32A32_SFLOAT, size, mips);
 
 	CubemapRenderer renderer(driver);
 	renderer.init(result, 0);

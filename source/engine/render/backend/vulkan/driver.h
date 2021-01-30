@@ -222,8 +222,7 @@ namespace render::backend::vulkan
 		) override;
 
 		backend::Texture *createTextureCube(
-			uint32_t width,
-			uint32_t height,
+			uint32_t size,
 			uint32_t num_mipmaps,
 			Format format,
 			const void *data = nullptr,
@@ -285,10 +284,10 @@ namespace render::backend::vulkan
 		uint32_t getNumSwapChainImages(const backend::SwapChain *swap_chain) override;
 
 		void setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode) override;
-
-	public:
+		void setTextureSamplerDepthCompare(backend::Texture *texture, bool enabled, DepthCompareFunc func) override;
 		void generateTexture2DMipmaps(backend::Texture *texture) override;
 
+	public:
 		void *map(backend::VertexBuffer *vertex_buffer) override;
 		void unmap(backend::VertexBuffer *vertex_buffer) override;
 
@@ -298,12 +297,7 @@ namespace render::backend::vulkan
 		void *map(backend::UniformBuffer *uniform_buffer) override;
 		void unmap(backend::UniformBuffer *uniform_buffer) override;
 
-		void wait() override;
-		bool wait(
-			uint32_t num_wait_command_buffers,
-			backend::CommandBuffer * const *wait_command_buffers
-		) override;
-
+	public:
 		bool acquire(
 			backend::SwapChain *swap_chain,
 			uint32_t *new_image
@@ -311,6 +305,12 @@ namespace render::backend::vulkan
 
 		bool present(
 			backend::SwapChain *swap_chain,
+			uint32_t num_wait_command_buffers,
+			backend::CommandBuffer * const *wait_command_buffers
+		) override;
+
+		void wait() override;
+		bool wait(
 			uint32_t num_wait_command_buffers,
 			backend::CommandBuffer * const *wait_command_buffers
 		) override;
