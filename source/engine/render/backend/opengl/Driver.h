@@ -51,6 +51,7 @@ struct FrameBufferColorAttachment
 	GLuint id {0};
 	GLint base_mip {0};
 	GLint base_layer {0};
+	GLuint num_layers {1};
 };
 
 struct FrameBufferDepthStencilAttachment
