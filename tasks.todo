@@ -54,7 +54,7 @@ PBR Sandbox:
     Stream 51:
         ☐ Move shaderc outside render backend
     Stream 50:
-        ☐ Clean up swap chain creation
+        ✔ Clean up swap chain creation @done (2/2/2021, 10:05:11 PM)
     Stream 49:
         ✔ Improve trace ray hit mask @done (10/29/2020, 9:32:59 PM)
     Stream 48:
