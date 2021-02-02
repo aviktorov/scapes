@@ -67,24 +67,17 @@ struct SSAO
 
 struct SSRData
 {
-	enum
-	{
-		MAX_SAMPLES = 256,
-		NOISE_TEXTURE_SIZE = 16,
-	};
-
 	struct CPUData
 	{
 		float coarse_step_size {1.0f};
 		uint32_t num_coarse_steps {8};
 		uint32_t num_precision_steps {8};
-		float precision_step_depth_threshold {0.01f};
+		float facing_threshold {0.0f};
 		float bypass_depth_threshold {0.5f};
 	};
 
 	CPUData *cpu_data {nullptr};
 	render::backend::UniformBuffer *gpu_data {nullptr};
-	render::backend::Texture *noise_texture {nullptr}; // rg16f, random 2d vector in screen-space
 	render::backend::BindSet *bindings {nullptr};
 };
 

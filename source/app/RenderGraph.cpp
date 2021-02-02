@@ -246,19 +246,8 @@ void RenderGraph::initSSRData(const render::Texture *blue_noise)
 	ssr_data.cpu_data->coarse_step_size = 100.0f;
 	ssr_data.cpu_data->num_coarse_steps = 8;
 	ssr_data.cpu_data->num_precision_steps = 8;
-	ssr_data.cpu_data->precision_step_depth_threshold = 0.01f;
+	ssr_data.cpu_data->facing_threshold = 0.0f;
 	ssr_data.cpu_data->bypass_depth_threshold = 1.0f;
-
-	/*
-	uint32_t data[SSRData::NOISE_TEXTURE_SIZE * SSRData::NOISE_TEXTURE_SIZE];
-	for (int i = 0; i < SSRData::NOISE_TEXTURE_SIZE * SSRData::NOISE_TEXTURE_SIZE; ++i)
-	{
-		const glm::vec2 &noise = glm::vec2(randf(), randf());
-		data[i] = glm::packHalf2x16(noise);
-	}
-
-	ssr_data.noise_texture = driver->createTexture2D(SSRData::NOISE_TEXTURE_SIZE, SSRData::NOISE_TEXTURE_SIZE, 1, Format::R16G16_SFLOAT, Multisample::COUNT_1, data);
-	/**/
 
 	ssr_data.bindings = driver->createBindSet();
 
