@@ -47,6 +47,7 @@ public:
 	static GLenum getShaderStageBitmask(ShaderType type);
 
 	//
+	static GLint getTextureWrapMode(SamplerWrapMode mode);
 	static GLenum getDefaultTextureMinFilter(GLenum internal_format);
 	static GLenum getDefaultTextureMagFilter(GLenum internal_format);
 	static GLenum getDefaultTextureWrapMode(GLenum type);

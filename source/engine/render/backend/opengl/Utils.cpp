@@ -492,6 +492,17 @@ GLenum Utils::getShaderStageBitmask(ShaderType type)
 }
 
 //
+GLint Utils::getTextureWrapMode(SamplerWrapMode mode)
+{
+	static GLenum wrap_modes[] =
+	{
+		GL_REPEAT,
+		GL_CLAMP_TO_EDGE,
+	};
+
+	return wrap_modes[static_cast<int>(mode)];
+}
+
 GLenum Utils::getDefaultTextureMinFilter(GLenum internal_format)
 {
 	switch (internal_format)

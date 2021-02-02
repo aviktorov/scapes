@@ -848,7 +848,13 @@ uint32_t Driver::getNumSwapChainImages(const backend::SwapChain *swap_chain)
 
 void Driver::setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode)
 {
-	// TODO: implement
+	assert(texture);
+	Texture *gl_texture = static_cast<Texture *>(texture);
+
+	GLint wrap_mode = Utils::getTextureWrapMode(mode);
+	glTexParameteri(gl_texture->type, GL_TEXTURE_WRAP_S, wrap_mode);
+	glTexParameteri(gl_texture->type, GL_TEXTURE_WRAP_T, wrap_mode);
+	glTexParameteri(gl_texture->type, GL_TEXTURE_WRAP_R, wrap_mode);
 }
 
 void Driver::setTextureSamplerDepthCompare(backend::Texture *texture, bool enabled, DepthCompareFunc func)
