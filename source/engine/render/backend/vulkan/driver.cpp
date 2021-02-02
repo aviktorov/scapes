@@ -1914,7 +1914,7 @@ namespace render::backend::vulkan
 
 		ZoneNamedN(actual_draw_call, "Actual draw call", true);
 
-		VkPipelineLayout pipeline_layout = pipeline_layout = pipeline_layout_cache->fetch(context);
+		VkPipelineLayout pipeline_layout = pipeline_layout_cache->fetch(context);
 		VkPipeline pipeline = pipeline_cache->fetch(pipeline_layout, context, render_primitive);
 
 		vkCmdBindPipeline(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
