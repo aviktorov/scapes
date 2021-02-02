@@ -43,21 +43,19 @@ namespace render::backend::vulkan
 	void Context::setFramebuffer(const FrameBuffer *frame_buffer)
 	{
 		samples = VK_SAMPLE_COUNT_1_BIT;
-		num_color_attachments = 0;
 
 		if (frame_buffer == nullptr)
 			return;
 
-		for (uint8_t i = 0; i < frame_buffer->num_attachments; ++i)
+		num_color_attachments = 0;
+		for (uint8_t i = 0; i < frame_buffer->num_color_attachments; ++i)
 		{
-			if (frame_buffer->attachment_types[i] == FrameBufferAttachmentType::DEPTH)
-				continue;
-			
-			if (frame_buffer->attachment_resolve[i])
+			const FrameBufferColorAttachment &attachment = frame_buffer->color_attachments[i];
+			if (attachment.resolve)
 				continue;
 			
 			num_color_attachments++;
-			samples = std::max(samples, frame_buffer->attachment_samples[i]);
+			samples = std::max(samples, attachment.samples);
 		}
 
 		viewport = {};

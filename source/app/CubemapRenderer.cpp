@@ -45,12 +45,12 @@ void CubemapRenderer::init(
 	// Create framebuffer
 	FrameBufferAttachment attachments[6] =
 	{
-		{ FrameBufferAttachmentType::COLOR, target_texture->getBackend(), target_mip, 1, 0, 1 },
-		{ FrameBufferAttachmentType::COLOR, target_texture->getBackend(), target_mip, 1, 1, 1 },
-		{ FrameBufferAttachmentType::COLOR, target_texture->getBackend(), target_mip, 1, 2, 1 },
-		{ FrameBufferAttachmentType::COLOR, target_texture->getBackend(), target_mip, 1, 3, 1 },
-		{ FrameBufferAttachmentType::COLOR, target_texture->getBackend(), target_mip, 1, 4, 1 },
-		{ FrameBufferAttachmentType::COLOR, target_texture->getBackend(), target_mip, 1, 5, 1 },
+		{ target_texture->getBackend(), target_mip, 0, 1 },
+		{ target_texture->getBackend(), target_mip, 1, 1 },
+		{ target_texture->getBackend(), target_mip, 2, 1 },
+		{ target_texture->getBackend(), target_mip, 3, 1 },
+		{ target_texture->getBackend(), target_mip, 4, 1 },
+		{ target_texture->getBackend(), target_mip, 5, 1 },
 	};
 
 	framebuffer = driver->createFrameBuffer(6, attachments);

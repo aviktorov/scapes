@@ -25,7 +25,6 @@ namespace render
 
 		swap_chain = driver->createSwapChain(native_window, width, height);
 
-		initTransient(width, height);
 		initFrames(width, height, ubo_size);
 	}
 
@@ -37,7 +36,6 @@ namespace render
 
 	void SwapChain::shutdown()
 	{
-		shutdownTransient();
 		shutdownFrames();
 
 		driver->destroySwapChain(swap_chain);
@@ -59,27 +57,6 @@ namespace render
 	bool SwapChain::present(const RenderFrame &frame)
 	{
 		return driver->present(swap_chain, 1, &frame.command_buffer);
-	}
-
-	/*
-	 */
-	void SwapChain::initTransient(int width, int height)
-	{
-		backend::Multisample max_samples = driver->getMaxSampleCount();
-		backend::Format depth_format = driver->getOptimalDepthFormat();
-		backend::Format image_format = driver->getSwapChainImageFormat(swap_chain);
-
-		color = driver->createTexture2D(width, height, 1, image_format, max_samples);
-		depth = driver->createTexture2D(width, height, 1, depth_format, max_samples);
-	}
-
-	void SwapChain::shutdownTransient()
-	{
-		driver->destroyTexture(color);
-		color = nullptr;
-
-		driver->destroyTexture(depth);
-		depth = nullptr;
 	}
 
 	/*
@@ -109,21 +86,10 @@ namespace render
 			if (ubo_size > 0)
 				driver->bindUniformBuffer(frame.bind_set, 0, frame.uniform_buffer);
 
-			// Create framebuffer
-			backend::FrameBufferAttachment attachments[3] = { {}, {}, {} };
-			attachments[0].type = backend::FrameBufferAttachmentType::COLOR;
-			attachments[0].color.texture = color;
-			attachments[1].type = backend::FrameBufferAttachmentType::SWAP_CHAIN_COLOR;
-			attachments[1].swap_chain_color.swap_chain = swap_chain;
-			attachments[1].swap_chain_color.base_image = i;
-			attachments[1].swap_chain_color.resolve_attachment = true;
-			attachments[2].type = backend::FrameBufferAttachmentType::DEPTH;
-			attachments[2].depth.texture = depth;
-
-			frame.frame_buffer = driver->createFrameBuffer(3, attachments);
-
 			// Create commandbuffer
 			frame.command_buffer = driver->createCommandBuffer(backend::CommandBufferType::PRIMARY);
+
+			frame.swap_chain = swap_chain;
 		}
 	}
 
@@ -133,7 +99,6 @@ namespace render
 		{
 			driver->unmap(frame.uniform_buffer);
 			driver->destroyUniformBuffer(frame.uniform_buffer);
-			driver->destroyFrameBuffer(frame.frame_buffer);
 			driver->destroyCommandBuffer(frame.command_buffer);
 			driver->destroyBindSet(frame.bind_set);
 		}

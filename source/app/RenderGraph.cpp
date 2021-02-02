@@ -125,14 +125,17 @@ void RenderGraph::initGBuffer(uint32_t width, uint32_t height)
 	gbuffer.shading = driver->createTexture2D(width, height, 1, Format::R8G8_UNORM);
 	gbuffer.depth = driver->createTexture2D(width, height, 1, Format::D32_SFLOAT);
 
-	FrameBufferAttachment gbuffer_attachments[4] = {
-		{ FrameBufferAttachmentType::COLOR, gbuffer.base_color },
-		{ FrameBufferAttachmentType::COLOR, gbuffer.normal },
-		{ FrameBufferAttachmentType::COLOR, gbuffer.shading },
-		{ FrameBufferAttachmentType::DEPTH, gbuffer.depth },
+	FrameBufferAttachment gbuffer_color_attachments[] = {
+		{ gbuffer.base_color },
+		{ gbuffer.normal },
+		{ gbuffer.shading },
 	};
 
-	gbuffer.framebuffer = driver->createFrameBuffer(4, gbuffer_attachments);
+	FrameBufferAttachment gbuffer_depth_attachments[] = {
+		{ gbuffer.depth },
+	};
+
+	gbuffer.framebuffer = driver->createFrameBuffer(3, gbuffer_color_attachments, gbuffer_depth_attachments);
 	gbuffer.bindings = driver->createBindSet();
 
 	driver->bindTexture(gbuffer.bindings, 0, gbuffer.base_color);
@@ -219,8 +222,8 @@ void RenderGraph::initSSAO(SSAO &ssao, uint32_t width, uint32_t height)
 {
 	ssao.texture = driver->createTexture2D(width, height, 1, Format::R8_UNORM);
 
-	FrameBufferAttachment ssao_attachments[1] = {
-		{ FrameBufferAttachmentType::COLOR, ssao.texture },
+	FrameBufferAttachment ssao_attachments[] = {
+		{ ssao.texture },
 	};
 
 	ssao.framebuffer = driver->createFrameBuffer(1, ssao_attachments);
@@ -268,8 +271,8 @@ void RenderGraph::initSSR(SSR &ssr, Format format, uint32_t width, uint32_t heig
 {
 	ssr.texture = driver->createTexture2D(width, height, 1, format);
 
-	FrameBufferAttachment ssr_attachments[1] = {
-		{ FrameBufferAttachmentType::COLOR, ssr.texture },
+	FrameBufferAttachment ssr_attachments[] = {
+		{ ssr.texture },
 	};
 
 	ssr.framebuffer = driver->createFrameBuffer(1, ssr_attachments);
@@ -292,9 +295,9 @@ void RenderGraph::initLBuffer(uint32_t width, uint32_t height)
 	lbuffer.diffuse = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
 	lbuffer.specular = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
 
-	FrameBufferAttachment lbuffer_attachments[2] = {
-		{ FrameBufferAttachmentType::COLOR, lbuffer.diffuse },
-		{ FrameBufferAttachmentType::COLOR, lbuffer.specular },
+	FrameBufferAttachment lbuffer_attachments[] = {
+		{ lbuffer.diffuse },
+		{ lbuffer.specular },
 	};
 
 	lbuffer.framebuffer = driver->createFrameBuffer(2, lbuffer_attachments);
@@ -318,8 +321,8 @@ void RenderGraph::initComposite(uint32_t width, uint32_t height)
 {
 	composite.hdr_color = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
 
-	FrameBufferAttachment composite_attachments[1] = {
-		{ FrameBufferAttachmentType::COLOR, composite.hdr_color },
+	FrameBufferAttachment composite_attachments[] = {
+		{ composite.hdr_color },
 	};
 
 	composite.framebuffer = driver->createFrameBuffer(1, composite_attachments);
@@ -703,7 +706,7 @@ void RenderGraph::renderFinal(const Scene *scene, const render::RenderFrame &fra
 	info.store_ops = store_ops;
 	info.clear_values = clear_values;
 
-	driver->beginRenderPass(frame.command_buffer, frame.frame_buffer, &info);
+	driver->beginRenderPass(frame.command_buffer, frame.swap_chain, &info);
 
 	driver->clearPushConstants();
 	driver->clearBindSets();

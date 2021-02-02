@@ -22,7 +22,7 @@ namespace render::backend::vulkan
 			: device(device) { }
 		~RenderPassCache();
 
-		VkRenderPass fetch(const FrameBuffer *frame_buffer, const RenderPassInfo *info);
+		VkRenderPass fetch(const FrameBuffer *frame_buffer, const RenderPassInfo *info, VkImageLayout color_attachment_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		void clear();
 
 	private:

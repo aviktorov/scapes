@@ -9,9 +9,9 @@ namespace render
 	 */
 	struct RenderFrame
 	{
+		backend::SwapChain *swap_chain {nullptr};
 		backend::BindSet *bind_set {nullptr};
 		backend::CommandBuffer *command_buffer {nullptr};
-		backend::FrameBuffer *frame_buffer {nullptr};
 		backend::UniformBuffer *uniform_buffer {nullptr};
 		void *uniform_buffer_data {nullptr};
 	};
@@ -34,13 +34,9 @@ namespace render
 		inline uint32_t getWidth() const { return width; }
 		inline uint32_t getHeight() const { return height; }
 
-		inline const backend::FrameBuffer *getFrameBuffer(uint32_t index) const { return frames[index].frame_buffer; }
 		inline const backend::SwapChain *getBackend() const { return swap_chain; }
 
 	private:
-		void initTransient(int width, int height);
-		void shutdownTransient();
-
 		void initFrames(uint32_t width, uint32_t height, uint32_t ubo_size);
 		void shutdownFrames();
 
@@ -54,8 +50,5 @@ namespace render
 		uint32_t ubo_size {0};
 		uint32_t width {0};
 		uint32_t height {0};
-
-		backend::Texture *color {nullptr};
-		backend::Texture *depth {nullptr};
 	};
 }
