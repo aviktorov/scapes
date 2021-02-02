@@ -37,6 +37,11 @@ float lerp(float a, float b, float t)
 	return a * (1.0f - t) + b * t;
 }
 
+vec2 lerp(vec2 a, vec2 b, float t)
+{
+	return a * (1.0f - t) + b * t;
+}
+
 vec3 lerp(vec3 a, vec3 b, float t)
 {
 	return a * (1.0f - t) + b * t;
@@ -76,11 +81,13 @@ vec2 Hammersley(uint i, uint N)
 
 vec3 ImportanceSamplingGGX(vec2 Xi, vec3 normal, float roughness)
 {
-	float alpha = roughness * roughness;
+	float alpha = saturate(roughness * roughness);
 	float alpha2 = saturate(sqr(alpha));
 
+	Xi.y = saturate(Xi.y - EPSILON);
+
 	float phi = PI2 * Xi.x;
-	float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (alpha2 - 1.0f) * Xi.y + EPSILON));
+	float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (alpha2 - 1.0f) * Xi.y));
 	float sinTheta = sqrt(1.0f - sqr(cosTheta));
 
 	// from spherical coordinates to cartesian coordinates
