@@ -50,9 +50,13 @@ PBR Sandbox:
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
+        ☐ Sample old color with mips
+    Stream 51:
+        ☐ Move shaderc outside render backend
+    Stream 50:
+        ☐ Clean up swap chain creation
     Stream 49:
         ✔ Improve trace ray hit mask @done (10/29/2020, 9:32:59 PM)
-        ☐ Sample old color with mips
     Stream 48:
         ✔ Add gaussian weighted offsets to resolve pass @done (10/28/2020, 8:58:15 PM)
         ✔ Sample blue noise & randomly rotate offsets @done (10/28/2020, 8:58:16 PM)
