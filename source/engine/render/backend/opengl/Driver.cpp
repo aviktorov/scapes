@@ -1443,6 +1443,17 @@ void Driver::drawIndexedPrimitive(
 {
 	// TODO: implement
 
+	/* NOTE: probably save draw call info into a struct and store it in the command buffer
+	
+	struct DrawCall
+	{
+		PipelineState state;
+		GLint vao;
+		GLint io;
+		RenderPrimitive render_primitive;
+	};
+	/**/
+
 	/*
 	assert(render_primitive);
 	flushPipelineState();
