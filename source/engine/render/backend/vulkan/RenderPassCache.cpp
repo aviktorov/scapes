@@ -20,8 +20,11 @@ namespace render::backend::vulkan
 		clear();
 	}
 
-	VkRenderPass RenderPassCache::fetch(const FrameBuffer *frame_buffer, const RenderPassInfo *info)
+	VkRenderPass RenderPassCache::fetch(const FrameBuffer *frame_buffer, const RenderPassInfo *info, VkImageLayout color_attachment_layout)
 	{
+		assert(info);
+		assert(frame_buffer);
+
 		uint64_t hash = getHash(frame_buffer, info);
 
 		auto it = cache.find(hash);
@@ -31,35 +34,46 @@ namespace render::backend::vulkan
 		RenderPassBuilder builder;
 		builder.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
 
-		for (uint8_t i = 0; i < frame_buffer->num_attachments; ++i)
+		for (uint8_t i = 0; i < frame_buffer->num_color_attachments; ++i)
 		{
-			VkFormat format = frame_buffer->attachment_formats[i];
-			FrameBufferAttachmentType type = frame_buffer->attachment_types[i];
-			VkSampleCountFlagBits samples = frame_buffer->attachment_samples[i];
-			bool resolve = frame_buffer->attachment_resolve[i];
+			const FrameBufferColorAttachment &attachment = frame_buffer->color_attachments[i];
+
+			VkFormat format = attachment.format;
+			VkSampleCountFlagBits samples = attachment.samples;
+			bool resolve = attachment.resolve;
+
 			VkAttachmentLoadOp load_op = (VkAttachmentLoadOp)info->load_ops[i];
 			VkAttachmentStoreOp store_op = (VkAttachmentStoreOp)info->store_ops[i];
 
-			VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			if (type == FrameBufferAttachmentType::SWAP_CHAIN_COLOR)
-				layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-			if (type == FrameBufferAttachmentType::DEPTH)
+			if(resolve)
 			{
-				builder.addDepthStencilAttachment(format, samples, layout, load_op, store_op);
-				builder.setDepthStencilAttachmentReference(0, i);
-			}
-			else if(resolve)
-			{
-				builder.addColorResolveAttachment(format, layout, load_op, store_op);
+				builder.addColorResolveAttachment(format, color_attachment_layout, load_op, store_op);
 				builder.addColorResolveAttachmentReference(0, i);
 			}
 			else
 			{
-				builder.addColorAttachment(format, samples, layout, load_op, store_op);
+				builder.addColorAttachment(format, samples, color_attachment_layout, load_op, store_op);
 				builder.addColorAttachmentReference(0, i);
 			}
+		}
+
+		if (frame_buffer->have_depthstencil_attachment)
+		{
+			const FrameBufferDepthStencilAttachment &attachment = frame_buffer->depthstencil_attachment;
+
+			VkFormat format = attachment.format;
+			VkSampleCountFlagBits samples = attachment.samples;
+
+			// TODO: not safe, add assert
+			uint8_t index = frame_buffer->num_color_attachments;
+
+			VkAttachmentLoadOp load_op = (VkAttachmentLoadOp)info->load_ops[index];
+			VkAttachmentStoreOp store_op = (VkAttachmentStoreOp)info->store_ops[index];
+
+			VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+			builder.addDepthStencilAttachment(format, samples, layout, load_op, store_op);
+			builder.setDepthStencilAttachmentReference(0, index);
 		}
 
 		VkRenderPass result = builder.build(device->getDevice());
@@ -82,15 +96,35 @@ namespace render::backend::vulkan
 		assert(info->store_ops != nullptr);
 
 		uint64_t hash = 0;
-		hashCombine(hash, frame_buffer->num_attachments);
+		hashCombine(hash, frame_buffer->num_color_attachments);
 		
-		for (uint8_t i = 0; i < frame_buffer->num_attachments; ++i)
+		for (uint8_t i = 0; i < frame_buffer->num_color_attachments; ++i)
 		{
-			hashCombine(hash, frame_buffer->attachment_formats[i]);
-			hashCombine(hash, frame_buffer->attachment_samples[i]);
-			hashCombine(hash, frame_buffer->attachment_resolve[i]);
+			const FrameBufferColorAttachment &attachment = frame_buffer->color_attachments[i];
+
+			hashCombine(hash, attachment.format);
+			hashCombine(hash, attachment.samples);
+			hashCombine(hash, attachment.resolve);
 			hashCombine(hash, info->load_ops[i]);
 			hashCombine(hash, info->store_ops[i]);
+		}
+
+		hashCombine(hash, frame_buffer->have_depthstencil_attachment);
+
+		if (frame_buffer->have_depthstencil_attachment)
+		{
+			const FrameBufferDepthStencilAttachment &attachment = frame_buffer->depthstencil_attachment;
+
+			// TODO: not safe, add assert
+			uint8_t index = frame_buffer->num_color_attachments;
+
+			VkAttachmentLoadOp load_op = (VkAttachmentLoadOp)info->load_ops[index];
+			VkAttachmentStoreOp store_op = (VkAttachmentStoreOp)info->store_ops[index];
+
+			hashCombine(hash, attachment.format);
+			hashCombine(hash, attachment.samples);
+			hashCombine(hash, load_op);
+			hashCombine(hash, store_op);
 		}
 
 		return hash;

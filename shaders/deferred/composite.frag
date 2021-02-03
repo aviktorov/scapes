@@ -25,6 +25,7 @@ void main()
 
 	outHdrColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-	outHdrColor.rgb += indirect_diffuse.rgb * ao;
+	outHdrColor.rgb += indirect_diffuse.rgb;
 	outHdrColor.rgb += lerp(indirect_specular.rgb, ssr.rgb, ssr.a);
+	outHdrColor.rgb *= ao;
 }

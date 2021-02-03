@@ -28,16 +28,21 @@ vec3 traceRay(vec3 positionVS, vec3 directionVS, int num_coarse_steps, float coa
 	// TODO: better tracing
 
 	// Coarse tracing
-	int intersection_index = num_coarse_steps;
 	float depth_delta = 0.0f;
 
 	vec2 uv = vec2(0.0f, 0.0f);
+	float intersection = 0.0f;
 
-	for (int i = 1; i <= num_coarse_steps; i++)
+	vec3 sample_positionVS = positionVS;
+	for (int i = 0; i < num_coarse_steps; i++)
 	{
-		vec3 sample_positionVS = positionVS + directionVS * coarse_step_size * i;
+		sample_positionVS += directionVS * coarse_step_size;
 
 		uv = getUV(sample_positionVS);
+		if (uv.x < 0.0f || uv.x > 1.0f)
+			break;
+		if (uv.y < 0.0f || uv.y > 1.0f)
+			break;
 
 		vec3 gbuffer_sample_positionVS = getPositionVS(uv, ubo.invProj);
 
@@ -45,87 +50,87 @@ vec3 traceRay(vec3 positionVS, vec3 directionVS, int num_coarse_steps, float coa
 		float gbuffer_depth = -gbuffer_sample_positionVS.z;
 
 		depth_delta = gbuffer_depth - sample_depth;
+
+		if ((directionVS.z * coarse_step_size - depth_delta) > ssr_data.bypass_depth_threshold)
+			break;
+
 		if (depth_delta < 0.0f)
 		{
-			intersection_index = i;
+			intersection = 1.0f;
 			break;
 		}
 	}
 
 	// Precise tracing
-	vec3 start = positionVS + directionVS * coarse_step_size * (intersection_index - 1);
-	vec3 end = positionVS + directionVS * coarse_step_size * intersection_index;
-
-	for (int i = 0; i < num_precision_steps; i++)
+	if (intersection > 0.0f)
 	{
-		vec3 mid = (start + end) * 0.5f;
-		uv = getUV(mid);
+		vec3 start = sample_positionVS - directionVS * coarse_step_size;
+		vec3 end = sample_positionVS;
 
-		vec3 gbuffer_sample_positionVS = getPositionVS(uv, ubo.invProj);
+		for (int i = 0; i < num_precision_steps; i++)
+		{
+			vec3 mid = (start + end) * 0.5f;
+			uv = getUV(mid);
 
-		float sample_depth = -mid.z;
-		float gbuffer_depth = -gbuffer_sample_positionVS.z;
+			vec3 gbuffer_sample_positionVS = getPositionVS(uv, ubo.invProj);
 
-		depth_delta = gbuffer_depth - sample_depth;
+			float sample_depth = -mid.z;
+			float gbuffer_depth = -gbuffer_sample_positionVS.z;
 
-		if (depth_delta < 0.0f)
-			end = mid;
-		else
-			start = mid;
+			depth_delta = gbuffer_depth - sample_depth;
+
+			if (depth_delta < 0.0f)
+				end = mid;
+			else
+				start = mid;
+		}
 	}
 
-	float fade = (abs(depth_delta) > ssr_data.bypass_depth_threshold) ? 0.0f : 1.0f;
-	return vec3(uv, fade);
+	return vec3(uv, intersection);
+}
+
+float whiteNoise2D(in vec2 pos)
+{
+	return fract(sin(dot(pos.xy ,vec2(12.9898,78.233))) * 43758.5453);
 }
 
 /*
  */
 void main()
 {
-	vec2 noise_uv = fragTexCoord * textureSize(gbufferBaseColor, 0) / textureSize(ssrNoiseTexture, 0).xy;
-	vec4 blue_noise = texture(ssrNoiseTexture, noise_uv);
-
 	vec2 uv = fragTexCoord;
+	vec2 noise_uv = uv * textureSize(gbufferShading, 0) / textureSize(ssrNoiseTexture, 0).xy;
+
+	vec4 blue_noise = texture(ssrNoiseTexture, noise_uv);
 
 	vec3 positionVS = getPositionVS(uv, ubo.invProj);
 	vec3 normalVS = getNormalVS(uv);
 
 	vec3 viewVS = -normalize(positionVS);
-	vec2 shading = texture(gbufferShading, uv).rg;
 
-	SurfaceMaterial material;
-	material.albedo = texture(gbufferBaseColor, uv).rgb;
-	material.roughness = shading.r;
-	material.metalness = shading.g;
-	material.ao = 1.0f;
-	material.f0 = lerp(vec3(0.04f), material.albedo, material.metalness);
+	vec2 shading = texture(gbufferShading, uv).rg;
+	float roughness = shading.r;
 
 	// trace pass
-	uint size = 4;
-	ivec2 sequence_coords = ivec2(uv * textureSize(gbufferBaseColor, 0)) % ivec2(size, size);
+	vec2 Xi = vec2(whiteNoise2D(fragTexCoord + blue_noise.xy), whiteNoise2D(fragTexCoord + blue_noise.zw));
+	Xi.y = lerp(0.0f, brdf_bias, Xi.y);
 
-	uint N = size * size;
-	uint i = uint(sequence_coords.y) * size + uint(sequence_coords.x);
-	vec2 Xi = Hammersley(i, N);
-	// vec2 Xi = blue_noise.xy;
-
-	vec3 microfacet_normalVS = ImportanceSamplingGGX(Xi, normalVS, material.roughness);
+	vec3 microfacet_normalVS = ImportanceSamplingGGX(Xi, normalVS, roughness);
 	vec3 reflectionVS = -reflect(viewVS, microfacet_normalVS);
 
-	// float step = lerp(ssr_data.coarse_step_size * 0.5f, ssr_data.coarse_step_size * 4.0f, blue_noise.z);
 	float step = ssr_data.coarse_step_size;
+	step *= lerp(min_step_multiplier, max_step_multiplier, blue_noise.x);
 
 	vec3 result = traceRay(positionVS, reflectionVS, ssr_data.num_coarse_steps, step, ssr_data.num_precision_steps);
 
 	float border_factor = pow(saturate(1.0f - length(result.xy - vec2(0.5f, 0.5f)) * 2.0f), 1.0f);
 
-	float facing_threshold = ssr_data.precision_step_depth_threshold; // TODO: replace by another threshold
 	float facing_dot = max(0.0f, dot(viewVS, reflectionVS));
-	float facing_factor = 1.0f - saturate((facing_dot - facing_threshold) / (1.0f - facing_threshold));
+	float facing_factor = 1.0f - saturate(facing_dot / (ssr_data.facing_threshold + EPSILON));
 
-	float thickness_factor = result.z;
+	float rayhit_factor = result.z;
 
-	float fade = border_factor * facing_factor * thickness_factor;
+	float fade = border_factor * facing_factor * rayhit_factor;
 
 	outSSRTrace = vec4(result.xy, fade, 0.0f);
 }

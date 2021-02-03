@@ -58,6 +58,21 @@ namespace render::backend::vulkan
 		VkImageCreateFlags flags {0};
 	};
 
+	struct FrameBufferColorAttachment
+	{
+		VkImageView view {VK_NULL_HANDLE};
+		VkFormat format {VK_FORMAT_UNDEFINED};
+		VkSampleCountFlagBits samples {VK_SAMPLE_COUNT_1_BIT};
+		bool resolve {false};
+	};
+
+	struct FrameBufferDepthStencilAttachment
+	{
+		VkImageView view {VK_NULL_HANDLE};
+		VkFormat format {VK_FORMAT_UNDEFINED};
+		VkSampleCountFlagBits samples {VK_SAMPLE_COUNT_1_BIT};
+	};
+
 	struct FrameBuffer : public render::backend::FrameBuffer
 	{
 		enum
@@ -71,11 +86,11 @@ namespace render::backend::vulkan
 		VkRenderPass dummy_render_pass {VK_NULL_HANDLE}; // TODO: move to render pass cache
 
 		uint8_t num_attachments {0};
-		VkImageView attachments[FrameBuffer::MAX_ATTACHMENTS];
-		FrameBufferAttachmentType attachment_types[FrameBuffer::MAX_ATTACHMENTS];
-		VkFormat attachment_formats[FrameBuffer::MAX_ATTACHMENTS];
-		VkSampleCountFlagBits attachment_samples[FrameBuffer::MAX_ATTACHMENTS];
-		bool attachment_resolve[FrameBuffer::MAX_ATTACHMENTS];
+		uint8_t num_color_attachments {0};
+		FrameBufferColorAttachment color_attachments[MAX_ATTACHMENTS];
+
+		bool have_depthstencil_attachment {false};
+		FrameBufferDepthStencilAttachment depthstencil_attachment;
 	};
 
 	struct CommandBuffer : public render::backend::CommandBuffer
@@ -150,16 +165,12 @@ namespace render::backend::vulkan
 		VkQueue present_queue {VK_NULL_HANDLE};
 		VkPresentModeKHR present_mode {VK_PRESENT_MODE_FIFO_KHR};
 
-		VkImage msaa_color_image {VK_NULL_HANDLE};
-		VkImageView msaa_color_view {VK_NULL_HANDLE};
-		VmaAllocation msaa_color_memory {VK_NULL_HANDLE};
-
-		VkImage depth_image {VK_NULL_HANDLE};
-		VkImageView depth_view {VK_NULL_HANDLE};
-		VmaAllocation depth_memory {VK_NULL_HANDLE};
-
 		uint32_t num_images {0};
 		uint32_t current_image {0};
+
+		Texture *msaa_color;
+		Texture *depth;
+		FrameBuffer *frame_buffers[SwapChain::MAX_IMAGES];
 
 		VkSemaphore image_available_gpu[SwapChain::MAX_IMAGES];
 		VkImage images[SwapChain::MAX_IMAGES];
@@ -230,8 +241,9 @@ namespace render::backend::vulkan
 		) override;
 
 		backend::FrameBuffer *createFrameBuffer(
-			uint8_t num_attachments,
-			const FrameBufferAttachment *attachments
+			uint8_t num_color_attachments,
+			const FrameBufferAttachment *color_attachments,
+			const FrameBufferAttachment *depthstencil_attachment
 		) override;
 
 		backend::CommandBuffer *createCommandBuffer(
@@ -448,6 +460,12 @@ namespace render::backend::vulkan
 		void beginRenderPass(
 			backend::CommandBuffer *command_buffer,
 			const backend::FrameBuffer *frame_buffer,
+			const RenderPassInfo *info
+		) override;
+
+		void beginRenderPass(
+			backend::CommandBuffer *command_buffer,
+			const backend::SwapChain *swap_chain,
 			const RenderPassInfo *info
 		) override;
 

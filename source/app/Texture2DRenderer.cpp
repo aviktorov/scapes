@@ -23,7 +23,7 @@ void Texture2DRenderer::init(const render::backend::Texture *target_texture)
 	assert(target_texture != nullptr);
 
 	// Create framebuffer
-	FrameBufferAttachment attachment = { FrameBufferAttachmentType::COLOR, target_texture, 0, 1, 0, 1};
+	FrameBufferAttachment attachment = { target_texture };
 	framebuffer = driver->createFrameBuffer(1, &attachment);
 }
 

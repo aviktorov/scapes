@@ -56,6 +56,13 @@ const float weights[5] =
 	0.06136f, 0.24477f, 0.38774f, 0.24477f, 0.06136f,
 };
 
+// [Jimenez 2014] "Next Generation Post Processing In Call Of Duty Advanced Warfare"
+float InterleavedGradientNoise(in vec2 pos, in vec2 random)
+{
+	vec3 magic = vec3(0.06711056f, 0.00583715f, 52.9829189f);
+	return fract(magic.z * fract(dot(pos.xy + random, magic.xy)));
+}
+
 /*
  */
 void main()
@@ -81,11 +88,13 @@ void main()
 	vec2 noise_uv = fragTexCoord * textureSize(gbufferBaseColor, 0) / textureSize(ssrNoiseTexture, 0).xy;
 	vec4 blue_noise = texture(ssrNoiseTexture, noise_uv);
 
-	float sin_theta = blue_noise.x;
-	float cos_theta = blue_noise.y;
+	float theta = PI2 * InterleavedGradientNoise(fragTexCoord, blue_noise.xy);
+	float sin_theta = sin(theta);
+	float cos_theta = cos(theta);
 	mat2 rotation = mat2(cos_theta, sin_theta, -sin_theta, cos_theta);
 
 	outSSR = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	
 	for (int i = 0; i < num_samples; ++i)
 	{
 		vec2 offset = rotation * offsets[i];

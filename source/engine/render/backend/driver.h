@@ -271,44 +271,13 @@ struct VertexAttribute
 	unsigned int offset {0};
 };
 
-enum FrameBufferAttachmentType : uint8_t
-{
-	COLOR = 0,
-	DEPTH,
-	SWAP_CHAIN_COLOR,
-};
-
 struct FrameBufferAttachment
 {
-	struct Color
-	{
-		const Texture *texture {nullptr};
-		uint32_t base_mip {0};
-		uint32_t num_mips {1};
-		uint32_t base_layer {0};
-		uint32_t num_layers {1};
-		bool resolve_attachment {false};
-	};
-
-	struct Depth
-	{
-		const Texture *texture {nullptr};
-	};
-
-	struct SwapChainColor
-	{
-		const SwapChain *swap_chain {nullptr};
-		uint32_t base_image {0};
-		bool resolve_attachment {false};
-	};
-
-	FrameBufferAttachmentType type {FrameBufferAttachmentType::COLOR};
-	union
-	{
-		Color color;
-		Depth depth;
-		SwapChainColor swap_chain_color;
-	};
+	const Texture *texture {nullptr};
+	uint32_t base_mip {0};
+	uint32_t base_layer {0};
+	uint32_t num_layers {1};
+	bool resolve_attachment {false};
 };
 
 union RenderPassClearColor
@@ -400,8 +369,9 @@ public:
 	) = 0;
 
 	virtual FrameBuffer *createFrameBuffer(
-		uint8_t num_attachments,
-		const FrameBufferAttachment *attachments
+		uint8_t num_color_attachments,
+		const FrameBufferAttachment *color_attachments,
+		const FrameBufferAttachment *depthstencil_attachment = nullptr
 	) = 0;
 
 	virtual CommandBuffer *createCommandBuffer(
@@ -616,6 +586,12 @@ public:
 	virtual void beginRenderPass(
 		CommandBuffer *command_buffer,
 		const FrameBuffer *frame_buffer,
+		const RenderPassInfo *info
+	) = 0;
+
+	virtual void beginRenderPass(
+		CommandBuffer *command_buffer,
+		const SwapChain *swap_chain,
 		const RenderPassInfo *info
 	) = 0;
 
