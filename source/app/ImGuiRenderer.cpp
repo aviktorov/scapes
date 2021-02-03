@@ -68,7 +68,7 @@ void ImGuiRenderer::init(ImGuiContext *context)
 	vertex_shader = driver->createShaderFromSource(ShaderType::VERTEX, static_cast<uint32_t>(vertex_shader_source.size()), vertex_shader_source.c_str());
 	fragment_shader = driver->createShaderFromSource(ShaderType::FRAGMENT, static_cast<uint32_t>(fragment_shader_source.size()), fragment_shader_source.c_str());
 
-	font_texture = driver->createTexture2D(width, height, 1, Format::R8G8B8A8_UNORM, Multisample::COUNT_1, pixels);
+	font_texture = driver->createTexture2D(width, height, 1, Format::R8G8B8A8_UNORM, pixels);
 	font_bind_set = driver->createBindSet();
 	driver->bindTexture(font_bind_set, 0, font_texture);
 

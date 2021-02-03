@@ -327,8 +327,8 @@ namespace render::backend::vulkan
 			Format color_format = Utils::getApiFormat(swap_chain->surface_format.format);
 			Multisample samples = Utils::getApiSamples(device->getMaxSampleCount());
 
-			swap_chain->depth = static_cast<vulkan::Texture *>(driver->createTexture2D(width, height, 1, depth_format, samples));
-			swap_chain->msaa_color = static_cast<vulkan::Texture *>(driver->createTexture2D(width, height, 1, color_format, samples));
+			swap_chain->depth = static_cast<vulkan::Texture *>(driver->createTexture2DMultisample(width, height, depth_format, samples));
+			swap_chain->msaa_color = static_cast<vulkan::Texture *>(driver->createTexture2DMultisample(width, height, color_format, samples));
 
 			// Get surface images
 			vkGetSwapchainImagesKHR(device->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, nullptr);
@@ -572,7 +572,6 @@ namespace render::backend::vulkan
 		uint32_t height,
 		uint32_t num_mipmaps,
 		Format format,
-		Multisample samples,
 		const void *data,
 		uint32_t num_data_mipmaps
 	)
@@ -580,7 +579,6 @@ namespace render::backend::vulkan
 		assert(width != 0 && height != 0 && "Invalid texture size");
 		assert(num_mipmaps != 0 && "Invalid mipmap count");
 		assert((data == nullptr) || (data != nullptr && num_data_mipmaps != 0) && "Invalid data mipmaps");
-		assert((samples == Multisample::COUNT_1) || (samples != Multisample::COUNT_1 && num_mipmaps == 1));
 
 		Texture *result = new Texture();
 		result->type = VK_IMAGE_TYPE_2D;
@@ -590,11 +588,37 @@ namespace render::backend::vulkan
 		result->depth = 1;
 		result->num_mipmaps = num_mipmaps;
 		result->num_layers = 1;
-		result->samples = Utils::getSamples(samples);
+		result->samples = VK_SAMPLE_COUNT_1_BIT;
 		result->tiling = VK_IMAGE_TILING_OPTIMAL;
 		result->flags = 0;
 
 		helpers::createTextureData(device, result, format, data, num_data_mipmaps, 1);
+
+		return result;
+	}
+
+	backend::Texture *Driver::createTexture2DMultisample(
+		uint32_t width,
+		uint32_t height,
+		Format format,
+		Multisample samples
+	)
+	{
+		assert(width != 0 && height != 0 && "Invalid texture size");
+
+		Texture *result = new Texture();
+		result->type = VK_IMAGE_TYPE_2D;
+		result->format = Utils::getFormat(format);
+		result->width = width;
+		result->height = height;
+		result->depth = 1;
+		result->num_mipmaps = 1;
+		result->num_layers = 1;
+		result->samples = Utils::getSamples(samples);
+		result->tiling = VK_IMAGE_TILING_OPTIMAL;
+		result->flags = 0;
+
+		helpers::createTextureData(device, result, format, nullptr, 1, 1);
 
 		return result;
 	}

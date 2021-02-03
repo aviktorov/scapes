@@ -154,12 +154,11 @@ namespace render
 		stb_pixels = nullptr;
 
 		render::backend::Format format = deduceFormat(pixel_size, channels);
-		render::backend::Multisample samples = render::backend::Multisample::COUNT_1;
 
 		// Upload CPU data to GPU
 		clearGPUData();
 
-		texture = driver->createTexture2D(width, height, mip_levels, format, samples, pixels);
+		texture = driver->createTexture2D(width, height, mip_levels, format, pixels);
 		driver->generateTexture2DMipmaps(texture);
 
 		// TODO: should we clear CPU data after uploading it to the GPU?

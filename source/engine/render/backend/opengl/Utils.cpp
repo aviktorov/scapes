@@ -181,7 +181,7 @@ GLint Utils::getPixelSize(Format format)
 }
 
 //
-GLenum Utils::getFramebufferDepthAttachmentType(GLenum internal_format)
+GLenum Utils::getFramebufferDepthStencilAttachmentType(GLenum internal_format)
 {
 	switch (internal_format)
 	{

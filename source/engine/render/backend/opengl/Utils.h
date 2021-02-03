@@ -15,7 +15,7 @@ public:
 	static GLint getPixelSize(Format format);
 
 	//
-	static GLenum getFramebufferDepthAttachmentType(GLenum internal_format);
+	static GLenum getFramebufferDepthStencilAttachmentType(GLenum internal_format);
 
 	//
 	static GLint getAttributeComponents(Format format);

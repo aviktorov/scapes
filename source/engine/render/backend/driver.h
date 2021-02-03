@@ -334,9 +334,15 @@ public:
 		uint32_t height,
 		uint32_t num_mipmaps,
 		Format format,
-		Multisample samples = Multisample::COUNT_1,
 		const void *data = nullptr,
 		uint32_t num_data_mipmaps = 1
+	) = 0;
+
+	virtual Texture *createTexture2DMultisample(
+		uint32_t width,
+		uint32_t height,
+		Format format,
+		Multisample samples
 	) = 0;
 
 	virtual Texture *createTexture2DArray(

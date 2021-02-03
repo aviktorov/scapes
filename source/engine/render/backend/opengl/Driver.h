@@ -43,7 +43,7 @@ struct Texture : public backend::Texture
 	GLsizei depth {0};
 	GLsizei layers {1};
 	GLint mips {1};
-	GLsizei num_samples {0};
+	GLsizei num_samples {1};
 };
 
 struct FrameBufferColorAttachment
@@ -118,9 +118,15 @@ public:
 		uint32_t height,
 		uint32_t num_mipmaps,
 		Format format,
-		Multisample samples = Multisample::COUNT_1,
 		const void *data = nullptr,
 		uint32_t num_data_mipmaps = 1
+	) final;
+
+	backend::Texture *createTexture2DMultisample(
+		uint32_t width,
+		uint32_t height,
+		Format format,
+		Multisample samples
 	) final;
 
 	backend::Texture *createTexture2DArray(

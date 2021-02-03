@@ -32,7 +32,7 @@ static backend::Texture *generateTexture(Driver *driver, uint8_t r, uint8_t g, u
 		r, g, b, 255,
 	};
 
-	return driver->createTexture2D(2, 2, 1, Format::R8G8B8A8_UNORM, Multisample::COUNT_1, pixels);
+	return driver->createTexture2D(2, 2, 1, Format::R8G8B8A8_UNORM, pixels);
 }
 
 static void generateDefaultTextures(Driver *driver)

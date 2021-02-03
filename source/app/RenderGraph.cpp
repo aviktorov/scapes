@@ -168,7 +168,7 @@ void RenderGraph::initSSAOKernel()
 		data[i] = glm::packHalf2x16(noise);
 	}
 
-	ssao_kernel.noise_texture = driver->createTexture2D(4, 4, 1, Format::R16G16_SFLOAT, Multisample::COUNT_1, data);
+	ssao_kernel.noise_texture = driver->createTexture2D(4, 4, 1, Format::R16G16_SFLOAT, data);
 
 	ssao_kernel.cpu_data->num_samples = 32;
 	ssao_kernel.cpu_data->intensity = 1.5f;

@@ -268,7 +268,6 @@ backend::Texture *Driver::createTexture2D(
 	uint32_t height,
 	uint32_t num_mipmaps,
 	Format format,
-	Multisample samples,
 	const void *data,
 	uint32_t num_data_mipmaps
 )
@@ -304,6 +303,30 @@ backend::Texture *Driver::createTexture2D(
 			mip_height = std::max<GLint>(1, mip_height / 2);
 		}
 	}
+
+	Utils::setDefaulTextureParameters(result);
+	return result;
+}
+
+backend::Texture *Driver::createTexture2DMultisample(
+	uint32_t width,
+	uint32_t height,
+	Format format,
+	Multisample samples
+)
+{
+	Texture *result = new Texture();
+
+	result->type = GL_TEXTURE_2D_MULTISAMPLE;
+	result->internal_format = Utils::getInternalFormat(format);
+	result->width = width;
+	result->height = height;
+	result->num_samples = Utils::getSampleCount(samples);
+
+	glGenTextures(1, &result->id);
+	glBindTexture(result->type, result->id);
+
+	glTexImage2DMultisample(result->type, result->num_samples, result->internal_format, result->width, result->height, GL_FALSE);
 
 	Utils::setDefaulTextureParameters(result);
 	return result;
@@ -500,12 +523,10 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 		GLint layer = attachment.base_layer;
 		GLuint num_layers = attachment.num_layers;
 
-		draw_buffers[i] = attachment_type;
-
 		switch (gl_texture->type)
 		{
 			case GL_TEXTURE_2D:
-				glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, GL_TEXTURE_2D, gl_texture->id, mip);
+				glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, gl_texture->type, gl_texture->id, mip);
 			break;
 			case GL_TEXTURE_CUBE_MAP:
 			{
@@ -521,6 +542,8 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 			break;
 		}
 
+		draw_buffers[i] = attachment_type;
+
 		result->color_attachments[i].id = gl_texture->id;
 		result->color_attachments[i].base_mip = mip;
 		result->color_attachments[i].base_layer = layer;
@@ -530,7 +553,7 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 	if (depthstencil_attachment != nullptr)
 	{
 		const Texture *gl_texture = static_cast<const Texture *>(depthstencil_attachment->texture);
-		GLenum attachment_type = Utils::getFramebufferDepthAttachmentType(gl_texture->internal_format);
+		GLenum attachment_type = Utils::getFramebufferDepthStencilAttachmentType(gl_texture->internal_format);
 
 		glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, GL_TEXTURE_2D, gl_texture->id, 0);
 
