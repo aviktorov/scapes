@@ -153,8 +153,9 @@ public:
 	) final;
 
 	backend::FrameBuffer *createFrameBuffer(
-		uint8_t num_attachments,
-		const FrameBufferAttachment *attachments
+		uint8_t num_color_attachments,
+		const FrameBufferAttachment *color_attachments,
+		const FrameBufferAttachment *depthstencil_attachment
 	) final;
 
 	backend::CommandBuffer *createCommandBuffer(
@@ -374,6 +375,12 @@ public:
 	void beginRenderPass(
 		backend::CommandBuffer *command_buffer,
 		const backend::FrameBuffer *frame_buffer,
+		const RenderPassInfo *info
+	) final;
+
+	void beginRenderPass(
+		backend::CommandBuffer *command_buffer,
+		const backend::SwapChain *swap_chain,
 		const RenderPassInfo *info
 	) final;
 

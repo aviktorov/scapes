@@ -475,80 +475,66 @@ backend::Texture *Driver::createTextureCube(
 
 //
 backend::FrameBuffer *Driver::createFrameBuffer(
-	uint8_t num_attachments,
-	const FrameBufferAttachment *attachments
+	uint8_t num_color_attachments,
+	const FrameBufferAttachment *color_attachments,
+	const FrameBufferAttachment *depthstencil_attachment
 )
 {
-	assert(num_attachments > 0 && attachments != nullptr);
+	assert((depthstencil_attachment != nullptr) || (num_color_attachments > 0 && color_attachments != nullptr));
 
 	FrameBuffer *result = new FrameBuffer();
-	result->num_color_attachments = 0;
+	result->num_color_attachments = num_color_attachments;
 
 	glGenFramebuffers(1, &result->id);
 	glBindFramebuffer(GL_FRAMEBUFFER, result->id);
 
 	GLenum draw_buffers[FrameBuffer::MAX_COLOR_ATTACHMENTS];
 
-	for (uint8_t i = 0; i < num_attachments; ++i)
+	for (uint8_t i = 0; i < num_color_attachments; ++i)
 	{
-		const FrameBufferAttachment &attachment = attachments[i];
-		switch (attachment.type)
+		const FrameBufferAttachment &attachment = color_attachments[i];
+		const Texture *gl_texture = static_cast<const Texture *>(attachment.texture);
+
+		GLenum attachment_type = GL_COLOR_ATTACHMENT0 + i;
+		GLint mip = attachment.base_mip;
+		GLint layer = attachment.base_layer;
+		GLuint num_layers = attachment.num_layers;
+
+		draw_buffers[i] = attachment_type;
+
+		switch (gl_texture->type)
 		{
-			case FrameBufferAttachmentType::COLOR:
+			case GL_TEXTURE_2D:
+				glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, GL_TEXTURE_2D, gl_texture->id, mip);
+			break;
+			case GL_TEXTURE_CUBE_MAP:
 			{
-				uint8_t current_attachment = result->num_color_attachments;
-				const Texture *gl_texture = static_cast<const Texture *>(attachment.color.texture);
-
-				GLenum attachment_type = GL_COLOR_ATTACHMENT0 + current_attachment;
-				GLint mip = attachment.color.base_mip;
-				GLint layer = attachment.color.base_layer;
-				GLuint num_layers = attachment.color.num_layers;
-
-				draw_buffers[current_attachment] = attachment_type;
-
-				switch (gl_texture->type)
-				{
-					case GL_TEXTURE_2D:
-						glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, GL_TEXTURE_2D, gl_texture->id, mip);
-					break;
-					case GL_TEXTURE_CUBE_MAP:
-					{
-						if (num_layers == 6)
-							glFramebufferTexture(GL_FRAMEBUFFER, attachment_type, gl_texture->id, mip);
-						else
-							glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, GL_TEXTURE_CUBE_MAP_POSITIVE_X + layer, gl_texture->id, mip);
-					}
-					break;
-					case GL_TEXTURE_2D_ARRAY:
-					case GL_TEXTURE_3D:
-						glFramebufferTextureLayer(GL_FRAMEBUFFER, attachment_type, gl_texture->id, mip, layer);
-					break;
-				}
-
-				result->color_attachments[current_attachment].id = gl_texture->id;
-				result->color_attachments[current_attachment].base_mip = mip;
-				result->color_attachments[current_attachment].base_layer = layer;
-				result->color_attachments[current_attachment].num_layers = num_layers;
-
-				result->num_color_attachments++;
+				if (num_layers == 6)
+					glFramebufferTexture(GL_FRAMEBUFFER, attachment_type, gl_texture->id, mip);
+				else
+					glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, GL_TEXTURE_CUBE_MAP_POSITIVE_X + layer, gl_texture->id, mip);
 			}
 			break;
-
-			case FrameBufferAttachmentType::DEPTH:
-			{
-				const Texture *gl_texture = static_cast<const Texture *>(attachment.depth.texture);
-				GLenum attachment_type = Utils::getFramebufferDepthAttachmentType(gl_texture->internal_format);
-
-				glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, GL_TEXTURE_2D, gl_texture->id, 0);
-
-				result->depthstencil_attachment.id = gl_texture->id;
-			}
-			break;
-
-			case FrameBufferAttachmentType::SWAP_CHAIN_COLOR:
-				assert(false && "opengl::Driver::createFrameBuffer(): swap chain color attachments are not supported in OpenGL");
+			case GL_TEXTURE_2D_ARRAY:
+			case GL_TEXTURE_3D:
+				glFramebufferTextureLayer(GL_FRAMEBUFFER, attachment_type, gl_texture->id, mip, layer);
 			break;
 		}
+
+		result->color_attachments[i].id = gl_texture->id;
+		result->color_attachments[i].base_mip = mip;
+		result->color_attachments[i].base_layer = layer;
+		result->color_attachments[i].num_layers = num_layers;
+	}
+
+	if (depthstencil_attachment != nullptr)
+	{
+		const Texture *gl_texture = static_cast<const Texture *>(depthstencil_attachment->texture);
+		GLenum attachment_type = Utils::getFramebufferDepthAttachmentType(gl_texture->internal_format);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, GL_TEXTURE_2D, gl_texture->id, 0);
+
+		result->depthstencil_attachment.id = gl_texture->id;
 	}
 
 	glDrawBuffers(result->num_color_attachments, draw_buffers);
@@ -1428,6 +1414,48 @@ void Driver::beginRenderPass(
 
 }
 
+void Driver::beginRenderPass(
+	backend::CommandBuffer *command_buffer,
+	const backend::SwapChain *swap_chain,
+	const RenderPassInfo *info
+)
+{
+	// TODO: implement
+
+	/*
+	const FrameBuffer *gl_buffer = static_cast<const FrameBuffer *>(frame_buffer);
+
+	if (!gl_buffer)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		return;
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, gl_buffer->id);
+
+	if (!clear)
+		return;
+
+	GLfloat clear_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+	for (uint8_t i = 0; i < gl_buffer->num_color_attachments; ++i)
+		glClearBufferfv(GL_COLOR, i, clear_color);
+
+	if (gl_buffer->depthstencil_attachment.id != GL_NONE)
+		glClearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
+	/**/
+
+	/* clear color
+	glClearColor(r, g, b, a);
+	glClear(GL_COLOR_BUFFER_BIT);
+	/**/
+
+	/* clear depth/stencil
+	glClearDepthf(depth);
+	glClearStencil(stencil);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	/**/
+}
+
 void Driver::endRenderPass(
 	backend::CommandBuffer *command_buffer
 )
@@ -1444,7 +1472,7 @@ void Driver::drawIndexedPrimitive(
 	// TODO: implement
 
 	/* NOTE: probably save draw call info into a struct and store it in the command buffer
-	
+
 	struct DrawCall
 	{
 		PipelineState state;
