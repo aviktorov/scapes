@@ -52,7 +52,7 @@ PBR Sandbox:
         ☐ Multiscattering GGX + Shlick
         ☐ Sample old color with mips
     Stream 51:
-        ☐ Move shaderc outside render backend
+        ✔ Move shaderc outside render backend @done (2/5/2021, 9:25:52 PM)
     Stream 50:
         ✔ Clean up swap chain creation @done (2/2/2021, 10:05:11 PM)
     Stream 49:
