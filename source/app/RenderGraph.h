@@ -17,6 +17,11 @@ namespace render
 	struct RenderFrame;
 }
 
+namespace render::shaders
+{
+	class Compiler;
+}
+
 struct GBuffer
 {
 	render::backend::Texture *base_color {nullptr};     // rgba8, rga - albedo for dielectrics, f0 for conductors, a - unused
@@ -100,8 +105,8 @@ struct Composite
 class RenderGraph
 {
 public:
-	RenderGraph(render::backend::Driver *driver)
-		: driver(driver) { }
+	RenderGraph(render::backend::Driver *driver, render::shaders::Compiler *compiler)
+		: driver(driver), compiler(compiler) { }
 
 	virtual ~RenderGraph();
 
@@ -161,6 +166,7 @@ private:
 
 private:
 	render::backend::Driver *driver {nullptr};
+	render::shaders::Compiler *compiler {nullptr};
 
 	GBuffer gbuffer;
 

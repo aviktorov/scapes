@@ -56,8 +56,8 @@ namespace config
 class ApplicationResources
 {
 public:
-	ApplicationResources(render::backend::Driver *driver)
-		: driver(driver), resources(driver) { }
+	ApplicationResources(render::backend::Driver *driver, render::shaders::Compiler *compiler)
+		: driver(driver), compiler(compiler), resources(driver, compiler) { }
 
 	virtual ~ApplicationResources();
 
@@ -124,6 +124,7 @@ public:
 
 private:
 	render::backend::Driver *driver {nullptr};
+	render::shaders::Compiler *compiler {nullptr};
 	ResourceManager resources;
 
 	render::Texture *baked_brdf {nullptr};

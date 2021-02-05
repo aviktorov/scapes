@@ -5,6 +5,7 @@
 #include "Application.h"
 #include "ApplicationResources.h"
 
+#include <render/shaders/spirv/Compiler.h>
 #include <render/backend/Driver.h>
 #include <render/SwapChain.h>
 
@@ -287,7 +288,7 @@ void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
  */
 void Application::initRenderScene()
 {
-	resources = new ApplicationResources(driver);
+	resources = new ApplicationResources(driver, compiler);
 	resources->init();
 
 	sponza = new Scene(driver);
@@ -317,7 +318,7 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	render_graph = new RenderGraph(driver);
+	render_graph = new RenderGraph(driver, compiler);
 	render_graph->init(resources, swap_chain->getWidth(), swap_chain->getHeight());
 }
 
@@ -349,12 +350,16 @@ void Application::shutdownImGui()
 void Application::initDriver()
 {
 	driver = backend::Driver::create("PBR Sandbox", "Scape");
+	compiler = new shaders::spirv::Compiler();
 }
 
 void Application::shutdownDriver()
 {
 	delete driver;
 	driver = nullptr;
+
+	delete compiler;
+	compiler = nullptr;
 }
 
 /*

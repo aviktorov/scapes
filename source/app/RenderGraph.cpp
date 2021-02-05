@@ -38,7 +38,7 @@ RenderGraph::~RenderGraph()
  */
 void RenderGraph::init(const ApplicationResources *resources, uint32_t width, uint32_t height)
 {
-	imgui_renderer = new ImGuiRenderer(driver);
+	imgui_renderer = new ImGuiRenderer(driver, compiler);
 	imgui_renderer->init(ImGui::GetCurrentContext());
 
 	initGBuffer(width, height);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <render/shaders/Compiler.h>
 #include <render/backend/Driver.h>
 #include <map>
 
@@ -8,6 +9,7 @@ namespace render
 	struct RenderFrame;
 	class SwapChain;
 	class Texture;
+	class Shader;
 }
 
 struct ImGuiContext;
@@ -20,7 +22,7 @@ typedef void* ImTextureID;
 class ImGuiRenderer
 {
 public:
-	ImGuiRenderer(render::backend::Driver *driver);
+	ImGuiRenderer(render::backend::Driver *driver, render::shaders::Compiler *compiler);
 	virtual ~ImGuiRenderer();
 
 	void init(ImGuiContext *imguiContext);
@@ -36,9 +38,10 @@ private:
 
 private:
 	render::backend::Driver *driver {nullptr};
+	render::shaders::Compiler *compiler {nullptr};
 	render::backend::Texture *font_texture {nullptr};
-	render::backend::Shader *vertex_shader {nullptr};
-	render::backend::Shader *fragment_shader {nullptr};
+	render::Shader *vertex_shader {nullptr};
+	render::Shader *fragment_shader {nullptr};
 
 	render::backend::VertexBuffer *vertices {nullptr};
 	render::backend::IndexBuffer *indices {nullptr};

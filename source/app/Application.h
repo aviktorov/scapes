@@ -10,6 +10,11 @@ namespace render
 	class SwapChain;
 }
 
+namespace render::shaders
+{
+	class Compiler;
+}
+
 namespace render::backend
 {
 	class Driver;
@@ -108,4 +113,5 @@ private:
 
 	render::SwapChain *swap_chain {nullptr};
 	render::backend::Driver *driver {nullptr};
+	render::shaders::Compiler *compiler {nullptr};
 };
