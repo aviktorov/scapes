@@ -50,7 +50,10 @@ PBR Sandbox:
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
+
+    Stream 52:
         ☐ Sample old color with mips
+        ☐ Add temporal filter to SSR
     Stream 51:
         ✔ Move shaderc outside render backend @done (2/5/2021, 9:25:52 PM)
     Stream 50:
