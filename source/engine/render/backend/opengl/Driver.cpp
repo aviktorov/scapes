@@ -505,69 +505,106 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 {
 	assert((depthstencil_attachment != nullptr) || (num_color_attachments > 0 && color_attachments != nullptr));
 
+	// Fill struct fields
 	FrameBuffer *result = new FrameBuffer();
-	result->num_color_attachments = num_color_attachments;
 
-	glGenFramebuffers(1, &result->id);
-	glBindFramebuffer(GL_FRAMEBUFFER, result->id);
-
-	GLenum draw_buffers[FrameBuffer::MAX_COLOR_ATTACHMENTS];
-
+	result->num_color_attachments = 0;
+	result->num_resolve_color_attachments = 0;
 	for (uint8_t i = 0; i < num_color_attachments; ++i)
 	{
 		const FrameBufferAttachment &attachment = color_attachments[i];
 		const Texture *gl_texture = static_cast<const Texture *>(attachment.texture);
 
-		GLenum attachment_type = GL_COLOR_ATTACHMENT0 + i;
-		GLint mip = attachment.base_mip;
-		GLint layer = attachment.base_layer;
-		GLuint num_layers = attachment.num_layers;
+		uint8_t index = (attachment.resolve_attachment) ? result->num_resolve_color_attachments : result->num_color_attachments;
+		FrameBufferColorAttachment *target_attachment = (attachment.resolve_attachment) ? &result->resolve_color_attachments[index] : &result->color_attachments[index];
 
-		switch (gl_texture->type)
-		{
-			case GL_TEXTURE_2D:
-				glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, gl_texture->type, gl_texture->id, mip);
-			break;
-			case GL_TEXTURE_CUBE_MAP:
-			{
-				if (num_layers == 6)
-					glFramebufferTexture(GL_FRAMEBUFFER, attachment_type, gl_texture->id, mip);
-				else
-					glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, GL_TEXTURE_CUBE_MAP_POSITIVE_X + layer, gl_texture->id, mip);
-			}
-			break;
-			case GL_TEXTURE_2D_ARRAY:
-			case GL_TEXTURE_3D:
-				glFramebufferTextureLayer(GL_FRAMEBUFFER, attachment_type, gl_texture->id, mip, layer);
-			break;
-		}
+		target_attachment->id = gl_texture->id;
+		target_attachment->texture_type = gl_texture->type;
+		target_attachment->type = GL_COLOR_ATTACHMENT0 + index;;
+		target_attachment->base_mip = attachment.base_mip;
+		target_attachment->base_layer = attachment.base_layer;
+		target_attachment->num_layers = attachment.num_layers;
 
-		draw_buffers[i] = attachment_type;
-
-		result->color_attachments[i].id = gl_texture->id;
-		result->color_attachments[i].base_mip = mip;
-		result->color_attachments[i].base_layer = layer;
-		result->color_attachments[i].num_layers = num_layers;
+		if (attachment.resolve_attachment)
+			result->num_resolve_color_attachments++;
+		else
+			result->num_color_attachments++;
 	}
 
 	if (depthstencil_attachment != nullptr)
 	{
 		const Texture *gl_texture = static_cast<const Texture *>(depthstencil_attachment->texture);
-		GLenum attachment_type = Utils::getFramebufferDepthStencilAttachmentType(gl_texture->internal_format);
-
-		glFramebufferTexture2D(GL_FRAMEBUFFER, attachment_type, GL_TEXTURE_2D, gl_texture->id, 0);
 
 		result->depthstencil_attachment.id = gl_texture->id;
+		result->depthstencil_attachment.type = Utils::getFramebufferDepthStencilAttachmentType(gl_texture->internal_format);
 	}
 
-	glDrawBuffers(result->num_color_attachments, draw_buffers);
+	auto create_fbo = [](
+		GLuint *fbo_id,
+		uint8_t num_color_attachments,
+		FrameBufferColorAttachment *color_attachments,
+		FrameBufferDepthStencilAttachment *depthstencil_attachment
+	)
+	{
+		assert(fbo_id);
 
-	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glGenFramebuffers(1, fbo_id);
+		glBindFramebuffer(GL_FRAMEBUFFER, *fbo_id);
 
+		GLenum draw_buffers[FrameBuffer::MAX_COLOR_ATTACHMENTS];
+
+		for (uint8_t i = 0; i < num_color_attachments; ++i)
+		{
+			const FrameBufferColorAttachment &attachment = color_attachments[i];
+
+			switch (attachment.texture_type)
+			{
+				case GL_TEXTURE_2D:
+				case GL_TEXTURE_2D_MULTISAMPLE:
+					glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.type, attachment.texture_type, attachment.id, attachment.base_mip);
+				break;
+				case GL_TEXTURE_CUBE_MAP:
+				{
+					if (attachment.num_layers == 6)
+						glFramebufferTexture(GL_FRAMEBUFFER, attachment.type, attachment.id, attachment.base_mip);
+					else
+						glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.type, GL_TEXTURE_CUBE_MAP_POSITIVE_X + attachment.base_layer, attachment.id, attachment.base_mip);
+				}
+				break;
+				case GL_TEXTURE_2D_ARRAY:
+				case GL_TEXTURE_3D:
+					glFramebufferTextureLayer(GL_FRAMEBUFFER, attachment.type, attachment.id, attachment.base_mip, attachment.base_layer);
+				break;
+			}
+
+			draw_buffers[i] = attachment.type;
+		}
+
+		if (depthstencil_attachment && depthstencil_attachment->id != 0)
+			glFramebufferTexture2D(GL_FRAMEBUFFER, depthstencil_attachment->type, GL_TEXTURE_2D, depthstencil_attachment->id, 0);
+
+		glDrawBuffers(num_color_attachments, draw_buffers);
+
+		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		return status;
+	};
+
+	// Create main FBO
+	GLenum status = create_fbo(&result->main_fbo_id, result->num_color_attachments, result->color_attachments, &result->depthstencil_attachment);
 	if (status != GL_FRAMEBUFFER_COMPLETE)
 	{
-		Log::error("opengl::Driver::createFramebuffer(): framebuffer is not complete, error: %d\n", status);
+		Log::error("opengl::Driver::createFramebuffer(): main framebuffer is not complete, error: %d\n", status);
+		destroyFrameBuffer(result);
+		return nullptr;
+	}
+
+	// Create resolve FBO
+	status = create_fbo(&result->resolve_fbo_id, result->num_resolve_color_attachments, result->resolve_color_attachments, nullptr);
+	if (status != GL_FRAMEBUFFER_COMPLETE)
+	{
+		Log::error("opengl::Driver::createFramebuffer(): resolve framebuffer is not complete, error: %d\n", status);
 		destroyFrameBuffer(result);
 		return nullptr;
 	}
@@ -777,8 +814,11 @@ void Driver::destroyFrameBuffer(backend::FrameBuffer *frame_buffer)
 
 	FrameBuffer *gl_buffer = static_cast<FrameBuffer *>(frame_buffer);
 
-	glDeleteFramebuffers(1, &gl_buffer->id);
-	gl_buffer->id = 0;
+	GLuint ids[] = { gl_buffer->main_fbo_id, gl_buffer->resolve_fbo_id };
+	glDeleteFramebuffers(2, ids);
+
+	gl_buffer->main_fbo_id = 0;
+	gl_buffer->resolve_fbo_id = 0;
 
 	delete gl_buffer;
 }
@@ -1493,6 +1533,7 @@ void Driver::drawIndexedPrimitive(
 )
 {
 	// TODO: implement
+	// TODO: blit FBO main to FBO resolve if necessary
 
 	/* NOTE: probably save draw call info into a struct and store it in the command buffer
 

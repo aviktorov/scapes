@@ -49,6 +49,8 @@ struct Texture : public backend::Texture
 struct FrameBufferColorAttachment
 {
 	GLuint id {0};
+	GLenum texture_type {GL_NONE};
+	GLenum type {GL_NONE};
 	GLint base_mip {0};
 	GLint base_layer {0};
 	GLuint num_layers {1};
@@ -57,6 +59,7 @@ struct FrameBufferColorAttachment
 struct FrameBufferDepthStencilAttachment
 {
 	GLuint id {0};
+	GLenum type {GL_NONE};
 };
 
 struct FrameBuffer : public backend::FrameBuffer
@@ -66,10 +69,14 @@ struct FrameBuffer : public backend::FrameBuffer
 		MAX_COLOR_ATTACHMENTS = 16,
 	};
 
-	GLuint id {0};
+	GLuint main_fbo_id {0};
 	uint8_t num_color_attachments {0};
 	FrameBufferColorAttachment color_attachments[FrameBuffer::MAX_COLOR_ATTACHMENTS];
 	FrameBufferDepthStencilAttachment depthstencil_attachment;
+
+	GLuint resolve_fbo_id {0};
+	uint8_t num_resolve_color_attachments {0};
+	FrameBufferColorAttachment resolve_color_attachments[FrameBuffer::MAX_COLOR_ATTACHMENTS];
 };
 
 struct Shader : public backend::Shader
