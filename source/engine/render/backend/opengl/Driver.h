@@ -214,9 +214,7 @@ public:
 
 public:
 	Multisample getMaxSampleCount() final;
-	Format getOptimalDepthFormat() final;
 
-	Format getSwapChainImageFormat(const backend::SwapChain *swap_chain) final;
 	uint32_t getNumSwapChainImages(const backend::SwapChain *swap_chain) final;
 
 	void setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode) final;

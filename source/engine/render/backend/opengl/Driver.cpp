@@ -61,12 +61,12 @@ static void GLAPIENTRY debugLog(
 //
 Driver::Driver(const char *application_name, const char *engine_name)
 {
-	// TODO: implement
+	init();
 }
 
 Driver::~Driver()
 {
-	// TODO: implement
+	shutdown();
 }
 
 //
@@ -873,22 +873,10 @@ Multisample Driver::getMaxSampleCount()
 	return Multisample::COUNT_1;
 }
 
-Format Driver::getOptimalDepthFormat()
-{
-	// TODO: implement
-	return Format::UNDEFINED;
-}
-
-Format Driver::getSwapChainImageFormat(const backend::SwapChain *swap_chain)
-{
-	// TODO: implement
-	return Format::UNDEFINED;
-}
-
 uint32_t Driver::getNumSwapChainImages(const backend::SwapChain *swap_chain)
 {
 	// TODO: implement
-	return 0;
+	return 2;
 }
 
 void Driver::setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode)

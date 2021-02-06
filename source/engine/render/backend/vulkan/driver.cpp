@@ -1054,22 +1054,6 @@ namespace render::backend::vulkan
 		return Utils::getApiSamples(samples);
 	}
 
-	Format Driver::getOptimalDepthFormat()
-	{
-		assert(device != nullptr && "Invalid device");
-
-		VkFormat format = Utils::selectOptimalDepthFormat(device->getPhysicalDevice());
-		return Utils::getApiFormat(format);
-	}
-
-	Format Driver::getSwapChainImageFormat(const backend::SwapChain *swap_chain)
-	{
-		assert(swap_chain != nullptr && "Invalid swap chain");
-		const SwapChain *vk_swap_chain = static_cast<const SwapChain *>(swap_chain);
-
-		return Utils::getApiFormat(vk_swap_chain->surface_format.format);
-	}
-
 	uint32_t Driver::getNumSwapChainImages(const backend::SwapChain *swap_chain)
 	{
 		assert(swap_chain != nullptr && "Invalid swap chain");

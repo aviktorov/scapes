@@ -428,9 +428,7 @@ public:
 
 public:
 	virtual Multisample getMaxSampleCount() = 0;
-	virtual Format getOptimalDepthFormat() = 0;
 
-	virtual Format getSwapChainImageFormat(const SwapChain *swap_chain) = 0;
 	virtual uint32_t getNumSwapChainImages(const SwapChain *swap_chain) = 0;
 
 	virtual void setTextureSamplerWrapMode(Texture *texture, SamplerWrapMode mode) = 0;

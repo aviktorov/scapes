@@ -295,9 +295,7 @@ namespace render::backend::vulkan
 
 	public:
 		Multisample getMaxSampleCount() override;
-		Format getOptimalDepthFormat() override;
 
-		Format getSwapChainImageFormat(const backend::SwapChain *swap_chain) override;
 		uint32_t getNumSwapChainImages(const backend::SwapChain *swap_chain) override;
 
 		void setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode) override;
