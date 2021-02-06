@@ -2,6 +2,11 @@
 
 #include <cstdint>
 
+namespace render::shaders
+{
+	struct ShaderIL;
+}
+
 namespace render::backend
 {
 
@@ -397,10 +402,8 @@ public:
 		const char *path = nullptr
 	) = 0;
 
-	virtual Shader *createShaderFromBytecode(
-		ShaderType type,
-		uint32_t size,
-		const void *data
+	virtual Shader *createShaderFromIL(
+		const shaders::ShaderIL *shader_il
 	) = 0;
 
 	virtual BindSet *createBindSet(

@@ -269,10 +269,8 @@ namespace render::backend::vulkan
 			const char *path = nullptr
 		) override;
 
-		backend::Shader *createShaderFromBytecode(
-			ShaderType type,
-			uint32_t size,
-			const void *data
+		backend::Shader *createShaderFromIL(
+			const shaders::ShaderIL *shader_il
 		) override;
 
 		backend::BindSet *createBindSet(

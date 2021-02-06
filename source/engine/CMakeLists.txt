@@ -26,11 +26,15 @@ file(GLOB HEADER_SOURCES
 
 file(GLOB RENDER_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/render/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/render/shaders/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/render/shaders/spirv/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/*.cpp
 )
 
 file(GLOB RENDER_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/render/*.h
+	${CMAKE_CURRENT_SOURCE_DIR}/render/shaders/*.h
+	${CMAKE_CURRENT_SOURCE_DIR}/render/shaders/spirv/*.h
 	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/*.h
 )
 

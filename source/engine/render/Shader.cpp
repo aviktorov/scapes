@@ -1,4 +1,5 @@
 #include "Shader.h"
+#include <render/shaders/Compiler.h>
 
 #include <fstream>
 #include <iostream>
@@ -15,7 +16,7 @@ namespace render
 
 	/*
 	 */
-	bool Shader::compileFromFile(const char *file_path, render::backend::ShaderType shader_type)
+	bool Shader::compileFromFile(render::backend::ShaderType shader_type, const char *file_path)
 	{
 		std::ifstream file(file_path, std::ios::ate | std::ios::binary);
 
@@ -32,22 +33,43 @@ namespace render
 		file.read(buffer.data(), size);
 		file.close();
 
-		shader = driver->createShaderFromSource(shader_type, static_cast<uint32_t>(buffer.size()), buffer.data(), file_path);
-
 		path = file_path;
 		type = shader_type;
 
-		return shader != nullptr;
+		return compile(shader_type, static_cast<uint32_t>(buffer.size()), buffer.data(), file_path);
 	}
+
+	bool Shader::compileFromMemory(backend::ShaderType shader_type, uint32_t size, const char *data)
+	{
+		path.clear();
+		type = type;
+
+		return compile(shader_type, size, data, nullptr);
+	}
+
 
 	bool Shader::reload()
 	{
-		return compileFromFile(path.c_str(), type);
+		if (path.empty())
+			return false;
+
+		return compileFromFile(type, path.c_str());
 	}
 
 	void Shader::clear()
 	{
 		driver->destroyShader(shader);
 		shader = nullptr;
+	}
+
+	bool Shader::compile(backend::ShaderType type, uint32_t size, const char *data, const char *path)
+	{
+		driver->destroyShader(shader);
+		shaders::ShaderIL *il = compiler->createShaderIL(type, size, data, path);
+
+		shader = driver->createShaderFromIL(il);
+		compiler->destroyShaderIL(il);
+
+		return shader != nullptr;
 	}
 }

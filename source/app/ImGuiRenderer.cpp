@@ -2,12 +2,14 @@
 
 #include <render/SwapChain.h>
 #include <render/Texture.h>
+#include <render/Shader.h>
 
 #include "imgui.h"
 #include <string>
 
 using namespace render;
 using namespace render::backend;
+using namespace render::shaders;
 
 /*
  */
@@ -42,8 +44,8 @@ static std::string fragment_shader_source =
 
 /*
  */
-ImGuiRenderer::ImGuiRenderer(Driver *driver)
-	: driver(driver)
+ImGuiRenderer::ImGuiRenderer(Driver *driver, Compiler *compiler)
+	: driver(driver), compiler(compiler)
 {
 
 }
@@ -65,8 +67,11 @@ void ImGuiRenderer::init(ImGuiContext *context)
 	ImGuiIO &io = ImGui::GetIO();
 	io.Fonts->GetTexDataAsRGBA32(&pixels, reinterpret_cast<int *>(&width), reinterpret_cast<int *>(&height));
 
-	vertex_shader = driver->createShaderFromSource(ShaderType::VERTEX, static_cast<uint32_t>(vertex_shader_source.size()), vertex_shader_source.c_str());
-	fragment_shader = driver->createShaderFromSource(ShaderType::FRAGMENT, static_cast<uint32_t>(fragment_shader_source.size()), fragment_shader_source.c_str());
+	vertex_shader = new render::Shader(driver, compiler);
+	vertex_shader->compileFromMemory(ShaderType::VERTEX, static_cast<uint32_t>(vertex_shader_source.size()), vertex_shader_source.c_str());
+
+	fragment_shader = new render::Shader(driver, compiler);
+	fragment_shader->compileFromMemory(ShaderType::FRAGMENT, static_cast<uint32_t>(fragment_shader_source.size()), fragment_shader_source.c_str());
 
 	font_texture = driver->createTexture2D(width, height, 1, Format::R8G8B8A8_UNORM, pixels);
 	font_bind_set = driver->createBindSet();
@@ -93,10 +98,10 @@ void ImGuiRenderer::shutdown()
 
 	invalidateTextureIDs();
 
-	driver->destroyShader(vertex_shader);
+	delete vertex_shader;
 	vertex_shader = nullptr;
 
-	driver->destroyShader(fragment_shader);
+	delete fragment_shader;
 	fragment_shader = nullptr;
 }
 
@@ -191,8 +196,8 @@ void ImGuiRenderer::setupRenderState(const render::RenderFrame &frame, const ImD
 	driver->allocateBindSets(1);
 
 	driver->clearShaders();
-	driver->setShader(ShaderType::VERTEX, vertex_shader);
-	driver->setShader(ShaderType::FRAGMENT, fragment_shader);
+	driver->setShader(ShaderType::VERTEX, vertex_shader->getBackend());
+	driver->setShader(ShaderType::FRAGMENT, fragment_shader->getBackend());
 
 	float transform[4];
 	transform[0] = 2.0f / draw_data->DisplaySize.x;

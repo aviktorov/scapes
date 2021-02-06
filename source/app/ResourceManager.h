@@ -3,6 +3,11 @@
 #include <unordered_map>
 #include <render/backend/Driver.h>
 
+namespace render::shaders
+{
+	class Compiler;
+}
+
 namespace render
 {
 	class Mesh;
@@ -15,8 +20,8 @@ namespace render
 class ResourceManager
 {
 public:
-	ResourceManager(render::backend::Driver *driver)
-		: driver(driver) {}
+	ResourceManager(render::backend::Driver *driver, render::shaders::Compiler *compiler)
+		: driver(driver), compiler(compiler) {}
 
 	render::Mesh *getMesh(int id) const;
 	render::Mesh *createCubeMesh(int id, float size);
@@ -34,6 +39,7 @@ public:
 
 private:
 	render::backend::Driver *driver {nullptr};
+	render::shaders::Compiler *compiler {nullptr};
 
 	std::unordered_map<int, render::Mesh *> meshes;
 	std::unordered_map<int, render::Shader *> shaders;
