@@ -235,7 +235,7 @@ namespace render::backend::vulkan
 				{ swap_chain->msaa_color },
 			};
 
-			FrameBufferAttachment depth_attachments[] =
+			FrameBufferAttachment depth_attachment[] =
 			{
 				{ swap_chain->depth },
 			};
@@ -269,7 +269,7 @@ namespace render::backend::vulkan
 
 				color_attachments[0].texture = &swap_chain_color;
 
-				swap_chain->frame_buffers[i] = static_cast<vulkan::FrameBuffer *>(driver->createFrameBuffer(num_color_attachments, color_attachments, depth_attachments));
+				swap_chain->frame_buffers[i] = static_cast<vulkan::FrameBuffer *>(driver->createFrameBuffer(num_color_attachments, color_attachments, depth_attachment));
 			}
 
 			return true;
