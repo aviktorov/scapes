@@ -23,7 +23,8 @@ namespace render
 		width = w;
 		height = h;
 
-		swap_chain = driver->createSwapChain(native_window, width, height);
+		backend::Multisample max_samples = driver->getMaxSampleCount();
+		swap_chain = driver->createSwapChain(native_window, width, height, max_samples);
 
 		initFrames(width, height, ubo_size);
 	}

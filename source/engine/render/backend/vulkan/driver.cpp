@@ -175,7 +175,7 @@ namespace render::backend::vulkan
 				swap_chain->num_images = std::min(swap_chain->num_images, capabilities.maxImageCount);
 		}
 
-		static bool createSwapChainObjects(Driver *driver, const Device *device, SwapChain *swap_chain)
+		static bool createSwapChainObjects(Driver *driver, const Device *device, SwapChain *swap_chain, Multisample samples)
 		{
 			const VkSurfaceCapabilitiesKHR &capabilities = swap_chain->surface_capabilities;
 
@@ -221,10 +221,24 @@ namespace render::backend::vulkan
 
 			Format depth_format = Utils::getApiFormat(Utils::selectOptimalDepthFormat(device->getPhysicalDevice()));
 			Format color_format = Utils::getApiFormat(swap_chain->surface_format.format);
-			Multisample samples = Utils::getApiSamples(device->getMaxSampleCount());
 
 			swap_chain->depth = static_cast<vulkan::Texture *>(driver->createTexture2DMultisample(width, height, depth_format, samples));
-			swap_chain->msaa_color = static_cast<vulkan::Texture *>(driver->createTexture2DMultisample(width, height, color_format, samples));
+
+			bool have_msaa = (samples != Multisample::COUNT_1);
+			if (have_msaa)
+				swap_chain->msaa_color = static_cast<vulkan::Texture *>(driver->createTexture2DMultisample(width, height, color_format, samples));
+
+			uint8_t num_color_attachments = have_msaa ? 2 : 1;
+			FrameBufferAttachment color_attachments[] =
+			{
+				{ nullptr, 0, 0, 1, have_msaa },
+				{ swap_chain->msaa_color },
+			};
+
+			FrameBufferAttachment depth_attachments[] =
+			{
+				{ swap_chain->depth },
+			};
 
 			// Get surface images
 			vkGetSwapchainImagesKHR(device->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, nullptr);
@@ -253,18 +267,9 @@ namespace render::backend::vulkan
 				swap_chain_color.num_layers = 1;
 				swap_chain_color.num_mipmaps = 1;
 
-				FrameBufferAttachment color_attachments[] =
-				{
-					{ swap_chain->msaa_color },
-					{ &swap_chain_color, 0, 0, 1, true },
-				};
+				color_attachments[0].texture = &swap_chain_color;
 
-				FrameBufferAttachment depth_attachments[] =
-				{
-					{ swap_chain->depth },
-				};
-
-				swap_chain->frame_buffers[i] = static_cast<vulkan::FrameBuffer *>(driver->createFrameBuffer(2, color_attachments, depth_attachments));
+				swap_chain->frame_buffers[i] = static_cast<vulkan::FrameBuffer *>(driver->createFrameBuffer(num_color_attachments, color_attachments, depth_attachments));
 			}
 
 			return true;
@@ -825,7 +830,8 @@ namespace render::backend::vulkan
 	backend::SwapChain *Driver::createSwapChain(
 		void *native_window,
 		uint32_t width,
-		uint32_t height
+		uint32_t height,
+		Multisample samples
 	)
 	{
 		assert(native_window != nullptr && "Invalid window");
@@ -858,7 +864,7 @@ namespace render::backend::vulkan
 		}
 
 		helpers::selectOptimalSwapChainSettings(device, result, width, height);
-		helpers::createSwapChainObjects(this, device, result);
+		helpers::createSwapChainObjects(this, device, result, samples);
 
 		return result;
 	}

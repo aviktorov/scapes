@@ -728,13 +728,11 @@ backend::Shader *Driver::createShaderFromSource(
 	/**/
 }
 
-backend::Shader *Driver::createShaderFromBytecode(
-	ShaderType type,
-	uint32_t size,
-	const void *data
+backend::Shader *Driver::createShaderFromIL(
+	const shaders::ShaderIL *shader_il
 )
 {
-	Log::fatal("opengl::Driver::createShaderFromBytecode(): not supported in OpenGL\n");
+	// TODO: implement
 	return nullptr;
 }
 
@@ -750,22 +748,20 @@ backend::BindSet *Driver::createBindSet(
 backend::SwapChain *Driver::createSwapChain(
 	void *native_window,
 	uint32_t width,
-	uint32_t height
+	uint32_t height,
+	Multisample samples
 )
 {
 	assert(native_window);
-	return nullptr;
+	GLint gl_samples = Utils::getSampleCount(samples);
 
-	// TODO: implement
-	/*
-	GLint gl_samples = Utils::getSampleCount(num_samples);
+	// TODO: debug context
 
 	SwapChain *result = new SwapChain();
-	result->surface = Platform::createSurface(native_window, gl_samples, request_debug_context);
-	result->debug = request_debug_context;
+	result->surface = Platform::createSurface(native_window, gl_samples, false);
+	result->debug = false;
 
 	return result;
-	/**/
 }
 
 //

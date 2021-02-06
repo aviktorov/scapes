@@ -188,10 +188,8 @@ public:
 		const char *path = nullptr
 	) final;
 
-	backend::Shader *createShaderFromBytecode(
-		ShaderType type,
-		uint32_t size,
-		const void *data
+	backend::Shader *createShaderFromIL(
+		const shaders::ShaderIL *shader_il
 	) final;
 
 	backend::BindSet *createBindSet(
@@ -200,7 +198,8 @@ public:
 	backend::SwapChain *createSwapChain(
 		void *native_window,
 		uint32_t width,
-		uint32_t height
+		uint32_t height,
+		Multisample samples
 	) final;
 
 	void destroyVertexBuffer(backend::VertexBuffer *vertex_buffer) final;

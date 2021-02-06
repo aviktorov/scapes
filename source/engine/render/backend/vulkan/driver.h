@@ -168,8 +168,8 @@ namespace render::backend::vulkan
 		uint32_t num_images {0};
 		uint32_t current_image {0};
 
-		Texture *msaa_color;
-		Texture *depth;
+		Texture *msaa_color {nullptr};
+		Texture *depth {nullptr};
 		FrameBuffer *frame_buffers[SwapChain::MAX_IMAGES];
 
 		VkSemaphore image_available_gpu[SwapChain::MAX_IMAGES];
@@ -279,7 +279,8 @@ namespace render::backend::vulkan
 		backend::SwapChain *createSwapChain(
 			void *native_window,
 			uint32_t width,
-			uint32_t height
+			uint32_t height,
+			Multisample samples
 		) override;
 
 		void destroyVertexBuffer(backend::VertexBuffer *vertex_buffer) override;
