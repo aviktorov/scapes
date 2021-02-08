@@ -760,6 +760,7 @@ backend::SwapChain *Driver::createSwapChain(
 	SwapChain *result = new SwapChain();
 	result->surface = Platform::createSurface(native_window, gl_samples, false);
 	result->debug = false;
+	result->num_images = 2;
 
 	return result;
 }
@@ -875,8 +876,10 @@ Multisample Driver::getMaxSampleCount()
 
 uint32_t Driver::getNumSwapChainImages(const backend::SwapChain *swap_chain)
 {
-	// TODO: implement
-	return 2;
+	assert(swap_chain);
+	const SwapChain *gl_swap_chain = static_cast<const SwapChain *>(swap_chain);
+
+	return gl_swap_chain->num_images;
 }
 
 void Driver::setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode)
@@ -986,9 +989,9 @@ bool Driver::acquire(
 {
 	assert(swap_chain);
 	SwapChain *gl_swap_chain = static_cast<SwapChain *>(swap_chain);
+	*new_image = gl_swap_chain->current_image;
 
-	// TODO: implement
-	return false;
+	return true;
 }
 
 bool Driver::present(
@@ -1000,10 +1003,14 @@ bool Driver::present(
 	assert(swap_chain);
 	SwapChain *gl_swap_chain = static_cast<SwapChain *>(swap_chain);
 
-	// TODO: implement
-	return false;
+	// TODO: wait for command buffers
 
-	// Platform::swapBuffers(gl_swap_chain->surface);
+	Platform::swapBuffers(gl_swap_chain->surface);
+
+	gl_swap_chain->current_image++;
+	gl_swap_chain->current_image %= gl_swap_chain->num_images;
+
+	return true;
 }
 
 bool Driver::wait(

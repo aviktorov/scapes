@@ -94,6 +94,8 @@ struct UniformBuffer : public backend::UniformBuffer
 struct SwapChain : public backend::SwapChain
 {
 	Surface *surface {nullptr};
+	uint32_t num_images {0};
+	uint32_t current_image {0};
 	bool debug {false};
 };
 
