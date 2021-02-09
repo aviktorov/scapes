@@ -152,8 +152,8 @@ private:
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
-	void initComposite(uint32_t width, uint32_t height);
-	void shutdownComposite();
+	void initComposite(Composite &composite, uint32_t width, uint32_t height);
+	void shutdownComposite(Composite &composite);
 
 	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderSSAO(const Scene *scene, const render::RenderFrame &frame);
@@ -180,6 +180,7 @@ private:
 
 	LBuffer lbuffer;
 	Composite composite;
+	Composite old_composite;
 
 	render::Mesh *quad {nullptr};
 	ImGuiRenderer *imgui_renderer {nullptr};

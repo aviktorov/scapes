@@ -43,7 +43,8 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 
 	initGBuffer(width, height);
 	initLBuffer(width, height);
-	initComposite(width, height);
+	initComposite(composite, width, height);
+	initComposite(old_composite, width, height);
 
 	initSSAOKernel();
 	initSSAO(ssao_noised, width, height);
@@ -88,7 +89,8 @@ void RenderGraph::shutdown()
 	shutdownSSR(ssr_trace);
 	shutdownSSR(ssr_resolve);
 	shutdownLBuffer();
-	shutdownComposite();
+	shutdownComposite(composite);
+	shutdownComposite(old_composite);
 
 	delete imgui_renderer;
 	imgui_renderer = nullptr;
@@ -317,9 +319,10 @@ void RenderGraph::shutdownLBuffer()
 	memset(&lbuffer, 0, sizeof(LBuffer));
 }
 
-void RenderGraph::initComposite(uint32_t width, uint32_t height)
+void RenderGraph::initComposite(Composite &composite, uint32_t width, uint32_t height)
 {
-	composite.hdr_color = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
+	uint32_t num_mipmaps = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
+	composite.hdr_color = driver->createTexture2D(width, height, num_mipmaps, Format::R16G16B16A16_SFLOAT);
 
 	FrameBufferAttachment composite_attachments[] = {
 		{ composite.hdr_color },
@@ -331,7 +334,7 @@ void RenderGraph::initComposite(uint32_t width, uint32_t height)
 	driver->bindTexture(composite.bindings, 0, composite.hdr_color);
 }
 
-void RenderGraph::shutdownComposite()
+void RenderGraph::shutdownComposite(Composite &composite)
 {
 	driver->destroyTexture(composite.hdr_color);
 	driver->destroyFrameBuffer(composite.framebuffer);
@@ -346,7 +349,8 @@ void RenderGraph::resize(uint32_t width, uint32_t height)
 
 	shutdownGBuffer();
 	shutdownLBuffer();
-	shutdownComposite();
+	shutdownComposite(composite);
+	shutdownComposite(old_composite);
 
 	shutdownSSAO(ssao_noised);
 	shutdownSSAO(ssao_blurred);
@@ -356,7 +360,8 @@ void RenderGraph::resize(uint32_t width, uint32_t height)
 
 	initGBuffer(width, height);
 	initLBuffer(width, height);
-	initComposite(width, height);
+	initComposite(composite, width, height);
+	initComposite(old_composite, width, height);
 
 	initSSAO(ssao_noised, width, height);
 	initSSAO(ssao_blurred, width, height);
@@ -603,7 +608,7 @@ void RenderGraph::renderSSRResolve(const Scene *scene, const render::RenderFrame
 	driver->setBindSet(1, gbuffer.bindings);
 	driver->setBindSet(2, ssr_trace.bindings);
 	driver->setBindSet(3, ssr_data.bindings);
-	driver->setBindSet(4, lbuffer.bindings);
+	driver->setBindSet(4, old_composite.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, ssr_resolve_pass_vertex->getBackend());
@@ -686,6 +691,9 @@ void RenderGraph::renderComposite(const Scene *scene, const render::RenderFrame 
 
 	driver->drawIndexedPrimitive(frame.command_buffer, quad->getRenderPrimitive());
 	driver->endRenderPass(frame.command_buffer);
+
+	driver->generateTexture2DMipmaps(composite.hdr_color);
+	std::swap(composite, old_composite);
 }
 
 void RenderGraph::renderFinal(const Scene *scene, const render::RenderFrame &frame)

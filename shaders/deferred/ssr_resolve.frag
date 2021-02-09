@@ -13,8 +13,8 @@
 #define SSR_DATA_SET 3
 #include <deferred/ssr_data.inc>
 
-#define LBUFFER_SET 4
-#include <deferred/lbuffer.inc>
+#define COMPOSITE_SET 4
+#include <deferred/composite.inc>
 
 #include <common/brdf.inc>
 
@@ -31,11 +31,13 @@ vec2 getUV(vec3 positionVS)
 
 vec4 resolveRay(vec2 uv)
 {
-	vec4 trace_result = texture(ssrTexture, uv);
+	vec4 traceResult = texture(ssrTexture, uv);
+	float roughness = texture(gbufferShading, fragTexCoord).r;
+	int maxMip = getTextureNumMips(compositeHdrColor);
 
 	vec4 result;
-	result.rgb = texture(lbufferDiffuse, trace_result.xy).rgb + texture(lbufferSpecular, trace_result.xy).rgb;
-	result.a = trace_result.z;
+	result.rgb = textureLod(compositeHdrColor, traceResult.xy, roughness * maxMip).rgb;
+	result.a = traceResult.z;
 
 	return result;
 }
