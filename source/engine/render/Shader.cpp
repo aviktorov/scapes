@@ -65,9 +65,13 @@ namespace render
 	bool Shader::compile(backend::ShaderType type, uint32_t size, const char *data, const char *path)
 	{
 		driver->destroyShader(shader);
+		shader = nullptr;
+
 		shaders::ShaderIL *il = compiler->createShaderIL(type, size, data, path);
 
-		shader = driver->createShaderFromIL(il);
+		if (il != nullptr)
+			shader = driver->createShaderFromIL(il);
+
 		compiler->destroyShaderIL(il);
 
 		return shader != nullptr;

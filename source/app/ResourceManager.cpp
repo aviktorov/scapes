@@ -82,7 +82,9 @@ render::Shader *ResourceManager::loadShader(int id, render::backend::ShaderType 
 
 	render::Shader *shader = new render::Shader(driver, compiler);
 	if (!shader->compileFromFile(type, path))
-		return nullptr;
+	{
+		// TODO: log warning
+	}
 
 	shaders.insert(std::make_pair(id, shader));
 	return shader;
