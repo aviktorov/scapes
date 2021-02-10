@@ -74,6 +74,21 @@ vec3 saturate(vec3 v)
 	return ret;
 }
 
+vec3 pow(vec3 v, float power)
+{
+	vec3 ret;
+	ret.x = pow(v.x, power);
+	ret.y = pow(v.y, power);
+	ret.z = pow(v.z, power);
+	return ret;
+}
+
+int getTextureNumMips(in sampler2D tex)
+{
+	ivec2 size = textureSize(tex, 0);
+	return 1 + int(floor(log2(max(size.x, size.y))));
+}
+
 vec2 Hammersley(uint i, uint N)
 {
 	return vec2(float(i) / float(N), float(bitfieldReverse(i)) * 2.3283064365386963e-10);

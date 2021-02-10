@@ -170,6 +170,9 @@ namespace render::shaders::spirv
 
 	void Compiler::destroyShaderIL(shaders::ShaderIL *il)
 	{
+		if (il == nullptr)
+			return;
+
 		ShaderIL *spirv_shader_il = static_cast<ShaderIL *>(il);
 
 		delete[] spirv_shader_il->bytecode_data;

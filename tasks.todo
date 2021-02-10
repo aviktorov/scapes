@@ -50,10 +50,21 @@ PBR Sandbox:
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
-
+        ☐ Animate blue noise for better TAA sampling
+    Stream 53:
+        Reference: https://de45xmedrsdbp.cloudfront.net/Resources/files/TemporalAA_small-59732822.pdf
+        ☐ Add temporal filter
+            ☐ Add camera jitter
+                ☐ Add frame counter (up tp 16)
+                ☐ Add samples
+                    ☐ Uniform grid
+                    ☐ Halton 2,3
+            ☐ Implement sample accumulation pass
+                ☐ Average(old, current)
+                ☐ Exponential (move alpha coeff to imgui)
+        ☐ Implement old frame reprojection
     Stream 52:
-        ☐ Sample old color with mips
-        ☐ Add temporal filter to SSR
+        ✔ Sample old color with mips @done (2/9/2021, 9:27:07 PM)
     Stream 51:
         ✔ Move shaderc outside render backend @done (2/5/2021, 9:25:52 PM)
     Stream 50:
