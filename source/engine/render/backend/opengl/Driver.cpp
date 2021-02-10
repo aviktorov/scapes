@@ -78,7 +78,10 @@ bool Driver::init()
 		return false;
 	}
 
-	if (!Platform::init())
+	// TODO: debug context
+	bool debug = false;
+
+	if (!Platform::init(debug))
 	{
 		Log::fatal("opengl::Driver::init(): failed to initialize platform\n");
 		return false;
@@ -97,6 +100,13 @@ bool Driver::init()
 	}
 
 	glEnable(GL_MULTISAMPLE);
+
+	if (debug)
+	{
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		glDebugMessageCallback(debugLog, nullptr);
+	}
 
 	memset(&pipeline_state, 0, sizeof(PipelineState));
 	memset(&pipeline_state_overrides, 0, sizeof(PipelineStateOverrides));
@@ -755,12 +765,45 @@ backend::SwapChain *Driver::createSwapChain(
 	assert(native_window);
 	GLint gl_samples = Utils::getSampleCount(samples);
 
-	// TODO: debug context
-
 	SwapChain *result = new SwapChain();
-	result->surface = Platform::createSurface(native_window, gl_samples, false);
-	result->debug = false;
+	result->surface = Platform::createSurface(native_window);
 	result->num_images = 2;
+	result->width = width;
+	result->height = height;
+
+	if (gl_samples > 1)
+	{
+		GLenum color_internal_format = Utils::getInternalFormat(result->color_format);
+		GLenum depthstencil_internal_format = Utils::getInternalFormat(result->depthstencil_format);
+
+		glGenRenderbuffers(1, &result->msaa_color_id);
+		glGenRenderbuffers(1, &result->msaa_depthstencil_id);
+
+		glBindRenderbuffer(GL_RENDERBUFFER, result->msaa_color_id);
+		glRenderbufferStorageMultisample(GL_RENDERBUFFER, gl_samples, color_internal_format, width, height);
+
+		glBindRenderbuffer(GL_RENDERBUFFER, result->msaa_depthstencil_id);
+		glRenderbufferStorageMultisample(GL_RENDERBUFFER, gl_samples, depthstencil_internal_format, width, height);
+
+		glGenFramebuffers(1, &result->msaa_fbo_id);
+		glBindFramebuffer(GL_FRAMEBUFFER, result->msaa_fbo_id);
+
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, result->msaa_color_id);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, result->msaa_depthstencil_id);
+
+		GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
+		glDrawBuffers(1, &draw_buffer);
+
+		GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		if (status != GL_FRAMEBUFFER_COMPLETE)
+		{
+			Log::error("opengl::Driver::createSwapChain(): msaa framebuffer is not complete, error: %d\n", status);
+			destroySwapChain(result);
+			return nullptr;
+		}
+	}
 
 	return result;
 }
@@ -861,6 +904,15 @@ void Driver::destroySwapChain(backend::SwapChain *swap_chain)
 
 	SwapChain *gl_swap_chain = static_cast<SwapChain *>(swap_chain);
 
+	glDeleteFramebuffers(1, &gl_swap_chain->msaa_fbo_id);
+
+	GLuint buffers[] = { gl_swap_chain->msaa_color_id, gl_swap_chain->msaa_depthstencil_id };
+	glDeleteRenderbuffers(2, buffers);
+
+	gl_swap_chain->msaa_fbo_id = 0;
+	gl_swap_chain->msaa_color_id = 0;
+	gl_swap_chain->msaa_depthstencil_id = 0;
+
 	Platform::destroySurface(gl_swap_chain->surface);
 	gl_swap_chain->surface = nullptr;
 
@@ -870,8 +922,10 @@ void Driver::destroySwapChain(backend::SwapChain *swap_chain)
 //
 Multisample Driver::getMaxSampleCount()
 {
-	// TODO: implement
-	return Multisample::COUNT_1;
+	GLint max_samples = 0;
+	glGetIntegerv(GL_MAX_SAMPLES, &max_samples);
+
+	return Utils::getMultisample(max_samples);
 }
 
 uint32_t Driver::getNumSwapChainImages(const backend::SwapChain *swap_chain)
@@ -967,21 +1021,6 @@ void Driver::unmap(backend::UniformBuffer *buffer)
 }
 
 //
-void Driver::makeCurrent(backend::SwapChain *swap_chain)
-{
-	assert(swap_chain);
-	SwapChain *gl_swap_chain = static_cast<SwapChain *>(swap_chain);
-
-	Platform::makeCurrent(gl_swap_chain->surface);
-
-	if (gl_swap_chain->debug)
-	{
-		glEnable(GL_DEBUG_OUTPUT);
-		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		glDebugMessageCallback(debugLog, nullptr);
-	}
-}
-
 bool Driver::acquire(
 	backend::SwapChain *swap_chain,
 	uint32_t *new_image
@@ -989,8 +1028,9 @@ bool Driver::acquire(
 {
 	assert(swap_chain);
 	SwapChain *gl_swap_chain = static_cast<SwapChain *>(swap_chain);
-	*new_image = gl_swap_chain->current_image;
+	Platform::makeCurrent(gl_swap_chain->surface);
 
+	*new_image = gl_swap_chain->current_image;
 	return true;
 }
 
@@ -1002,6 +1042,7 @@ bool Driver::present(
 {
 	assert(swap_chain);
 	SwapChain *gl_swap_chain = static_cast<SwapChain *>(swap_chain);
+	Platform::makeCurrent(gl_swap_chain->surface);
 
 	// TODO: wait for command buffers
 
@@ -1516,6 +1557,21 @@ void Driver::endRenderPass(
 {
 	// TODO: implement
 	// glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	/* resolve swap chain MSAA FBO to backbuffer
+	uint32_t width = gl_swap_chain->width;
+	uint32_t height = gl_swap_chain->height;
+	GLbitfield mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+	if (gl_swap_chain->msaa_fbo_id != 0)
+	{
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_swap_chain->msaa_fbo_id);
+		glDrawBuffer(GL_BACK);
+		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, mask, GL_NEAREST);
+	}
+	/**/
 }
 
 void Driver::drawIndexedPrimitive(

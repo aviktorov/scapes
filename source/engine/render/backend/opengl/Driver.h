@@ -96,7 +96,16 @@ struct SwapChain : public backend::SwapChain
 	Surface *surface {nullptr};
 	uint32_t num_images {0};
 	uint32_t current_image {0};
-	bool debug {false};
+
+	uint32_t width {0};
+	uint32_t height {0};
+
+	GLuint msaa_fbo_id {0};
+	GLuint msaa_color_id {0};
+	GLuint msaa_depthstencil_id {0};
+
+	Format color_format {Format::R8G8B8A8_UNORM};
+	Format depthstencil_format {Format::D24_UNORM_S8_UINT};
 };
 
 class Driver : public backend::Driver
@@ -234,8 +243,6 @@ public:
 	void unmap(backend::UniformBuffer *uniform_buffer) final;
 
 public:
-	void makeCurrent(backend::SwapChain *swap_chain);
-
 	bool acquire(
 		backend::SwapChain *swap_chain,
 		uint32_t *new_image

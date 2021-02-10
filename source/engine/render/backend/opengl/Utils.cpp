@@ -358,6 +358,25 @@ GLint Utils::getSampleCount(Multisample samples)
 }
 
 //
+Multisample Utils::getMultisample(GLint sample_count)
+{
+	switch (sample_count)
+	{
+		case 0:
+		case 1: return Multisample::COUNT_1;
+		case 2: return Multisample::COUNT_2;
+		case 4: return Multisample::COUNT_4;
+		case 8: return Multisample::COUNT_8;
+		case 16: return Multisample::COUNT_16;
+		case 32: return Multisample::COUNT_32;
+	}
+
+	Log::warning("opengl::Utils::getMultisample(): unsupported sample count: %d\n", sample_count);
+	return Multisample::COUNT_1;
+}
+
+
+//
 GLenum Utils::getDepthCompareFunc(DepthCompareFunc func)
 {
 	static GLenum depth_funcs[] =

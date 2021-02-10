@@ -28,6 +28,7 @@ public:
 
 	//
 	static GLint getSampleCount(Multisample samples);
+	static Multisample getMultisample(GLint sample_count);
 
 	//
 	static GLenum getDepthCompareFunc(DepthCompareFunc func);
