@@ -49,6 +49,14 @@ set(RENDER_LIBRARIES
 	IrrXml
 	zlibstatic
 	shaderc_shared
+	spirv-cross-cd
+	spirv-cross-cored
+	spirv-cross-cppd
+	spirv-cross-glsld
+	spirv-cross-hlsld
+	spirv-cross-msld
+	spirv-cross-reflectd
+	spirv-cross-utild
 )
 
 if (USE_RENDER_BACKEND_OPENGL)

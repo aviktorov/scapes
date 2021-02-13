@@ -25,10 +25,12 @@ include_directories("3rdparty/vma")
 include_directories("3rdparty/imgui")
 include_directories("3rdparty/imgui/examples")
 include_directories("3rdparty/tracy")
+include_directories("3rdparty/spirv-cross/include/spirv_cross")
 
 link_directories("3rdparty/assimp/lib")
 link_directories("3rdparty/glfw/lib")
 link_directories("3rdparty/shaderc/lib")
+link_directories("3rdparty/spirv-cross/lib")
 
 find_package(Vulkan REQUIRED)
 if (Vulkan_FOUND)
