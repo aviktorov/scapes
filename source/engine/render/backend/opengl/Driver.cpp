@@ -1,6 +1,7 @@
 #include <common/Log.h>
 #include <render/backend/opengl/Driver.h>
 #include <render/backend/opengl/Utils.h>
+#include <render/shaders/spirv/Compiler.h>
 
 #include <glad_loader.h>
 
@@ -8,6 +9,8 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
+
+#include <spirv_glsl.hpp>
 
 namespace render::backend::opengl
 {
@@ -742,8 +745,54 @@ backend::Shader *Driver::createShaderFromIL(
 	const shaders::ShaderIL *shader_il
 )
 {
-	// TODO: implement
-	return nullptr;
+	const shaders::spirv::ShaderIL *spirv_shader_il = static_cast<const shaders::spirv::ShaderIL *>(shader_il);
+
+	spirv_cross::CompilerGLSL glsl(spirv_shader_il->bytecode_data, spirv_shader_il->bytecode_size / sizeof(uint32_t));
+
+	spirv_cross::ShaderResources resources = glsl.get_shader_resources();
+
+	const uint32_t max_texture_bindings = 16;
+	const uint32_t max_uniformbuffer_bindings = 16;
+	const uint32_t push_constants_binding = 255;
+
+	for (auto &resource : resources.sampled_images)
+	{
+		uint32_t set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+		uint32_t binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
+
+		glsl.unset_decoration(resource.id, spv::DecorationDescriptorSet);
+		glsl.set_decoration(resource.id, spv::DecorationBinding, set * max_texture_bindings + binding);
+	}
+
+	for (auto &resource : resources.uniform_buffers)
+	{
+		uint32_t set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+		uint32_t binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
+
+		glsl.unset_decoration(resource.id, spv::DecorationDescriptorSet);
+		glsl.set_decoration(resource.id, spv::DecorationBinding, set * max_uniformbuffer_bindings + binding);
+	}
+
+	for (auto &resource : resources.push_constant_buffers)
+	{
+		uint32_t set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
+		uint32_t binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
+
+		glsl.unset_decoration(resource.id, spv::DecorationDescriptorSet);
+		glsl.set_decoration(resource.id, spv::DecorationBinding, push_constants_binding);
+	}
+
+	spirv_cross::CompilerGLSL::Options options;
+	options.version = 450;
+	options.es = false;
+	options.separate_shader_objects = true;
+	options.emit_push_constant_as_uniform_buffer = true;
+	glsl.set_common_options(options);
+
+	std::string source = glsl.compile();
+	Log::message("--- Shader code ---\n%s\n----\n", source.c_str());
+
+	return createShaderFromSource(spirv_shader_il->type, static_cast<uint32_t>(source.size()), source.c_str());
 }
 
 //
