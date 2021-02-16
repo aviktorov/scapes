@@ -34,6 +34,8 @@ namespace config
 		PassSSRTraceFragment,
 		PassSSRResolveVertex,
 		PassSSRResolveFragment,
+		PassSSRTemporalFilterVertex,
+		PassSSRTemporalFilterFragment,
 		PassCompositeVertex,
 		PassCompositeFragment,
 		PassFinalVertex,
@@ -91,6 +93,9 @@ public:
 
 	inline const render::Shader *getSSRResolveVertexShader() const { return resources.getShader(config::Shaders::PassSSRResolveVertex); }
 	inline const render::Shader *getSSRResolveFragmentShader() const { return resources.getShader(config::Shaders::PassSSRResolveFragment); }
+
+	inline const render::Shader *getSSRTemporalFilterVertexShader() const { return resources.getShader(config::Shaders::PassSSRTemporalFilterVertex); }
+	inline const render::Shader *getSSRTemporalFilterFragmentShader() const { return resources.getShader(config::Shaders::PassSSRTemporalFilterFragment); }
 
 	inline const render::Shader *getCompositeVertexShader() const { return resources.getShader(config::Shaders::PassCompositeVertex); }
 	inline const render::Shader *getCompositeFragmentShader() const { return resources.getShader(config::Shaders::PassCompositeFragment); }

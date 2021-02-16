@@ -88,6 +88,10 @@ void main()
 	vec2 isize = 1.0f / vec2(textureSize(ssrTexture, 0));
 
 	vec2 noise_uv = fragTexCoord * textureSize(gbufferBaseColor, 0) / textureSize(ssrNoiseTexture, 0).xy;
+
+	// TODO: better TAA noise
+	noise_uv.xy += ubo.currentTime;
+
 	vec4 blue_noise = texture(ssrNoiseTexture, noise_uv);
 
 	float theta = PI2 * InterleavedGradientNoise(fragTexCoord, blue_noise.xy);

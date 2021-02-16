@@ -101,6 +101,9 @@ void main()
 	vec2 uv = fragTexCoord;
 	vec2 noise_uv = uv * textureSize(gbufferShading, 0) / textureSize(ssrNoiseTexture, 0).xy;
 
+	// TODO: better TAA noise
+	noise_uv.xy += ubo.currentTime;
+
 	vec4 blue_noise = texture(ssrNoiseTexture, noise_uv);
 
 	vec3 positionVS = getPositionVS(uv, ubo.invProj);
