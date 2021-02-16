@@ -47,6 +47,11 @@ vec3 lerp(vec3 a, vec3 b, float t)
 	return a * (1.0f - t) + b * t;
 }
 
+vec4 lerp(vec4 a, vec4 b, float t)
+{
+	return a * (1.0f - t) + b * t;
+}
+
 vec3 lerp(vec3 a, vec3 b, vec3 t)
 {
 	return a * (1.0f - t) + b * t;
