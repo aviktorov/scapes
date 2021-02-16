@@ -614,12 +614,15 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 	}
 
 	// Create resolve FBO
-	status = create_fbo(&result->resolve_fbo_id, result->num_resolve_color_attachments, result->resolve_color_attachments, nullptr);
-	if (status != GL_FRAMEBUFFER_COMPLETE)
+	if (result->num_resolve_color_attachments > 0)
 	{
-		Log::error("opengl::Driver::createFramebuffer(): resolve framebuffer is not complete, error: %d\n", status);
-		destroyFrameBuffer(result);
-		return nullptr;
+		status = create_fbo(&result->resolve_fbo_id, result->num_resolve_color_attachments, result->resolve_color_attachments, nullptr);
+		if (status != GL_FRAMEBUFFER_COMPLETE)
+		{
+			Log::error("opengl::Driver::createFramebuffer(): resolve framebuffer is not complete, error: %d\n", status);
+			destroyFrameBuffer(result);
+			return nullptr;
+		}
 	}
 
 	return result;
