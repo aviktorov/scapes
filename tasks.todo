@@ -50,9 +50,9 @@ PBR Sandbox:
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
+        ☐ Implement old frame reprojection
+    Stream 54:
         ☐ Animate blue noise for better TAA sampling
-    Stream 53:
-        Reference: https://de45xmedrsdbp.cloudfront.net/Resources/files/TemporalAA_small-59732822.pdf
         ☐ Add temporal filter
             ☐ Add camera jitter
                 ☐ Add frame counter (up tp 16)
@@ -62,7 +62,11 @@ PBR Sandbox:
             ☐ Implement sample accumulation pass
                 ☐ Average(old, current)
                 ☐ Exponential (move alpha coeff to imgui)
-        ☐ Implement old frame reprojection
+    Stream 53:
+        Reference: https://de45xmedrsdbp.cloudfront.net/Resources/files/TemporalAA_small-59732822.pdf
+        ✔ Add SSR temporal filter @done (2/16/2021, 10:16:59 PM)
+            ✔ Add naive jitter (blue noise offset) @done (2/16/2021, 10:17:00 PM)
+            ✔ Add accumulation pass (w/o reprojection) @done (2/16/2021, 10:17:00 PM)
     Stream 52:
         ✔ Sample old color with mips @done (2/9/2021, 9:27:07 PM)
     Stream 51:
