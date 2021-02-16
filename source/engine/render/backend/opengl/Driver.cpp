@@ -655,25 +655,6 @@ backend::Shader *Driver::createShaderFromSource(
 	const char *path
 )
 {
-	return nullptr;
-	// TODO: implement
-	/*
-	std::vector<const char *> modified_sources(num_sources + 1);
-	std::vector<GLint> modified_sizes(num_sources + 1);
-
-	static const char *header =
-		"#version 450 core\n"
-		"#extension GL_ARB_separate_shader_objects: require\n";
-
-	modified_sources[0] = header;
-	modified_sizes[0] = static_cast<GLint>(strlen(header));
-
-	for (uint32_t i = 0; i < num_sources; ++i)
-	{
-		modified_sources[i + 1] = sources[i];
-		modified_sizes[i + 1] = static_cast<GLint>(sizes[i]);
-	}
-
 	GLenum shader_type = Utils::getShaderType(type);
 	GLuint shader = glCreateShader(shader_type);
 	if (shader == 0)
@@ -682,7 +663,10 @@ backend::Shader *Driver::createShaderFromSource(
 		return nullptr;
 	}
 
-	glShaderSource(shader, num_sources + 1, modified_sources.data(), modified_sizes.data());
+	GLint shader_size = static_cast<GLint>(size);
+	const GLchar *shader_data = reinterpret_cast<const GLchar *>(data);
+
+	glShaderSource(shader, 1, &shader_data, &shader_size);
 	glCompileShader(shader);
 
 	GLint compiled = GL_FALSE;
@@ -738,7 +722,6 @@ backend::Shader *Driver::createShaderFromSource(
 	result->compiled = compiled && linked;
 
 	return result;
-	/**/
 }
 
 backend::Shader *Driver::createShaderFromIL(
@@ -753,7 +736,7 @@ backend::Shader *Driver::createShaderFromIL(
 
 	const uint32_t max_texture_bindings = 16;
 	const uint32_t max_uniformbuffer_bindings = 16;
-	const uint32_t push_constants_binding = 255;
+	const uint32_t push_constants_binding = 0;
 
 	for (auto &resource : resources.sampled_images)
 	{
@@ -770,7 +753,7 @@ backend::Shader *Driver::createShaderFromIL(
 		uint32_t binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
 
 		glsl.unset_decoration(resource.id, spv::DecorationDescriptorSet);
-		glsl.set_decoration(resource.id, spv::DecorationBinding, set * max_uniformbuffer_bindings + binding);
+		glsl.set_decoration(resource.id, spv::DecorationBinding, set * max_uniformbuffer_bindings + binding + 1); // zero is taken by push constants UBO
 	}
 
 	for (auto &resource : resources.push_constant_buffers)
@@ -790,7 +773,6 @@ backend::Shader *Driver::createShaderFromIL(
 	glsl.set_common_options(options);
 
 	std::string source = glsl.compile();
-	Log::message("--- Shader code ---\n%s\n----\n", source.c_str());
 
 	return createShaderFromSource(spirv_shader_il->type, static_cast<uint32_t>(source.size()), source.c_str());
 }
