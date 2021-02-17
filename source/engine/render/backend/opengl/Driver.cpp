@@ -784,8 +784,10 @@ backend::Shader *Driver::createShaderFromIL(
 backend::BindSet *Driver::createBindSet(
 )
 {
-	// TODO: implement
-	return nullptr;
+	BindSet *result = new BindSet();
+	memset(result, 0, sizeof(BindSet));
+
+	return result;
 }
 
 //
@@ -928,7 +930,14 @@ void Driver::destroyShader(backend::Shader *shader)
 
 void Driver::destroyBindSet(backend::BindSet *bind_set)
 {
-	// TODO: implement
+	if (bind_set == nullptr)
+		return;
+
+	BindSet *gl_bind_set = static_cast<BindSet *>(bind_set);
+	memset(gl_bind_set, 0, sizeof(BindSet));
+
+	delete bind_set;
+	bind_set = nullptr;
 }
 
 void Driver::destroySwapChain(backend::SwapChain *swap_chain)

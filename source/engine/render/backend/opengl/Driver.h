@@ -79,6 +79,11 @@ struct FrameBuffer : public backend::FrameBuffer
 	FrameBufferColorAttachment resolve_color_attachments[FrameBuffer::MAX_COLOR_ATTACHMENTS];
 };
 
+struct UniformBuffer : public backend::UniformBuffer
+{
+	Buffer *data {nullptr};
+};
+
 struct Shader : public backend::Shader
 {
 	GLuint id {0};
@@ -86,9 +91,30 @@ struct Shader : public backend::Shader
 	GLenum type {GL_FRAGMENT_SHADER};
 };
 
-struct UniformBuffer : public backend::UniformBuffer
+struct BindSet : public backend::BindSet
 {
-	Buffer *data {nullptr};
+	enum
+	{
+		MAX_BINDINGS = 32,
+	};
+
+	union Data
+	{
+		struct Texture
+		{
+			GLuint id;
+		} texture;
+		struct UBO
+		{
+			GLuint id;
+			uint32_t offset;
+			uint32_t size;
+		} ubo;
+	};
+
+	Data binding_data[MAX_BINDINGS];
+	uint32_t binding_used {0};
+	uint32_t binding_dirty {0};
 };
 
 struct SwapChain : public backend::SwapChain
