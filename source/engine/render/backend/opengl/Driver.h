@@ -98,21 +98,32 @@ struct BindSet : public backend::BindSet
 		MAX_BINDINGS = 32,
 	};
 
+	enum class DataType
+	{
+		Texture = 0,
+		UBO,
+	};
+
 	union Data
 	{
 		struct Texture
 		{
 			GLuint id;
+			GLint base_mip;
+			GLuint num_mips;
+			GLint base_layer;
+			GLuint num_layers;
 		} texture;
 		struct UBO
 		{
 			GLuint id;
 			uint32_t offset;
-			uint32_t size;
+			GLsizeiptr size;
 		} ubo;
 	};
 
-	Data binding_data[MAX_BINDINGS];
+	Data datas[MAX_BINDINGS];
+	DataType types[MAX_BINDINGS];
 	uint32_t binding_used {0};
 	uint32_t binding_dirty {0};
 };

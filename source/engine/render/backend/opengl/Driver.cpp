@@ -1126,6 +1126,12 @@ void Driver::wait()
 	glFinish();
 }
 
+// TODO: move to common utils
+static void bitset_set(uint32_t &bitset, uint32_t bit, bool value)
+{
+	bitset = (value) ? bitset | (1 << bit) : bitset & (~(1 << bit));
+}
+
 //
 void Driver::bindUniformBuffer(
 	backend::BindSet *bind_set,
@@ -1133,35 +1139,31 @@ void Driver::bindUniformBuffer(
 	const backend::UniformBuffer *uniform_buffer
 )
 {
-	// TODO: implement
+	assert(binding < BindSet::MAX_BINDINGS);
 
-	/* set
-	assert(binding < MAX_UNIFORM_BUFFERS);
+	if (bind_set == nullptr)
+		return;
 
-	const UniformBuffer *gl_buffer = static_cast<const UniformBuffer *>(buffer);
+	BindSet *gl_bind_set = static_cast<BindSet *>(bind_set);
+	const UniformBuffer *gl_uniform_buffer = static_cast<const UniformBuffer *>(uniform_buffer);
+	
+	BindSet::Data &data = gl_bind_set->datas[binding];
+	BindSet::DataType &type = gl_bind_set->types[binding];
 
-	GLuint id = (gl_buffer) ? gl_buffer->data->id : GL_NONE;
+	GLuint id = (gl_uniform_buffer != nullptr) ? gl_uniform_buffer->data->id : 0;
+	GLsizeiptr size = (gl_uniform_buffer != nullptr) ? gl_uniform_buffer->data->size : 0;
 
-	if (pipeline_state.bound_uniform_buffers[binding] != id)
-	{
-		pipeline_state.bound_uniform_buffers[binding] = id;
-		pipeline_state_overrides.bound_uniform_buffers |= (1 << binding);
-		pipeline_dirty = true;
-	}
-	/**/
+	bool buffer_changed = (data.ubo.id != id) || (data.ubo.size != size);
+	bool type_changed = (type != BindSet::DataType::UBO);
 
-	/* clear all
-	for (uint16_t i = 0; i < MAX_UNIFORM_BUFFERS; ++i)
-	{
-		GLuint id = pipeline_state.bound_uniform_buffers[i];
-		if (id == 0)
-			continue;
+	bitset_set(gl_bind_set->binding_used, binding, (gl_uniform_buffer != nullptr));
+	bitset_set(gl_bind_set->binding_dirty, binding, type_changed || buffer_changed);
 
-		pipeline_state.bound_uniform_buffers[i] = 0;
-		pipeline_state_overrides.bound_uniform_buffers |= (1 << i);
-		pipeline_dirty = true;
-	}
-	/**/
+	data.ubo.id = id;
+	data.ubo.size = size;
+	data.ubo.offset = 0;
+
+	type = BindSet::DataType::UBO;
 }
 
 void Driver::bindTexture(
@@ -1191,37 +1193,35 @@ void Driver::bindTexture(
 	uint32_t num_layers
 )
 {
-	// TODO: implement
+	assert(binding < BindSet::MAX_BINDINGS);
 
-	/* set
-	assert(binding < MAX_TEXTURES);
+	if (bind_set == nullptr)
+		return;
 
+	BindSet *gl_bind_set = static_cast<BindSet *>(bind_set);
 	const Texture *gl_texture = static_cast<const Texture *>(texture);
+	
+	BindSet::Data &data = gl_bind_set->datas[binding];
+	BindSet::DataType &type = gl_bind_set->types[binding];
 
-	GLuint id = (gl_texture) ? gl_texture->id : GL_NONE;
-	GLenum type = (gl_texture) ? gl_texture->type : GL_NONE;
+	GLuint id = (gl_texture != nullptr) ? gl_texture->id : 0;
 
-	if (pipeline_state.bound_textures[binding] != id || pipeline_state.bound_texture_types[binding] != type)
-	{
-		pipeline_state.bound_textures[binding] = id;
-		pipeline_state.bound_texture_types[binding] = type;
-		pipeline_state_overrides.bound_textures |= (1 << binding);
-		pipeline_dirty = true;
-	}
-	/**/
+	bool texture_mips_changed = (data.texture.base_mip != base_mip) || (data.texture.num_mips != num_mips);
+	bool texture_layers_changed = (data.texture.num_layers != num_layers) || (data.texture.base_layer != base_layer);
 
-	/* clear all
-	for (uint16_t i = 0; i < MAX_TEXTURES; ++i)
-	{
-		GLuint id = pipeline_state.bound_textures[i];
-		if (id == 0)
-			continue;
+	bool texture_changed = (data.texture.id != id) || texture_mips_changed || texture_layers_changed; 
+	bool type_changed = (type != BindSet::DataType::Texture);
 
-		pipeline_state.bound_textures[i] = 0;
-		pipeline_state_overrides.bound_textures |= (1 << i);
-		pipeline_dirty = true;
-	}
-	/**/
+	bitset_set(gl_bind_set->binding_used, binding, (gl_texture != nullptr));
+	bitset_set(gl_bind_set->binding_dirty, binding, type_changed || texture_changed);
+
+	data.texture.id = id;
+	data.texture.base_mip = base_mip;
+	data.texture.num_mips = num_mips;
+	data.texture.base_layer = base_layer;
+	data.texture.num_layers = num_layers;	
+
+	type = BindSet::DataType::Texture;
 }
 
 //
