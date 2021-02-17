@@ -12,6 +12,7 @@ layout(set = 0, binding = 0) uniform RenderState {
 	float lerpUserValues;
 	float userMetalness;
 	float userRoughness;
+	float currentTime;
 } ubo;
 
 float getLinearDepth(float depth)

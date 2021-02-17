@@ -160,6 +160,7 @@ private:
 	void renderSSAOBlur(const Scene *scene, const render::RenderFrame &frame);
 	void renderSSRTrace(const Scene *scene, const render::RenderFrame &frame);
 	void renderSSRResolve(const Scene *scene, const render::RenderFrame &frame);
+	void renderSSRTemporalFilter(const Scene *scene, const render::RenderFrame &frame);
 	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
 	void renderFinal(const Scene *scene, const render::RenderFrame &frame);
@@ -177,6 +178,8 @@ private:
 	SSRData ssr_data;
 	SSR ssr_trace;
 	SSR ssr_resolve;
+	SSR ssr_temporal_filter;
+	SSR old_ssr_temporal_filter;
 
 	LBuffer lbuffer;
 	Composite composite;
@@ -199,6 +202,9 @@ private:
 
 	const render::Shader *ssr_resolve_pass_vertex {nullptr};
 	const render::Shader *ssr_resolve_pass_fragment {nullptr};
+
+	const render::Shader *ssr_temporal_filter_pass_vertex {nullptr};
+	const render::Shader *ssr_temporal_filter_pass_fragment {nullptr};
 
 	const render::Shader *composite_pass_vertex {nullptr};
 	const render::Shader *composite_pass_fragment {nullptr};

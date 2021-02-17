@@ -81,6 +81,7 @@ void Application::update()
 	state.invProj = glm::inverse(state.proj);
 	state.cameraPosWS = cameraPos;
 	state.cameraParams = cameraParams;
+	state.currentTime = time;
 
 	static float f = 0.0f;
 	static int counter = 0;

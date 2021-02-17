@@ -42,6 +42,7 @@ struct ApplicationState
 	float lerpUserValues {0.0f};
 	float userMetalness {0.0f};
 	float userRoughness {0.0f};
+	float currentTime {0.0f};
 	int currentEnvironment {0};
 };
 

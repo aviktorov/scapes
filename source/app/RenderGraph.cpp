@@ -53,6 +53,8 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	initSSRData(resources->getBlueNoiseTexture());
 	initSSR(ssr_trace, Format::R16G16B16A16_SFLOAT, width, height);
 	initSSR(ssr_resolve, Format::R16G16B16A16_SFLOAT, width, height);
+	initSSR(ssr_temporal_filter, Format::R16G16B16A16_SFLOAT, width, height);
+	initSSR(old_ssr_temporal_filter, Format::R16G16B16A16_SFLOAT, width, height);
 
 	quad = new render::Mesh(driver);
 	quad->createQuad(2.0f);
@@ -72,6 +74,9 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	ssr_resolve_pass_vertex = resources->getSSRResolveVertexShader();
 	ssr_resolve_pass_fragment = resources->getSSRResolveFragmentShader();
 
+	ssr_temporal_filter_pass_vertex = resources->getSSRTemporalFilterVertexShader();
+	ssr_temporal_filter_pass_fragment = resources->getSSRTemporalFilterFragmentShader();
+
 	composite_pass_vertex = resources->getCompositeVertexShader();
 	composite_pass_fragment = resources->getCompositeFragmentShader();
 
@@ -88,6 +93,8 @@ void RenderGraph::shutdown()
 	shutdownSSRData();
 	shutdownSSR(ssr_trace);
 	shutdownSSR(ssr_resolve);
+	shutdownSSR(ssr_temporal_filter);
+	shutdownSSR(old_ssr_temporal_filter);
 	shutdownLBuffer();
 	shutdownComposite(composite);
 	shutdownComposite(old_composite);
@@ -112,6 +119,9 @@ void RenderGraph::shutdown()
 
 	ssr_resolve_pass_vertex = nullptr;
 	ssr_resolve_pass_fragment = nullptr;
+
+	ssr_temporal_filter_pass_vertex = nullptr;
+	ssr_temporal_filter_pass_fragment = nullptr;
 
 	composite_pass_vertex = nullptr;
 	composite_pass_fragment = nullptr;
@@ -357,6 +367,8 @@ void RenderGraph::resize(uint32_t width, uint32_t height)
 
 	shutdownSSR(ssr_trace);
 	shutdownSSR(ssr_resolve);
+	shutdownSSR(ssr_temporal_filter);
+	shutdownSSR(old_ssr_temporal_filter);
 
 	initGBuffer(width, height);
 	initLBuffer(width, height);
@@ -368,6 +380,8 @@ void RenderGraph::resize(uint32_t width, uint32_t height)
 
 	initSSR(ssr_trace, Format::R16G16B16A16_SFLOAT, width, height);
 	initSSR(ssr_resolve, Format::R16G16B16A16_SFLOAT, width, height);
+	initSSR(ssr_temporal_filter, Format::R16G16B16A16_SFLOAT, width, height);
+	initSSR(old_ssr_temporal_filter, Format::R16G16B16A16_SFLOAT, width, height);
 }
 
 /*
@@ -445,6 +459,17 @@ void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame)
 		driver->setDepthTest(false);
 
 		renderSSRResolve(scene, frame);
+	}
+
+	{
+		ZoneScopedN("SSR Temporal Filter");
+
+		driver->setBlending(false);
+		driver->setCullMode(render::backend::CullMode::NONE);
+		driver->setDepthWrite(false);
+		driver->setDepthTest(false);
+
+		renderSSRTemporalFilter(scene, frame);
 	}
 
 	{
@@ -618,6 +643,34 @@ void RenderGraph::renderSSRResolve(const Scene *scene, const render::RenderFrame
 	driver->endRenderPass(frame.command_buffer);
 }
 
+void RenderGraph::renderSSRTemporalFilter(const Scene *scene, const render::RenderFrame &frame)
+{
+	RenderPassClearValue clear_value = {};
+
+	RenderPassLoadOp load_op = RenderPassLoadOp::DONT_CARE;
+	RenderPassStoreOp store_op = RenderPassStoreOp::STORE;
+
+	RenderPassInfo info;
+	info.clear_values = &clear_value;
+	info.load_ops = &load_op;
+	info.store_ops = &store_op;
+
+	driver->beginRenderPass(frame.command_buffer, ssr_temporal_filter.framebuffer, &info);
+
+	driver->clearPushConstants();
+	driver->allocateBindSets(2);
+	driver->setBindSet(0, ssr_resolve.bindings);
+	driver->setBindSet(1, old_ssr_temporal_filter.bindings);
+
+	driver->clearShaders();
+	driver->setShader(render::backend::ShaderType::VERTEX, ssr_temporal_filter_pass_vertex->getBackend());
+	driver->setShader(render::backend::ShaderType::FRAGMENT, ssr_temporal_filter_pass_fragment->getBackend());
+
+	driver->drawIndexedPrimitive(frame.command_buffer, quad->getRenderPrimitive());
+	driver->endRenderPass(frame.command_buffer);
+
+	std::swap(old_ssr_temporal_filter, ssr_temporal_filter);
+}
 
 void RenderGraph::renderLBuffer(const Scene *scene, const render::RenderFrame &frame)
 {
@@ -681,7 +734,7 @@ void RenderGraph::renderComposite(const Scene *scene, const render::RenderFrame 
 	driver->allocateBindSets(3);
 	driver->setBindSet(0, lbuffer.bindings);
 	driver->setBindSet(1, ssao_blurred.bindings);
-	driver->setBindSet(2, ssr_resolve.bindings);
+	driver->setBindSet(2, ssr_temporal_filter.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, composite_pass_vertex->getBackend());
