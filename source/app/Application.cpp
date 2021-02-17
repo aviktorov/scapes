@@ -220,7 +220,7 @@ void Application::mainloop()
 void Application::initWindow()
 {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(1920, 1080, "Vulkan", nullptr, nullptr);
+	window = glfwCreateWindow(1920, 1080, "Scapes v1.0", nullptr, nullptr);
 
 	glfwSetWindowUserPointer(window, this);
 
@@ -349,7 +349,7 @@ void Application::shutdownImGui()
  */
 void Application::initDriver()
 {
-	driver = backend::Driver::create("PBR Sandbox", "Scape");
+	driver = backend::Driver::create("PBR Sandbox", "Scape", render::backend::Api::OPENGL);
 	compiler = new shaders::spirv::Compiler();
 }
 
