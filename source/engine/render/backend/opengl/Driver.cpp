@@ -1129,7 +1129,8 @@ void Driver::wait()
 // TODO: move to common utils
 static void bitset_set(uint32_t &bitset, uint32_t bit, bool value)
 {
-	bitset = (value) ? bitset | (1 << bit) : bitset & (~(1 << bit));
+	uint32_t mask = 1 << bit;
+	bitset = (value) ? bitset | mask : bitset & ~mask;
 }
 
 //
