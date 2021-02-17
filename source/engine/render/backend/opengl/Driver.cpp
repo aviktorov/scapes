@@ -233,7 +233,12 @@ backend::VertexBuffer *Driver::createVertexBuffer(
 {
 	VertexBuffer *result = new VertexBuffer();
 
-	result->data = Utils::createImmutableBuffer(GL_ARRAY_BUFFER, vertex_size * num_vertices, data);
+	GLbitfield usage_flags = 0;
+
+	if (type == BufferType::DYNAMIC)
+		usage_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+
+	result->data = Utils::createImmutableBuffer(GL_ARRAY_BUFFER, vertex_size * num_vertices, data, usage_flags);
 	result->num_vertices = num_vertices;
 	result->vertex_size = vertex_size;
 
@@ -268,7 +273,12 @@ backend::IndexBuffer *Driver::createIndexBuffer(
 {
 	IndexBuffer *result = new IndexBuffer();
 
-	result->data = Utils::createImmutableBuffer(GL_ELEMENT_ARRAY_BUFFER, Utils::getIndexSize(index_format) * num_indices, data);
+	GLbitfield usage_flags = 0;
+
+	if (type == BufferType::DYNAMIC)
+		usage_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+
+	result->data = Utils::createImmutableBuffer(GL_ELEMENT_ARRAY_BUFFER, Utils::getIndexSize(index_format) * num_indices, data, usage_flags);
 	result->num_indices = num_indices;
 	result->index_format = Utils::getIndexFormat(index_format);
 
@@ -645,7 +655,12 @@ backend::UniformBuffer *Driver::createUniformBuffer(
 {
 	UniformBuffer *result = new UniformBuffer();
 
-	result->data = Utils::createImmutableBuffer(GL_UNIFORM_BUFFER, size, data, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
+	GLbitfield usage_flags = 0;
+
+	if (type == BufferType::DYNAMIC)
+		usage_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+
+	result->data = Utils::createImmutableBuffer(GL_UNIFORM_BUFFER, size, data, usage_flags);
 
 	return result;
 }
@@ -1014,8 +1029,8 @@ void *Driver::map(backend::VertexBuffer *buffer)
 	assert(buffer);
 	VertexBuffer *gl_buffer = static_cast<VertexBuffer *>(buffer);
 
-	glBindBuffer(GL_UNIFORM_BUFFER, gl_buffer->data->id);
-	return glMapBufferRange(GL_UNIFORM_BUFFER, 0, gl_buffer->data->size, GL_MAP_WRITE_BIT);
+	glBindBuffer(gl_buffer->data->type, gl_buffer->data->id);
+	return glMapBufferRange(gl_buffer->data->type, 0, gl_buffer->data->size, GL_MAP_WRITE_BIT);
 }
 
 void Driver::unmap(backend::VertexBuffer *buffer)
@@ -1023,8 +1038,8 @@ void Driver::unmap(backend::VertexBuffer *buffer)
 	assert(buffer);
 	VertexBuffer *gl_buffer = static_cast<VertexBuffer *>(buffer);
 
-	glBindBuffer(GL_UNIFORM_BUFFER, gl_buffer->data->id);
-	glUnmapBuffer(GL_UNIFORM_BUFFER);
+	glBindBuffer(gl_buffer->data->type, gl_buffer->data->id);
+	glUnmapBuffer(gl_buffer->data->type);
 }
 
 void *Driver::map(backend::IndexBuffer *buffer)
@@ -1032,8 +1047,8 @@ void *Driver::map(backend::IndexBuffer *buffer)
 	assert(buffer);
 	IndexBuffer *gl_buffer = static_cast<IndexBuffer *>(buffer);
 
-	glBindBuffer(GL_UNIFORM_BUFFER, gl_buffer->data->id);
-	return glMapBufferRange(GL_UNIFORM_BUFFER, 0, gl_buffer->data->size, GL_MAP_WRITE_BIT);
+	glBindBuffer(gl_buffer->data->type, gl_buffer->data->id);
+	return glMapBufferRange(gl_buffer->data->type, 0, gl_buffer->data->size, GL_MAP_WRITE_BIT);
 }
 
 void Driver::unmap(backend::IndexBuffer *buffer)
@@ -1041,8 +1056,8 @@ void Driver::unmap(backend::IndexBuffer *buffer)
 	assert(buffer);
 	IndexBuffer *gl_buffer = static_cast<IndexBuffer *>(buffer);
 
-	glBindBuffer(GL_UNIFORM_BUFFER, gl_buffer->data->id);
-	glUnmapBuffer(GL_UNIFORM_BUFFER);
+	glBindBuffer(gl_buffer->data->type, gl_buffer->data->id);
+	glUnmapBuffer(gl_buffer->data->type);
 }
 
 void *Driver::map(backend::UniformBuffer *buffer)
@@ -1050,8 +1065,8 @@ void *Driver::map(backend::UniformBuffer *buffer)
 	assert(buffer);
 	UniformBuffer *gl_buffer = static_cast<UniformBuffer *>(buffer);
 
-	glBindBuffer(GL_UNIFORM_BUFFER, gl_buffer->data->id);
-	return glMapBufferRange(GL_UNIFORM_BUFFER, 0, gl_buffer->data->size, GL_MAP_WRITE_BIT);
+	glBindBuffer(gl_buffer->data->type, gl_buffer->data->id);
+	return glMapBufferRange(gl_buffer->data->type, 0, gl_buffer->data->size, GL_MAP_WRITE_BIT);
 }
 
 void Driver::unmap(backend::UniformBuffer *buffer)
@@ -1059,8 +1074,8 @@ void Driver::unmap(backend::UniformBuffer *buffer)
 	assert(buffer);
 	UniformBuffer *gl_buffer = static_cast<UniformBuffer *>(buffer);
 
-	glBindBuffer(GL_UNIFORM_BUFFER, gl_buffer->data->id);
-	glUnmapBuffer(GL_UNIFORM_BUFFER);
+	glBindBuffer(gl_buffer->data->type, gl_buffer->data->id);
+	glUnmapBuffer(gl_buffer->data->type);
 }
 
 //
