@@ -15,6 +15,29 @@
 namespace render::backend::opengl
 {
 
+// TODO: move to common utils
+static void bitset_set(uint32_t &bitset, uint32_t bit, bool value)
+{
+	uint32_t mask = 1 << bit;
+	bitset = (value) ? bitset | mask : bitset & ~mask;
+}
+
+// TODO: move to command buffer utils
+static void clear_command_buffer(CommandBuffer *gl_command_buffer)
+{
+	while (gl_command_buffer->first != nullptr)
+	{
+		Command *next = gl_command_buffer->first->next;
+
+		delete gl_command_buffer->first;
+		gl_command_buffer->first = next;
+	}
+
+	gl_command_buffer->first = nullptr;
+	gl_command_buffer->last = nullptr;
+}
+
+//
 static void GLAPIENTRY debugLog(
 	GLenum source,
 	GLenum type,
@@ -642,8 +665,12 @@ backend::CommandBuffer *Driver::createCommandBuffer(
 	CommandBufferType type
 )
 {
-	// TODO: implement
-	return nullptr;
+	CommandBuffer *result = new CommandBuffer();
+	result->type = type;
+
+	// TODO: sync primitives
+
+	return result;
 }
 
 //
@@ -916,7 +943,14 @@ void Driver::destroyFrameBuffer(backend::FrameBuffer *frame_buffer)
 
 void Driver::destroyCommandBuffer(backend::CommandBuffer *command_buffer)
 {
-	// TODO: implement
+	if (command_buffer == nullptr)
+		return;
+
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	clear_command_buffer(gl_command_buffer);
+
+	delete command_buffer;
+	command_buffer = nullptr;
 }
 
 void Driver::destroyUniformBuffer(backend::UniformBuffer *uniform_buffer)
@@ -1124,13 +1158,6 @@ bool Driver::wait(
 void Driver::wait()
 {
 	glFinish();
-}
-
-// TODO: move to common utils
-static void bitset_set(uint32_t &bitset, uint32_t bit, bool value)
-{
-	uint32_t mask = 1 << bit;
-	bitset = (value) ? bitset | mask : bitset & ~mask;
 }
 
 //
@@ -1476,24 +1503,51 @@ bool Driver::resetCommandBuffer(
 	backend::CommandBuffer *command_buffer
 )
 {
-	// TODO: implement
-	return false;
+	if (command_buffer == nullptr)
+		return false;
+
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	clear_command_buffer(gl_command_buffer);
+
+	gl_command_buffer->state = CommandBufferState::INITIAL;
+
+	return true;
 }
 
 bool Driver::beginCommandBuffer(
 	backend::CommandBuffer *command_buffer
 )
 {
-	// TODO: implement
-	return false;
+	if (command_buffer == nullptr)
+		return false;
+
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	if (gl_command_buffer->state != CommandBufferState::INITIAL)
+	{
+		// TODO: log error
+		return false;
+	}
+
+	gl_command_buffer->state = CommandBufferState::RECORDING;
+	return true;
 }
 
 bool Driver::endCommandBuffer(
 	backend::CommandBuffer *command_buffer
 )
 {
-	// TODO: implement
-	return false;
+	if (command_buffer == nullptr)
+		return false;
+
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	if (gl_command_buffer->state != CommandBufferState::RECORDING)
+	{
+		// TODO: log error
+		return false;
+	}
+
+	gl_command_buffer->state = CommandBufferState::EXECUTABLE;
+	return true;
 }
 
 bool Driver::submit(

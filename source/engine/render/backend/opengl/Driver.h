@@ -79,6 +79,46 @@ struct FrameBuffer : public backend::FrameBuffer
 	FrameBufferColorAttachment resolve_color_attachments[FrameBuffer::MAX_COLOR_ATTACHMENTS];
 };
 
+enum class CommandType : uint8_t
+{
+	NONE,
+	DRAW_INDEXED_PRIMITIVE,
+	MAX,
+};
+
+struct Command
+{
+	CommandType type {CommandType::NONE};
+	Command *next {nullptr};
+	union
+	{
+		struct DrawIndexedPrimitive
+		{
+			GLint vertex_array_object_id;
+			GLint index_buffer_id;
+			RenderPrimitive render_primitive;
+		} draw_indexed_primitive;
+	};
+};
+
+enum class CommandBufferState : uint8_t
+{
+	INITIAL = 0,
+	RECORDING,
+	EXECUTABLE,
+	PENDING,
+	INVALID,
+};
+
+struct CommandBuffer : public render::backend::CommandBuffer
+{
+	CommandBufferType type {CommandBufferType::PRIMARY};
+	CommandBufferState state {CommandBufferState::INITIAL};
+	Command *first {nullptr};
+	Command *last {nullptr};
+	// TODO: sync primitives
+};
+
 struct UniformBuffer : public backend::UniformBuffer
 {
 	Buffer *data {nullptr};
