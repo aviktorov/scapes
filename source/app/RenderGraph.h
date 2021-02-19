@@ -154,6 +154,7 @@ private:
 	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
 	void renderCompositeTemporalFilter(const Scene *scene, const render::RenderFrame &frame);
+	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const render::RenderFrame &frame);
 	void renderFinal(const Scene *scene, const render::RenderFrame &frame);
 
 private:
@@ -168,14 +169,14 @@ private:
 
 	SSRData ssr_data;
 	RenderBuffer ssr_trace;
-	RenderBuffer ssr_resolve;
-	RenderBuffer ssr_temporal_filter;
-	RenderBuffer old_ssr_temporal_filter;
+	RenderBuffer ssr_temp;
+	RenderBuffer ssr;
+	RenderBuffer old_ssr;
 
 	LBuffer lbuffer;
+	RenderBuffer composite_temp;
 	RenderBuffer composite;
-	RenderBuffer composite_temporal_filter;
-	RenderBuffer old_composite_temporal_filter;
+	RenderBuffer old_composite;
 
 	render::Mesh *quad {nullptr};
 	ImGuiRenderer *imgui_renderer {nullptr};
