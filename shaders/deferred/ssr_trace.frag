@@ -126,7 +126,8 @@ void main()
 
 	vec3 result = traceRay(positionVS, reflectionVS, ssr_data.num_coarse_steps, step, ssr_data.num_precision_steps);
 
-	float border_factor = pow(saturate(1.0f - length(result.xy - vec2(0.5f, 0.5f)) * 2.0f), 1.0f);
+	float distance_from_center = saturate(2.0f * length(result.xy - vec2(0.5f, 0.5f)));
+	float border_factor = 1.0f - pow(distance_from_center, 8.0f);
 
 	float facing_dot = max(0.0f, dot(viewVS, reflectionVS));
 	float facing_factor = 1.0f - saturate(facing_dot / (ssr_data.facing_threshold + EPSILON));
