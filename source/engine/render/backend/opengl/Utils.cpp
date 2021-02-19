@@ -326,9 +326,9 @@ GLboolean Utils::isAttributeNormalized(Format format)
 }
 
 //
-GLint Utils::getIndexFormat(IndexFormat format)
+GLenum Utils::getIndexFormat(IndexFormat format)
 {
-	static GLint index_formats[] =
+	static GLenum index_formats[] =
 	{
 		GL_UNSIGNED_SHORT, GL_UNSIGNED_INT,
 	};

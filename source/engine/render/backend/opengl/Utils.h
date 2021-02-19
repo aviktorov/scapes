@@ -23,7 +23,7 @@ public:
 	static GLboolean isAttributeNormalized(Format format);
 
 	//
-	static GLint getIndexFormat(IndexFormat format);
+	static GLenum getIndexFormat(IndexFormat format);
 	static GLint getIndexSize(IndexFormat format);
 
 	//

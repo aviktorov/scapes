@@ -29,7 +29,7 @@ struct VertexBuffer : public backend::VertexBuffer
 struct IndexBuffer : public backend::IndexBuffer
 {
 	GLuint num_indices {0};
-	GLuint index_format {0};
+	GLenum index_format {GL_UNSIGNED_INT};
 	Buffer *data {nullptr};
 };
 
@@ -82,23 +82,111 @@ struct FrameBuffer : public backend::FrameBuffer
 enum class CommandType : uint8_t
 {
 	NONE,
+	SET_VIEWPORT,
+	SET_SCISSOR,
+	SET_DEPTH_STENCIL_STATE,
+	SET_BLEND_STATE,
+	SET_RASTERIZER_STATE,
+	BIND_UNIFORM_BUFFER,
+	BIND_TEXTURE,
+	BIND_SHADER,
+	BIND_VERTEX_BUFFER,
+	BIND_INDEX_BUFFER,
 	DRAW_INDEXED_PRIMITIVE,
 	MAX,
 };
 
 struct Command
 {
+	struct Rect
+	{
+		GLint x {0};
+		GLint y {0};
+		GLsizei width {0};
+		GLsizei height {0};
+	};
+
+	struct DepthStencilState
+	{
+		uint8_t depth_test : 1;
+		uint8_t depth_write : 1;
+		GLenum depth_comparison_func {GL_LEQUAL};
+
+		// TODO: stencil state
+	};
+
+	struct BlendState
+	{
+		uint8_t enabled : 1;
+		GLenum src_factor {GL_ZERO};
+		GLenum dst_factor {GL_ZERO};
+	};
+
+	struct RasterizerState
+	{
+		GLenum cull_mode {GL_NONE};
+	};
+
+	struct BindUniformBuffer
+	{
+		GLuint binding {0};
+		GLuint id {0};
+		GLintptr offset {0};
+		GLsizeiptr size {0};
+	};
+
+	struct BindTexture
+	{
+		GLuint binding {0};
+		GLenum type {GL_TEXTURE_2D};
+		GLuint id {0};
+	};
+
+	struct BindShader
+	{
+		GLuint pipeline_id {0};
+		GLuint shader_id {0};
+		GLenum shader_stages {0};
+	};
+
+	struct BindVertexBuffer
+	{
+		GLuint vao_id {0};
+	};
+
+	struct BindIndexBuffer
+	{
+		GLuint id {0};
+	};
+
+	struct DrawIndexedPrimitive
+	{
+		GLenum primitive_type {GL_TRIANGLES};
+		GLenum index_format {0};
+		GLuint num_indices {0};
+		GLuint base_index {0};
+		GLint base_vertex {0};
+		GLsizei num_instances {1};
+	};
+
 	CommandType type {CommandType::NONE};
 	Command *next {nullptr};
 	union
 	{
-		struct DrawIndexedPrimitive
-		{
-			GLint vertex_array_object_id;
-			GLint index_buffer_id;
-			RenderPrimitive render_primitive;
-		} draw_indexed_primitive;
+		Rect viewport;
+		Rect scissor;
+		DepthStencilState depthstencil_state;
+		BlendState blend_state;
+		RasterizerState rasterizer_state;
+		BindUniformBuffer bind_uniform_buffer;
+		BindTexture bind_texture;
+		BindShader bind_shader;
+		BindVertexBuffer bind_vertex_buffer;
+		BindIndexBuffer bind_index_buffer;
+		DrawIndexedPrimitive draw_indexed_primitive;
 	};
+
+	Command() { }
 };
 
 enum class CommandBufferState : uint8_t
@@ -496,46 +584,45 @@ protected:
 private:
 	enum
 	{
-		MAX_TEXTURES = 16,
-		MAX_UNIFORM_BUFFERS = 16,
+		MAX_BIND_SETS = 16,
 		MAX_SHADERS = static_cast<int>(ShaderType::MAX),
 	};
 
 	struct PipelineState
 	{
-		GLint viewport_x { 0 };
-		GLint viewport_y { 0 };
-		GLsizei viewport_width { 0 };
-		GLsizei viewport_height { 0 };
+		GLint viewport_x {0};
+		GLint viewport_y {0};
+		GLsizei viewport_width {0};
+		GLsizei viewport_height {0};
+		GLint scissor_x {0};
+		GLint scissor_y {0};
+		GLsizei scissor_width {0};
+		GLsizei scissor_height {0};
 		uint8_t depth_test : 1;
 		uint8_t depth_write : 1;
-		GLenum depth_comparison_func { GL_LEQUAL };
+		GLenum depth_comparison_func {GL_LEQUAL};
 		uint8_t blend : 1;
-		GLenum blend_src_factor { GL_ZERO };
-		GLenum blend_dst_factor { GL_ZERO };
-		GLenum cull_mode { GL_NONE };
-		GLenum bound_texture_types[MAX_TEXTURES];
-		GLuint bound_textures[MAX_TEXTURES];
-		GLuint bound_uniform_buffers[MAX_UNIFORM_BUFFERS];
+		GLenum blend_src_factor {GL_ZERO};
+		GLenum blend_dst_factor {GL_ZERO};
+		GLenum cull_mode {GL_NONE};
+		uint8_t num_bind_sets {0};
+		BindSet *bound_bind_sets[MAX_BIND_SETS];
 		GLuint bound_shaders[MAX_SHADERS];
 	};
 
 	struct PipelineStateOverrides
 	{
 		uint8_t viewport : 1;
-		uint8_t depth_write : 1;
-		uint8_t depth_test : 1;
-		uint8_t depth_comparison_func : 1;
-		uint8_t blend : 1;
-		uint8_t blend_factors : 1;
-		uint8_t cull_mode: 1;
-		uint16_t bound_textures;
-		uint16_t bound_uniform_buffers;
+		uint8_t scissor : 1;
+		uint8_t depthstencil_state : 1;
+		uint8_t blend_state : 1;
+		uint8_t rasterizer_state : 1;
+		uint16_t bound_bind_sets;
 		uint16_t bound_shaders;
 	};
 
 	void fetchGraphicsPipeline();
-	void flushPipelineState();
+	void flushPipelineState(CommandBuffer *gl_command_buffer);
 
 private:
 	GLuint graphics_pipeline_id {GL_NONE};

@@ -23,7 +23,7 @@ static void bitset_set(uint32_t &bitset, uint32_t bit, bool value)
 }
 
 // TODO: move to command buffer utils
-static void clear_command_buffer(CommandBuffer *gl_command_buffer)
+static void command_buffer_clear(CommandBuffer *gl_command_buffer)
 {
 	while (gl_command_buffer->first != nullptr)
 	{
@@ -35,6 +35,185 @@ static void clear_command_buffer(CommandBuffer *gl_command_buffer)
 
 	gl_command_buffer->first = nullptr;
 	gl_command_buffer->last = nullptr;
+}
+
+static bool command_buffer_reset(CommandBuffer *gl_command_buffer)
+{
+	if (gl_command_buffer == nullptr)
+		return false;
+
+	command_buffer_clear(gl_command_buffer);
+	gl_command_buffer->state = CommandBufferState::INITIAL;
+
+	return true;
+}
+
+static bool command_buffer_begin(CommandBuffer *gl_command_buffer)
+{
+	if (gl_command_buffer == nullptr)
+		return false;
+
+	if (gl_command_buffer->state != CommandBufferState::INITIAL)
+	{
+		// TODO: log error
+		return false;
+	}
+
+	gl_command_buffer->state = CommandBufferState::RECORDING;
+	return true;
+}
+
+static bool command_buffer_end(CommandBuffer *gl_command_buffer)
+{
+	if (gl_command_buffer == nullptr)
+		return false;
+
+	if (gl_command_buffer->state != CommandBufferState::RECORDING)
+	{
+		// TODO: log error
+		return false;
+	}
+
+	gl_command_buffer->state = CommandBufferState::EXECUTABLE;
+	return true;
+}
+
+static Command *command_buffer_emit(CommandBuffer *gl_command_buffer, CommandType type)
+{
+	Command *command = new Command();
+	memset(command, 0, sizeof(Command));
+
+	command->next = nullptr;
+	command->type = type;
+
+	if (gl_command_buffer->first == nullptr)
+		gl_command_buffer->first = command;
+	else
+		gl_command_buffer->last->next = command;
+
+	gl_command_buffer->last = command;
+
+	return command;
+}
+
+static void command_submit_set_viewport(const Command::Rect &viewport)
+{
+	glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+}
+
+static void command_submit_set_scissor(const Command::Rect &scissor)
+{
+	glScissor(scissor.x, scissor.y, scissor.width, scissor.height);
+}
+
+static void command_submit_set_depthstencil_state(const Command::DepthStencilState &depthstencil)
+{
+	if (depthstencil.depth_test)
+		glEnable(GL_DEPTH_TEST);
+	else
+		glDisable(GL_DEPTH_TEST);
+
+	glDepthMask(depthstencil.depth_write);
+	glDepthFunc(depthstencil.depth_comparison_func);
+}
+
+static void command_submit_set_blend_state(const Command::BlendState &blend)
+{
+	if (blend.enabled)
+		glEnable(GL_BLEND);
+	else
+		glDisable(GL_BLEND);
+
+	glBlendFunc(blend.src_factor, blend.dst_factor);
+}
+
+static void command_submit_set_rasterizer_state(const Command::RasterizerState &rasterizer)
+{
+	if (rasterizer.cull_mode == GL_NONE)
+	{
+		glDisable(GL_CULL_FACE);
+		return;
+	}
+
+	glEnable(GL_CULL_FACE);
+	glCullFace(rasterizer.cull_mode);
+}
+
+static void command_submit_bind_uniform_buffer(const Command::BindUniformBuffer &data)
+{
+	glBindBufferRange(GL_UNIFORM_BUFFER, data.binding, data.id, data.offset, data.size);
+}
+
+static void command_submit_bind_texture(const Command::BindTexture &data)
+{
+	glActiveTexture(GL_TEXTURE0 + data.binding);
+	glBindTexture(data.type, data.id);
+}
+
+static void command_submit_bind_shader(const Command::BindShader &data)
+{
+	glBindProgramPipeline(data.pipeline_id);
+	glUseProgramStages(data.pipeline_id, data.shader_stages, data.shader_id);
+}
+
+static void command_submit_bind_vertex_buffer(const Command::BindVertexBuffer &data)
+{
+	glBindVertexArray(data.vao_id);
+}
+
+static void command_submit_bind_index_buffer(const Command::BindIndexBuffer &data)
+{
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.id);
+}
+
+static void command_submit_draw_indexed_primitive(const Command::DrawIndexedPrimitive &data)
+{
+	glDrawElementsInstancedBaseVertex(
+		data.primitive_type,
+		data.num_indices,
+		data.index_format,
+		static_cast<const char *>(0) + data.base_index,
+		data.num_instances,
+		data.base_vertex
+	);
+}
+
+static bool command_buffer_submit(CommandBuffer *gl_command_buffer)
+{
+	if (gl_command_buffer == nullptr)
+		return false;
+
+	if (gl_command_buffer->state != CommandBufferState::EXECUTABLE)
+	{
+		// TODO: log error
+		return false;
+	}
+
+	const Command *command = gl_command_buffer->first;
+
+	while (command)
+	{
+		switch (command->type)
+		{
+			case CommandType::SET_VIEWPORT: command_submit_set_viewport(command->viewport); break;
+			case CommandType::SET_SCISSOR: command_submit_set_scissor(command->scissor); break;
+			case CommandType::SET_DEPTH_STENCIL_STATE: command_submit_set_depthstencil_state(command->depthstencil_state); break;
+			case CommandType::SET_BLEND_STATE: command_submit_set_blend_state(command->blend_state); break;
+			case CommandType::SET_RASTERIZER_STATE: command_submit_set_rasterizer_state(command->rasterizer_state); break;
+			case CommandType::BIND_UNIFORM_BUFFER: command_submit_bind_uniform_buffer(command->bind_uniform_buffer); break;
+			case CommandType::BIND_TEXTURE: command_submit_bind_texture(command->bind_texture); break;
+			case CommandType::BIND_SHADER: command_submit_bind_shader(command->bind_shader); break;
+			case CommandType::BIND_INDEX_BUFFER: command_submit_bind_index_buffer(command->bind_index_buffer); break;
+			case CommandType::BIND_VERTEX_BUFFER: command_submit_bind_vertex_buffer(command->bind_vertex_buffer); break;
+			case CommandType::DRAW_INDEXED_PRIMITIVE: command_submit_draw_indexed_primitive(command->draw_indexed_primitive); break;
+			default: assert(false && "Unsupported command"); return false;
+		}
+
+		command = command->next;
+	}
+
+	gl_command_buffer->state = CommandBufferState::INVALID;
+	return true;
 }
 
 //
@@ -126,6 +305,7 @@ bool Driver::init()
 	}
 
 	glEnable(GL_MULTISAMPLE);
+	glEnable(GL_SCISSOR_TEST);
 
 	if (debug)
 	{
@@ -159,7 +339,7 @@ void Driver::fetchGraphicsPipeline()
 	assert(glIsProgramPipeline(graphics_pipeline_id) == GL_TRUE);
 }
 
-void Driver::flushPipelineState()
+void Driver::flushPipelineState(CommandBuffer *gl_command_buffer)
 {
 	if (!pipeline_dirty)
 		return;
@@ -168,64 +348,39 @@ void Driver::flushPipelineState()
 
 	// viewport
 	if (pipeline_state_overrides.viewport)
-		glViewport(pipeline_state.viewport_x, pipeline_state.viewport_y, pipeline_state.viewport_width, pipeline_state.viewport_height);
+	{
+		// TODO: emit set viewport command
+	}
+
+	// scissor
+	if (pipeline_state_overrides.scissor)
+	{
+		// TODO: emit set scissor command
+	}
 
 	// depth state
-	if (pipeline_state_overrides.depth_test)
+	if (pipeline_state_overrides.depthstencil_state)
 	{
-		if (pipeline_state.depth_test)
-			glEnable(GL_DEPTH_TEST);
-		else
-			glDisable(GL_DEPTH_TEST);
+		// TODO: emit set depthstencil state command
 	}
-
-	if (pipeline_state_overrides.depth_write)
-		glDepthMask(pipeline_state.depth_write);
-
-	if (pipeline_state_overrides.depth_comparison_func)
-		glDepthFunc(pipeline_state.depth_comparison_func);
 
 	// blending
-	if (pipeline_state_overrides.blend)
+	if (pipeline_state_overrides.blend_state)
 	{
-		if (pipeline_state.blend)
-			glEnable(GL_BLEND);
-		else
-			glDisable(GL_BLEND);
+		// TODO: emit set blend state command
 	}
 
-	if (pipeline_state_overrides.blend_factors)
-		glBlendFunc(pipeline_state.blend_src_factor, pipeline_state.blend_dst_factor);
-
-	// cull mode
-	if (pipeline_state_overrides.cull_mode)
+	// rasterizer
+	if (pipeline_state_overrides.rasterizer_state)
 	{
-		if (pipeline_state.cull_mode == GL_NONE)
-			glDisable(GL_CULL_FACE);
-		else
-		{
-			glEnable(GL_CULL_FACE);
-			glCullFace(pipeline_state.cull_mode);
-		}
+		// TODO: emit set rasterizer state command
 	}
 
-	// textures
-	for (uint16_t i = 0; i < MAX_TEXTURES; ++i)
+	// bind sets
+	for (uint16_t i = 0; i < MAX_BIND_SETS; ++i)
 	{
-		if ((pipeline_state_overrides.bound_textures & (1 << i)) == 0)
-			continue;
-
-		glActiveTexture(GL_TEXTURE0 + i);
-		glBindTexture(pipeline_state.bound_texture_types[i], pipeline_state.bound_textures[i]);
-	}
-
-	// ubos
-	for (uint16_t i = 0; i < MAX_UNIFORM_BUFFERS; ++i)
-	{
-		if ((pipeline_state_overrides.bound_uniform_buffers & (1 << i)) == 0)
-			continue;
-
-		glBindBufferBase(GL_UNIFORM_BUFFER, i, pipeline_state.bound_uniform_buffers[i]);
+		// TODO: emit bind uniform buffer command
+		// TODO: emit bind texture command
 	}
 
 	// shaders
@@ -233,12 +388,7 @@ void Driver::flushPipelineState()
 
 	for (uint16_t i = 0; i < MAX_SHADERS; ++i)
 	{
-		if ((pipeline_state_overrides.bound_shaders & (1 << i)) == 0)
-			continue;
-
-		GLenum gl_shader_stage_bitmask = Utils::getShaderStageBitmask(static_cast<ShaderType>(i));
-
-		glUseProgramStages(graphics_pipeline_id, gl_shader_stage_bitmask, pipeline_state.bound_shaders[i]);
+		// TODO: emit bind shader command
 	}
 
 	pipeline_state_overrides = {};
@@ -947,7 +1097,7 @@ void Driver::destroyCommandBuffer(backend::CommandBuffer *command_buffer)
 		return;
 
 	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
-	clear_command_buffer(gl_command_buffer);
+	command_buffer_clear(gl_command_buffer);
 
 	delete command_buffer;
 	command_buffer = nullptr;
@@ -1319,9 +1469,6 @@ void Driver::setShader(
 	const backend::Shader *shader
 )
 {
-	// TODO: implement
-
-	/*
 	const Shader *gl_shader = static_cast<const Shader *>(shader);
 
 	if (gl_shader && gl_shader->type != Utils::getShaderType(type))
@@ -1339,7 +1486,6 @@ void Driver::setShader(
 		pipeline_state_overrides.bound_shaders |= (1 << index);
 		pipeline_dirty = true;
 	}
-	/**/
 }
 
 //
@@ -1350,37 +1496,33 @@ void Driver::setViewport(
 	float height
 )
 {
-	// TODO: implement
-
-	/*
 	if (pipeline_state.viewport_x != x)
 	{
-		pipeline_state.viewport_x = x;
+		pipeline_state.viewport_x = static_cast<GLint>(x);
 		pipeline_state_overrides.viewport = 1;
 		pipeline_dirty = true;
 	}
 
 	if (pipeline_state.viewport_y != y)
 	{
-		pipeline_state.viewport_y = y;
+		pipeline_state.viewport_y = static_cast<GLint>(y);
 		pipeline_state_overrides.viewport = 1;
 		pipeline_dirty = true;
 	}
 
 	if (pipeline_state.viewport_width != width)
 	{
-		pipeline_state.viewport_width = width;
+		pipeline_state.viewport_width = static_cast<GLsizei>(width);
 		pipeline_state_overrides.viewport = 1;
 		pipeline_dirty = true;
 	}
 
 	if (pipeline_state.viewport_height != height)
 	{
-		pipeline_state.viewport_height = height;
+		pipeline_state.viewport_height = static_cast<GLsizei>(height);
 		pipeline_state_overrides.viewport = 1;
 		pipeline_dirty = true;
 	}
-	/**/
 }
 
 void Driver::setScissor(
@@ -1390,91 +1532,97 @@ void Driver::setScissor(
 	uint32_t height
 )
 {
-	// TODO: implement
+	if (pipeline_state.scissor_x != x)
+	{
+		pipeline_state.scissor_x = static_cast<GLint>(x);
+		pipeline_state_overrides.scissor = 1;
+		pipeline_dirty = true;
+	}
+
+	if (pipeline_state.scissor_y != y)
+	{
+		pipeline_state.scissor_y = static_cast<GLint>(y);
+		pipeline_state_overrides.scissor = 1;
+		pipeline_dirty = true;
+	}
+
+	if (pipeline_state.scissor_width != width)
+	{
+		pipeline_state.scissor_width = static_cast<GLsizei>(width);
+		pipeline_state_overrides.scissor = 1;
+		pipeline_dirty = true;
+	}
+
+	if (pipeline_state.scissor_height != height)
+	{
+		pipeline_state.scissor_height = static_cast<GLsizei>(height);
+		pipeline_state_overrides.scissor = 1;
+		pipeline_dirty = true;
+	}
 }
 
 void Driver::setCullMode(
 	CullMode mode
 )
 {
-	// TODO: implement
-
-	/*
 	GLenum cull_mode = Utils::getCullMode(mode);
 
 	if (pipeline_state.cull_mode != cull_mode)
 	{
 		pipeline_state.cull_mode = cull_mode;
-		pipeline_state_overrides.cull_mode = 1;
+		pipeline_state_overrides.rasterizer_state = 1;
 		pipeline_dirty = true;
 	}
-	/**/
 }
 
 void Driver::setDepthTest(
 	bool enabled
 )
 {
-	// TODO: implement
-
-	/*
 	if (pipeline_state.depth_test != enabled)
 	{
 		pipeline_state.depth_test = enabled;
-		pipeline_state_overrides.depth_test = 1;
+		pipeline_state_overrides.depthstencil_state = 1;
 		pipeline_dirty = true;
 	}
-	/**/
 }
 
 void Driver::setDepthWrite(
 	bool enabled
 )
 {
-	// TODO: implement
-
-	/*
 	if (pipeline_state.depth_write != enabled)
 	{
 		pipeline_state.depth_write = enabled;
-		pipeline_state_overrides.depth_write = 1;
+		pipeline_state_overrides.depthstencil_state = 1;
 		pipeline_dirty = true;
 	}
-	/**/
 }
 
 void Driver::setDepthCompareFunc(
 	DepthCompareFunc func
 )
 {
-	// TODO: implement
-
-	/*
 	GLenum gl_func = Utils::getDepthCompareFunc(func);
 
 	if (pipeline_state.depth_comparison_func != gl_func)
 	{
 		pipeline_state.depth_comparison_func = gl_func;
-		pipeline_state_overrides.depth_comparison_func = 1;
+		pipeline_state_overrides.depthstencil_state = 1;
 		pipeline_dirty = true;
 	}
-	/**/
 }
 
 void Driver::setBlending(
 	bool enabled
 )
 {
-	// TODO: implement
-
-	/*
 	if (pipeline_state.blend != enabled)
 	{
 		pipeline_state.blend = enabled;
-		pipeline_state_overrides.blend = 1;
+		pipeline_state_overrides.blend_state = 1;
 		pipeline_dirty = true;
 	}
-	/**/
 }
 
 void Driver::setBlendFactors(
@@ -1482,9 +1630,6 @@ void Driver::setBlendFactors(
 	BlendFactor dest_factor
 )
 {
-	// TODO: implement
-
-	/*
 	GLenum gl_src_factor = Utils::getBlendFactor(src_factor);
 	GLenum gl_dst_factor = Utils::getBlendFactor(dest_factor);
 
@@ -1492,10 +1637,9 @@ void Driver::setBlendFactors(
 	{
 		pipeline_state.blend_src_factor = gl_src_factor;
 		pipeline_state.blend_dst_factor = gl_dst_factor;
-		pipeline_state_overrides.blend_factors = 1;
+		pipeline_state_overrides.blend_state = 1;
 		pipeline_dirty = true;
 	}
-	/**/
 }
 
 //
@@ -1503,59 +1647,32 @@ bool Driver::resetCommandBuffer(
 	backend::CommandBuffer *command_buffer
 )
 {
-	if (command_buffer == nullptr)
-		return false;
-
 	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
-	clear_command_buffer(gl_command_buffer);
-
-	gl_command_buffer->state = CommandBufferState::INITIAL;
-
-	return true;
+	return command_buffer_reset(gl_command_buffer);
 }
 
 bool Driver::beginCommandBuffer(
 	backend::CommandBuffer *command_buffer
 )
 {
-	if (command_buffer == nullptr)
-		return false;
-
 	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
-	if (gl_command_buffer->state != CommandBufferState::INITIAL)
-	{
-		// TODO: log error
-		return false;
-	}
-
-	gl_command_buffer->state = CommandBufferState::RECORDING;
-	return true;
+	return command_buffer_begin(gl_command_buffer);
 }
 
 bool Driver::endCommandBuffer(
 	backend::CommandBuffer *command_buffer
 )
 {
-	if (command_buffer == nullptr)
-		return false;
-
 	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
-	if (gl_command_buffer->state != CommandBufferState::RECORDING)
-	{
-		// TODO: log error
-		return false;
-	}
-
-	gl_command_buffer->state = CommandBufferState::EXECUTABLE;
-	return true;
+	return command_buffer_end(gl_command_buffer);
 }
 
 bool Driver::submit(
 	backend::CommandBuffer *command_buffer
 )
 {
-	// TODO: implement
-	return false;
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	return command_buffer_submit(gl_command_buffer);
 }
 
 bool Driver::submitSyncked(
@@ -1563,8 +1680,10 @@ bool Driver::submitSyncked(
 	const backend::SwapChain *wait_swap_chain
 )
 {
-	// TODO: implement
-	return false;
+	// TODO: wait for swap chain
+
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	return command_buffer_submit(gl_command_buffer);
 }
 
 bool Driver::submitSyncked(
@@ -1573,8 +1692,10 @@ bool Driver::submitSyncked(
 	backend::CommandBuffer * const *wait_command_buffers
 )
 {
-	// TODO: implement
-	return false;
+	// TODO: wait for other command buffers
+
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	return command_buffer_submit(gl_command_buffer);
 }
 
 //
@@ -1669,6 +1790,8 @@ void Driver::endRenderPass(
 )
 {
 	// TODO: implement
+	// TODO: blit FBO main to FBO resolve if necessary
+
 	// glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	/* resolve swap chain MSAA FBO to backbuffer
@@ -1692,23 +1815,19 @@ void Driver::drawIndexedPrimitive(
 	const RenderPrimitive *render_primitive
 )
 {
-	// TODO: implement
-	// TODO: blit FBO main to FBO resolve if necessary
-
-	/* NOTE: probably save draw call info into a struct and store it in the command buffer
-
-	struct DrawCall
-	{
-		PipelineState state;
-		GLint vao;
-		GLint io;
-		RenderPrimitive render_primitive;
-	};
-	/**/
-
-	/*
 	assert(render_primitive);
-	flushPipelineState();
+
+	if (command_buffer == nullptr)
+		return;
+
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	if (gl_command_buffer->state != CommandBufferState::RECORDING)
+	{
+		// TODO: log error
+		return;
+	}
+
+	flushPipelineState(gl_command_buffer);
 
 	const VertexBuffer *vb = static_cast<const VertexBuffer *>(render_primitive->vertices);
 	const IndexBuffer *ib = static_cast<const IndexBuffer *>(render_primitive->indices);
@@ -1716,23 +1835,23 @@ void Driver::drawIndexedPrimitive(
 	if (bound_vao != vb->vao_id)
 	{
 		bound_vao = vb->vao_id;
-		glBindVertexArray(vb->vao_id);
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_VERTEX_BUFFER);
+		command->bind_vertex_buffer.vao_id = bound_vao;
 	}
 	
 	if (bound_ib != ib->data->id)
 	{
 		bound_ib = ib->data->id;
-		glBindBuffer(ib->data->type, ib->data->id);
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_INDEX_BUFFER);
+		command->bind_index_buffer.id = bound_ib;
 	}
 
-	glDrawElementsInstancedBaseVertex(
-		Utils::getPrimitiveType(render_primitive->type),
-		ib->num_indices,
-		ib->index_format,
-		static_cast<const char *>(0) + render_primitive->base_index,
-		num_instances,
-		render_primitive->vertex_index_offset
-	);
-	/**/
+	Command *command = command_buffer_emit(gl_command_buffer, CommandType::DRAW_INDEXED_PRIMITIVE);
+	command->draw_indexed_primitive.index_format = ib->index_format;
+	command->draw_indexed_primitive.base_index = render_primitive->base_index;
+	command->draw_indexed_primitive.base_vertex = render_primitive->vertex_index_offset;
+	command->draw_indexed_primitive.num_instances = 1;
 }
 }
