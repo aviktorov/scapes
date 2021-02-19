@@ -54,6 +54,11 @@ PBR Sandbox:
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
+        ☐ Temporal Filter Improvements
+            ☐ Tone map -> TAA accumulate -> Reverse Tone Map
+            ☐ Neighborhood clipping
+        ☐ First person camera (WASD controls & mouse aim)
+    Stream 55:
         ☐ Implement old frame reprojection
         ☐ Animate blue noise for better TAA sampling
     Stream 54:
@@ -61,9 +66,9 @@ PBR Sandbox:
             ✔ Add frame counter (up tp 16) @done (2/19/2021, 9:50:26 PM)
             ✔ Add samples @done (2/19/2021, 9:50:26 PM)
                 ✔ Uniform grid @done (2/19/2021, 9:50:27 PM)
-                ☐ Halton 2,3
+                ✔ Halton 2,3 @done (2/19/2021, 10:37:22 PM)
         ✔ Add temporal accumulation for the whole frame @done (2/19/2021, 9:50:28 PM)
-        ☐ Unify temporal accumulation pass for SSR & TAA
+        ✔ Unify temporal accumulation pass for SSR & TAA @done (2/19/2021, 11:00:14 PM)
     Stream 53:
         ✔ Add SSR temporal filter @done (2/16/2021, 10:16:59 PM)
             ✔ Add naive jitter (blue noise offset) @done (2/16/2021, 10:17:00 PM)
