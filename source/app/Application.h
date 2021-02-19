@@ -37,6 +37,7 @@ struct ApplicationState
 		MAX_TEMPORAL_FRAMES = 16,
 	};
 
+	// Render state (synchronized with UBO)
 	glm::mat4 world;
 	glm::mat4 view;
 	glm::mat4 invView;
@@ -48,6 +49,8 @@ struct ApplicationState
 	float userMetalness {0.0f};
 	float userRoughness {0.0f};
 	float currentTime {0.0f};
+
+	// CPU state (not included in UBO)
 	int currentTemporalFrame {0};
 	int currentEnvironment {0};
 	glm::vec2 temporalSamples[MAX_TEMPORAL_FRAMES];
