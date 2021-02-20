@@ -22,6 +22,12 @@ static void bitset_set(uint32_t &bitset, uint32_t bit, bool value)
 	bitset = (value) ? bitset | mask : bitset & ~mask;
 }
 
+static bool bitset_check(uint32_t bitset, uint32_t bit)
+{
+	uint32_t mask = 1 << bit;
+	return (bitset & mask) != 0;
+}
+
 // TODO: move to command buffer utils
 static void command_buffer_clear(CommandBuffer *gl_command_buffer)
 {
@@ -349,38 +355,87 @@ void Driver::flushPipelineState(CommandBuffer *gl_command_buffer)
 	// viewport
 	if (pipeline_state_overrides.viewport)
 	{
-		// TODO: emit set viewport command
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_VIEWPORT);
+		command->viewport.x = pipeline_state.viewport_x;
+		command->viewport.y = pipeline_state.viewport_y;
+		command->viewport.width = pipeline_state.viewport_width;
+		command->viewport.height = pipeline_state.viewport_height;
 	}
 
 	// scissor
 	if (pipeline_state_overrides.scissor)
 	{
-		// TODO: emit set scissor command
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_SCISSOR);
+		command->scissor.x = pipeline_state.scissor_x;
+		command->scissor.y = pipeline_state.scissor_y;
+		command->scissor.width = pipeline_state.scissor_width;
+		command->scissor.height = pipeline_state.scissor_height;
 	}
 
 	// depth state
 	if (pipeline_state_overrides.depthstencil_state)
 	{
-		// TODO: emit set depthstencil state command
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_DEPTH_STENCIL_STATE);
+		command->depthstencil_state.depth_test = pipeline_state.depth_test;
+		command->depthstencil_state.depth_write = pipeline_state.depth_write;
+		command->depthstencil_state.depth_comparison_func = pipeline_state.depth_comparison_func;
 	}
 
 	// blending
 	if (pipeline_state_overrides.blend_state)
 	{
-		// TODO: emit set blend state command
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_BLEND_STATE);
+		command->blend_state.enabled = pipeline_state.blend;
+		command->blend_state.src_factor = pipeline_state.blend_src_factor;
+		command->blend_state.dst_factor = pipeline_state.blend_dst_factor;
 	}
 
 	// rasterizer
 	if (pipeline_state_overrides.rasterizer_state)
 	{
-		// TODO: emit set rasterizer state command
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_RASTERIZER_STATE);
+		command->rasterizer_state.cull_mode = pipeline_state.cull_mode;
 	}
 
 	// bind sets
 	for (uint16_t i = 0; i < MAX_BIND_SETS; ++i)
 	{
-		// TODO: emit bind uniform buffer command
-		// TODO: emit bind texture command
+		if (!bitset_check(pipeline_state_overrides.bound_bind_sets, i))
+			continue;
+
+		const BindSet *gl_bind_set = pipeline_state.bound_bind_sets[i];
+
+		GLuint base_binding = i * BindSet::MAX_BINDINGS;
+
+		for (uint32_t j = 0; j < BindSet::MAX_BINDINGS; ++j)
+		{
+			if (!bitset_check(gl_bind_set->binding_used, j))
+				continue;
+
+			BindSet::DataType type = gl_bind_set->types[j];
+			const BindSet::Data &data = gl_bind_set->datas[j];
+
+			switch (type)
+			{
+				case BindSet::DataType::TEXTURE:
+				{
+					Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_TEXTURE);
+					command->bind_texture.binding = base_binding + j;
+					command->bind_texture.id = data.texture.id;
+					command->bind_texture.type = data.texture.type;
+				}
+				break;
+				case BindSet::DataType::UNIFORM_BUFFER:
+				{
+					Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_UNIFORM_BUFFER);
+					command->bind_uniform_buffer.binding = base_binding + j;
+					command->bind_uniform_buffer.id = data.ubo.id;
+					command->bind_uniform_buffer.offset = data.ubo.offset;
+					command->bind_uniform_buffer.size = data.ubo.size;
+				}
+				break;
+			}
+		}
 	}
 
 	// shaders
@@ -388,7 +443,13 @@ void Driver::flushPipelineState(CommandBuffer *gl_command_buffer)
 
 	for (uint16_t i = 0; i < MAX_SHADERS; ++i)
 	{
-		// TODO: emit bind shader command
+		if (!bitset_check(pipeline_state_overrides.bound_shaders, i))
+			continue;
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_SHADER);
+		command->bind_shader.pipeline_id = graphics_pipeline_id;
+		command->bind_shader.shader_id = pipeline_state.bound_shaders[i];
+		command->bind_shader.shader_stages = Utils::getShaderStageBitmask(static_cast<ShaderType>(i));
 	}
 
 	pipeline_state_overrides = {};
@@ -1332,7 +1393,7 @@ void Driver::bindUniformBuffer(
 	GLsizeiptr size = (gl_uniform_buffer != nullptr) ? gl_uniform_buffer->data->size : 0;
 
 	bool buffer_changed = (data.ubo.id != id) || (data.ubo.size != size);
-	bool type_changed = (type != BindSet::DataType::UBO);
+	bool type_changed = (type != BindSet::DataType::UNIFORM_BUFFER);
 
 	bitset_set(gl_bind_set->binding_used, binding, (gl_uniform_buffer != nullptr));
 	bitset_set(gl_bind_set->binding_dirty, binding, type_changed || buffer_changed);
@@ -1341,7 +1402,7 @@ void Driver::bindUniformBuffer(
 	data.ubo.size = size;
 	data.ubo.offset = 0;
 
-	type = BindSet::DataType::UBO;
+	type = BindSet::DataType::UNIFORM_BUFFER;
 }
 
 void Driver::bindTexture(
@@ -1382,24 +1443,28 @@ void Driver::bindTexture(
 	BindSet::Data &data = gl_bind_set->datas[binding];
 	BindSet::DataType &type = gl_bind_set->types[binding];
 
-	GLuint id = (gl_texture != nullptr) ? gl_texture->id : 0;
+	GLuint texture_id = (gl_texture != nullptr) ? gl_texture->id : 0;
+	GLenum texture_type = (gl_texture != nullptr) ? gl_texture->type : GL_TEXTURE_2D;
 
 	bool texture_mips_changed = (data.texture.base_mip != base_mip) || (data.texture.num_mips != num_mips);
 	bool texture_layers_changed = (data.texture.num_layers != num_layers) || (data.texture.base_layer != base_layer);
+	bool texture_id_changed = (data.texture.id != texture_id);
+	bool texture_type_changed = (data.texture.type != texture_type);
 
-	bool texture_changed = (data.texture.id != id) || texture_mips_changed || texture_layers_changed; 
-	bool type_changed = (type != BindSet::DataType::Texture);
+	bool texture_changed = texture_id_changed || texture_type_changed || texture_mips_changed || texture_layers_changed;
+	bool type_changed = (type != BindSet::DataType::TEXTURE);
 
 	bitset_set(gl_bind_set->binding_used, binding, (gl_texture != nullptr));
 	bitset_set(gl_bind_set->binding_dirty, binding, type_changed || texture_changed);
 
-	data.texture.id = id;
+	data.texture.id = texture_id;
+	data.texture.type = texture_type;
 	data.texture.base_mip = base_mip;
 	data.texture.num_mips = num_mips;
 	data.texture.base_layer = base_layer;
-	data.texture.num_layers = num_layers;	
+	data.texture.num_layers = num_layers;
 
-	type = BindSet::DataType::Texture;
+	type = BindSet::DataType::TEXTURE;
 }
 
 //
@@ -1448,9 +1513,6 @@ void Driver::setBindSet(
 void Driver::clearShaders(
 )
 {
-	// TODO: implement
-
-	/*
 	for (uint16_t i = 0; i < MAX_SHADERS; ++i)
 	{
 		GLuint id = pipeline_state.bound_shaders[i];
@@ -1461,7 +1523,6 @@ void Driver::clearShaders(
 		pipeline_state_overrides.bound_shaders |= (1 << i);
 		pipeline_dirty = true;
 	}
-	/**/
 }
 
 void Driver::setShader(

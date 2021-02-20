@@ -228,8 +228,8 @@ struct BindSet : public backend::BindSet
 
 	enum class DataType
 	{
-		Texture = 0,
-		UBO,
+		TEXTURE = 0,
+		UNIFORM_BUFFER,
 	};
 
 	union Data
@@ -237,6 +237,7 @@ struct BindSet : public backend::BindSet
 		struct Texture
 		{
 			GLuint id;
+			GLenum type;
 			GLint base_mip;
 			GLuint num_mips;
 			GLint base_layer;
