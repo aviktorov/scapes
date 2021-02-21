@@ -792,11 +792,13 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 	// Fill struct fields
 	FrameBuffer *result = new FrameBuffer();
 
-	uint32_t width = 0;
-	uint32_t height = 0;
-
 	result->num_color_attachments = 0;
 	result->num_resolve_color_attachments = 0;
+	result->main_fbo_id = 0;
+	result->resolve_fbo_id = 0;
+	result->width = 0;
+	result->height = 0;
+
 	for (uint8_t i = 0; i < num_color_attachments; ++i)
 	{
 		const FrameBufferAttachment &attachment = color_attachments[i];
@@ -829,8 +831,8 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 		target_attachment.base_layer = attachment.base_layer;
 		target_attachment.num_layers = attachment.num_layers;
 
-		width = std::max<uint32_t>(width, gl_texture->width);
-		height = std::max<uint32_t>(height, gl_texture->height);
+		result->width = std::max<uint32_t>(result->width, gl_texture->width);
+		result->height = std::max<uint32_t>(result->height, gl_texture->height);
 
 		if (attachment.resolve_attachment)
 			result->num_resolve_color_attachments++;
@@ -919,9 +921,6 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 			return nullptr;
 		}
 	}
-
-	result->width = width;
-	result->height = height;
 
 	return result;
 }
@@ -1044,17 +1043,13 @@ backend::Shader *Driver::createShaderFromIL(
 
 	spirv_cross::ShaderResources resources = glsl.get_shader_resources();
 
-	const uint32_t max_texture_bindings = 16;
-	const uint32_t max_uniformbuffer_bindings = 16;
-	const uint32_t push_constants_binding = 0;
-
 	for (auto &resource : resources.sampled_images)
 	{
 		uint32_t set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
 		uint32_t binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
 
 		glsl.unset_decoration(resource.id, spv::DecorationDescriptorSet);
-		glsl.set_decoration(resource.id, spv::DecorationBinding, set * max_texture_bindings + binding);
+		glsl.set_decoration(resource.id, spv::DecorationBinding, set * BindSet::MAX_BINDINGS + binding);
 	}
 
 	for (auto &resource : resources.uniform_buffers)
@@ -1063,23 +1058,14 @@ backend::Shader *Driver::createShaderFromIL(
 		uint32_t binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
 
 		glsl.unset_decoration(resource.id, spv::DecorationDescriptorSet);
-		glsl.set_decoration(resource.id, spv::DecorationBinding, set * max_uniformbuffer_bindings + binding + 1); // zero is taken by push constants UBO
-	}
-
-	for (auto &resource : resources.push_constant_buffers)
-	{
-		uint32_t set = glsl.get_decoration(resource.id, spv::DecorationDescriptorSet);
-		uint32_t binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
-
-		glsl.unset_decoration(resource.id, spv::DecorationDescriptorSet);
-		glsl.set_decoration(resource.id, spv::DecorationBinding, push_constants_binding);
+		glsl.set_decoration(resource.id, spv::DecorationBinding, set * BindSet::MAX_BINDINGS + binding);
 	}
 
 	spirv_cross::CompilerGLSL::Options options;
 	options.version = 450;
 	options.es = false;
 	options.separate_shader_objects = true;
-	options.emit_push_constant_as_uniform_buffer = true;
+	options.emit_push_constant_as_uniform_buffer = false;
 	glsl.set_common_options(options);
 
 	std::string source = glsl.compile();
@@ -1927,6 +1913,7 @@ void Driver::beginRenderPass(
 		}
 	}
 
+	render_pass_state.resolve = (gl_frame_buffer->resolve_fbo_id != 0);
 	render_pass_state.src_fbo_id = gl_frame_buffer->main_fbo_id;
 	render_pass_state.dst_fbo_id = gl_frame_buffer->resolve_fbo_id;
 	render_pass_state.width = gl_frame_buffer->width;
@@ -1936,6 +1923,18 @@ void Driver::beginRenderPass(
 
 	for (uint8_t i = 0; i < gl_frame_buffer->num_color_attachments; ++i)
 		render_pass_state.draw_buffers[i] = GL_COLOR_ATTACHMENT0 + i;
+
+	command = command_buffer_emit(gl_command_buffer, CommandType::SET_VIEWPORT);
+	command->viewport.x = 0;
+	command->viewport.y = 0;
+	command->viewport.width = gl_frame_buffer->width;
+	command->viewport.height = gl_frame_buffer->height;
+
+	command = command_buffer_emit(gl_command_buffer, CommandType::SET_SCISSOR);
+	command->scissor.x = 0;
+	command->scissor.y = 0;
+	command->scissor.width = gl_frame_buffer->width;
+	command->scissor.height = gl_frame_buffer->height;
 }
 
 void Driver::beginRenderPass(
@@ -2013,13 +2012,26 @@ void Driver::beginRenderPass(
 		command->clear_color_buffer.clear_color[3] = clear_value.color.float32[3];
 	}
 
-	render_pass_state.src_fbo_id = gl_swap_chain->msaa_color_id;
+	render_pass_state.resolve = (gl_swap_chain->msaa_fbo_id != 0);
+	render_pass_state.src_fbo_id = gl_swap_chain->msaa_fbo_id;
 	render_pass_state.dst_fbo_id = 0;
 	render_pass_state.width = gl_swap_chain->width;
 	render_pass_state.height = gl_swap_chain->height;
 	render_pass_state.mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
 	render_pass_state.num_draw_buffers = 1;
 	render_pass_state.draw_buffers[0] = GL_BACK;
+
+	command = command_buffer_emit(gl_command_buffer, CommandType::SET_VIEWPORT);
+	command->viewport.x = 0;
+	command->viewport.y = 0;
+	command->viewport.width = gl_swap_chain->width;
+	command->viewport.height = gl_swap_chain->height;
+
+	command = command_buffer_emit(gl_command_buffer, CommandType::SET_SCISSOR);
+	command->scissor.x = 0;
+	command->scissor.y = 0;
+	command->scissor.width = gl_swap_chain->width;
+	command->scissor.height = gl_swap_chain->height;
 }
 
 void Driver::endRenderPass(
@@ -2036,7 +2048,7 @@ void Driver::endRenderPass(
 		return;
 	}
 
-	if (render_pass_state.src_fbo_id != 0)
+	if (render_pass_state.resolve)
 	{
 		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BLIT_FRAME_BUFFER);
 		command->blit_frame_buffer.src_fbo_id = render_pass_state.src_fbo_id;
@@ -2047,10 +2059,6 @@ void Driver::endRenderPass(
 		command->blit_frame_buffer.num_draw_buffers = render_pass_state.num_draw_buffers;
 		memcpy(command->blit_frame_buffer.draw_buffers, render_pass_state.draw_buffers, sizeof(GLenum) * render_pass_state.num_draw_buffers);
 	}
-
-	Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
-	command->bind_frame_buffer.id = render_pass_state.dst_fbo_id;
-	command->bind_frame_buffer.target = GL_FRAMEBUFFER;
 }
 
 void Driver::drawIndexedPrimitive(

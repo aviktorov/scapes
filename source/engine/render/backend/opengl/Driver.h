@@ -267,7 +267,7 @@ struct BindSet : public backend::BindSet
 {
 	enum
 	{
-		MAX_BINDINGS = 32,
+		MAX_BINDINGS = 16,
 	};
 
 	enum class DataType
@@ -668,8 +668,9 @@ private:
 
 	struct RenderPassState
 	{
-		GLuint dst_fbo_id = 0;
+		bool resolve {false};
 		GLuint src_fbo_id = 0;
+		GLuint dst_fbo_id = 0;
 		GLint width = 0;
 		GLint height = 0;
 		GLbitfield mask = 0;
