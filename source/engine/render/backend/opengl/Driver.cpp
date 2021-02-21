@@ -1924,17 +1924,8 @@ void Driver::beginRenderPass(
 	for (uint8_t i = 0; i < gl_frame_buffer->num_color_attachments; ++i)
 		render_pass_state.draw_buffers[i] = GL_COLOR_ATTACHMENT0 + i;
 
-	command = command_buffer_emit(gl_command_buffer, CommandType::SET_VIEWPORT);
-	command->viewport.x = 0;
-	command->viewport.y = 0;
-	command->viewport.width = gl_frame_buffer->width;
-	command->viewport.height = gl_frame_buffer->height;
-
-	command = command_buffer_emit(gl_command_buffer, CommandType::SET_SCISSOR);
-	command->scissor.x = 0;
-	command->scissor.y = 0;
-	command->scissor.width = gl_frame_buffer->width;
-	command->scissor.height = gl_frame_buffer->height;
+	setViewport(0.0f, 0.0f, static_cast<float>(gl_frame_buffer->width), static_cast<float>(gl_frame_buffer->height));
+	setScissor(0, 0, gl_frame_buffer->width, gl_frame_buffer->height);
 }
 
 void Driver::beginRenderPass(
@@ -2021,17 +2012,8 @@ void Driver::beginRenderPass(
 	render_pass_state.num_draw_buffers = 1;
 	render_pass_state.draw_buffers[0] = GL_BACK;
 
-	command = command_buffer_emit(gl_command_buffer, CommandType::SET_VIEWPORT);
-	command->viewport.x = 0;
-	command->viewport.y = 0;
-	command->viewport.width = gl_swap_chain->width;
-	command->viewport.height = gl_swap_chain->height;
-
-	command = command_buffer_emit(gl_command_buffer, CommandType::SET_SCISSOR);
-	command->scissor.x = 0;
-	command->scissor.y = 0;
-	command->scissor.width = gl_swap_chain->width;
-	command->scissor.height = gl_swap_chain->height;
+	setViewport(0.0f, 0.0f, static_cast<float>(gl_swap_chain->width), static_cast<float>(gl_swap_chain->height));
+	setScissor(0, 0, gl_swap_chain->width, gl_swap_chain->height);
 }
 
 void Driver::endRenderPass(
@@ -2100,7 +2082,9 @@ void Driver::drawIndexedPrimitive(
 	}
 
 	Command *command = command_buffer_emit(gl_command_buffer, CommandType::DRAW_INDEXED_PRIMITIVE);
+	command->draw_indexed_primitive.primitive_type = Utils::getPrimitiveType(render_primitive->type);
 	command->draw_indexed_primitive.index_format = ib->index_format;
+	command->draw_indexed_primitive.num_indices = ib->num_indices;
 	command->draw_indexed_primitive.base_index = render_primitive->base_index;
 	command->draw_indexed_primitive.base_vertex = render_primitive->vertex_index_offset;
 	command->draw_indexed_primitive.num_instances = 1;
