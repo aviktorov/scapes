@@ -102,47 +102,70 @@ static Command *command_buffer_emit(CommandBuffer *gl_command_buffer, CommandTyp
 	return command;
 }
 
-static void command_submit_set_viewport(const Command::Rect &viewport)
+static void command_submit_set_viewport(const Command::Rect &data)
 {
-	glViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+	glViewport(data.x, data.y, data.width, data.height);
 }
 
-static void command_submit_set_scissor(const Command::Rect &scissor)
+static void command_submit_set_scissor(const Command::Rect &data)
 {
-	glScissor(scissor.x, scissor.y, scissor.width, scissor.height);
+	glScissor(data.x, data.y, data.width, data.height);
 }
 
-static void command_submit_set_depthstencil_state(const Command::DepthStencilState &depthstencil)
+static void command_submit_set_depth_stencil_state(const Command::DepthStencilState &data)
 {
-	if (depthstencil.depth_test)
+	if (data.depth_test)
 		glEnable(GL_DEPTH_TEST);
 	else
 		glDisable(GL_DEPTH_TEST);
 
-	glDepthMask(depthstencil.depth_write);
-	glDepthFunc(depthstencil.depth_comparison_func);
+	glDepthMask(data.depth_write);
+	glDepthFunc(data.depth_comparison_func);
 }
 
-static void command_submit_set_blend_state(const Command::BlendState &blend)
+static void command_submit_set_blend_state(const Command::BlendState &data)
 {
-	if (blend.enabled)
+	if (data.enabled)
 		glEnable(GL_BLEND);
 	else
 		glDisable(GL_BLEND);
 
-	glBlendFunc(blend.src_factor, blend.dst_factor);
+	glBlendFunc(data.src_factor, data.dst_factor);
 }
 
-static void command_submit_set_rasterizer_state(const Command::RasterizerState &rasterizer)
+static void command_submit_set_rasterizer_state(const Command::RasterizerState &data)
 {
-	if (rasterizer.cull_mode == GL_NONE)
+	if (data.cull_mode == GL_NONE)
 	{
 		glDisable(GL_CULL_FACE);
 		return;
 	}
 
 	glEnable(GL_CULL_FACE);
-	glCullFace(rasterizer.cull_mode);
+	glCullFace(data.cull_mode);
+}
+
+static void command_submit_clear_color_buffer(const Command::ClearColorBuffer &data)
+{
+	glClearBufferfv(GL_COLOR, data.buffer, data.clear_color);
+}
+
+static void command_submit_clear_depth_stencil_buffer(const Command::ClearDepthStencilBuffer &data)
+{
+	glClearBufferfi(GL_DEPTH_STENCIL, 0, data.depth, data.stencil);
+}
+
+static void command_submit_blit_frame_buffer(const Command::BlitFrameBuffer &data)
+{
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, data.dst_fbo_id);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, data.src_fbo_id);
+	glDrawBuffers(data.num_draw_buffers, data.draw_buffers);
+	glBlitFramebuffer(0, 0, data.width, data.height, 0, 0, data.width, data.height, data.mask, GL_NEAREST);
+}
+
+static void command_submit_bind_frame_buffer(const Command::BindFrameBuffer &data)
+{
+	glBindFramebuffer(data.target, data.id);
 }
 
 static void command_submit_bind_uniform_buffer(const Command::BindUniformBuffer &data)
@@ -203,9 +226,13 @@ static bool command_buffer_submit(CommandBuffer *gl_command_buffer)
 		{
 			case CommandType::SET_VIEWPORT: command_submit_set_viewport(command->viewport); break;
 			case CommandType::SET_SCISSOR: command_submit_set_scissor(command->scissor); break;
-			case CommandType::SET_DEPTH_STENCIL_STATE: command_submit_set_depthstencil_state(command->depthstencil_state); break;
+			case CommandType::SET_DEPTH_STENCIL_STATE: command_submit_set_depth_stencil_state(command->depth_stencil_state); break;
 			case CommandType::SET_BLEND_STATE: command_submit_set_blend_state(command->blend_state); break;
 			case CommandType::SET_RASTERIZER_STATE: command_submit_set_rasterizer_state(command->rasterizer_state); break;
+			case CommandType::CLEAR_COLOR_BUFFER: command_submit_clear_color_buffer(command->clear_color_buffer); break;
+			case CommandType::CLEAR_DEPTHSTENCIL_BUFFER: command_submit_clear_depth_stencil_buffer(command->clear_depth_stencil_buffer); break;
+			case CommandType::BLIT_FRAME_BUFFER: command_submit_blit_frame_buffer(command->blit_frame_buffer); break;
+			case CommandType::BIND_FRAME_BUFFER: command_submit_bind_frame_buffer(command->bind_frame_buffer); break;
 			case CommandType::BIND_UNIFORM_BUFFER: command_submit_bind_uniform_buffer(command->bind_uniform_buffer); break;
 			case CommandType::BIND_TEXTURE: command_submit_bind_texture(command->bind_texture); break;
 			case CommandType::BIND_SHADER: command_submit_bind_shader(command->bind_shader); break;
@@ -373,12 +400,12 @@ void Driver::flushPipelineState(CommandBuffer *gl_command_buffer)
 	}
 
 	// depth state
-	if (pipeline_state_overrides.depthstencil_state)
+	if (pipeline_state_overrides.depth_stencil_state)
 	{
 		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_DEPTH_STENCIL_STATE);
-		command->depthstencil_state.depth_test = pipeline_state.depth_test;
-		command->depthstencil_state.depth_write = pipeline_state.depth_write;
-		command->depthstencil_state.depth_comparison_func = pipeline_state.depth_comparison_func;
+		command->depth_stencil_state.depth_test = pipeline_state.depth_test;
+		command->depth_stencil_state.depth_write = pipeline_state.depth_write;
+		command->depth_stencil_state.depth_comparison_func = pipeline_state.depth_comparison_func;
 	}
 
 	// blending
@@ -398,7 +425,7 @@ void Driver::flushPipelineState(CommandBuffer *gl_command_buffer)
 	}
 
 	// bind sets
-	for (uint16_t i = 0; i < MAX_BIND_SETS; ++i)
+	for (uint16_t i = 0; i < pipeline_state.num_bind_sets; ++i)
 	{
 		if (!bitset_check(pipeline_state_overrides.bound_bind_sets, i))
 			continue;
@@ -757,13 +784,16 @@ backend::Texture *Driver::createTextureCube(
 backend::FrameBuffer *Driver::createFrameBuffer(
 	uint8_t num_color_attachments,
 	const FrameBufferAttachment *color_attachments,
-	const FrameBufferAttachment *depthstencil_attachment
+	const FrameBufferAttachment *depth_stencil_attachment
 )
 {
-	assert((depthstencil_attachment != nullptr) || (num_color_attachments > 0 && color_attachments != nullptr));
+	assert((depth_stencil_attachment != nullptr) || (num_color_attachments > 0 && color_attachments != nullptr));
 
 	// Fill struct fields
 	FrameBuffer *result = new FrameBuffer();
+
+	uint32_t width = 0;
+	uint32_t height = 0;
 
 	result->num_color_attachments = 0;
 	result->num_resolve_color_attachments = 0;
@@ -772,15 +802,35 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 		const FrameBufferAttachment &attachment = color_attachments[i];
 		const Texture *gl_texture = static_cast<const Texture *>(attachment.texture);
 
-		uint8_t index = (attachment.resolve_attachment) ? result->num_resolve_color_attachments : result->num_color_attachments;
-		FrameBufferColorAttachment *target_attachment = (attachment.resolve_attachment) ? &result->resolve_color_attachments[index] : &result->color_attachments[index];
+		uint8_t target_index = 0;
+		FrameBufferColorAttachment *target_attachments = nullptr;
+		uint32_t *target_indices = nullptr;
 
-		target_attachment->id = gl_texture->id;
-		target_attachment->texture_type = gl_texture->type;
-		target_attachment->type = GL_COLOR_ATTACHMENT0 + index;;
-		target_attachment->base_mip = attachment.base_mip;
-		target_attachment->base_layer = attachment.base_layer;
-		target_attachment->num_layers = attachment.num_layers;
+		if (attachment.resolve_attachment)
+		{
+			target_index = result->num_resolve_color_attachments;
+			target_attachments = result->resolve_color_attachments;
+			target_indices = result->resolve_color_attachment_indices;
+		}
+		else
+		{
+			target_index = result->num_color_attachments;
+			target_attachments = result->color_attachments;
+			target_indices = result->color_attachment_indices;
+		}
+
+		FrameBufferColorAttachment &target_attachment = target_attachments[target_index];
+		target_indices[target_index] = i;
+
+		target_attachment.id = gl_texture->id;
+		target_attachment.texture_type = gl_texture->type;
+		target_attachment.type = GL_COLOR_ATTACHMENT0 + target_index;
+		target_attachment.base_mip = attachment.base_mip;
+		target_attachment.base_layer = attachment.base_layer;
+		target_attachment.num_layers = attachment.num_layers;
+
+		width = std::max<uint32_t>(width, gl_texture->width);
+		height = std::max<uint32_t>(height, gl_texture->height);
 
 		if (attachment.resolve_attachment)
 			result->num_resolve_color_attachments++;
@@ -788,19 +838,20 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 			result->num_color_attachments++;
 	}
 
-	if (depthstencil_attachment != nullptr)
+	if (depth_stencil_attachment != nullptr)
 	{
-		const Texture *gl_texture = static_cast<const Texture *>(depthstencil_attachment->texture);
+		const Texture *gl_texture = static_cast<const Texture *>(depth_stencil_attachment->texture);
 
-		result->depthstencil_attachment.id = gl_texture->id;
-		result->depthstencil_attachment.type = Utils::getFramebufferDepthStencilAttachmentType(gl_texture->internal_format);
+		result->depth_stencil_attachment.id = gl_texture->id;
+		result->depth_stencil_attachment.type = Utils::getFramebufferDepthStencilAttachmentType(gl_texture->internal_format);
+		result->depth_stencil_attachment_index = num_color_attachments;
 	}
 
 	auto create_fbo = [](
 		GLuint *fbo_id,
 		uint8_t num_color_attachments,
 		FrameBufferColorAttachment *color_attachments,
-		FrameBufferDepthStencilAttachment *depthstencil_attachment
+		FrameBufferDepthStencilAttachment *depth_stencil_attachment
 	)
 	{
 		assert(fbo_id);
@@ -837,8 +888,8 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 			draw_buffers[i] = attachment.type;
 		}
 
-		if (depthstencil_attachment && depthstencil_attachment->id != 0)
-			glFramebufferTexture2D(GL_FRAMEBUFFER, depthstencil_attachment->type, GL_TEXTURE_2D, depthstencil_attachment->id, 0);
+		if (depth_stencil_attachment && depth_stencil_attachment->id != 0)
+			glFramebufferTexture2D(GL_FRAMEBUFFER, depth_stencil_attachment->type, GL_TEXTURE_2D, depth_stencil_attachment->id, 0);
 
 		glDrawBuffers(num_color_attachments, draw_buffers);
 
@@ -849,7 +900,7 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 	};
 
 	// Create main FBO
-	GLenum status = create_fbo(&result->main_fbo_id, result->num_color_attachments, result->color_attachments, &result->depthstencil_attachment);
+	GLenum status = create_fbo(&result->main_fbo_id, result->num_color_attachments, result->color_attachments, &result->depth_stencil_attachment);
 	if (status != GL_FRAMEBUFFER_COMPLETE)
 	{
 		Log::error("opengl::Driver::createFramebuffer(): main framebuffer is not complete, error: %d\n", status);
@@ -868,6 +919,9 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 			return nullptr;
 		}
 	}
+
+	result->width = width;
+	result->height = height;
 
 	return result;
 }
@@ -1063,22 +1117,22 @@ backend::SwapChain *Driver::createSwapChain(
 	if (gl_samples > 1)
 	{
 		GLenum color_internal_format = Utils::getInternalFormat(result->color_format);
-		GLenum depthstencil_internal_format = Utils::getInternalFormat(result->depthstencil_format);
+		GLenum depth_stencil_internal_format = Utils::getInternalFormat(result->depth_stencil_format);
 
 		glGenRenderbuffers(1, &result->msaa_color_id);
-		glGenRenderbuffers(1, &result->msaa_depthstencil_id);
+		glGenRenderbuffers(1, &result->msaa_depth_stencil_id);
 
 		glBindRenderbuffer(GL_RENDERBUFFER, result->msaa_color_id);
 		glRenderbufferStorageMultisample(GL_RENDERBUFFER, gl_samples, color_internal_format, width, height);
 
-		glBindRenderbuffer(GL_RENDERBUFFER, result->msaa_depthstencil_id);
-		glRenderbufferStorageMultisample(GL_RENDERBUFFER, gl_samples, depthstencil_internal_format, width, height);
+		glBindRenderbuffer(GL_RENDERBUFFER, result->msaa_depth_stencil_id);
+		glRenderbufferStorageMultisample(GL_RENDERBUFFER, gl_samples, depth_stencil_internal_format, width, height);
 
 		glGenFramebuffers(1, &result->msaa_fbo_id);
 		glBindFramebuffer(GL_FRAMEBUFFER, result->msaa_fbo_id);
 
 		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, result->msaa_color_id);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, result->msaa_depthstencil_id);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, result->msaa_depth_stencil_id);
 
 		GLenum draw_buffer = GL_COLOR_ATTACHMENT0;
 		glDrawBuffers(1, &draw_buffer);
@@ -1209,12 +1263,12 @@ void Driver::destroySwapChain(backend::SwapChain *swap_chain)
 
 	glDeleteFramebuffers(1, &gl_swap_chain->msaa_fbo_id);
 
-	GLuint buffers[] = { gl_swap_chain->msaa_color_id, gl_swap_chain->msaa_depthstencil_id };
+	GLuint buffers[] = { gl_swap_chain->msaa_color_id, gl_swap_chain->msaa_depth_stencil_id };
 	glDeleteRenderbuffers(2, buffers);
 
 	gl_swap_chain->msaa_fbo_id = 0;
 	gl_swap_chain->msaa_color_id = 0;
-	gl_swap_chain->msaa_depthstencil_id = 0;
+	gl_swap_chain->msaa_depth_stencil_id = 0;
 
 	Platform::destroySurface(gl_swap_chain->surface);
 	gl_swap_chain->surface = nullptr;
@@ -1485,21 +1539,40 @@ void Driver::setPushConstants(
 void Driver::clearBindSets(
 )
 {
-	// TODO: implement
+	pipeline_state.num_bind_sets = 0;
+	memset(pipeline_state.bound_bind_sets, 0, sizeof(pipeline_state.bound_bind_sets));
+
+	pipeline_state_overrides.bound_bind_sets = 0;
+	pipeline_dirty = true;
 }
 
 void Driver::allocateBindSets(
 	uint8_t size
 )
 {
-	// TODO: implement
+	assert(size < MAX_BIND_SETS);
+
+	pipeline_state.num_bind_sets = size;
+	memset(pipeline_state.bound_bind_sets, 0, sizeof(pipeline_state.bound_bind_sets));
+
+	uint16_t mask = (1 << (size + 1)) - 1;
+	pipeline_state_overrides.bound_bind_sets = mask;
+	pipeline_dirty = true;
 }
 
 void Driver::pushBindSet(
 	backend::BindSet *bind_set
 )
 {
-	// TODO: implement
+	assert(pipeline_state.num_bind_sets < MAX_BIND_SETS);
+	assert(bind_set);
+
+	BindSet *gl_bind_set = static_cast<BindSet *>(bind_set);
+
+	uint32_t binding = pipeline_state.num_bind_sets++;
+	pipeline_state.bound_bind_sets[binding] = gl_bind_set;
+	pipeline_state_overrides.bound_bind_sets |= (1 << binding);
+	pipeline_dirty = true;
 }
 
 void Driver::setBindSet(
@@ -1507,7 +1580,17 @@ void Driver::setBindSet(
 	backend::BindSet *bind_set
 )
 {
-	// TODO: implement
+	assert(binding < pipeline_state.num_bind_sets);
+	assert(bind_set);
+
+	BindSet *gl_bind_set = static_cast<BindSet *>(bind_set);
+
+	if (pipeline_state.bound_bind_sets[binding] != gl_bind_set)
+	{
+		pipeline_state.bound_bind_sets[binding] = gl_bind_set;
+		pipeline_state_overrides.bound_bind_sets |= (1 << binding);
+		pipeline_dirty = true;
+	}
 }
 
 void Driver::clearShaders(
@@ -1643,7 +1726,7 @@ void Driver::setDepthTest(
 	if (pipeline_state.depth_test != enabled)
 	{
 		pipeline_state.depth_test = enabled;
-		pipeline_state_overrides.depthstencil_state = 1;
+		pipeline_state_overrides.depth_stencil_state = 1;
 		pipeline_dirty = true;
 	}
 }
@@ -1655,7 +1738,7 @@ void Driver::setDepthWrite(
 	if (pipeline_state.depth_write != enabled)
 	{
 		pipeline_state.depth_write = enabled;
-		pipeline_state_overrides.depthstencil_state = 1;
+		pipeline_state_overrides.depth_stencil_state = 1;
 		pipeline_dirty = true;
 	}
 }
@@ -1669,7 +1752,7 @@ void Driver::setDepthCompareFunc(
 	if (pipeline_state.depth_comparison_func != gl_func)
 	{
 		pipeline_state.depth_comparison_func = gl_func;
-		pipeline_state_overrides.depthstencil_state = 1;
+		pipeline_state_overrides.depth_stencil_state = 1;
 		pipeline_dirty = true;
 	}
 }
@@ -1766,42 +1849,93 @@ void Driver::beginRenderPass(
 	const RenderPassInfo *info
 )
 {
-	// TODO: implement
+	assert(info);
 
-	/*
-	const FrameBuffer *gl_buffer = static_cast<const FrameBuffer *>(frame_buffer);
+	if (command_buffer == nullptr || frame_buffer == nullptr)
+		return;
 
-	if (!gl_buffer)
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	if (gl_command_buffer->state != CommandBufferState::RECORDING)
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// TODO: log error
 		return;
 	}
 
-	glBindFramebuffer(GL_FRAMEBUFFER, gl_buffer->id);
+	const FrameBuffer *gl_frame_buffer = static_cast<const FrameBuffer *>(frame_buffer);
 
-	if (!clear)
-		return;
+	// Emit resolve FBO commands
+	if (gl_frame_buffer->resolve_fbo_id != 0)
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
+		command->bind_frame_buffer.id = gl_frame_buffer->resolve_fbo_id;
+		command->bind_frame_buffer.target = GL_FRAMEBUFFER;
 
-	GLfloat clear_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-	for (uint8_t i = 0; i < gl_buffer->num_color_attachments; ++i)
-		glClearBufferfv(GL_COLOR, i, clear_color);
+		for (uint8_t i = 0; i < gl_frame_buffer->num_resolve_color_attachments; ++i)
+		{
+			uint32_t index = gl_frame_buffer->resolve_color_attachment_indices[i];
 
-	if (gl_buffer->depthstencil_attachment.id != GL_NONE)
-		glClearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
-	/**/
+			RenderPassLoadOp load_op = info->load_ops[index];
+			RenderPassClearValue clear_value = info->clear_values[index];
 
-	/* clear color
-	glClearColor(r, g, b, a);
-	glClear(GL_COLOR_BUFFER_BIT);
-	/**/
+			if (load_op != RenderPassLoadOp::CLEAR)
+				continue;
 
-	/* clear depth/stencil
-	glClearDepthf(depth);
-	glClearStencil(stencil);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	/**/
+			Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_COLOR_BUFFER);
+			command->clear_color_buffer.buffer = i;
+			command->clear_color_buffer.clear_color[0] = clear_value.color.float32[0];
+			command->clear_color_buffer.clear_color[1] = clear_value.color.float32[1];
+			command->clear_color_buffer.clear_color[2] = clear_value.color.float32[2];
+			command->clear_color_buffer.clear_color[3] = clear_value.color.float32[3];
+		}
+	}
 
+	// Emit main FBO commands
+	Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
+	command->bind_frame_buffer.id = gl_frame_buffer->main_fbo_id;
+	command->bind_frame_buffer.target = GL_FRAMEBUFFER;
 
+	for (uint8_t i = 0; i < gl_frame_buffer->num_color_attachments; ++i)
+	{
+		uint32_t index = gl_frame_buffer->color_attachment_indices[i];
+
+		RenderPassLoadOp load_op = info->load_ops[index];
+		RenderPassClearValue clear_value = info->clear_values[index];
+
+		if (load_op != RenderPassLoadOp::CLEAR)
+			continue;
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_COLOR_BUFFER);
+		command->clear_color_buffer.buffer = i;
+		command->clear_color_buffer.clear_color[0] = clear_value.color.float32[0];
+		command->clear_color_buffer.clear_color[1] = clear_value.color.float32[1];
+		command->clear_color_buffer.clear_color[2] = clear_value.color.float32[2];
+		command->clear_color_buffer.clear_color[3] = clear_value.color.float32[3];
+	}
+
+	if (gl_frame_buffer->depth_stencil_attachment.id != 0)
+	{
+		uint32_t index = gl_frame_buffer->depth_stencil_attachment_index;
+
+		RenderPassLoadOp load_op = info->load_ops[index];
+		RenderPassClearValue clear_value = info->clear_values[index];
+
+		if (load_op == RenderPassLoadOp::CLEAR)
+		{
+			Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_DEPTHSTENCIL_BUFFER);
+			command->clear_depth_stencil_buffer.depth = clear_value.depth_stencil.depth;
+			command->clear_depth_stencil_buffer.stencil = clear_value.depth_stencil.stencil;
+		}
+	}
+
+	render_pass_state.src_fbo_id = gl_frame_buffer->main_fbo_id;
+	render_pass_state.dst_fbo_id = gl_frame_buffer->resolve_fbo_id;
+	render_pass_state.width = gl_frame_buffer->width;
+	render_pass_state.height = gl_frame_buffer->height;
+	render_pass_state.mask = GL_COLOR_BUFFER_BIT;
+	render_pass_state.num_draw_buffers = gl_frame_buffer->num_color_attachments;
+
+	for (uint8_t i = 0; i < gl_frame_buffer->num_color_attachments; ++i)
+		render_pass_state.draw_buffers[i] = GL_COLOR_ATTACHMENT0 + i;
 }
 
 void Driver::beginRenderPass(
@@ -1810,65 +1944,113 @@ void Driver::beginRenderPass(
 	const RenderPassInfo *info
 )
 {
-	// TODO: implement
+	assert(info);
 
-	/*
-	const FrameBuffer *gl_buffer = static_cast<const FrameBuffer *>(frame_buffer);
+	if (command_buffer == nullptr || swap_chain == nullptr)
+		return;
 
-	if (!gl_buffer)
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	if (gl_command_buffer->state != CommandBufferState::RECORDING)
 	{
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// TODO: log error
 		return;
 	}
 
-	glBindFramebuffer(GL_FRAMEBUFFER, gl_buffer->id);
+	const SwapChain *gl_swap_chain = static_cast<const SwapChain *>(swap_chain);
 
-	if (!clear)
-		return;
+	// Emit resolve FBO commands
+	if (gl_swap_chain->msaa_fbo_id != 0)
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
+		command->bind_frame_buffer.id = gl_swap_chain->msaa_fbo_id;
+		command->bind_frame_buffer.target = GL_FRAMEBUFFER;
 
-	GLfloat clear_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-	for (uint8_t i = 0; i < gl_buffer->num_color_attachments; ++i)
-		glClearBufferfv(GL_COLOR, i, clear_color);
+		uint32_t index = 1;
 
-	if (gl_buffer->depthstencil_attachment.id != GL_NONE)
-		glClearBufferfi(GL_DEPTH_STENCIL, 0, 1.0f, 0);
-	/**/
+		RenderPassLoadOp load_op = info->load_ops[index];
+		RenderPassClearValue clear_value = info->clear_values[index];
 
-	/* clear color
-	glClearColor(r, g, b, a);
-	glClear(GL_COLOR_BUFFER_BIT);
-	/**/
+		if (load_op == RenderPassLoadOp::CLEAR)
+		{
+			Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_COLOR_BUFFER);
+			command->clear_color_buffer.buffer = 0;
+			command->clear_color_buffer.clear_color[0] = clear_value.color.float32[0];
+			command->clear_color_buffer.clear_color[1] = clear_value.color.float32[1];
+			command->clear_color_buffer.clear_color[2] = clear_value.color.float32[2];
+			command->clear_color_buffer.clear_color[3] = clear_value.color.float32[3];
+		}
 
-	/* clear depth/stencil
-	glClearDepthf(depth);
-	glClearStencil(stencil);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-	/**/
+		index = 2;
+
+		load_op = info->load_ops[index];
+		clear_value = info->clear_values[index];
+
+		if (load_op == RenderPassLoadOp::CLEAR)
+		{
+			Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_DEPTHSTENCIL_BUFFER);
+			command->clear_depth_stencil_buffer.depth = clear_value.depth_stencil.depth;
+			command->clear_depth_stencil_buffer.stencil = clear_value.depth_stencil.stencil;
+		}
+	}
+
+	// Emit main FBO commands
+	Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
+	command->bind_frame_buffer.id = 0;
+	command->bind_frame_buffer.target = GL_FRAMEBUFFER;
+
+	uint32_t index = 0;
+
+	RenderPassLoadOp load_op = info->load_ops[index];
+	RenderPassClearValue clear_value = info->clear_values[index];
+
+	if (load_op == RenderPassLoadOp::CLEAR)
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_COLOR_BUFFER);
+		command->clear_color_buffer.buffer = 0;
+		command->clear_color_buffer.clear_color[0] = clear_value.color.float32[0];
+		command->clear_color_buffer.clear_color[1] = clear_value.color.float32[1];
+		command->clear_color_buffer.clear_color[2] = clear_value.color.float32[2];
+		command->clear_color_buffer.clear_color[3] = clear_value.color.float32[3];
+	}
+
+	render_pass_state.src_fbo_id = gl_swap_chain->msaa_color_id;
+	render_pass_state.dst_fbo_id = 0;
+	render_pass_state.width = gl_swap_chain->width;
+	render_pass_state.height = gl_swap_chain->height;
+	render_pass_state.mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+	render_pass_state.num_draw_buffers = 1;
+	render_pass_state.draw_buffers[0] = GL_BACK;
 }
 
 void Driver::endRenderPass(
 	backend::CommandBuffer *command_buffer
 )
 {
-	// TODO: implement
-	// TODO: blit FBO main to FBO resolve if necessary
+	if (command_buffer == nullptr)
+		return;
 
-	// glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	/* resolve swap chain MSAA FBO to backbuffer
-	uint32_t width = gl_swap_chain->width;
-	uint32_t height = gl_swap_chain->height;
-	GLbitfield mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-
-	if (gl_swap_chain->msaa_fbo_id != 0)
+	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+	if (gl_command_buffer->state != CommandBufferState::RECORDING)
 	{
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_swap_chain->msaa_fbo_id);
-		glDrawBuffer(GL_BACK);
-		glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, mask, GL_NEAREST);
+		// TODO: log error
+		return;
 	}
-	/**/
+
+	if (render_pass_state.src_fbo_id != 0)
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BLIT_FRAME_BUFFER);
+		command->blit_frame_buffer.src_fbo_id = render_pass_state.src_fbo_id;
+		command->blit_frame_buffer.dst_fbo_id = render_pass_state.dst_fbo_id;
+		command->blit_frame_buffer.width = render_pass_state.width;
+		command->blit_frame_buffer.height = render_pass_state.height;
+		command->blit_frame_buffer.mask = render_pass_state.mask;
+		command->blit_frame_buffer.num_draw_buffers = render_pass_state.num_draw_buffers;
+		memcpy(command->blit_frame_buffer.draw_buffers, render_pass_state.draw_buffers, sizeof(GLenum) * render_pass_state.num_draw_buffers);
+	}
+
+	Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
+	command->bind_frame_buffer.id = render_pass_state.dst_fbo_id;
+	command->bind_frame_buffer.target = GL_FRAMEBUFFER;
 }
 
 void Driver::drawIndexedPrimitive(

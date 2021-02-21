@@ -69,14 +69,21 @@ struct FrameBuffer : public backend::FrameBuffer
 		MAX_COLOR_ATTACHMENTS = 16,
 	};
 
+	uint32_t width {0};
+	uint32_t height {0};
+
 	GLuint main_fbo_id {0};
 	uint8_t num_color_attachments {0};
 	FrameBufferColorAttachment color_attachments[FrameBuffer::MAX_COLOR_ATTACHMENTS];
-	FrameBufferDepthStencilAttachment depthstencil_attachment;
+	uint32_t color_attachment_indices[FrameBuffer::MAX_COLOR_ATTACHMENTS];
+
+	FrameBufferDepthStencilAttachment depth_stencil_attachment;
+	uint32_t depth_stencil_attachment_index {0};
 
 	GLuint resolve_fbo_id {0};
 	uint8_t num_resolve_color_attachments {0};
 	FrameBufferColorAttachment resolve_color_attachments[FrameBuffer::MAX_COLOR_ATTACHMENTS];
+	uint32_t resolve_color_attachment_indices[FrameBuffer::MAX_COLOR_ATTACHMENTS];
 };
 
 enum class CommandType : uint8_t
@@ -87,6 +94,10 @@ enum class CommandType : uint8_t
 	SET_DEPTH_STENCIL_STATE,
 	SET_BLEND_STATE,
 	SET_RASTERIZER_STATE,
+	CLEAR_COLOR_BUFFER,
+	CLEAR_DEPTHSTENCIL_BUFFER,
+	BLIT_FRAME_BUFFER,
+	BIND_FRAME_BUFFER,
 	BIND_UNIFORM_BUFFER,
 	BIND_TEXTURE,
 	BIND_SHADER,
@@ -125,6 +136,35 @@ struct Command
 	struct RasterizerState
 	{
 		GLenum cull_mode {GL_NONE};
+	};
+
+	struct ClearColorBuffer
+	{
+		GLint buffer {0};
+		GLfloat clear_color[4] {0.0f, 0.0f, 0.0f, 0.0f};
+	};
+
+	struct ClearDepthStencilBuffer
+	{
+		GLfloat depth {0.0f};
+		GLint stencil {0};
+	};
+
+	struct BlitFrameBuffer
+	{
+		GLuint dst_fbo_id {0};
+		GLuint src_fbo_id {0};
+		GLint width {0};
+		GLint height {0};
+		GLbitfield mask {0};
+		GLsizei num_draw_buffers {0};
+		GLenum draw_buffers[FrameBuffer::MAX_COLOR_ATTACHMENTS];
+	};
+
+	struct BindFrameBuffer
+	{
+		GLuint id {0};
+		GLenum target {GL_FRAMEBUFFER};
 	};
 
 	struct BindUniformBuffer
@@ -175,9 +215,13 @@ struct Command
 	{
 		Rect viewport;
 		Rect scissor;
-		DepthStencilState depthstencil_state;
+		DepthStencilState depth_stencil_state;
 		BlendState blend_state;
 		RasterizerState rasterizer_state;
+		ClearColorBuffer clear_color_buffer;
+		ClearDepthStencilBuffer clear_depth_stencil_buffer;
+		BlitFrameBuffer blit_frame_buffer;
+		BindFrameBuffer bind_frame_buffer;
 		BindUniformBuffer bind_uniform_buffer;
 		BindTexture bind_texture;
 		BindShader bind_shader;
@@ -268,10 +312,10 @@ struct SwapChain : public backend::SwapChain
 
 	GLuint msaa_fbo_id {0};
 	GLuint msaa_color_id {0};
-	GLuint msaa_depthstencil_id {0};
+	GLuint msaa_depth_stencil_id {0};
 
 	Format color_format {Format::R8G8B8A8_UNORM};
-	Format depthstencil_format {Format::D24_UNORM_S8_UINT};
+	Format depth_stencil_format {Format::D24_UNORM_S8_UINT};
 };
 
 class Driver : public backend::Driver
@@ -615,11 +659,22 @@ private:
 	{
 		uint8_t viewport : 1;
 		uint8_t scissor : 1;
-		uint8_t depthstencil_state : 1;
+		uint8_t depth_stencil_state : 1;
 		uint8_t blend_state : 1;
 		uint8_t rasterizer_state : 1;
 		uint16_t bound_bind_sets;
 		uint16_t bound_shaders;
+	};
+
+	struct RenderPassState
+	{
+		GLuint dst_fbo_id = 0;
+		GLuint src_fbo_id = 0;
+		GLint width = 0;
+		GLint height = 0;
+		GLbitfield mask = 0;
+		GLsizei num_draw_buffers = 0;
+		GLenum draw_buffers[FrameBuffer::MAX_COLOR_ATTACHMENTS];
 	};
 
 	void fetchGraphicsPipeline();
@@ -630,6 +685,7 @@ private:
 
 	PipelineState pipeline_state;
 	PipelineStateOverrides pipeline_state_overrides;
+	RenderPassState render_pass_state;
 	bool pipeline_dirty { true };
 
 	GLuint bound_vao { GL_NONE };
