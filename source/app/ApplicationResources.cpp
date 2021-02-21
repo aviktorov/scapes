@@ -150,7 +150,7 @@ void ApplicationResources::init()
 		environment_cubemaps[i] = RenderUtils::hdriToCube(
 			driver,
 			render::backend::Format::R32G32B32A32_SFLOAT,
-			256,
+			128,
 			resources.getTexture(config::Textures::EnvironmentBase + i),
 			resources.getShader(config::Shaders::CubeVertex),
 			resources.getShader(config::Shaders::HDRIToCubeFragment),
@@ -160,7 +160,7 @@ void ApplicationResources::init()
 		irradiance_cubemaps[i] = RenderUtils::createTextureCube(
 			driver,
 			render::backend::Format::R32G32B32A32_SFLOAT,
-			256,
+			128,
 			1,
 			resources.getShader(config::Shaders::CubeVertex),
 			resources.getShader(config::Shaders::DiffuseIrradianceFragment),
