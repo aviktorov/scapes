@@ -120,7 +120,7 @@ static void command_submit_set_depth_stencil_state(const Command::DepthStencilSt
 		glDisable(GL_DEPTH_TEST);
 
 	glDepthMask(data.depth_write);
-	glDepthFunc(data.depth_comparison_func);
+	glDepthFunc(data.depth_compare_func);
 }
 
 static void command_submit_set_blend_state(const Command::BlendState &data)
@@ -350,6 +350,10 @@ bool Driver::init()
 	memset(&pipeline_state, 0, sizeof(PipelineState));
 	memset(&pipeline_state_overrides, 0, sizeof(PipelineStateOverrides));
 
+	pipeline_state.depth_compare_func = GL_LEQUAL;
+	pipeline_state.blend_src_factor = GL_ZERO;
+	pipeline_state.blend_dst_factor = GL_ZERO;
+
 	return true;
 }
 
@@ -405,7 +409,7 @@ void Driver::flushPipelineState(CommandBuffer *gl_command_buffer)
 		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_DEPTH_STENCIL_STATE);
 		command->depth_stencil_state.depth_test = pipeline_state.depth_test;
 		command->depth_stencil_state.depth_write = pipeline_state.depth_write;
-		command->depth_stencil_state.depth_comparison_func = pipeline_state.depth_comparison_func;
+		command->depth_stencil_state.depth_compare_func = pipeline_state.depth_compare_func;
 	}
 
 	// blending
@@ -1735,9 +1739,9 @@ void Driver::setDepthCompareFunc(
 {
 	GLenum gl_func = Utils::getDepthCompareFunc(func);
 
-	if (pipeline_state.depth_comparison_func != gl_func)
+	if (pipeline_state.depth_compare_func != gl_func)
 	{
-		pipeline_state.depth_comparison_func = gl_func;
+		pipeline_state.depth_compare_func = gl_func;
 		pipeline_state_overrides.depth_stencil_state = 1;
 		pipeline_dirty = true;
 	}
@@ -2065,23 +2069,13 @@ void Driver::drawIndexedPrimitive(
 	const VertexBuffer *vb = static_cast<const VertexBuffer *>(render_primitive->vertices);
 	const IndexBuffer *ib = static_cast<const IndexBuffer *>(render_primitive->indices);
 
-	if (bound_vao != vb->vao_id)
-	{
-		bound_vao = vb->vao_id;
-
-		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_VERTEX_BUFFER);
-		command->bind_vertex_buffer.vao_id = bound_vao;
-	}
+	Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_VERTEX_BUFFER);
+	command->bind_vertex_buffer.vao_id = vb->vao_id;
 	
-	if (bound_ib != ib->data->id)
-	{
-		bound_ib = ib->data->id;
+	command = command_buffer_emit(gl_command_buffer, CommandType::BIND_INDEX_BUFFER);
+	command->bind_index_buffer.id = ib->data->id;
 
-		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_INDEX_BUFFER);
-		command->bind_index_buffer.id = bound_ib;
-	}
-
-	Command *command = command_buffer_emit(gl_command_buffer, CommandType::DRAW_INDEXED_PRIMITIVE);
+	command = command_buffer_emit(gl_command_buffer, CommandType::DRAW_INDEXED_PRIMITIVE);
 	command->draw_indexed_primitive.primitive_type = Utils::getPrimitiveType(render_primitive->type);
 	command->draw_indexed_primitive.index_format = ib->index_format;
 	command->draw_indexed_primitive.num_indices = ib->num_indices;

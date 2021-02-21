@@ -121,7 +121,7 @@ struct Command
 	{
 		uint8_t depth_test : 1;
 		uint8_t depth_write : 1;
-		GLenum depth_comparison_func {GL_LEQUAL};
+		GLenum depth_compare_func {GL_LEQUAL};
 
 		// TODO: stencil state
 	};
@@ -645,7 +645,7 @@ private:
 		GLsizei scissor_height {0};
 		uint8_t depth_test : 1;
 		uint8_t depth_write : 1;
-		GLenum depth_comparison_func {GL_LEQUAL};
+		GLenum depth_compare_func {GL_LEQUAL};
 		uint8_t blend : 1;
 		GLenum blend_src_factor {GL_ZERO};
 		GLenum blend_dst_factor {GL_ZERO};
@@ -688,9 +688,6 @@ private:
 	PipelineStateOverrides pipeline_state_overrides;
 	RenderPassState render_pass_state;
 	bool pipeline_dirty { true };
-
-	GLuint bound_vao { GL_NONE };
-	GLuint bound_ib { GL_NONE };
 };
 
 }
