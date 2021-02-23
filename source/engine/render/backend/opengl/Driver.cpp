@@ -1065,6 +1065,12 @@ backend::Shader *Driver::createShaderFromIL(
 		glsl.set_decoration(resource.id, spv::DecorationBinding, set * BindSet::MAX_BINDINGS + binding);
 	}
 
+	assert(resources.push_constant_buffers.size() <= 1);
+	for (auto &resource : resources.push_constant_buffers)
+	{
+		glsl.set_name(resource.id, "scapesPushConstants");
+	}
+
 	spirv_cross::CompilerGLSL::Options options;
 	options.version = 450;
 	options.es = false;
@@ -1355,7 +1361,7 @@ void *Driver::map(backend::UniformBuffer *buffer)
 	UniformBuffer *gl_buffer = static_cast<UniformBuffer *>(buffer);
 
 	glBindBuffer(gl_buffer->data->type, gl_buffer->data->id);
-	return glMapBufferRange(gl_buffer->data->type, 0, gl_buffer->data->size, GL_MAP_WRITE_BIT);
+	return glMapBufferRange(gl_buffer->data->type, 0, gl_buffer->data->size, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT);
 }
 
 void Driver::unmap(backend::UniformBuffer *buffer)
@@ -1853,6 +1859,28 @@ void Driver::beginRenderPass(
 
 	const FrameBuffer *gl_frame_buffer = static_cast<const FrameBuffer *>(frame_buffer);
 
+	// Emit viewport state
+	{
+		setViewport(0.0f, 0.0f, static_cast<float>(gl_frame_buffer->width), static_cast<float>(gl_frame_buffer->height));
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_VIEWPORT);
+		command->viewport.x = pipeline_state.viewport_x;
+		command->viewport.y = pipeline_state.viewport_y;
+		command->viewport.width = pipeline_state.viewport_width;
+		command->viewport.height = pipeline_state.viewport_height;
+	}
+
+	// Emit scissor state
+	{
+		setScissor(0, 0, gl_frame_buffer->width, gl_frame_buffer->height);
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_SCISSOR);
+		command->scissor.x = pipeline_state.scissor_x;
+		command->scissor.y = pipeline_state.scissor_y;
+		command->scissor.width = pipeline_state.scissor_width;
+		command->scissor.height = pipeline_state.scissor_height;
+	}
+
 	// Emit resolve FBO commands
 	if (gl_frame_buffer->resolve_fbo_id != 0)
 	{
@@ -1880,9 +1908,11 @@ void Driver::beginRenderPass(
 	}
 
 	// Emit main FBO commands
-	Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
-	command->bind_frame_buffer.id = gl_frame_buffer->main_fbo_id;
-	command->bind_frame_buffer.target = GL_FRAMEBUFFER;
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
+		command->bind_frame_buffer.id = gl_frame_buffer->main_fbo_id;
+		command->bind_frame_buffer.target = GL_FRAMEBUFFER;
+	}
 
 	for (uint8_t i = 0; i < gl_frame_buffer->num_color_attachments; ++i)
 	{
@@ -1927,9 +1957,6 @@ void Driver::beginRenderPass(
 
 	for (uint8_t i = 0; i < gl_frame_buffer->num_color_attachments; ++i)
 		render_pass_state.draw_buffers[i] = GL_COLOR_ATTACHMENT0 + i;
-
-	setViewport(0.0f, 0.0f, static_cast<float>(gl_frame_buffer->width), static_cast<float>(gl_frame_buffer->height));
-	setScissor(0, 0, gl_frame_buffer->width, gl_frame_buffer->height);
 }
 
 void Driver::beginRenderPass(
@@ -1951,6 +1978,28 @@ void Driver::beginRenderPass(
 	}
 
 	const SwapChain *gl_swap_chain = static_cast<const SwapChain *>(swap_chain);
+
+	// Emit viewport state
+	{
+		setViewport(0.0f, 0.0f, static_cast<float>(gl_swap_chain->width), static_cast<float>(gl_swap_chain->height));
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_VIEWPORT);
+		command->viewport.x = pipeline_state.viewport_x;
+		command->viewport.y = pipeline_state.viewport_y;
+		command->viewport.width = pipeline_state.viewport_width;
+		command->viewport.height = pipeline_state.viewport_height;
+	}
+
+	// Emit scissor state
+	{
+		setScissor(0, 0, gl_swap_chain->width, gl_swap_chain->height);
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_SCISSOR);
+		command->scissor.x = pipeline_state.scissor_x;
+		command->scissor.y = pipeline_state.scissor_y;
+		command->scissor.width = pipeline_state.scissor_width;
+		command->scissor.height = pipeline_state.scissor_height;
+	}
 
 	// Emit resolve FBO commands
 	if (gl_swap_chain->msaa_fbo_id != 0)
@@ -1988,9 +2037,11 @@ void Driver::beginRenderPass(
 	}
 
 	// Emit main FBO commands
-	Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
-	command->bind_frame_buffer.id = 0;
-	command->bind_frame_buffer.target = GL_FRAMEBUFFER;
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
+		command->bind_frame_buffer.id = 0;
+		command->bind_frame_buffer.target = GL_FRAMEBUFFER;
+	}
 
 	uint32_t index = 0;
 
@@ -2015,9 +2066,6 @@ void Driver::beginRenderPass(
 	render_pass_state.mask = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
 	render_pass_state.num_draw_buffers = 1;
 	render_pass_state.draw_buffers[0] = GL_BACK;
-
-	setViewport(0.0f, 0.0f, static_cast<float>(gl_swap_chain->width), static_cast<float>(gl_swap_chain->height));
-	setScissor(0, 0, gl_swap_chain->width, gl_swap_chain->height);
 }
 
 void Driver::endRenderPass(
