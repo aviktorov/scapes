@@ -177,6 +177,7 @@ static void command_submit_bind_texture(const Command::BindTexture &data)
 {
 	glActiveTexture(GL_TEXTURE0 + data.binding);
 	glBindTexture(data.type, data.id);
+
 }
 
 static void command_submit_bind_shader(const Command::BindShader &data)
@@ -349,6 +350,9 @@ bool Driver::init()
 
 	memset(&pipeline_state, 0, sizeof(PipelineState));
 	memset(&pipeline_state_overrides, 0, sizeof(PipelineStateOverrides));
+	memset(&render_pass_state, 0, sizeof(RenderPassState));
+	memset(&push_constants, 0, MAX_PUSH_CONSTANT_SIZE);
+	push_constants_size = 0;
 
 	pipeline_state.depth_compare_func = GL_LEQUAL;
 	pipeline_state.blend_src_factor = GL_ZERO;
@@ -451,6 +455,9 @@ void Driver::flushPipelineState(CommandBuffer *gl_command_buffer)
 				case BindSet::DataType::TEXTURE:
 				{
 					Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_TEXTURE);
+
+					// TODO: get texture view from cache
+
 					command->bind_texture.binding = base_binding + j;
 					command->bind_texture.id = data.texture.id;
 					command->bind_texture.type = data.texture.type;
@@ -459,7 +466,7 @@ void Driver::flushPipelineState(CommandBuffer *gl_command_buffer)
 				case BindSet::DataType::UNIFORM_BUFFER:
 				{
 					Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_UNIFORM_BUFFER);
-					command->bind_uniform_buffer.binding = base_binding + j;
+					command->bind_uniform_buffer.binding = base_binding + j + UNIFORM_BUFFER_BINDING_OFFSET;
 					command->bind_uniform_buffer.id = data.ubo.id;
 					command->bind_uniform_buffer.offset = data.ubo.offset;
 					command->bind_uniform_buffer.size = data.ubo.size;
@@ -936,6 +943,13 @@ backend::CommandBuffer *Driver::createCommandBuffer(
 	CommandBuffer *result = new CommandBuffer();
 	result->type = type;
 
+	GLbitfield usage_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+
+	result->push_constants = Utils::createImmutableBuffer(GL_UNIFORM_BUFFER, MAX_PUSH_CONSTANT_SIZE, nullptr, usage_flags);
+
+	glBindBuffer(GL_UNIFORM_BUFFER, result->push_constants->id);
+	result->push_constants_mapped_memory = glMapBufferRange(GL_UNIFORM_BUFFER, 0, MAX_PUSH_CONSTANT_SIZE, usage_flags);
+
 	// TODO: sync primitives
 
 	return result;
@@ -1062,20 +1076,23 @@ backend::Shader *Driver::createShaderFromIL(
 		uint32_t binding = glsl.get_decoration(resource.id, spv::DecorationBinding);
 
 		glsl.unset_decoration(resource.id, spv::DecorationDescriptorSet);
-		glsl.set_decoration(resource.id, spv::DecorationBinding, set * BindSet::MAX_BINDINGS + binding);
+		glsl.set_decoration(resource.id, spv::DecorationBinding, set * BindSet::MAX_BINDINGS + binding + UNIFORM_BUFFER_BINDING_OFFSET);
 	}
 
 	assert(resources.push_constant_buffers.size() <= 1);
 	for (auto &resource : resources.push_constant_buffers)
 	{
 		glsl.set_name(resource.id, "scapesPushConstants");
+
+		glsl.unset_decoration(resource.id, spv::DecorationDescriptorSet);
+		glsl.set_decoration(resource.id, spv::DecorationBinding, 0);
 	}
 
 	spirv_cross::CompilerGLSL::Options options;
 	options.version = 450;
 	options.es = false;
 	options.separate_shader_objects = true;
-	options.emit_push_constant_as_uniform_buffer = false;
+	options.emit_push_constant_as_uniform_buffer = true;
 	glsl.set_common_options(options);
 
 	std::string source = glsl.compile();
@@ -1209,6 +1226,16 @@ void Driver::destroyCommandBuffer(backend::CommandBuffer *command_buffer)
 
 	CommandBuffer *gl_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 	command_buffer_clear(gl_command_buffer);
+
+	glBindBuffer(GL_UNIFORM_BUFFER, gl_command_buffer->push_constants->id);
+	glUnmapBuffer(GL_UNIFORM_BUFFER);
+
+	Utils::destroyBuffer(gl_command_buffer->push_constants);
+
+	gl_command_buffer->first = nullptr;
+	gl_command_buffer->last = nullptr;
+	gl_command_buffer->push_constants = nullptr;
+	gl_command_buffer->push_constants_mapped_memory = nullptr;
 
 	delete command_buffer;
 	command_buffer = nullptr;
@@ -1521,7 +1548,7 @@ void Driver::bindTexture(
 void Driver::clearPushConstants(
 )
 {
-	// TODO: implement
+	push_constants_size = 0;
 }
 
 void Driver::setPushConstants(
@@ -1529,7 +1556,11 @@ void Driver::setPushConstants(
 	const void *data
 )
 {
-	// TODO: implement
+	assert(size <= MAX_PUSH_CONSTANT_SIZE);
+	assert(data);
+
+	memcpy(push_constants, data, size);
+	push_constants_size = size;
 }
 
 void Driver::clearBindSets(
@@ -2114,21 +2145,38 @@ void Driver::drawIndexedPrimitive(
 
 	flushPipelineState(gl_command_buffer);
 
+	if (push_constants_size > 0)
+	{
+		memcpy(gl_command_buffer->push_constants_mapped_memory, push_constants, push_constants_size);
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_UNIFORM_BUFFER);
+		command->bind_uniform_buffer.binding = 0;
+		command->bind_uniform_buffer.id = gl_command_buffer->push_constants->id;
+		command->bind_uniform_buffer.offset = 0;
+		command->bind_uniform_buffer.size = push_constants_size;
+	}
+
 	const VertexBuffer *vb = static_cast<const VertexBuffer *>(render_primitive->vertices);
 	const IndexBuffer *ib = static_cast<const IndexBuffer *>(render_primitive->indices);
 
-	Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_VERTEX_BUFFER);
-	command->bind_vertex_buffer.vao_id = vb->vao_id;
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_VERTEX_BUFFER);
+		command->bind_vertex_buffer.vao_id = vb->vao_id;
+	}
 	
-	command = command_buffer_emit(gl_command_buffer, CommandType::BIND_INDEX_BUFFER);
-	command->bind_index_buffer.id = ib->data->id;
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_INDEX_BUFFER);
+		command->bind_index_buffer.id = ib->data->id;
+	}
 
-	command = command_buffer_emit(gl_command_buffer, CommandType::DRAW_INDEXED_PRIMITIVE);
-	command->draw_indexed_primitive.primitive_type = Utils::getPrimitiveType(render_primitive->type);
-	command->draw_indexed_primitive.index_format = ib->index_format;
-	command->draw_indexed_primitive.num_indices = ib->num_indices;
-	command->draw_indexed_primitive.base_index = render_primitive->base_index;
-	command->draw_indexed_primitive.base_vertex = render_primitive->vertex_index_offset;
-	command->draw_indexed_primitive.num_instances = 1;
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::DRAW_INDEXED_PRIMITIVE);
+		command->draw_indexed_primitive.primitive_type = Utils::getPrimitiveType(render_primitive->type);
+		command->draw_indexed_primitive.index_format = ib->index_format;
+		command->draw_indexed_primitive.num_indices = ib->num_indices;
+		command->draw_indexed_primitive.base_index = render_primitive->base_index;
+		command->draw_indexed_primitive.base_vertex = render_primitive->vertex_index_offset;
+		command->draw_indexed_primitive.num_instances = 1;
+	}
 }
 }

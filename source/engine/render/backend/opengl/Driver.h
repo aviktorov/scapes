@@ -211,6 +211,7 @@ struct Command
 
 	CommandType type {CommandType::NONE};
 	Command *next {nullptr};
+
 	union
 	{
 		Rect viewport;
@@ -246,9 +247,14 @@ struct CommandBuffer : public render::backend::CommandBuffer
 {
 	CommandBufferType type {CommandBufferType::PRIMARY};
 	CommandBufferState state {CommandBufferState::INITIAL};
+
+	Buffer *push_constants {nullptr};
+	void *push_constants_mapped_memory {nullptr};
+
+	// TODO: sync primitives
+
 	Command *first {nullptr};
 	Command *last {nullptr};
-	// TODO: sync primitives
 };
 
 struct UniformBuffer : public backend::UniformBuffer
@@ -631,6 +637,8 @@ private:
 	{
 		MAX_BIND_SETS = 16,
 		MAX_SHADERS = static_cast<int>(ShaderType::MAX),
+		MAX_PUSH_CONSTANT_SIZE = 128,
+		UNIFORM_BUFFER_BINDING_OFFSET = 1, // zero slot is taken by push constants
 	};
 
 	struct PipelineState
@@ -688,6 +696,9 @@ private:
 	PipelineStateOverrides pipeline_state_overrides;
 	RenderPassState render_pass_state;
 	bool pipeline_dirty { true };
+
+	uint8_t push_constants[MAX_PUSH_CONSTANT_SIZE];
+	uint8_t push_constants_size {0};
 };
 
 }
