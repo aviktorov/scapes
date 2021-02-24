@@ -37,10 +37,10 @@ namespace config
 		"shaders/deferred/ssr_trace.frag",
 		"shaders/deferred/ssr_resolve.vert",
 		"shaders/deferred/ssr_resolve.frag",
-		"shaders/deferred/ssr_temporal_filter.vert",
-		"shaders/deferred/ssr_temporal_filter.frag",
 		"shaders/deferred/composite.vert",
 		"shaders/deferred/composite.frag",
+		"shaders/deferred/temporal_filter.vert",
+		"shaders/deferred/temporal_filter.frag",
 		"shaders/deferred/final.vert",
 		"shaders/deferred/final.frag",
 	};

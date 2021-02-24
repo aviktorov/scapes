@@ -58,7 +58,9 @@ void Application::update()
 	const glm::vec3 &up = {0.0f, 0.0f, 1.0f};
 	const glm::vec3 &zero = {0.0f, 0.0f, 0.0f};
 
-	const float aspect = swap_chain->getWidth() / (float)swap_chain->getHeight();
+	const float width = static_cast<float>(swap_chain->getWidth());
+	const float height = static_cast<float>(swap_chain->getHeight());
+	const float aspect =  width / height;
 	const float zNear = 0.1f;
 	const float zFar = 10000.0f;
 
@@ -82,9 +84,6 @@ void Application::update()
 	state.cameraPosWS = cameraPos;
 	state.cameraParams = cameraParams;
 	state.currentTime = time;
-
-	static float f = 0.0f;
-	static int counter = 0;
 
 	ImGui::Begin("Material Parameters");
 
@@ -168,6 +167,14 @@ void Application::update()
 	ImGui::EndGroup();
 
 	ImGui::End();
+
+	// TODO: move to render graph
+	// patch projection matrix for temporal supersampling
+	const glm::vec2 &temporalSample = state.temporalSamples[state.currentTemporalFrame];
+	state.proj[2][0] = temporalSample.x / width;
+	state.proj[2][1] = temporalSample.y / height;
+
+	state.currentTemporalFrame = (state.currentTemporalFrame + 1) % ApplicationState::MAX_TEMPORAL_FRAMES;
 }
 
 /*
@@ -321,6 +328,25 @@ void Application::initRenderers()
 {
 	render_graph = new RenderGraph(driver, compiler);
 	render_graph->init(resources, swap_chain->getWidth(), swap_chain->getHeight());
+
+	const uint8_t num_columns = ApplicationState::MAX_TEMPORAL_FRAMES / 4;
+	const uint8_t num_rows = ApplicationState::MAX_TEMPORAL_FRAMES / num_columns;
+
+	// Halton 2,3 sequence
+	const float halton2[] = { 1.0f / 2.0f, 1.0f / 4.0f, 3.0f / 4.0f, 1.0f / 8.0f };
+	const float halton3[] = { 1.0f / 3.0f, 2.0f / 3.0f, 1.0f / 9.0f, 4.0f / 9.0f };
+
+	for (uint8_t y = 0; y < num_rows; ++y)
+	{
+		for (uint8_t x = 0; x < num_columns; ++x)
+		{
+			glm::vec2 &sample = state.temporalSamples[x + y * num_columns];
+			sample.x = halton2[x];
+			sample.y = halton3[y];
+
+			sample = sample * 2.0f - 1.0f;
+		}
+	}
 }
 
 void Application::shutdownRenderers()

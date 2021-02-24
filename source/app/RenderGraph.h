@@ -63,13 +63,6 @@ struct SSAOKernel
 	render::backend::BindSet *bindings {nullptr};
 };
 
-struct SSAO
-{
-	render::backend::BindSet *bindings {nullptr};
-	render::backend::Texture *texture {nullptr};       // r8, ao factor for indirect diffuse
-	render::backend::FrameBuffer *framebuffer {nullptr};
-};
-
 struct SSRData
 {
 	struct CPUData
@@ -86,16 +79,13 @@ struct SSRData
 	render::backend::BindSet *bindings {nullptr};
 };
 
-struct SSR
+// SSAO, r8, ao factor
+// SSR trace, rgba8, trace data
+// SSR resolve, rgba16f, indirect specular
+// Composite, rgba16f, hdr linear color
+struct RenderBuffer
 {
-	render::backend::BindSet *bindings {nullptr};
-	render::backend::Texture *texture {nullptr};         // rgba16f, combined indirect specular or rgba8, trace data
-	render::backend::FrameBuffer *framebuffer {nullptr};
-};
-
-struct Composite
-{
-	render::backend::Texture *hdr_color {nullptr};       // rga16f, hdr linear color
+	render::backend::Texture *texture {nullptr};
 	render::backend::FrameBuffer *framebuffer {nullptr};
 	render::backend::BindSet *bindings {nullptr};
 };
@@ -123,13 +113,13 @@ public:
 	const SSAOKernel &getSSAOKernel() const { return ssao_kernel; }
 	SSAOKernel &getSSAOKernel() { return ssao_kernel; }
 
-	const SSAO &getSSAONoised() const { return ssao_noised; }
-	const SSAO &getSSAOBlurred() const { return ssao_blurred; }
+	const RenderBuffer &getSSAONoised() const { return ssao_noised; }
+	const RenderBuffer &getSSAOBlurred() const { return ssao_blurred; }
 
 	const SSRData &getSSRData() const { return ssr_data; }
 	SSRData &getSSRData() { return ssr_data; }
 
-	const SSR &getSSRTrace() const { return ssr_trace; }
+	const RenderBuffer &getSSRTrace() const { return ssr_trace; }
 
 	void buildSSAOKernel();
 
@@ -140,20 +130,20 @@ private:
 	void initSSAOKernel();
 	void shutdownSSAOKernel();
 
-	void initSSAO(SSAO &ssao, uint32_t width, uint32_t height);
-	void shutdownSSAO(SSAO &ssao);
+	void initSSAO(RenderBuffer &ssao, uint32_t width, uint32_t height);
+	void shutdownSSAO(RenderBuffer &ssao);
 
 	void initSSRData(const render::Texture *blue_noise);
 	void shutdownSSRData();
 
-	void initSSR(SSR &ssr, render::backend::Format format, uint32_t width, uint32_t height);
-	void shutdownSSR(SSR &ssr);
+	void initSSR(RenderBuffer &ssr, render::backend::Format format, uint32_t width, uint32_t height);
+	void shutdownSSR(RenderBuffer &ssr);
 
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
-	void initComposite(Composite &composite, uint32_t width, uint32_t height);
-	void shutdownComposite(Composite &composite);
+	void initComposite(RenderBuffer &composite, uint32_t width, uint32_t height);
+	void shutdownComposite(RenderBuffer &composite);
 
 	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderSSAO(const Scene *scene, const render::RenderFrame &frame);
@@ -163,6 +153,8 @@ private:
 	void renderSSRTemporalFilter(const Scene *scene, const render::RenderFrame &frame);
 	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
+	void renderCompositeTemporalFilter(const Scene *scene, const render::RenderFrame &frame);
+	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const render::RenderFrame &frame);
 	void renderFinal(const Scene *scene, const render::RenderFrame &frame);
 
 private:
@@ -172,18 +164,19 @@ private:
 	GBuffer gbuffer;
 
 	SSAOKernel ssao_kernel;
-	SSAO ssao_noised;
-	SSAO ssao_blurred;
+	RenderBuffer ssao_noised;
+	RenderBuffer ssao_blurred;
 
 	SSRData ssr_data;
-	SSR ssr_trace;
-	SSR ssr_resolve;
-	SSR ssr_temporal_filter;
-	SSR old_ssr_temporal_filter;
+	RenderBuffer ssr_trace;
+	RenderBuffer ssr_temp;
+	RenderBuffer ssr;
+	RenderBuffer old_ssr;
 
 	LBuffer lbuffer;
-	Composite composite;
-	Composite old_composite;
+	RenderBuffer composite_temp;
+	RenderBuffer composite;
+	RenderBuffer old_composite;
 
 	render::Mesh *quad {nullptr};
 	ImGuiRenderer *imgui_renderer {nullptr};
@@ -203,8 +196,8 @@ private:
 	const render::Shader *ssr_resolve_pass_vertex {nullptr};
 	const render::Shader *ssr_resolve_pass_fragment {nullptr};
 
-	const render::Shader *ssr_temporal_filter_pass_vertex {nullptr};
-	const render::Shader *ssr_temporal_filter_pass_fragment {nullptr};
+	const render::Shader *temporal_filter_pass_vertex {nullptr};
+	const render::Shader *temporal_filter_pass_fragment {nullptr};
 
 	const render::Shader *composite_pass_vertex {nullptr};
 	const render::Shader *composite_pass_fragment {nullptr};

@@ -34,10 +34,10 @@ namespace config
 		PassSSRTraceFragment,
 		PassSSRResolveVertex,
 		PassSSRResolveFragment,
-		PassSSRTemporalFilterVertex,
-		PassSSRTemporalFilterFragment,
 		PassCompositeVertex,
 		PassCompositeFragment,
+		PassTemporalFilterVertex,
+		PassTemporalFilterFragment,
 		PassFinalVertex,
 		PassFinalFragment,
 	};
@@ -94,11 +94,11 @@ public:
 	inline const render::Shader *getSSRResolveVertexShader() const { return resources.getShader(config::Shaders::PassSSRResolveVertex); }
 	inline const render::Shader *getSSRResolveFragmentShader() const { return resources.getShader(config::Shaders::PassSSRResolveFragment); }
 
-	inline const render::Shader *getSSRTemporalFilterVertexShader() const { return resources.getShader(config::Shaders::PassSSRTemporalFilterVertex); }
-	inline const render::Shader *getSSRTemporalFilterFragmentShader() const { return resources.getShader(config::Shaders::PassSSRTemporalFilterFragment); }
-
 	inline const render::Shader *getCompositeVertexShader() const { return resources.getShader(config::Shaders::PassCompositeVertex); }
 	inline const render::Shader *getCompositeFragmentShader() const { return resources.getShader(config::Shaders::PassCompositeFragment); }
+
+	inline const render::Shader *getTemporalFilterVertexShader() const { return resources.getShader(config::Shaders::PassTemporalFilterVertex); }
+	inline const render::Shader *getTemporalFilterFragmentShader() const { return resources.getShader(config::Shaders::PassTemporalFilterFragment); }
 
 	inline const render::Shader *getFinalVertexShader() const { return resources.getShader(config::Shaders::PassFinalVertex); }
 	inline const render::Shader *getFinalFragmentShader() const { return resources.getShader(config::Shaders::PassFinalFragment); }

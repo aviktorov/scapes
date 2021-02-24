@@ -6,6 +6,10 @@ Useful Links:
     - A DDS loader: nv_dds + manual patch (https://github.com/paroj/nv_dds) / gli (https://github.com/g-truc/gli)
     - Crunch: advanced DXTn compression library (https://github.com/Unity-Technologies/crunch)
 
+Papers:
+    - Temporal Supersampling in UE4 : https://de45xmedrsdbp.cloudfront.net/Resources/files/TemporalAA_small-59732822.pdf
+    - An Excursion in Temporal Supersampling: https://developer.download.nvidia.com/gameworks/events/GDC2016/msalvi_temporal_supersampling.pdf
+
 Vulkan specific:
     - Vulkan SDK: (https://vulkan.lunarg.com/sdk/home)
     - A Vulkan loader: volk (https://github.com/zeux/volk)
@@ -50,20 +54,22 @@ PBR Sandbox:
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
+        ☐ Temporal Filter Improvements
+            ☐ Tone map -> TAA accumulate -> Reverse Tone Map
+            ☐ Neighborhood clipping
+        ☐ First person camera (WASD controls & mouse aim)
+    Stream 55:
         ☐ Implement old frame reprojection
-    Stream 54:
         ☐ Animate blue noise for better TAA sampling
-        ☐ Add temporal filter
-            ☐ Add camera jitter
-                ☐ Add frame counter (up tp 16)
-                ☐ Add samples
-                    ☐ Uniform grid
-                    ☐ Halton 2,3
-            ☐ Implement sample accumulation pass
-                ☐ Average(old, current)
-                ☐ Exponential (move alpha coeff to imgui)
+    Stream 54:
+        ✔ Add camera jitter @done (2/19/2021, 9:50:25 PM)
+            ✔ Add frame counter (up tp 16) @done (2/19/2021, 9:50:26 PM)
+            ✔ Add samples @done (2/19/2021, 9:50:26 PM)
+                ✔ Uniform grid @done (2/19/2021, 9:50:27 PM)
+                ✔ Halton 2,3 @done (2/19/2021, 10:37:22 PM)
+        ✔ Add temporal accumulation for the whole frame @done (2/19/2021, 9:50:28 PM)
+        ✔ Unify temporal accumulation pass for SSR & TAA @done (2/19/2021, 11:00:14 PM)
     Stream 53:
-        Reference: https://de45xmedrsdbp.cloudfront.net/Resources/files/TemporalAA_small-59732822.pdf
         ✔ Add SSR temporal filter @done (2/16/2021, 10:16:59 PM)
             ✔ Add naive jitter (blue noise offset) @done (2/16/2021, 10:17:00 PM)
             ✔ Add accumulation pass (w/o reprojection) @done (2/16/2021, 10:17:00 PM)
