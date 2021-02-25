@@ -245,11 +245,17 @@ enum class CommandBufferState : uint8_t
 
 struct CommandBuffer : public render::backend::CommandBuffer
 {
+	enum
+	{
+		MAX_PUSH_CONSTANT_BUFFER_SIZE = 0x01000000,
+	};
+
 	CommandBufferType type {CommandBufferType::PRIMARY};
 	CommandBufferState state {CommandBufferState::INITIAL};
 
 	Buffer *push_constants {nullptr};
 	void *push_constants_mapped_memory {nullptr};
+	uint32_t push_constants_offset {0};
 
 	// TODO: sync primitives
 
@@ -696,6 +702,8 @@ private:
 	PipelineStateOverrides pipeline_state_overrides;
 	RenderPassState render_pass_state;
 	bool pipeline_dirty { true };
+
+	GLint uniform_buffer_offset_alignment {1};
 
 	uint8_t push_constants[MAX_PUSH_CONSTANT_SIZE];
 	uint8_t push_constants_size {0};

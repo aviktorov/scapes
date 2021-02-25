@@ -50,6 +50,7 @@ static bool command_buffer_reset(CommandBuffer *gl_command_buffer)
 
 	command_buffer_clear(gl_command_buffer);
 	gl_command_buffer->state = CommandBufferState::INITIAL;
+	gl_command_buffer->push_constants_offset = 0;
 
 	return true;
 }
@@ -357,6 +358,8 @@ bool Driver::init()
 	pipeline_state.depth_compare_func = GL_LEQUAL;
 	pipeline_state.blend_src_factor = GL_ZERO;
 	pipeline_state.blend_dst_factor = GL_ZERO;
+
+	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniform_buffer_offset_alignment);
 
 	return true;
 }
@@ -945,10 +948,11 @@ backend::CommandBuffer *Driver::createCommandBuffer(
 
 	GLbitfield usage_flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 
-	result->push_constants = Utils::createImmutableBuffer(GL_UNIFORM_BUFFER, MAX_PUSH_CONSTANT_SIZE, nullptr, usage_flags);
+	result->push_constants = Utils::createImmutableBuffer(GL_UNIFORM_BUFFER, CommandBuffer::MAX_PUSH_CONSTANT_BUFFER_SIZE, nullptr, usage_flags);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, result->push_constants->id);
-	result->push_constants_mapped_memory = glMapBufferRange(GL_UNIFORM_BUFFER, 0, MAX_PUSH_CONSTANT_SIZE, usage_flags);
+	result->push_constants_mapped_memory = glMapBufferRange(GL_UNIFORM_BUFFER, 0, CommandBuffer::MAX_PUSH_CONSTANT_BUFFER_SIZE, usage_flags);
+	result->push_constants_offset = 0;
 
 	// TODO: sync primitives
 
@@ -1978,6 +1982,7 @@ void Driver::beginRenderPass(
 		}
 	}
 
+	render_pass_state = {};
 	render_pass_state.resolve = (gl_frame_buffer->resolve_fbo_id != 0);
 	render_pass_state.src_fbo_id = gl_frame_buffer->main_fbo_id;
 	render_pass_state.dst_fbo_id = gl_frame_buffer->resolve_fbo_id;
@@ -2089,6 +2094,7 @@ void Driver::beginRenderPass(
 		command->clear_color_buffer.clear_color[3] = clear_value.color.float32[3];
 	}
 
+	render_pass_state = {};
 	render_pass_state.resolve = (gl_swap_chain->msaa_fbo_id != 0);
 	render_pass_state.src_fbo_id = gl_swap_chain->msaa_fbo_id;
 	render_pass_state.dst_fbo_id = 0;
@@ -2147,13 +2153,28 @@ void Driver::drawIndexedPrimitive(
 
 	if (push_constants_size > 0)
 	{
-		memcpy(gl_command_buffer->push_constants_mapped_memory, push_constants, push_constants_size);
+		uint32_t new_offset = gl_command_buffer->push_constants_offset + push_constants_size;
+
+		uint32_t padding = push_constants_size % uniform_buffer_offset_alignment;
+		if (padding > 0)
+			padding = uniform_buffer_offset_alignment - padding;
+
+		new_offset += padding;
+
+		assert(new_offset < CommandBuffer::MAX_PUSH_CONSTANT_BUFFER_SIZE);
+
+		uint8_t *buffer = reinterpret_cast<uint8_t *>(gl_command_buffer->push_constants_mapped_memory);
+		buffer += gl_command_buffer->push_constants_offset;
+
+		memcpy(buffer, push_constants, push_constants_size);
 
 		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_UNIFORM_BUFFER);
 		command->bind_uniform_buffer.binding = 0;
 		command->bind_uniform_buffer.id = gl_command_buffer->push_constants->id;
-		command->bind_uniform_buffer.offset = 0;
+		command->bind_uniform_buffer.offset = gl_command_buffer->push_constants_offset;
 		command->bind_uniform_buffer.size = push_constants_size;
+
+		gl_command_buffer->push_constants_offset = new_offset;
 	}
 
 	const VertexBuffer *vb = static_cast<const VertexBuffer *>(render_primitive->vertices);
