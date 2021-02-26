@@ -420,8 +420,8 @@ GLenum Utils::getCullMode(CullMode mode)
 	static GLenum cull_modes[] =
 	{
 		GL_NONE,
-		GL_BACK,
 		GL_FRONT,
+		GL_BACK,
 		GL_FRONT_AND_BACK,
 	};
 
