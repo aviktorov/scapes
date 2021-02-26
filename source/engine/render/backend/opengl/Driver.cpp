@@ -87,6 +87,8 @@ static bool command_buffer_end(CommandBuffer *gl_command_buffer)
 
 static Command *command_buffer_emit(CommandBuffer *gl_command_buffer, CommandType type)
 {
+	assert(gl_command_buffer->state == CommandBufferState::RECORDING);
+
 	Command *command = new Command();
 	memset(command, 0, sizeof(Command));
 
@@ -101,6 +103,30 @@ static Command *command_buffer_emit(CommandBuffer *gl_command_buffer, CommandTyp
 	gl_command_buffer->last = command;
 
 	return command;
+}
+
+static uint32_t command_buffer_push_constants(CommandBuffer *gl_command_buffer, uint8_t push_constants_size, const uint8_t *push_constants, uint32_t alignment)
+{
+	assert(gl_command_buffer->state == CommandBufferState::RECORDING);
+
+	uint32_t new_offset = gl_command_buffer->push_constants_offset + push_constants_size;
+
+	uint32_t padding = push_constants_size % alignment;
+	if (padding > 0)
+		padding = alignment - padding;
+
+	new_offset += padding;
+
+	assert(new_offset < CommandBuffer::MAX_PUSH_CONSTANT_BUFFER_SIZE);
+
+	uint8_t *buffer = reinterpret_cast<uint8_t *>(gl_command_buffer->push_constants_mapped_memory);
+	buffer += gl_command_buffer->push_constants_offset;
+
+	memcpy(buffer, push_constants, push_constants_size);
+
+	gl_command_buffer->push_constants_offset = new_offset;
+
+	return new_offset;
 }
 
 static void command_submit_set_viewport(const Command::Rect &data)
@@ -153,6 +179,9 @@ static void command_submit_clear_color_buffer(const Command::ClearColorBuffer &d
 
 static void command_submit_clear_depth_stencil_buffer(const Command::ClearDepthStencilBuffer &data)
 {
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(1);
+	glStencilMask(0xFFFFFFFF);
 	glClearBufferfi(GL_DEPTH_STENCIL, 0, data.depth, data.stencil);
 }
 
@@ -341,6 +370,7 @@ bool Driver::init()
 
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_SCISSOR_TEST);
+	glFrontFace(GL_CCW);
 
 	if (debug)
 	{
@@ -355,9 +385,12 @@ bool Driver::init()
 	memset(&push_constants, 0, MAX_PUSH_CONSTANT_SIZE);
 	push_constants_size = 0;
 
-	pipeline_state.depth_compare_func = GL_LEQUAL;
-	pipeline_state.blend_src_factor = GL_ZERO;
-	pipeline_state.blend_dst_factor = GL_ZERO;
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(0);
+	glDepthFunc(GL_LEQUAL);
+	glDisable(GL_BLEND);
+	glBlendFunc(GL_ZERO, GL_ZERO);
+	glDisable(GL_CULL_FACE);
 
 	glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniform_buffer_offset_alignment);
 
@@ -2153,28 +2186,13 @@ void Driver::drawIndexedPrimitive(
 
 	if (push_constants_size > 0)
 	{
-		uint32_t new_offset = gl_command_buffer->push_constants_offset + push_constants_size;
-
-		uint32_t padding = push_constants_size % uniform_buffer_offset_alignment;
-		if (padding > 0)
-			padding = uniform_buffer_offset_alignment - padding;
-
-		new_offset += padding;
-
-		assert(new_offset < CommandBuffer::MAX_PUSH_CONSTANT_BUFFER_SIZE);
-
-		uint8_t *buffer = reinterpret_cast<uint8_t *>(gl_command_buffer->push_constants_mapped_memory);
-		buffer += gl_command_buffer->push_constants_offset;
-
-		memcpy(buffer, push_constants, push_constants_size);
-
 		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_UNIFORM_BUFFER);
 		command->bind_uniform_buffer.binding = 0;
 		command->bind_uniform_buffer.id = gl_command_buffer->push_constants->id;
 		command->bind_uniform_buffer.offset = gl_command_buffer->push_constants_offset;
 		command->bind_uniform_buffer.size = push_constants_size;
 
-		gl_command_buffer->push_constants_offset = new_offset;
+		command_buffer_push_constants(gl_command_buffer, push_constants_size, push_constants, uniform_buffer_offset_alignment);
 	}
 
 	const VertexBuffer *vb = static_cast<const VertexBuffer *>(render_primitive->vertices);
