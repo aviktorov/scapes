@@ -75,15 +75,30 @@ void Application::update()
 	cameraParams.z = 1.0f / zNear;
 	cameraParams.w = 1.0f / zFar;
 
-	state.world = glm::mat4(1.0f);
 	state.view = glm::lookAt(cameraPos, zero, up);
-	state.invView = glm::inverse(state.view);
-	state.proj = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
-	state.proj[1][1] *= -1;
-	state.invProj = glm::inverse(state.proj);
+	state.projection = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
+
+	state.projection[1][1] *= -1;
+
+	// TODO: move to render graph
+	// patch projection matrix for temporal supersampling
+	const glm::vec2 &temporalSample = state.temporalSamples[state.currentTemporalFrame];
+	state.projection[2][0] = temporalSample.x / width;
+	state.projection[2][1] = temporalSample.y / height;
+
+	state.currentTemporalFrame = (state.currentTemporalFrame + 1) % ApplicationState::MAX_TEMPORAL_FRAMES;
+
+	state.iview = glm::inverse(state.view);
+	state.iprojection = glm::inverse(state.projection);
 	state.cameraPosWS = cameraPos;
 	state.cameraParams = cameraParams;
 	state.currentTime = time;
+
+	if (state.firstFrame)
+	{
+		state.viewOld = state.view;
+		state.firstFrame = false;
+	}
 
 	ImGui::Begin("Material Parameters");
 
@@ -167,14 +182,6 @@ void Application::update()
 	ImGui::EndGroup();
 
 	ImGui::End();
-
-	// TODO: move to render graph
-	// patch projection matrix for temporal supersampling
-	const glm::vec2 &temporalSample = state.temporalSamples[state.currentTemporalFrame];
-	state.proj[2][0] = temporalSample.x / width;
-	state.proj[2][1] = temporalSample.y / height;
-
-	state.currentTemporalFrame = (state.currentTemporalFrame + 1) % ApplicationState::MAX_TEMPORAL_FRAMES;
 }
 
 /*
@@ -200,6 +207,13 @@ void Application::render()
 	}
 }
 
+void Application::postRender()
+{
+	state.viewOld = state.view;
+
+	// TODO: call render_scene->postRender();
+}
+
 /*
  */
 void Application::mainloop()
@@ -217,6 +231,7 @@ void Application::mainloop()
 		ImGui::Render();
 
 		render();
+		postRender();
 		glfwPollEvents();
 	}
 
@@ -430,4 +445,5 @@ void Application::recreateSwapChain()
 
 	swap_chain->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	render_graph->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+	state.firstFrame = true;
 }

@@ -24,7 +24,7 @@ layout(location = 0) out vec4 outSSR;
 
 vec2 getUV(vec3 positionVS)
 {
-	vec4 ndc = ubo.proj * vec4(positionVS, 1.0f);
+	vec4 ndc = ubo.projection * vec4(positionVS, 1.0f);
 	ndc.xyz /= ndc.w;
 	return ndc.xy * 0.5f + vec2(0.5f);
 }
@@ -69,7 +69,7 @@ float InterleavedGradientNoise(in vec2 pos, in vec2 random)
  */
 void main()
 {
-	vec3 positionVS = getPositionVS(fragTexCoord, ubo.invProj);
+	vec3 positionVS = getPositionVS(fragTexCoord, ubo.iprojection);
 	vec3 normalVS = getNormalVS(fragTexCoord);
 
 	vec3 viewVS = -normalize(positionVS);

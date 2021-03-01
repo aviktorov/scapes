@@ -15,10 +15,13 @@ layout(location = 2) in vec3 fragTangentVS;
 layout(location = 3) in vec3 fragBinormalVS;
 layout(location = 4) in vec3 fragNormalVS;
 layout(location = 5) in vec3 fragPositionVS;
+layout(location = 6) in vec4 fragPositionNdc;
+layout(location = 7) in vec4 fragPositionNdcOld;
 
 layout(location = 0) out vec4 outBaseColor;
 layout(location = 1) out vec3 outNormal;
 layout(location = 2) out vec2 outShading;
+layout(location = 3) out vec2 outVelocity;
 
 void main()
 {
@@ -41,9 +44,13 @@ void main()
 	roughness = lerp(roughness, ubo.userRoughness, ubo.lerpUserValues);
 	metalness = lerp(metalness, ubo.userMetalness, ubo.lerpUserValues);
 
+	vec2 velocity = (fragPositionNdcOld.xy / fragPositionNdcOld.w - fragPositionNdc.xy / fragPositionNdc.w) * 0.5f;
+
 	outBaseColor.rgb = baseColor.rgb;
 	outBaseColor.a = 1.0f;
 
 	outNormal = normalVS.xyz;
 	outShading = vec2(roughness, metalness);
+
+	outVelocity = velocity;
 }

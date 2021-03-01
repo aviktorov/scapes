@@ -65,7 +65,7 @@ void Renderer::render(const ApplicationResources *scene, const SkyLight *sky_lig
 
 	driver->clearPushConstants();
 	driver->clearBindSets();
-	driver->pushBindSet(frame.bind_set);
+	driver->pushBindSet(frame.bindings);
 	driver->pushBindSet(scene_bind_set);
 	driver->pushBindSet(sky_light->getBindSet());
 

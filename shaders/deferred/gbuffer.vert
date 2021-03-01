@@ -22,10 +22,14 @@ layout(location = 2) out vec3 fragTangentVS;
 layout(location = 3) out vec3 fragBinormalVS;
 layout(location = 4) out vec3 fragNormalVS;
 layout(location = 5) out vec3 fragPositionVS;
+layout(location = 6) out vec4 fragPositionNdc;
+layout(location = 7) out vec4 fragPositionNdcOld;
 
 void main() {
-	mat4 modelview = ubo.view * ubo.world * node.transform;
-	gl_Position = ubo.proj * modelview * vec4(inPosition, 1.0f);
+	mat4 modelview = ubo.view * node.transform;
+	mat4 modelviewOld = ubo.viewOld * node.transform; // TODO: old node transform
+
+	gl_Position = ubo.projection * modelview * vec4(inPosition, 1.0f);
 
 	fragColor = inColor;
 	fragTexCoord = inTexCoord;
@@ -34,4 +38,6 @@ void main() {
 	fragBinormalVS = vec3(modelview * vec4(inBinormal, 0.0f));
 	fragNormalVS = vec3(modelview * vec4(inNormal, 0.0f));
 	fragPositionVS = vec3(modelview * vec4(inPosition, 1.0f));
+	fragPositionNdc = vec4(ubo.projection * modelview * vec4(inPosition, 1.0f));
+	fragPositionNdcOld = vec4(ubo.projection * modelviewOld * vec4(inPosition, 1.0f));
 }

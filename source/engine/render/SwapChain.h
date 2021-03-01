@@ -10,7 +10,7 @@ namespace render
 	struct RenderFrame
 	{
 		backend::SwapChain *swap_chain {nullptr};
-		backend::BindSet *bind_set {nullptr};
+		backend::BindSet *bindings {nullptr};
 		backend::CommandBuffer *command_buffer {nullptr};
 		backend::UniformBuffer *uniform_buffer {nullptr};
 		void *uniform_buffer_data {nullptr};

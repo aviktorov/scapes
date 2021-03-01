@@ -138,24 +138,27 @@ void RenderGraph::initGBuffer(uint32_t width, uint32_t height)
 	gbuffer.normal = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
 	gbuffer.shading = driver->createTexture2D(width, height, 1, Format::R8G8_UNORM);
 	gbuffer.depth = driver->createTexture2D(width, height, 1, Format::D32_SFLOAT);
+	gbuffer.velocity = driver->createTexture2D(width, height, 1, Format::R16G16_SFLOAT);
 
 	FrameBufferAttachment gbuffer_color_attachments[] = {
 		{ gbuffer.base_color },
 		{ gbuffer.normal },
 		{ gbuffer.shading },
+		{ gbuffer.velocity },
 	};
 
 	FrameBufferAttachment gbuffer_depth_attachments[] = {
 		{ gbuffer.depth },
 	};
 
-	gbuffer.framebuffer = driver->createFrameBuffer(3, gbuffer_color_attachments, gbuffer_depth_attachments);
+	gbuffer.framebuffer = driver->createFrameBuffer(4, gbuffer_color_attachments, gbuffer_depth_attachments);
 	gbuffer.bindings = driver->createBindSet();
 
 	driver->bindTexture(gbuffer.bindings, 0, gbuffer.base_color);
 	driver->bindTexture(gbuffer.bindings, 1, gbuffer.normal);
 	driver->bindTexture(gbuffer.bindings, 2, gbuffer.shading);
 	driver->bindTexture(gbuffer.bindings, 3, gbuffer.depth);
+	driver->bindTexture(gbuffer.bindings, 4, gbuffer.velocity);
 }
 
 void RenderGraph::shutdownGBuffer()
@@ -164,6 +167,7 @@ void RenderGraph::shutdownGBuffer()
 	driver->destroyTexture(gbuffer.depth);
 	driver->destroyTexture(gbuffer.normal);
 	driver->destroyTexture(gbuffer.shading);
+	driver->destroyTexture(gbuffer.velocity);
 	driver->destroyFrameBuffer(gbuffer.framebuffer);
 	driver->destroyBindSet(gbuffer.bindings);
 
@@ -511,13 +515,13 @@ void RenderGraph::renderGBuffer(const Scene *scene, const render::RenderFrame &f
 	assert(gbuffer_pass_vertex);
 	assert(gbuffer_pass_fragment);
 
-	RenderPassClearValue clear_values[4];
-	memset(clear_values, 0, sizeof(RenderPassClearValue) * 4);
+	RenderPassClearValue clear_values[5];
+	memset(clear_values, 0, sizeof(RenderPassClearValue) * 5);
 
-	clear_values[3].depth_stencil = {1.0f, 0};
+	clear_values[4].depth_stencil = {1.0f, 0};
 
-	RenderPassLoadOp load_ops[4] = { RenderPassLoadOp::CLEAR, RenderPassLoadOp::CLEAR, RenderPassLoadOp::CLEAR, RenderPassLoadOp::CLEAR };
-	RenderPassStoreOp store_ops[4] = { RenderPassStoreOp::STORE, RenderPassStoreOp::STORE, RenderPassStoreOp::STORE, RenderPassStoreOp::STORE };
+	RenderPassLoadOp load_ops[5] = { RenderPassLoadOp::CLEAR, RenderPassLoadOp::CLEAR, RenderPassLoadOp::CLEAR, RenderPassLoadOp::CLEAR, RenderPassLoadOp::CLEAR };
+	RenderPassStoreOp store_ops[5] = { RenderPassStoreOp::STORE, RenderPassStoreOp::STORE, RenderPassStoreOp::STORE, RenderPassStoreOp::STORE, RenderPassStoreOp::STORE };
 
 	RenderPassInfo info;
 	info.clear_values = clear_values;
@@ -528,7 +532,7 @@ void RenderGraph::renderGBuffer(const Scene *scene, const render::RenderFrame &f
 
 	driver->clearPushConstants();
 	driver->allocateBindSets(2);
-	driver->setBindSet(0, frame.bind_set);
+	driver->setBindSet(0, frame.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, gbuffer_pass_vertex->getBackend());
@@ -565,7 +569,7 @@ void RenderGraph::renderSSAO(const Scene *scene, const render::RenderFrame &fram
 
 	driver->clearPushConstants();
 	driver->allocateBindSets(3);
-	driver->setBindSet(0, frame.bind_set);
+	driver->setBindSet(0, frame.bindings);
 	driver->setBindSet(1, gbuffer.bindings);
 	driver->setBindSet(2, ssao_kernel.bindings);
 
@@ -593,7 +597,7 @@ void RenderGraph::renderSSAOBlur(const Scene *scene, const render::RenderFrame &
 
 	driver->clearPushConstants();
 	driver->allocateBindSets(2);
-	driver->setBindSet(0, frame.bind_set);
+	driver->setBindSet(0, frame.bindings);
 	driver->setBindSet(1, ssao_noised.bindings);
 
 	driver->clearShaders();
@@ -620,7 +624,7 @@ void RenderGraph::renderSSRTrace(const Scene *scene, const render::RenderFrame &
 
 	driver->clearPushConstants();
 	driver->allocateBindSets(3);
-	driver->setBindSet(0, frame.bind_set);
+	driver->setBindSet(0, frame.bindings);
 	driver->setBindSet(1, gbuffer.bindings);
 	driver->setBindSet(2, ssr_data.bindings);
 
@@ -648,7 +652,7 @@ void RenderGraph::renderSSRResolve(const Scene *scene, const render::RenderFrame
 
 	driver->clearPushConstants();
 	driver->allocateBindSets(5);
-	driver->setBindSet(0, frame.bind_set);
+	driver->setBindSet(0, frame.bindings);
 	driver->setBindSet(1, gbuffer.bindings);
 	driver->setBindSet(2, ssr_trace.bindings);
 	driver->setBindSet(3, ssr_data.bindings);
@@ -684,7 +688,7 @@ void RenderGraph::renderLBuffer(const Scene *scene, const render::RenderFrame &f
 
 	driver->clearPushConstants();
 	driver->allocateBindSets(3);
-	driver->setBindSet(0, frame.bind_set);
+	driver->setBindSet(0, frame.bindings);
 	driver->setBindSet(1, gbuffer.bindings);
 
 	for (size_t i = 0; i < scene->getNumLights(); ++i)
@@ -762,9 +766,10 @@ void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer
 	driver->beginRenderPass(frame.command_buffer, current.framebuffer, &info);
 
 	driver->clearPushConstants();
-	driver->allocateBindSets(2);
-	driver->setBindSet(0, temp.bindings);
-	driver->setBindSet(1, old.bindings);
+	driver->allocateBindSets(3);
+	driver->setBindSet(0, gbuffer.bindings);
+	driver->setBindSet(1, temp.bindings);
+	driver->setBindSet(2, old.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, temporal_filter_pass_vertex->getBackend());
