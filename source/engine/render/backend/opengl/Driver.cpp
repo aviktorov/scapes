@@ -567,7 +567,6 @@ backend::VertexBuffer *Driver::createVertexBuffer(
 		glEnableVertexAttribArray(i);
 	}
 
-	glBindBuffer(result->data->type, result->data->id);
 	glBindVertexArray(0);
 
 	return result;
@@ -589,6 +588,7 @@ backend::IndexBuffer *Driver::createIndexBuffer(
 
 	result->data = Utils::createImmutableBuffer(GL_ELEMENT_ARRAY_BUFFER, Utils::getIndexSize(index_format) * num_indices, data, usage_flags);
 	result->num_indices = num_indices;
+	result->index_size = Utils::getIndexSize(index_format);
 	result->index_format = Utils::getIndexFormat(index_format);
 
 	return result;

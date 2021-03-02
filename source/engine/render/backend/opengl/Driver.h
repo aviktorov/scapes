@@ -30,6 +30,7 @@ struct IndexBuffer : public backend::IndexBuffer
 {
 	GLuint num_indices {0};
 	GLenum index_format {GL_UNSIGNED_INT};
+	GLint index_size {4};
 	Buffer *data {nullptr};
 };
 
