@@ -2235,8 +2235,8 @@ void Driver::drawIndexedPrimitive(
 		Command *command = command_buffer_emit(gl_command_buffer, CommandType::DRAW_INDEXED_PRIMITIVE);
 		command->draw_indexed_primitive.primitive_type = Utils::getPrimitiveType(render_primitive->type);
 		command->draw_indexed_primitive.index_format = ib->index_format;
-		command->draw_indexed_primitive.num_indices = ib->num_indices;
-		command->draw_indexed_primitive.base_index = render_primitive->base_index;
+		command->draw_indexed_primitive.num_indices = render_primitive->num_indices;
+		command->draw_indexed_primitive.base_index = render_primitive->base_index * ib->index_size;
 		command->draw_indexed_primitive.base_vertex = render_primitive->vertex_index_offset;
 		command->draw_indexed_primitive.num_instances = 1;
 	}
