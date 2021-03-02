@@ -4,6 +4,11 @@
 #include <render/Texture.h>
 #include <render/Shader.h>
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <GLM/glm.hpp>
+#include <GLM/gtc/matrix_transform.hpp>
+
 #include "imgui.h"
 #include <string>
 
@@ -19,7 +24,7 @@ static std::string vertex_shader_source =
 "layout(location = 0) in vec2 aPos;\n"
 "layout(location = 1) in vec2 aUV;\n"
 "layout(location = 2) in vec4 aColor;\n"
-"layout(push_constant) uniform uPushConstant { vec2 uScale; vec2 uTranslate; } pc;\n"
+"layout(push_constant) uniform uPushConstant { mat4 uProjection; } pc;\n"
 "\n"
 "out gl_PerVertex { vec4 gl_Position; };\n"
 "layout(location = 0) out struct { vec4 Color; vec2 UV; } Out;\n"
@@ -28,7 +33,7 @@ static std::string vertex_shader_source =
 "{\n"
 "    Out.Color = aColor;\n"
 "    Out.UV = aUV;\n"
-"    gl_Position = vec4(aPos * pc.uScale + pc.uTranslate, 0, 1);\n"
+"    gl_Position = pc.uProjection * vec4(aPos, 0.0f, 1.0f);\n"
 "}\n";
 
 static std::string fragment_shader_source = 
@@ -139,10 +144,11 @@ void ImGuiRenderer::updateBuffers(const ImDrawData *draw_data)
 	if (num_vertices == 0 || num_indices == 0)
 		return;
 
-	size_t index_size = sizeof(ImDrawIdx);
-	uint16_t vertex_size = static_cast<uint16_t>(sizeof(ImDrawVert));
+	constexpr size_t index_size = sizeof(ImDrawIdx);
+	constexpr uint16_t vertex_size = static_cast<uint16_t>(sizeof(ImDrawVert));
 
-	assert(index_size == 2 || index_size == 4);
+	static_assert(index_size == 2 || index_size == 4, "Wrong ImDrawIdx size");
+	static_assert(vertex_size == 20, "Wrong ImDrawVert size");
 
 	backend::IndexFormat index_format = backend::IndexFormat::UINT16;
 	if (index_size == 4)
@@ -199,15 +205,18 @@ void ImGuiRenderer::setupRenderState(const render::RenderFrame &frame, const ImD
 	driver->setShader(ShaderType::VERTEX, vertex_shader->getBackend());
 	driver->setShader(ShaderType::FRAGMENT, fragment_shader->getBackend());
 
-	float transform[4];
-	transform[0] = 2.0f / draw_data->DisplaySize.x;
-	transform[1] = 2.0f / draw_data->DisplaySize.y;
-	transform[2] = -1.0f - draw_data->DisplayPos.x * transform[0];
-	transform[3] = -1.0f - draw_data->DisplayPos.y * transform[1];
-	uint8_t size = static_cast<uint8_t>(sizeof(float) * 4);
+	float L = draw_data->DisplayPos.x;
+	float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+	float T = draw_data->DisplayPos.y;
+	float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+
+	if (!flipped)
+		std::swap(T,B);
+
+	glm::mat4 projection = glm::ortho(L, R, B, T, 0.0f, 1.0f);
 
 	driver->clearPushConstants();
-	driver->setPushConstants(size, transform);
+	driver->setPushConstants(sizeof(glm::mat4), &projection);
 
 	driver->setBlending(true);
 	driver->setBlendFactors(BlendFactor::SRC_ALPHA, BlendFactor::ONE_MINUS_SRC_ALPHA);
@@ -222,6 +231,8 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 	const ImVec2 &clip_offset = draw_data->DisplayPos;
 	const ImVec2 &clip_scale = draw_data->FramebufferScale;
 
+	ImVec2 fb_size(draw_data->DisplaySize.x * clip_scale.x, draw_data->DisplaySize.y * clip_scale.y); 
+
 	updateBuffers(draw_data);
 	setupRenderState(frame, draw_data);
 
@@ -231,7 +242,7 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 	primitive.indices = indices;
 
 	uint32_t index_offset = 0;
-	int32_t vertex_index_offset = 0;
+	int32_t vertex_offset = 0;
 
 	for (int i = 0; i < draw_data->CmdListsCount; ++i)
 	{
@@ -252,7 +263,7 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 			{
 				primitive.num_indices = command.ElemCount;
 				primitive.base_index = index_offset + command.IdxOffset;
-				primitive.vertex_index_offset = vertex_index_offset + command.VtxOffset;
+				primitive.vertex_index_offset = vertex_offset + command.VtxOffset;
 
 				backend::BindSet *bind_set = reinterpret_cast<backend::BindSet *>(command.TextureId);
 				driver->setBindSet(0, bind_set);
@@ -260,8 +271,15 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 				float x0 = (command.ClipRect.x - clip_offset.x) * clip_scale.x;
 				float y0 = (command.ClipRect.y - clip_offset.y) * clip_scale.y;
 				float x1 = (command.ClipRect.z - clip_offset.x) * clip_scale.x;
-				float y1 = (command.ClipRect.w - clip_offset.x) * clip_scale.y;
+				float y1 = (command.ClipRect.w - clip_offset.y) * clip_scale.y;
 				
+				if (flipped)
+				{
+					y0 = fb_size.y - y0;
+					y1 = fb_size.y - y1;
+					std::swap(y1, y0);
+				}
+
 				x0 = std::max(0.0f, x0);
 				y0 = std::max(0.0f, y0);
 
@@ -274,6 +292,6 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 		}
 
 		index_offset += list->IdxBuffer.Size;
-		vertex_index_offset += list->VtxBuffer.Size;
+		vertex_offset += list->VtxBuffer.Size;
 	}
 }

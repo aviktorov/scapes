@@ -47,6 +47,7 @@ private:
 	render::backend::IndexBuffer *indices {nullptr};
 	size_t index_buffer_size {0};
 	size_t vertex_buffer_size {0};
+	bool flipped {true};
 
 	render::backend::BindSet *font_bind_set {nullptr};
 	std::map<const render::backend::Texture *, render::backend::BindSet *> registered_textures;
