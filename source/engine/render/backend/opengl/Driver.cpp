@@ -191,6 +191,7 @@ static void command_submit_blit_frame_buffer(const Command::BlitFrameBuffer &dat
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, data.src_fbo_id);
 	glDrawBuffers(data.num_draw_buffers, data.draw_buffers);
 	glBlitFramebuffer(0, 0, data.width, data.height, 0, 0, data.width, data.height, data.mask, GL_NEAREST);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, data.dst_fbo_id);
 }
 
 static void command_submit_bind_frame_buffer(const Command::BindFrameBuffer &data)
@@ -2071,16 +2072,38 @@ void Driver::beginRenderPass(
 	}
 
 	// Emit resolve FBO commands
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
+		command->bind_frame_buffer.id = 0;
+		command->bind_frame_buffer.target = GL_FRAMEBUFFER;
+	}
+
+	uint32_t index = 0;
+
+	RenderPassLoadOp load_op = info->load_ops[index];
+	RenderPassClearValue clear_value = info->clear_values[index];
+
+	if (load_op == RenderPassLoadOp::CLEAR)
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_COLOR_BUFFER);
+		command->clear_color_buffer.buffer = 0;
+		command->clear_color_buffer.clear_color[0] = clear_value.color.float32[0];
+		command->clear_color_buffer.clear_color[1] = clear_value.color.float32[1];
+		command->clear_color_buffer.clear_color[2] = clear_value.color.float32[2];
+		command->clear_color_buffer.clear_color[3] = clear_value.color.float32[3];
+	}
+
+	// Emit main FBO commands
 	if (gl_swap_chain->msaa_fbo_id != 0)
 	{
 		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
 		command->bind_frame_buffer.id = gl_swap_chain->msaa_fbo_id;
 		command->bind_frame_buffer.target = GL_FRAMEBUFFER;
 
-		uint32_t index = 1;
+		index = 1;
 
-		RenderPassLoadOp load_op = info->load_ops[index];
-		RenderPassClearValue clear_value = info->clear_values[index];
+		load_op = info->load_ops[index];
+		clear_value = info->clear_values[index];
 
 		if (load_op == RenderPassLoadOp::CLEAR)
 		{
@@ -2103,28 +2126,6 @@ void Driver::beginRenderPass(
 			command->clear_depth_stencil_buffer.depth = clear_value.depth_stencil.depth;
 			command->clear_depth_stencil_buffer.stencil = clear_value.depth_stencil.stencil;
 		}
-	}
-
-	// Emit main FBO commands
-	{
-		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
-		command->bind_frame_buffer.id = 0;
-		command->bind_frame_buffer.target = GL_FRAMEBUFFER;
-	}
-
-	uint32_t index = 0;
-
-	RenderPassLoadOp load_op = info->load_ops[index];
-	RenderPassClearValue clear_value = info->clear_values[index];
-
-	if (load_op == RenderPassLoadOp::CLEAR)
-	{
-		Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_COLOR_BUFFER);
-		command->clear_color_buffer.buffer = 0;
-		command->clear_color_buffer.clear_color[0] = clear_value.color.float32[0];
-		command->clear_color_buffer.clear_color[1] = clear_value.color.float32[1];
-		command->clear_color_buffer.clear_color[2] = clear_value.color.float32[2];
-		command->clear_color_buffer.clear_color[3] = clear_value.color.float32[3];
 	}
 
 	render_pass_state = {};
@@ -2150,6 +2151,28 @@ void Driver::endRenderPass(
 	{
 		// TODO: log error
 		return;
+	}
+
+	// Emit viewport state
+	{
+		setViewport(0.0f, 0.0f, static_cast<float>(render_pass_state.width), static_cast<float>(render_pass_state.height));
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_VIEWPORT);
+		command->viewport.x = pipeline_state.viewport_x;
+		command->viewport.y = pipeline_state.viewport_y;
+		command->viewport.width = pipeline_state.viewport_width;
+		command->viewport.height = pipeline_state.viewport_height;
+	}
+
+	// Emit scissor state
+	{
+		setScissor(0, 0, render_pass_state.width, render_pass_state.height);
+
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::SET_SCISSOR);
+		command->scissor.x = pipeline_state.scissor_x;
+		command->scissor.y = pipeline_state.scissor_y;
+		command->scissor.width = pipeline_state.scissor_width;
+		command->scissor.height = pipeline_state.scissor_height;
 	}
 
 	if (render_pass_state.resolve)
