@@ -10,7 +10,7 @@ layout(location = 0) out vec4 outColor;
 vec2 IntegrateBRDF(float roughness, float dotNV)
 {
 	vec3 view;
-	view.x = sqrt(1.0f - dotNV * dotNV);
+	view.x = sqrt(saturate(1.0f - dotNV * dotNV));
 	view.y = 0.0f;
 	view.z = dotNV;
 
@@ -40,9 +40,9 @@ vec2 IntegrateBRDF(float roughness, float dotNV)
 		float G = G_SmithGGX(sample_surface, roughness);
 		float F = F_Shlick(sample_surface);
 
-		float fr = (G * sample_surface.dotHV) / (sample_surface.dotNH * sample_surface.dotNV);
+		float fr = (G * sample_surface.dotHV) / (sample_surface.dotNH * sample_surface.dotNV + EPSILON);
 
-		A += (1 - F) * fr;	
+		A += (1 - F) * fr;
 		B += F * fr;
 	}
 
