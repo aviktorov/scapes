@@ -123,15 +123,11 @@ void CubemapRenderer::render(
 	const render::Shader *vertex_shader,
 	const render::Shader *fragment_shader,
 	const render::Texture *input_texture,
-	int input_mip,
 	uint8_t push_constants_size,
 	const uint8_t *push_constants_data
 )
 {
-	if (input_mip == -1)
-		driver->bindTexture(bind_set, 1, input_texture->getBackend());
-	else
-		driver->bindTexture(bind_set, 1, input_texture->getBackend(), static_cast<uint32_t>(input_mip), 1, 0, input_texture->getNumLayers());
+	driver->bindTexture(bind_set, 1, input_texture->getBackend());
 
 	RenderPassClearValue clear_values[6];
 	RenderPassLoadOp load_ops[6];

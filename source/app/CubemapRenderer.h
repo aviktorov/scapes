@@ -27,7 +27,6 @@ public:
 		const render::Shader *vertex_shader,
 		const render::Shader *fragment_shader,
 		const render::Texture *input_texture,
-		int input_mip = -1,
 		uint8_t push_constants_size = 0,
 		const uint8_t *push_constants_data = nullptr
 	);

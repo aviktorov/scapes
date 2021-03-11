@@ -65,14 +65,17 @@ Texture *RenderUtils::hdriToCube(
 {
 	uint32_t mips = static_cast<int>(std::floor(std::log2(size)) + 1);
 
+	Texture *temp = new Texture(driver);
+	temp->createCube(backend::Format::R32G32B32A32_SFLOAT, size, 1);
+
 	Texture *result = new Texture(driver);
 	result->createCube(backend::Format::R32G32B32A32_SFLOAT, size, mips);
 
 	CubemapRenderer renderer(driver);
-	renderer.init(result, 0);
+	renderer.init(temp, 0);
 	renderer.render(vertex_shader, hdri_fragment_shader, hdri);
 
-	for (uint32_t mip = 1; mip < mips; ++mip)
+	for (uint32_t mip = 0; mip < mips; ++mip)
 	{
 		float roughness = static_cast<float>(mip) / mips;
 
@@ -81,8 +84,10 @@ Texture *RenderUtils::hdriToCube(
 
 		CubemapRenderer mip_renderer(driver);
 		mip_renderer.init(result, mip);
-		mip_renderer.render(vertex_shader, prefilter_fragment_shader, result, mip - 1, size, data);
+		mip_renderer.render(vertex_shader, prefilter_fragment_shader, temp, size, data);
 	}
+
+	delete temp;
 
 	return result;
 }
