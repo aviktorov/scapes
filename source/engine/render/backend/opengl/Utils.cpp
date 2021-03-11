@@ -535,7 +535,7 @@ GLenum Utils::getDefaultTextureMinFilter(GLenum internal_format)
 		case GL_R11F_G11F_B10F: return GL_NEAREST;
 	}
 
-	return GL_LINEAR;
+	return GL_LINEAR_MIPMAP_LINEAR;
 }
 
 GLenum Utils::getDefaultTextureMagFilter(GLenum internal_format)
