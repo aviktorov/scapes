@@ -208,7 +208,6 @@ static void command_submit_bind_texture(const Command::BindTexture &data)
 {
 	glActiveTexture(GL_TEXTURE0 + data.binding);
 	glBindTexture(data.type, data.id);
-
 }
 
 static void command_submit_bind_shader(const Command::BindShader &data)
@@ -879,8 +878,11 @@ backend::FrameBuffer *Driver::createFrameBuffer(
 		target_attachment.base_layer = attachment.base_layer;
 		target_attachment.num_layers = attachment.num_layers;
 
-		result->width = std::max<uint32_t>(result->width, gl_texture->width);
-		result->height = std::max<uint32_t>(result->height, gl_texture->height);
+		uint32_t width = std::max<uint32_t>(1, gl_texture->width >> attachment.base_mip);
+		uint32_t height = std::max<uint32_t>(1, gl_texture->height >> attachment.base_mip);
+
+		result->width = std::max<uint32_t>(result->width, width);
+		result->height = std::max<uint32_t>(result->height, height);
 
 		if (attachment.resolve_attachment)
 			result->num_resolve_color_attachments++;
