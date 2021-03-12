@@ -192,14 +192,14 @@ namespace render::backend::vulkan
 			uint8_t num_attributes,
 			const backend::VertexAttribute *attributes,
 			const void *data
-		) override;
+		) final;
 
 		backend::IndexBuffer *createIndexBuffer(
 			BufferType type,
 			IndexFormat index_format,
 			uint32_t num_indices,
 			const void *data
-		) override;
+		) final;
 
 		backend::Texture *createTexture2D(
 			uint32_t width,
@@ -208,14 +208,14 @@ namespace render::backend::vulkan
 			Format format,
 			const void *data = nullptr,
 			uint32_t num_data_mipmaps = 1
-		) override;
+		) final;
 
 		backend::Texture *createTexture2DMultisample(
 			uint32_t width,
 			uint32_t height,
 			Format format,
 			Multisample samples
-		) override;
+		) final;
 
 		backend::Texture *createTexture2DArray(
 			uint32_t width,
@@ -226,7 +226,7 @@ namespace render::backend::vulkan
 			const void *data = nullptr,
 			uint32_t num_data_mipmaps = 1,
 			uint32_t num_data_layers = 1
-		) override;
+		) final;
 
 		backend::Texture *createTexture3D(
 			uint32_t width,
@@ -236,7 +236,7 @@ namespace render::backend::vulkan
 			Format format,
 			const void *data = nullptr,
 			uint32_t num_data_mipmaps = 1
-		) override;
+		) final;
 
 		backend::Texture *createTextureCube(
 			uint32_t size,
@@ -244,92 +244,92 @@ namespace render::backend::vulkan
 			Format format,
 			const void *data = nullptr,
 			uint32_t num_data_mipmaps = 1
-		) override;
+		) final;
 
 		backend::FrameBuffer *createFrameBuffer(
 			uint8_t num_color_attachments,
 			const FrameBufferAttachment *color_attachments,
 			const FrameBufferAttachment *depthstencil_attachment
-		) override;
+		) final;
 
 		backend::CommandBuffer *createCommandBuffer(
 			CommandBufferType type
-		) override;
+		) final;
 
 		backend::UniformBuffer *createUniformBuffer(
 			BufferType type,
 			uint32_t size,
 			const void *data = nullptr
-		) override;
+		) final;
 
 		backend::Shader *createShaderFromSource(
 			ShaderType type,
 			uint32_t size,
 			const char *data,
 			const char *path = nullptr
-		) override;
+		) final;
 
 		backend::Shader *createShaderFromIL(
 			const shaders::ShaderIL *shader_il
-		) override;
+		) final;
 
 		backend::BindSet *createBindSet(
-		) override;
+		) final;
 
 		backend::SwapChain *createSwapChain(
 			void *native_window,
 			uint32_t width,
 			uint32_t height,
 			Multisample samples
-		) override;
+		) final;
 
-		void destroyVertexBuffer(backend::VertexBuffer *vertex_buffer) override;
-		void destroyIndexBuffer(backend::IndexBuffer *index_buffer) override;
-		void destroyTexture(backend::Texture *texture) override;
-		void destroyFrameBuffer(backend::FrameBuffer *frame_buffer) override;
-		void destroyCommandBuffer(backend::CommandBuffer *command_buffer) override;
-		void destroyUniformBuffer(backend::UniformBuffer *uniform_buffer) override;
-		void destroyShader(backend::Shader *shader) override;
-		void destroyBindSet(backend::BindSet *bind_set) override;
-		void destroySwapChain(backend::SwapChain *swap_chain) override;
+		void destroyVertexBuffer(backend::VertexBuffer *vertex_buffer) final;
+		void destroyIndexBuffer(backend::IndexBuffer *index_buffer) final;
+		void destroyTexture(backend::Texture *texture) final;
+		void destroyFrameBuffer(backend::FrameBuffer *frame_buffer) final;
+		void destroyCommandBuffer(backend::CommandBuffer *command_buffer) final;
+		void destroyUniformBuffer(backend::UniformBuffer *uniform_buffer) final;
+		void destroyShader(backend::Shader *shader) final;
+		void destroyBindSet(backend::BindSet *bind_set) final;
+		void destroySwapChain(backend::SwapChain *swap_chain) final;
 
 	public:
-		Multisample getMaxSampleCount() override;
 		bool isFlipped() final { return false; }
+		Multisample getMaxSampleCount() final;
 
-		uint32_t getNumSwapChainImages(const backend::SwapChain *swap_chain) override;
+		uint32_t getNumSwapChainImages(const backend::SwapChain *swap_chain) final;
 
-		void setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode) override;
-		void setTextureSamplerDepthCompare(backend::Texture *texture, bool enabled, DepthCompareFunc func) override;
-		void generateTexture2DMipmaps(backend::Texture *texture) override;
+		void setTextureSamplerWrapMode(backend::Texture *texture, SamplerWrapMode mode) final;
+		void setTextureSamplerDepthCompare(backend::Texture *texture, bool enabled, DepthCompareFunc func) final;
+		void generateTexture2DMipmaps(backend::Texture *texture) final;
 
 	public:
-		void *map(backend::VertexBuffer *vertex_buffer) override;
-		void unmap(backend::VertexBuffer *vertex_buffer) override;
+		void *map(backend::VertexBuffer *vertex_buffer) final;
+		void unmap(backend::VertexBuffer *vertex_buffer) final;
 
-		void *map(backend::IndexBuffer *index_buffer) override;
-		void unmap(backend::IndexBuffer *index_buffer) override;
+		void *map(backend::IndexBuffer *index_buffer) final;
+		void unmap(backend::IndexBuffer *index_buffer) final;
 
-		void *map(backend::UniformBuffer *uniform_buffer) override;
-		void unmap(backend::UniformBuffer *uniform_buffer) override;
+		void *map(backend::UniformBuffer *uniform_buffer) final;
+		void unmap(backend::UniformBuffer *uniform_buffer) final;
 
 	public:
 		bool acquire(
 			backend::SwapChain *swap_chain,
 			uint32_t *new_image
-		) override;
+		) final;
 
 		bool present(
 			backend::SwapChain *swap_chain,
 			uint32_t num_wait_command_buffers,
 			backend::CommandBuffer * const *wait_command_buffers
-		) override;
+		) final;
 
-		void wait() override;
+		void wait() final;
 		bool wait(
 			uint32_t num_wait_command_buffers,
 			backend::CommandBuffer * const *wait_command_buffers
-		) override;
+		) final;
 
 	public:
 		// bindings
@@ -337,13 +337,13 @@ namespace render::backend::vulkan
 			backend::BindSet *bind_set,
 			uint32_t binding,
 			const backend::UniformBuffer *uniform_buffer
-		) override;
+		) final;
 
 		void bindTexture(
 			backend::BindSet *bind_set,
 			uint32_t binding,
 			const backend::Texture *texture
-		) override;
+		) final;
 
 		void bindTexture(
 			backend::BindSet *bind_set,
@@ -353,41 +353,41 @@ namespace render::backend::vulkan
 			uint32_t num_mips,
 			uint32_t base_layer,
 			uint32_t num_layers
-		) override;
+		) final;
 
 	public:
 		// pipeline state
 		void clearPushConstants(
-		) override;
+		) final;
 
 		void setPushConstants(
 			uint8_t size,
 			const void *data
-		) override;
+		) final;
 
 		void clearBindSets(
-		) override;
+		) final;
 
 		void allocateBindSets(
 			uint8_t num_bind_sets
-		) override;
+		) final;
 
 		void pushBindSet(
 			backend::BindSet *bind_set
-		) override;
+		) final;
 
 		void setBindSet(
 			uint32_t binding,
 			backend::BindSet *bind_set
-		) override;
+		) final;
 
 		void clearShaders(
-		) override;
+		) final;
 
 		void setShader(
 			ShaderType type,
 			const backend::Shader *shader
-		) override;
+		) final;
 
 	public:
 		// render state
@@ -396,68 +396,68 @@ namespace render::backend::vulkan
 			float y,
 			float width,
 			float height
-		) override;
+		) final;
 
 		void setScissor(
 			int32_t x,
 			int32_t y,
 			uint32_t width,
 			uint32_t height
-		) override;
+		) final;
 
 		void setCullMode(
 			CullMode mode
-		) override;
+		) final;
 
 		void setDepthTest(
 			bool enabled
-		) override;
+		) final;
 
 		void setDepthWrite(
 			bool enabled
-		) override;
+		) final;
 
 		void setDepthCompareFunc(
 			DepthCompareFunc func
-		) override;
+		) final;
 
 		void setBlending(
 			bool enabled
-		) override;
+		) final;
 
 		void setBlendFactors(
 			BlendFactor src_factor,
 			BlendFactor dest_factor
-		) override;
+		) final;
 
 	public:
 		// command buffers
 		bool resetCommandBuffer(
 			backend::CommandBuffer *command_buffer
-		) override;
+		) final;
 
 		bool beginCommandBuffer(
 			backend::CommandBuffer *command_buffer
-		) override;
+		) final;
 
 		bool endCommandBuffer(
 			backend::CommandBuffer *command_buffer
-		) override;
+		) final;
 
 		bool submit(
 			backend::CommandBuffer *command_buffer
-		) override;
+		) final;
 
 		bool submitSyncked(
 			backend::CommandBuffer *command_buffer,
 			const backend::SwapChain *wait_swap_chain
-		) override;
+		) final;
 
 		bool submitSyncked(
 			backend::CommandBuffer *command_buffer,
 			uint32_t num_wait_command_buffers,
 			backend::CommandBuffer * const *wait_command_buffers
-		) override;
+		) final;
 
 	public:
 		// render commands
@@ -465,22 +465,22 @@ namespace render::backend::vulkan
 			backend::CommandBuffer *command_buffer,
 			const backend::FrameBuffer *frame_buffer,
 			const RenderPassInfo *info
-		) override;
+		) final;
 
 		void beginRenderPass(
 			backend::CommandBuffer *command_buffer,
 			const backend::SwapChain *swap_chain,
 			const RenderPassInfo *info
-		) override;
+		) final;
 
 		void endRenderPass(
 			backend::CommandBuffer *command_buffer
-		) override;
+		) final;
 
 		void drawIndexedPrimitive(
 			backend::CommandBuffer *command_buffer,
 			const backend::RenderPrimitive *render_primitive
-		) override;
+		) final;
 
 	private:
 		Device *device {nullptr};
