@@ -28,6 +28,7 @@ struct GBuffer
 	render::backend::Texture *shading {nullptr};        // rg8,   r - roughness, g - metalness
 	render::backend::Texture *normal {nullptr};         // rg16f, packed normal without z
 	render::backend::Texture *depth {nullptr};          // d32f,  linear depth
+	render::backend::Texture *velocity {nullptr};       // rg16f, uv motion vector
 	render::backend::FrameBuffer *framebuffer {nullptr};
 	render::backend::BindSet *bindings {nullptr};
 };

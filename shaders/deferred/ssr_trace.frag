@@ -18,7 +18,7 @@ layout(location = 0) out vec4 outSSRTrace;
 
 vec2 getUV(vec3 positionVS)
 {
-	vec4 ndc = ubo.proj * vec4(positionVS, 1.0f);
+	vec4 ndc = ubo.projection * vec4(positionVS, 1.0f);
 	ndc.xyz /= ndc.w;
 	return ndc.xy * 0.5f + vec2(0.5f);
 }
@@ -44,7 +44,7 @@ vec3 traceRay(vec3 positionVS, vec3 directionVS, int num_coarse_steps, float coa
 		if (uv.y < 0.0f || uv.y > 1.0f)
 			break;
 
-		vec3 gbuffer_sample_positionVS = getPositionVS(uv, ubo.invProj);
+		vec3 gbuffer_sample_positionVS = getPositionVS(uv, ubo.iprojection);
 
 		float sample_depth = -sample_positionVS.z;
 		float gbuffer_depth = -gbuffer_sample_positionVS.z;
@@ -72,7 +72,7 @@ vec3 traceRay(vec3 positionVS, vec3 directionVS, int num_coarse_steps, float coa
 			vec3 mid = (start + end) * 0.5f;
 			uv = getUV(mid);
 
-			vec3 gbuffer_sample_positionVS = getPositionVS(uv, ubo.invProj);
+			vec3 gbuffer_sample_positionVS = getPositionVS(uv, ubo.iprojection);
 
 			float sample_depth = -mid.z;
 			float gbuffer_depth = -gbuffer_sample_positionVS.z;
@@ -106,7 +106,7 @@ void main()
 
 	vec4 blue_noise = texture(ssrNoiseTexture, noise_uv);
 
-	vec3 positionVS = getPositionVS(uv, ubo.invProj);
+	vec3 positionVS = getPositionVS(uv, ubo.iprojection);
 	vec3 normalVS = getNormalVS(uv);
 
 	vec3 viewVS = -normalize(positionVS);

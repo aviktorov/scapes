@@ -54,13 +54,16 @@ PBR Sandbox:
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
+        ☐ First person camera (WASD controls & mouse aim)
+        ☐ Animate blue noise for better TAA sampling
         ☐ Temporal Filter Improvements
             ☐ Tone map -> TAA accumulate -> Reverse Tone Map
-            ☐ Neighborhood clipping
-        ☐ First person camera (WASD controls & mouse aim)
+        ☐ Fix specular reflection temporal reprojection
+    Stream 56:
+        ☐ Temporal Reprojection Improvements: neighborhood clamping / clipping
     Stream 55:
-        ☐ Implement old frame reprojection
-        ☐ Animate blue noise for better TAA sampling
+        ✔ Implement old frame reprojection @done (3/1/2021, 9:25:20 PM)
+        ✔ Add velocity buffer to gbuffer @done (3/1/2021, 9:26:51 PM)
     Stream 54:
         ✔ Add camera jitter @done (2/19/2021, 9:50:25 PM)
             ✔ Add frame counter (up tp 16) @done (2/19/2021, 9:50:26 PM)

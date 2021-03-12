@@ -26,11 +26,11 @@ float getOcclusion(vec3 originVS, mat3 TBN, float radius, float bias, int num_sa
 		vec3 offset = ssao_kernel.samples[i].xyz;
 		vec3 sample_positionVS = originVS + TBN * offset * radius;
 
-		vec4 ndc = ubo.proj * vec4(sample_positionVS, 1.0f);
+		vec4 ndc = ubo.projection * vec4(sample_positionVS, 1.0f);
 		ndc.xyz /= ndc.w;
 		ndc.xy = ndc.xy * 0.5f + vec2(0.5f);
 
-		vec3 gbuffer_sample_positionVS = getPositionVS(ndc.xy, ubo.invProj);
+		vec3 gbuffer_sample_positionVS = getPositionVS(ndc.xy, ubo.iprojection);
 
 		float sample_depth = sample_positionVS.z;
 		float gbuffer_depth = gbuffer_sample_positionVS.z - bias;
@@ -50,7 +50,7 @@ float getOcclusion(vec3 originVS, mat3 TBN, float radius, float bias, int num_sa
  */
 void main()
 {
-	vec3 originVS = getPositionVS(fragTexCoord, ubo.invProj);
+	vec3 originVS = getPositionVS(fragTexCoord, ubo.iprojection);
 
 	vec2 noise_uv = fragTexCoord * textureSize(gbufferBaseColor, 0) / textureSize(ssaoKernelNoiseTexture, 0).xy;
 	vec3 random_direction = vec3(texture(ssaoKernelNoiseTexture, noise_uv).xy, 0.0f);

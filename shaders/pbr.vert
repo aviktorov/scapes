@@ -20,13 +20,16 @@ layout(location = 4) out vec3 fragNormalWS;
 layout(location = 5) out vec3 fragPositionWS;
 
 void main() {
-	gl_Position = ubo.proj * ubo.view * ubo.world * vec4(inPosition, 1.0f);
+	gl_Position = ubo.projection * ubo.view * vec4(inPosition, 1.0f);
 
 	fragColor = inColor;
 	fragTexCoord = inTexCoord;
 
-	fragTangentWS = vec3(ubo.world * vec4(inTangent, 0.0f));
-	fragBinormalWS = vec3(ubo.world * vec4(inBinormal, 0.0f));
-	fragNormalWS = vec3(ubo.world * vec4(inNormal, 0.0f));
-	fragPositionWS = vec3(ubo.world * vec4(inPosition, 1.0f));
+	// TODO: pass node world transform;
+	mat4 world = mat4(1.0f);
+
+	fragTangentWS = vec3(world * vec4(inTangent, 0.0f));
+	fragBinormalWS = vec3(world * vec4(inBinormal, 0.0f));
+	fragNormalWS = vec3(world * vec4(inNormal, 0.0f));
+	fragPositionWS = vec3(world * vec4(inPosition, 1.0f));
 }

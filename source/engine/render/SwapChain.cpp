@@ -82,10 +82,10 @@ namespace render
 			}
 
 			// Create bind set
-			frame.bind_set = driver->createBindSet();
+			frame.bindings = driver->createBindSet();
 
 			if (ubo_size > 0)
-				driver->bindUniformBuffer(frame.bind_set, 0, frame.uniform_buffer);
+				driver->bindUniformBuffer(frame.bindings, 0, frame.uniform_buffer);
 
 			// Create commandbuffer
 			frame.command_buffer = driver->createCommandBuffer(backend::CommandBufferType::PRIMARY);
@@ -101,7 +101,7 @@ namespace render
 			driver->unmap(frame.uniform_buffer);
 			driver->destroyUniformBuffer(frame.uniform_buffer);
 			driver->destroyCommandBuffer(frame.command_buffer);
-			driver->destroyBindSet(frame.bind_set);
+			driver->destroyBindSet(frame.bindings);
 		}
 		frames.clear();
 	}

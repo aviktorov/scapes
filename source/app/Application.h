@@ -38,11 +38,11 @@ struct ApplicationState
 	};
 
 	// Render state (synchronized with UBO)
-	glm::mat4 world;
 	glm::mat4 view;
-	glm::mat4 invView;
-	glm::mat4 proj;
-	glm::mat4 invProj;
+	glm::mat4 iview;
+	glm::mat4 projection;
+	glm::mat4 iprojection;
+	glm::mat4 viewOld;
 	glm::vec4 cameraParams;
 	glm::vec3 cameraPosWS;
 	float lerpUserValues {0.0f};
@@ -54,6 +54,7 @@ struct ApplicationState
 	int currentTemporalFrame {0};
 	int currentEnvironment {0};
 	glm::vec2 temporalSamples[MAX_TEMPORAL_FRAMES];
+	bool firstFrame {true};
 };
 
 struct CameraState
@@ -102,6 +103,7 @@ private:
 
 	void update();
 	void render();
+	void postRender();
 	void mainloop();
 
 	static void onFramebufferResize(GLFWwindow *window, int width, int height);
