@@ -245,7 +245,7 @@ void Application::mainloop()
 void Application::initWindow()
 {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(1920, 1080, "Scapes v1.0", nullptr, nullptr);
+	window = glfwCreateWindow(800, 600, "Scapes v1.0", nullptr, nullptr);
 
 	glfwSetWindowUserPointer(window, this);
 
