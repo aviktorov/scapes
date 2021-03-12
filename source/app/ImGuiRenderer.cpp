@@ -210,7 +210,7 @@ void ImGuiRenderer::setupRenderState(const render::RenderFrame &frame, const ImD
 	float T = draw_data->DisplayPos.y;
 	float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
 
-	if (!flipped)
+	if (!driver->isFlipped())
 		std::swap(T,B);
 
 	glm::mat4 projection = glm::ortho(L, R, B, T, 0.0f, 1.0f);
@@ -273,7 +273,7 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 				float x1 = (command.ClipRect.z - clip_offset.x) * clip_scale.x;
 				float y1 = (command.ClipRect.w - clip_offset.y) * clip_scale.y;
 				
-				if (flipped)
+				if (driver->isFlipped())
 				{
 					y0 = fb_size.y - y0;
 					y1 = fb_size.y - y1;

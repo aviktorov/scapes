@@ -447,6 +447,7 @@ public:
 	void destroySwapChain(backend::SwapChain *swap_chain) final;
 
 public:
+	bool isFlipped() final { return true; }
 	Multisample getMaxSampleCount() final;
 
 	uint32_t getNumSwapChainImages(const backend::SwapChain *swap_chain) final;

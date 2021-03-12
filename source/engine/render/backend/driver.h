@@ -427,6 +427,7 @@ public:
 	virtual void destroySwapChain(SwapChain *swap_chain) = 0;
 
 public:
+	virtual bool isFlipped() = 0;
 	virtual Multisample getMaxSampleCount() = 0;
 
 	virtual uint32_t getNumSwapChainImages(const SwapChain *swap_chain) = 0;

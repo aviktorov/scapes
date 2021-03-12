@@ -295,6 +295,7 @@ namespace render::backend::vulkan
 
 	public:
 		Multisample getMaxSampleCount() override;
+		bool isFlipped() final { return false; }
 
 		uint32_t getNumSwapChainImages(const backend::SwapChain *swap_chain) override;
 

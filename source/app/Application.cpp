@@ -78,7 +78,9 @@ void Application::update()
 	state.view = glm::lookAt(cameraPos, zero, up);
 	state.projection = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
 
-	state.projection[1][1] *= -1;
+	// projection matrix is adjusted for OpenGL so we need to flip it for non-flipped backends :)
+	if (!driver->isFlipped())
+		state.projection[1][1] *= -1;
 
 	// TODO: move to render graph
 	// patch projection matrix for temporal supersampling
