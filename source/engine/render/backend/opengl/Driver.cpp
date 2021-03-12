@@ -1952,8 +1952,21 @@ void Driver::beginRenderPass(
 		command->scissor.height = pipeline_state.scissor_height;
 	}
 
+	// Check if we need to clear resolve FBO
+	bool clear_resolve_fbo = false;
+	for (uint8_t i = 0; i < gl_frame_buffer->num_resolve_color_attachments; ++i)
+	{
+		uint32_t index = gl_frame_buffer->resolve_color_attachment_indices[i];
+
+		if (info->load_ops[index] == RenderPassLoadOp::CLEAR)
+		{
+			clear_resolve_fbo = true;
+			break;
+		}
+	}
+
 	// Emit resolve FBO commands
-	if (gl_frame_buffer->resolve_fbo_id != 0)
+	if (gl_frame_buffer->resolve_fbo_id != 0 && clear_resolve_fbo)
 	{
 		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
 		command->bind_frame_buffer.id = gl_frame_buffer->resolve_fbo_id;
@@ -2073,41 +2086,21 @@ void Driver::beginRenderPass(
 		command->scissor.height = pipeline_state.scissor_height;
 	}
 
-	// Emit resolve FBO commands
+	auto clear_color = [](CommandBuffer *gl_command_buffer, const RenderPassInfo *info, uint32_t index, bool bind_buffer = false, GLuint id = 0)
 	{
-		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
-		command->bind_frame_buffer.id = 0;
-		command->bind_frame_buffer.target = GL_FRAMEBUFFER;
-	}
+		RenderPassLoadOp load_op = info->load_ops[index];
+		RenderPassClearValue clear_value = info->clear_values[index];
 
-	uint32_t index = 0;
+		if (load_op != RenderPassLoadOp::CLEAR)
+			return;
+		
+		if (bind_buffer)
+		{
+			Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
+			command->bind_frame_buffer.id = id;
+			command->bind_frame_buffer.target = GL_FRAMEBUFFER;
+		}
 
-	RenderPassLoadOp load_op = info->load_ops[index];
-	RenderPassClearValue clear_value = info->clear_values[index];
-
-	if (load_op == RenderPassLoadOp::CLEAR)
-	{
-		Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_COLOR_BUFFER);
-		command->clear_color_buffer.buffer = 0;
-		command->clear_color_buffer.clear_color[0] = clear_value.color.float32[0];
-		command->clear_color_buffer.clear_color[1] = clear_value.color.float32[1];
-		command->clear_color_buffer.clear_color[2] = clear_value.color.float32[2];
-		command->clear_color_buffer.clear_color[3] = clear_value.color.float32[3];
-	}
-
-	// Emit main FBO commands
-	if (gl_swap_chain->msaa_fbo_id != 0)
-	{
-		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
-		command->bind_frame_buffer.id = gl_swap_chain->msaa_fbo_id;
-		command->bind_frame_buffer.target = GL_FRAMEBUFFER;
-
-		index = 1;
-
-		load_op = info->load_ops[index];
-		clear_value = info->clear_values[index];
-
-		if (load_op == RenderPassLoadOp::CLEAR)
 		{
 			Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_COLOR_BUFFER);
 			command->clear_color_buffer.buffer = 0;
@@ -2116,19 +2109,50 @@ void Driver::beginRenderPass(
 			command->clear_color_buffer.clear_color[2] = clear_value.color.float32[2];
 			command->clear_color_buffer.clear_color[3] = clear_value.color.float32[3];
 		}
+	};
 
-		index = 2;
+	auto clear_depth = [](CommandBuffer *gl_command_buffer, const RenderPassInfo *info, uint32_t index)
+	{
+		RenderPassLoadOp load_op = info->load_ops[index];
+		RenderPassClearValue clear_value = info->clear_values[index];
 
-		load_op = info->load_ops[index];
-		clear_value = info->clear_values[index];
-
-		if (load_op == RenderPassLoadOp::CLEAR)
+		if (load_op != RenderPassLoadOp::CLEAR)
+			return;
+		
 		{
 			Command *command = command_buffer_emit(gl_command_buffer, CommandType::CLEAR_DEPTHSTENCIL_BUFFER);
 			command->clear_depth_stencil_buffer.depth = clear_value.depth_stencil.depth;
 			command->clear_depth_stencil_buffer.stencil = clear_value.depth_stencil.stencil;
 		}
+	};
+
+	GLuint default_fbo = 0;
+	const GLuint *primary_fbo = &default_fbo;
+	const GLuint *secondary_fbo = nullptr;
+	uint32_t buffer_offset = 0;
+
+	if (gl_swap_chain->msaa_fbo_id != 0)
+	{
+		primary_fbo = &gl_swap_chain->msaa_fbo_id;
+		secondary_fbo = &default_fbo;
+		buffer_offset = 1;
 	}
+
+	// Emit secondary FBO commands
+	if (secondary_fbo)
+		clear_color(gl_command_buffer, info, 0, true, *secondary_fbo);
+
+	// Emit primary FBO commands
+	assert(primary_fbo);
+
+	{
+		Command *command = command_buffer_emit(gl_command_buffer, CommandType::BIND_FRAME_BUFFER);
+		command->bind_frame_buffer.id = *primary_fbo;
+		command->bind_frame_buffer.target = GL_FRAMEBUFFER;
+	}
+
+	clear_color(gl_command_buffer, info, buffer_offset + 0);
+	clear_depth(gl_command_buffer, info, buffer_offset + 1);
 
 	render_pass_state = {};
 	render_pass_state.resolve = (gl_swap_chain->msaa_fbo_id != 0);
