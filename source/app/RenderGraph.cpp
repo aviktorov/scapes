@@ -53,8 +53,10 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	initSSRData(resources->getBlueNoiseTexture());
 	initSSR(ssr_trace, Format::R16G16B16A16_SFLOAT, width, height);
 	initSSR(ssr_temp, Format::R16G16B16A16_SFLOAT, width, height);
+	initSSR(ssr_temp_velocity, Format::R16G16_SFLOAT, width, height);
 	initSSR(ssr, Format::R16G16B16A16_SFLOAT, width, height);
 	initSSR(old_ssr, Format::R16G16B16A16_SFLOAT, width, height);
+	initSSRTemp(ssr_temp, ssr_temp_velocity);
 
 	quad = new render::Mesh(driver);
 	quad->createQuad(2.0f);
@@ -93,8 +95,10 @@ void RenderGraph::shutdown()
 	shutdownSSRData();
 	shutdownSSR(ssr_trace);
 	shutdownSSR(ssr_temp);
+	shutdownSSR(ssr_temp_velocity);
 	shutdownSSR(ssr);
 	shutdownSSR(old_ssr);
+	shutdownSSRTemp();
 
 	shutdownLBuffer();
 	shutdownComposite(composite_temp);
@@ -308,6 +312,22 @@ void RenderGraph::shutdownSSR(RenderBuffer &ssr)
 	memset(&ssr, 0, sizeof(RenderBuffer));
 }
 
+void RenderGraph::initSSRTemp(const RenderBuffer &ssr, const RenderBuffer &velocity)
+{
+	FrameBufferAttachment ssr_attachments[] = {
+		{ ssr.texture },
+		{ velocity.texture },
+	};
+
+	ssr_temp_framebuffer = driver->createFrameBuffer(2, ssr_attachments);
+}
+
+void RenderGraph::shutdownSSRTemp()
+{
+	driver->destroyFrameBuffer(ssr_temp_framebuffer);
+	ssr_temp_framebuffer = nullptr;
+}
+
 void RenderGraph::initLBuffer(uint32_t width, uint32_t height)
 {
 	lbuffer.diffuse = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
@@ -374,8 +394,10 @@ void RenderGraph::resize(uint32_t width, uint32_t height)
 
 	shutdownSSR(ssr_trace);
 	shutdownSSR(ssr_temp);
+	shutdownSSR(ssr_temp_velocity);
 	shutdownSSR(ssr);
 	shutdownSSR(old_ssr);
+	shutdownSSRTemp();
 
 	initGBuffer(width, height);
 	initLBuffer(width, height);
@@ -388,8 +410,10 @@ void RenderGraph::resize(uint32_t width, uint32_t height)
 
 	initSSR(ssr_trace, Format::R16G16B16A16_SFLOAT, width, height);
 	initSSR(ssr_temp, Format::R16G16B16A16_SFLOAT, width, height);
+	initSSR(ssr_temp_velocity, Format::R16G16_SFLOAT, width, height);
 	initSSR(ssr, Format::R16G16B16A16_SFLOAT, width, height);
 	initSSR(old_ssr, Format::R16G16B16A16_SFLOAT, width, height);
+	initSSRTemp(ssr_temp, ssr_temp_velocity);
 }
 
 /*
@@ -485,7 +509,7 @@ void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame)
 
 		renderComposite(scene, frame);
 	}
-
+/*
 	{
 		ZoneScopedN("Composite Temporal Filter");
 
@@ -496,7 +520,7 @@ void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame)
 
 		renderCompositeTemporalFilter(scene, frame);
 	}
-
+/**/
 	{
 		ZoneScopedN("Final pass");
 
@@ -505,7 +529,9 @@ void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame)
 
 	// Swap temporal filters
 	std::swap(old_ssr, ssr);
-	std::swap(old_composite, composite);
+
+	driver->generateTexture2DMipmaps(composite_temp.texture);
+	std::swap(old_composite, composite_temp);
 
 	driver->endCommandBuffer(frame.command_buffer);
 }
@@ -648,7 +674,7 @@ void RenderGraph::renderSSRResolve(const Scene *scene, const render::RenderFrame
 	info.load_ops = &load_op;
 	info.store_ops = &store_op;
 
-	driver->beginRenderPass(frame.command_buffer, ssr_temp.framebuffer, &info);
+	driver->beginRenderPass(frame.command_buffer, ssr_temp_framebuffer, &info);
 
 	driver->clearPushConstants();
 	driver->allocateBindSets(5);
@@ -748,7 +774,6 @@ void RenderGraph::renderComposite(const Scene *scene, const render::RenderFrame 
 void RenderGraph::renderCompositeTemporalFilter(const Scene *scene, const render::RenderFrame &frame)
 {
 	renderTemporalFilter(composite, old_composite, composite_temp, frame);
-	driver->generateTexture2DMipmaps(composite.texture);
 }
 
 void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const render::RenderFrame &frame)
@@ -766,10 +791,11 @@ void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer
 	driver->beginRenderPass(frame.command_buffer, current.framebuffer, &info);
 
 	driver->clearPushConstants();
-	driver->allocateBindSets(3);
+	driver->allocateBindSets(4);
 	driver->setBindSet(0, gbuffer.bindings);
 	driver->setBindSet(1, temp.bindings);
 	driver->setBindSet(2, old.bindings);
+	driver->setBindSet(3, ssr_temp_velocity.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, temporal_filter_pass_vertex->getBackend());
@@ -802,7 +828,7 @@ void RenderGraph::renderFinal(const Scene *scene, const render::RenderFrame &fra
 
 	driver->clearPushConstants();
 	driver->clearBindSets();
-	driver->pushBindSet(composite.bindings);
+	driver->pushBindSet(composite_temp.bindings);
 
 	driver->clearShaders();
 	driver->setShader(render::backend::ShaderType::VERTEX, final_pass_vertex->getBackend());

@@ -83,6 +83,7 @@ struct SSRData
 // SSAO, r8, ao factor
 // SSR trace, rgba8, trace data
 // SSR resolve, rgba16f, indirect specular
+// SSR motion vector, rg16f, reprojected reflected surface position
 // Composite, rgba16f, hdr linear color
 struct RenderBuffer
 {
@@ -140,6 +141,9 @@ private:
 	void initSSR(RenderBuffer &ssr, render::backend::Format format, uint32_t width, uint32_t height);
 	void shutdownSSR(RenderBuffer &ssr);
 
+	void initSSRTemp(const RenderBuffer &ssr, const RenderBuffer &velocity);
+	void shutdownSSRTemp();
+
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
@@ -171,6 +175,9 @@ private:
 	SSRData ssr_data;
 	RenderBuffer ssr_trace;
 	RenderBuffer ssr_temp;
+	RenderBuffer ssr_temp_velocity;
+	render::backend::FrameBuffer *ssr_temp_framebuffer {nullptr};
+
 	RenderBuffer ssr;
 	RenderBuffer old_ssr;
 
