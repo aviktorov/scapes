@@ -55,12 +55,22 @@ PBR Sandbox:
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
         ☐ First person camera (WASD controls & mouse aim)
-        ☐ Animate blue noise for better TAA sampling
         ☐ Temporal Filter Improvements
             ☐ Tone map -> TAA accumulate -> Reverse Tone Map
-        ☐ Fix specular reflection temporal reprojection
+        ☐ SSR Trace Improvements: trace rays in screen space via DDA
+            http://jcgt.org/published/0003/04/04/paper.pdf
+    Stream 57:
+        ☐ Do clean up in render graph
+            ☐ Make sure temporal filter can take any motion vectors (could be gbuffer or ssr velocity)
+            ☐ Restore TAA supersampling
+            ☐ Make temp SSR resolve buffer (linear indirect specular color + ssr motion vectors)
+        ☐ Do clean up in shaders
+            ☐ Animate blue noise for better TAA sampling
+            ☐ Remove unnecessary calculations in SSR motion vectors (i.e. reflectedPointNDC and so on)
+            ☐ Investigate why sampling from composite old mip levels gives wrong ssr reprojection
     Stream 56:
-        ☐ Temporal Reprojection Improvements: neighborhood clamping / clipping
+        ✔ Fix specular reflection temporal reprojection @done (3/16/2021, 8:41:01 PM)
+        ✔ Temporal Reprojection Improvements: neighborhood clamping / clipping @done (3/16/2021, 8:40:51 PM)
     Stream 55:
         ✔ Implement old frame reprojection @done (3/1/2021, 9:25:20 PM)
         ✔ Add velocity buffer to gbuffer @done (3/1/2021, 9:26:51 PM)
