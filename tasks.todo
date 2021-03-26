@@ -30,9 +30,10 @@ PBR Sandbox:
     Bugs:
         ✔ Figure out why context swap recreation is broken during resize event @done (6/5/2020, 10:54:32 PM)
         ✔ Figure out why render pass doesn't clear depth correctly @done (6/27/2020, 5:47:13 PM)
+        ✔ Fix broken mipmap generation @done (7/8/2020, 7:05:02 PM)
         ☐ Figure out why creating a 1024x1024 rgba32f texture crashes the app
         ☐ Figure out why it's not possible to create rgb16f texture for normals
-        ✔ Fix broken mipmap generation @done (7/8/2020, 7:05:02 PM)
+        ☐ Investigate why sampling from composite old mip levels gives wrong ssr reprojection
     Improvements:
         ✔ Remove vulkan dependencies from VulkanTexture @done (7/7/2020, 10:17:57 PM)
         ✔ Migrate ImGui renderer to backend @done (7/14/2020, 8:48:46 PM)
@@ -59,15 +60,20 @@ PBR Sandbox:
             ☐ Tone map -> TAA accumulate -> Reverse Tone Map
         ☐ SSR Trace Improvements: trace rays in screen space via DDA
             http://jcgt.org/published/0003/04/04/paper.pdf
-    Stream 57:
-        ☐ Do clean up in render graph
-            ☐ Make sure temporal filter can take any motion vectors (could be gbuffer or ssr velocity)
-            ☐ Restore TAA supersampling
-            ☐ Make temp SSR resolve buffer (linear indirect specular color + ssr motion vectors)
+    Stream 58:
         ☐ Do clean up in shaders
+            ☐ Orgranize shaders folder structure
+            ☐ Either add .inc to GLSL extensions or replace it to .h
+            ☐ Extract common functions from brdf.inc to common.inc
+            ☐ Rename RenderState.inc to application.inc and move functions to common.inc
+            ☐ Add GBuffer struct to gbuffer.inc and samling helpers
             ☐ Animate blue noise for better TAA sampling
             ☐ Remove unnecessary calculations in SSR motion vectors (i.e. reflectedPointNDC and so on)
-            ☐ Investigate why sampling from composite old mip levels gives wrong ssr reprojection
+    Stream 57:
+        ✔ Do clean up in render graph @done (3/26/2021, 9:08:55 PM)
+            ✔ Make sure temporal filter can take any motion vectors (could be gbuffer or ssr velocity) @done (3/26/2021, 8:39:10 PM)
+            ✔ Restore TAA supersampling @done (3/26/2021, 8:39:15 PM)
+            ✔ Make temp SSR resolve buffer (linear indirect specular color + ssr motion vectors) @done (3/26/2021, 9:08:54 PM)
     Stream 56:
         ✔ Fix specular reflection temporal reprojection @done (3/16/2021, 8:41:01 PM)
         ✔ Temporal Reprojection Improvements: neighborhood clamping / clipping @done (3/16/2021, 8:40:51 PM)
