@@ -21,6 +21,7 @@
 layout(location = 0) in vec2 fragTexCoord;
 
 layout(location = 0) out vec4 outSSR;
+layout(location = 1) out vec2 outSSRVelocity;
 
 vec2 getUV(vec3 positionVS)
 {
@@ -29,14 +30,31 @@ vec2 getUV(vec3 positionVS)
 	return ndc.xy * 0.5f + vec2(0.5f);
 }
 
-vec4 resolveRay(vec2 uv)
+vec2 getMotionVector(vec2 uv, vec4 traceResult)
 {
-	vec4 traceResult = texture(ssrTexture, uv);
-	float roughness = texture(gbufferShading, fragTexCoord).r;
+	vec3 intersectionPointVS = getPositionVS(traceResult.xy, ubo.iprojection);
+	vec3 startPointVS = getPositionVS(uv, ubo.iprojection);
+	float startPointLinearDepth = length(startPointVS);
+	float rayDepth = length(startPointVS - intersectionPointVS);
+
+	vec3 reflectedPointVS = startPointVS * (1.0f + rayDepth / startPointLinearDepth);
+	vec4 reflectedPointNDC = ubo.projection * vec4(reflectedPointVS, 1.0f);
+
+	vec4 reflectedPointWS = ubo.iview * vec4(reflectedPointVS, 1.0f);
+	vec4 oldReflectedPointVS = ubo.viewOld * reflectedPointWS;
+
+	vec4 oldReflectedPointNDC = ubo.projection * oldReflectedPointVS;
+
+	return (oldReflectedPointNDC.xy / oldReflectedPointNDC.w - reflectedPointNDC.xy / reflectedPointNDC.w) * 0.5f;
+}
+
+vec4 resolveRay(vec2 uv, vec4 traceResult, vec2 motionVector)
+{
+	float roughness = texture(gbufferShading, uv).r;
 	int maxMip = getTextureNumMips(compositeHdrColor);
 
 	vec4 result;
-	result.rgb = textureLod(compositeHdrColor, traceResult.xy, roughness * maxMip).rgb;
+	result.rgb = textureLod(compositeHdrColor, traceResult.xy + motionVector, 0.0f).rgb;
 	result.a = traceResult.z;
 
 	return result;
@@ -100,12 +118,20 @@ void main()
 	mat2 rotation = mat2(cos_theta, sin_theta, -sin_theta, cos_theta);
 
 	outSSR = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-	
+	outSSRVelocity = vec2(0.0f, 0.0f);
+
 	for (int i = 0; i < num_samples; ++i)
 	{
 		vec2 offset = rotation * offsets[i];
-		outSSR += resolveRay(fragTexCoord + offset * isize) * weights[i];
+		vec2 uv = fragTexCoord + offset * isize;
+
+		vec4 traceResult = texture(ssrTexture, uv);
+		vec2 motionVector = getMotionVector(uv, traceResult);
+
+		outSSR += resolveRay(uv, traceResult, motionVector) * weights[i];
+		outSSRVelocity += motionVector;
 	}
 
+	outSSRVelocity /= num_samples;
 	outSSR.rgb *= F;
 }

@@ -1,11 +1,9 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#define GBUFFER_SET 0
-#include <deferred/gbuffer.inc>
-
-layout(set = 1, binding = 0) uniform sampler2D textureColor;
-layout(set = 2, binding = 0) uniform sampler2D textureColorOld;
+layout(set = 0, binding = 0) uniform sampler2D textureColor;
+layout(set = 1, binding = 0) uniform sampler2D textureColorOld;
+layout(set = 2, binding = 0) uniform sampler2D textureVelocity;
 
 #include <common/brdf.inc>
 
@@ -20,8 +18,30 @@ float calcAlpha(vec4 color, vec4 colorOld)
 
 vec2 getReprojectedUV(vec2 uv)
 {
-	vec2 motionVector = texture(gbufferVelocity, uv).xy;
+	vec2 motionVector = texture(textureVelocity, uv).xy;
 	return uv + motionVector;
+}
+
+void getNeighborsMinMax(in vec4 center, in vec2 uv, out vec4 colorMin, out vec4 colorMax)
+{
+	colorMin = center;
+	colorMax = center;
+
+	#define SAMPLE_NEIGHBOR(OFFSET) \
+	{ \
+		vec4 neighbor = textureOffset(textureColor, uv, OFFSET); \
+		colorMin = min(colorMin, neighbor); \
+		colorMax = max(colorMax, neighbor); \
+	} \
+
+	SAMPLE_NEIGHBOR(ivec2(-1, 0));
+	SAMPLE_NEIGHBOR(ivec2(1, 0));
+	SAMPLE_NEIGHBOR(ivec2(0, -1));
+	SAMPLE_NEIGHBOR(ivec2(0, 1));
+	SAMPLE_NEIGHBOR(ivec2(-1, 1));
+	SAMPLE_NEIGHBOR(ivec2(1, 1));
+	SAMPLE_NEIGHBOR(ivec2(1, -1));
+	SAMPLE_NEIGHBOR(ivec2(1, 1));
 }
 
 /*
@@ -40,6 +60,13 @@ void main()
 	else
 	{
 		vec4 colorOld = texture(textureColorOld, uvOld);
+
+		vec4 colorMin;
+		vec4 colorMax;
+		getNeighborsMinMax(color, uvCurrent, colorMin, colorMax);
+
+		colorOld = clamp(colorOld, colorMin, colorMax);
+
 		float alpha = calcAlpha(color, colorOld);
 		outTAA = lerp(colorOld, color, alpha);
 	}
