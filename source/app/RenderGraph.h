@@ -31,6 +31,7 @@ struct GBuffer
 	render::backend::Texture *velocity {nullptr};       // rg16f, uv motion vector
 	render::backend::FrameBuffer *framebuffer {nullptr};
 	render::backend::BindSet *bindings {nullptr};
+	render::backend::BindSet *velocity_bindings {nullptr};
 };
 
 struct LBuffer
@@ -80,10 +81,17 @@ struct SSRData
 	render::backend::BindSet *bindings {nullptr};
 };
 
+struct SSRResolve
+{
+	render::backend::Texture *resolve {nullptr};   // rgba16f, hdr indirect specular linear color
+	render::backend::Texture *velocity {nullptr};  // rg16f, reprojected reflected surface motion vectors
+	render::backend::BindSet *resolve_bindings {nullptr};
+	render::backend::BindSet *velocity_bindings {nullptr};
+	render::backend::FrameBuffer *framebuffer {nullptr};
+};
+
 // SSAO, r8, ao factor
 // SSR trace, rgba8, trace data
-// SSR resolve, rgba16f, indirect specular
-// SSR motion vector, rg16f, reprojected reflected surface position
 // Composite, rgba16f, hdr linear color
 struct RenderBuffer
 {
@@ -126,29 +134,26 @@ public:
 	void buildSSAOKernel();
 
 private:
+	void initTransient(uint32_t width, uint32_t height);
+	void shutdownTransient();
+
 	void initGBuffer(uint32_t width, uint32_t height);
 	void shutdownGBuffer();
 
 	void initSSAOKernel();
 	void shutdownSSAOKernel();
 
-	void initSSAO(RenderBuffer &ssao, uint32_t width, uint32_t height);
-	void shutdownSSAO(RenderBuffer &ssao);
-
 	void initSSRData(const render::Texture *blue_noise);
 	void shutdownSSRData();
 
-	void initSSR(RenderBuffer &ssr, render::backend::Format format, uint32_t width, uint32_t height);
-	void shutdownSSR(RenderBuffer &ssr);
+	void initRenderBuffer(RenderBuffer &ssr, render::backend::Format format, uint32_t width, uint32_t height);
+	void shutdownRenderBuffer(RenderBuffer &ssr);
 
-	void initSSRTemp(const RenderBuffer &ssr, const RenderBuffer &velocity);
-	void shutdownSSRTemp();
+	void initSSRResolve(SSRResolve &ssr, uint32_t width, uint32_t height);
+	void shutdownSSRResolve(SSRResolve &ssr);
 
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
-
-	void initComposite(RenderBuffer &composite, uint32_t width, uint32_t height);
-	void shutdownComposite(RenderBuffer &composite);
 
 	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderSSAO(const Scene *scene, const render::RenderFrame &frame);
@@ -159,7 +164,7 @@ private:
 	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame);
 	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
 	void renderCompositeTemporalFilter(const Scene *scene, const render::RenderFrame &frame);
-	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const render::RenderFrame &frame);
+	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, const render::RenderFrame &frame);
 	void renderFinal(const Scene *scene, const render::RenderFrame &frame);
 
 private:
@@ -174,9 +179,7 @@ private:
 
 	SSRData ssr_data;
 	RenderBuffer ssr_trace;
-	RenderBuffer ssr_temp;
-	RenderBuffer ssr_temp_velocity;
-	render::backend::FrameBuffer *ssr_temp_framebuffer {nullptr};
+	SSRResolve ssr_resolve;
 
 	RenderBuffer ssr;
 	RenderBuffer old_ssr;

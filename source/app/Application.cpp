@@ -82,9 +82,9 @@ void Application::update()
 
 	// TODO: move to render graph
 	// patch projection matrix for temporal supersampling
-	// const glm::vec2 &temporalSample = state.temporalSamples[state.currentTemporalFrame];
-	// state.projection[2][0] = temporalSample.x / width;
-	// state.projection[2][1] = temporalSample.y / height;
+	const glm::vec2 &temporalSample = state.temporalSamples[state.currentTemporalFrame];
+	state.projection[2][0] = temporalSample.x / width;
+	state.projection[2][1] = temporalSample.y / height;
 
 	state.currentTemporalFrame = (state.currentTemporalFrame + 1) % ApplicationState::MAX_TEMPORAL_FRAMES;
 

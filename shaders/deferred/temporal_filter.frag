@@ -1,12 +1,9 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#define GBUFFER_SET 0
-#include <deferred/gbuffer.inc>
-
-layout(set = 1, binding = 0) uniform sampler2D textureColor;
-layout(set = 2, binding = 0) uniform sampler2D textureColorOld;
-layout(set = 3, binding = 0) uniform sampler2D textureSSRVelocity;
+layout(set = 0, binding = 0) uniform sampler2D textureColor;
+layout(set = 1, binding = 0) uniform sampler2D textureColorOld;
+layout(set = 2, binding = 0) uniform sampler2D textureVelocity;
 
 #include <common/brdf.inc>
 
@@ -21,7 +18,7 @@ float calcAlpha(vec4 color, vec4 colorOld)
 
 vec2 getReprojectedUV(vec2 uv)
 {
-	vec2 motionVector = texture(textureSSRVelocity, uv).xy;
+	vec2 motionVector = texture(textureVelocity, uv).xy;
 	return uv + motionVector;
 }
 
