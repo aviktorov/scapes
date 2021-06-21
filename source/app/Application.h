@@ -18,6 +18,8 @@ namespace render::shaders
 namespace render::backend
 {
 	class Driver;
+	struct UniformBuffer;
+	struct BindSet;
 }
 
 struct GLFWwindow;
@@ -38,13 +40,6 @@ struct ApplicationState
 	};
 
 	// Render state (synchronized with UBO)
-	glm::mat4 view;
-	glm::mat4 iview;
-	glm::mat4 projection;
-	glm::mat4 iprojection;
-	glm::mat4 viewOld;
-	glm::vec4 cameraParams;
-	glm::vec3 cameraPosWS;
 	float lerpUserValues {0.0f};
 	float userMetalness {0.0f};
 	float userRoughness {0.0f};
@@ -59,6 +54,16 @@ struct ApplicationState
 
 struct CameraState
 {
+	// Render state (synchronized with UBO)
+	glm::mat4 view;
+	glm::mat4 iview;
+	glm::mat4 projection;
+	glm::mat4 iprojection;
+	glm::mat4 viewOld;
+	glm::vec4 cameraParams;
+	glm::vec3 cameraPosWS;
+
+	// CPU state (not included in UBO)
 	double phi {0.0f};
 	double theta {0.0f};
 	double radius {2.0f};
@@ -120,11 +125,15 @@ private:
 
 	RenderGraph *render_graph {nullptr};
 	ApplicationResources *resources {nullptr};
-	ApplicationState state;
-	CameraState camera;
-	InputState input;
+	ApplicationState application_state;
+	CameraState camera_state;
+	InputState input_state;
 
 	render::SwapChain *swap_chain {nullptr};
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
+
+	render::backend::UniformBuffer *camera_buffer {nullptr};
+	render::backend::BindSet *camera_bindings {nullptr};
+	void *camera_gpu_data {nullptr};
 };

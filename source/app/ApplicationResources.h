@@ -12,34 +12,23 @@ namespace config
 
 	enum Shaders
 	{
-		PBRVertex = 0,
-		PBRFragment,
-		SkyboxVertex,
-		SkyboxFragment,
-		CubeVertex,
-		HDRIToCubeFragment,
-		CubeToPrefilteredSpecular,
-		DiffuseIrradianceFragment,
-		BakedBRDFVertex,
+		CubemapVertex = 0,
+		FullscreenQuadVertex,
+		EquirectangularProjectionFragment,
+		PrefilteredSpecularCubemapFragment,
+		DiffuseIrradianceCubemapFragment,
 		BakedBRDFFragment,
-		SkyLightVertex,
-		SkyLightFragment,
-		PassGBufferVertex,
-		PassGBufferFragment,
-		PassSSAOVertex,
-		PassSSAOFragment,
-		PassSSAOBlurVertex,
-		PassSSAOBlurFragment,
-		PassSSRTraceVertex,
-		PassSSRTraceFragment,
-		PassSSRResolveVertex,
-		PassSSRResolveFragment,
-		PassCompositeVertex,
-		PassCompositeFragment,
-		PassTemporalFilterVertex,
-		PassTemporalFilterFragment,
-		PassFinalVertex,
-		PassFinalFragment,
+		SkylightDeferredFragment,
+		GBufferVertex,
+		GBufferFragment,
+		SSAOFragment,
+		SSAOBlurFragment,
+		SSRTraceFragment,
+		SSRResolveFragment,
+		CompositeFragment,
+		TemporalFilterFragment,
+		TonemappingFragment,
+		FinalFragment,
 	};
 
 	enum Textures
@@ -66,45 +55,7 @@ public:
 	void init();
 	void shutdown();
 
-	inline const render::Shader *getPBRVertexShader() const { return resources.getShader(config::Shaders::PBRVertex); }
-	inline const render::Shader *getPBRFragmentShader() const { return resources.getShader(config::Shaders::PBRFragment); }
-	inline const render::Shader *getSkyboxVertexShader() const { return resources.getShader(config::Shaders::SkyboxVertex); }
-	inline const render::Shader *getSkyboxFragmentShader() const { return resources.getShader(config::Shaders::SkyboxFragment); }
-
-	inline const render::Shader *getCubeVertexShader() const { return resources.getShader(config::Shaders::CubeVertex); }
-	inline const render::Shader *getHDRIToFragmentShader() const { return resources.getShader(config::Shaders::HDRIToCubeFragment); }
-	inline const render::Shader *getCubeToPrefilteredSpecularShader() const { return resources.getShader(config::Shaders::CubeToPrefilteredSpecular); }
-	inline const render::Shader *getDiffuseIrradianceFragmentShader() const { return resources.getShader(config::Shaders::DiffuseIrradianceFragment); }
-
-	inline const render::Shader *getBakedBRDFVertexShader() const { return resources.getShader(config::Shaders::BakedBRDFVertex); }
-	inline const render::Shader *getBakedBRDFFragmentShader() const { return resources.getShader(config::Shaders::BakedBRDFFragment); }
-
-	inline const render::Shader *getGBufferVertexShader() const { return resources.getShader(config::Shaders::PassGBufferVertex); }
-	inline const render::Shader *getGBufferFragmentShader() const { return resources.getShader(config::Shaders::PassGBufferFragment); }
-
-	inline const render::Shader *getSSAOVertexShader() const { return resources.getShader(config::Shaders::PassSSAOVertex); }
-	inline const render::Shader *getSSAOFragmentShader() const { return resources.getShader(config::Shaders::PassSSAOFragment); }
-
-	inline const render::Shader *getSSAOBlurVertexShader() const { return resources.getShader(config::Shaders::PassSSAOBlurVertex); }
-	inline const render::Shader *getSSAOBlurFragmentShader() const { return resources.getShader(config::Shaders::PassSSAOBlurFragment); }
-
-	inline const render::Shader *getSSRTraceVertexShader() const { return resources.getShader(config::Shaders::PassSSRTraceVertex); }
-	inline const render::Shader *getSSRTraceFragmentShader() const { return resources.getShader(config::Shaders::PassSSRTraceFragment); }
-
-	inline const render::Shader *getSSRResolveVertexShader() const { return resources.getShader(config::Shaders::PassSSRResolveVertex); }
-	inline const render::Shader *getSSRResolveFragmentShader() const { return resources.getShader(config::Shaders::PassSSRResolveFragment); }
-
-	inline const render::Shader *getCompositeVertexShader() const { return resources.getShader(config::Shaders::PassCompositeVertex); }
-	inline const render::Shader *getCompositeFragmentShader() const { return resources.getShader(config::Shaders::PassCompositeFragment); }
-
-	inline const render::Shader *getTemporalFilterVertexShader() const { return resources.getShader(config::Shaders::PassTemporalFilterVertex); }
-	inline const render::Shader *getTemporalFilterFragmentShader() const { return resources.getShader(config::Shaders::PassTemporalFilterFragment); }
-
-	inline const render::Shader *getFinalVertexShader() const { return resources.getShader(config::Shaders::PassFinalVertex); }
-	inline const render::Shader *getFinalFragmentShader() const { return resources.getShader(config::Shaders::PassFinalFragment); }
-
-	inline const render::Shader *getSkyLightVertexShader() const { return resources.getShader(config::Shaders::SkyLightVertex); }
-	inline const render::Shader *getSkyLightFragmentShader() const { return resources.getShader(config::Shaders::SkyLightFragment); }
+	inline const render::Shader *getShader(config::Shaders index) const { return resources.getShader(index); }
 
 	inline const render::Texture *getAlbedoTexture() const { return resources.getTexture(config::Textures::Albedo); }
 	inline const render::Texture *getNormalTexture() const { return resources.getTexture(config::Textures::Normal); }

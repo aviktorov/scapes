@@ -1,31 +1,33 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include <common/brdf.inc>
+#include <common/Common.h>
 
 #define LBUFFER_SET 0
-#include <deferred/lbuffer.inc>
+#include <deferred/LBuffer.h>
 
 #define SSAO_SET 1
-#include <deferred/ssao.inc>
+#include <deferred/SSAO.h>
 
 #define SSR_SET 2
-#include <deferred/ssr.inc>
+#include <deferred/SSR.h>
 
-layout(location = 0) in vec2 fragTexCoord;
+// input
+layout(location = 0) in vec2 inUV;
 
-layout(location = 0) out vec4 outHdrColor;
+// output
+layout(location = 0) out vec4 outCompositeHDRColor;
 
 void main()
 {
-	float ao = texture(ssaoTexture, fragTexCoord).r;
-	vec4 ssr = texture(ssrTexture, fragTexCoord);
-	vec4 indirect_specular = texture(lbufferSpecular, fragTexCoord);
-	vec4 indirect_diffuse = texture(lbufferDiffuse, fragTexCoord);
+	float ao = texture(texSSAO, inUV).r;
+	vec4 ssr = texture(texSSR, inUV);
+	vec4 indirectSpecular = texture(texLBufferSpecular, inUV);
+	vec4 indirectDiffuse = texture(texLBufferDiffuse, inUV);
 
-	outHdrColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	outCompositeHDRColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-	outHdrColor.rgb += indirect_diffuse.rgb;
-	outHdrColor.rgb += lerp(indirect_specular.rgb, ssr.rgb, ssr.a);
-	outHdrColor.rgb *= ao;
+	outCompositeHDRColor.rgb += indirectDiffuse.rgb;
+	outCompositeHDRColor.rgb += mix(indirectSpecular.rgb, ssr.rgb, ssr.a);
+	outCompositeHDRColor.rgb *= ao;
 }

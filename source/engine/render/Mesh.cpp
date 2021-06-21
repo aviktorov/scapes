@@ -174,11 +174,11 @@ namespace render
 		static render::backend::VertexAttribute attributes[] =
 		{
 			{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, position) },
+			{ render::backend::Format::R32G32_SFLOAT, offsetof(Vertex, uv) },
 			{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, tangent) },
 			{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, binormal) },
 			{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, normal) },
 			{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, color) },
-			{ render::backend::Format::R32G32_SFLOAT, offsetof(Vertex, uv) },
 		};
 
 		render_primitive->vertices = driver->createVertexBuffer(

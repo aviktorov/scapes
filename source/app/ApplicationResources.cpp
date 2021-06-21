@@ -9,70 +9,48 @@
 namespace config
 {
 	// Meshes
-	static std::vector<const char *>meshes = {
+	static std::vector<const char *> meshes = {
 		"models/SciFiHelmet.fbx",
 	};
 
 	// Shaders
 	static std::vector<const char *> shaders = {
-		"shaders/pbr.vert",
-		"shaders/pbr.frag",
-		"shaders/skybox.vert",
-		"shaders/skybox.frag",
-		"shaders/commonCube.vert",
-		"shaders/hdriToCube.frag",
-		"shaders/cubeToPrefilteredSpecular.frag",
-		"shaders/diffuseIrradiance.frag",
-		"shaders/bakedBRDF.vert",
-		"shaders/bakedBRDF.frag",
-		"shaders/deferred/skylight_deferred.vert",
-		"shaders/deferred/skylight_deferred.frag",
-		"shaders/deferred/gbuffer.vert",
-		"shaders/deferred/gbuffer.frag",
-		"shaders/deferred/ssao.vert",
-		"shaders/deferred/ssao.frag",
-		"shaders/deferred/ssao_blur.vert",
-		"shaders/deferred/ssao_blur.frag",
-		"shaders/deferred/ssr_trace.vert",
-		"shaders/deferred/ssr_trace.frag",
-		"shaders/deferred/ssr_resolve.vert",
-		"shaders/deferred/ssr_resolve.frag",
-		"shaders/deferred/composite.vert",
-		"shaders/deferred/composite.frag",
-		"shaders/deferred/temporal_filter.vert",
-		"shaders/deferred/temporal_filter.frag",
-		"shaders/deferred/final.vert",
-		"shaders/deferred/final.frag",
+		"shaders/common/Cubemap.vert",
+		"shaders/common/FullscreenQuad.vert",
+		"shaders/utils/EquirectangularProjection.frag",
+		"shaders/utils/PrefilteredSpecularCubemap.frag",
+		"shaders/utils/DiffuseIrradianceCubemap.frag",
+		"shaders/utils/BakedBRDF.frag",
+		"shaders/deferred/SkylightDeferred.frag",
+		"shaders/deferred/GBuffer.vert",
+		"shaders/deferred/GBuffer.frag",
+		"shaders/deferred/SSAO.frag",
+		"shaders/deferred/SSAOBlur.frag",
+		"shaders/deferred/SSRTrace.frag",
+		"shaders/deferred/SSRResolve.frag",
+		"shaders/deferred/Composite.frag",
+		"shaders/render/TemporalFilter.frag",
+		"shaders/render/Tonemapping.frag",
+		"shaders/render/Final.frag",
 	};
 
 	static std::vector<render::backend::ShaderType> shaderTypes = {
 		render::backend::ShaderType::VERTEX,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
-		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
+		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::FRAGMENT,
 		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
 	};
 
@@ -136,7 +114,7 @@ void ApplicationResources::init()
 		driver,
 		render::backend::Format::R16G16_SFLOAT,
 		512, 512, 1,
-		resources.getShader(config::Shaders::BakedBRDFVertex),
+		resources.getShader(config::Shaders::FullscreenQuadVertex),
 		resources.getShader(config::Shaders::BakedBRDFFragment)
 	);
 
@@ -152,9 +130,9 @@ void ApplicationResources::init()
 			render::backend::Format::R32G32B32A32_SFLOAT,
 			128,
 			resources.getTexture(config::Textures::EnvironmentBase + i),
-			resources.getShader(config::Shaders::CubeVertex),
-			resources.getShader(config::Shaders::HDRIToCubeFragment),
-			resources.getShader(config::Shaders::CubeToPrefilteredSpecular)
+			resources.getShader(config::Shaders::CubemapVertex),
+			resources.getShader(config::Shaders::EquirectangularProjectionFragment),
+			resources.getShader(config::Shaders::PrefilteredSpecularCubemapFragment)
 		);
 
 		irradiance_cubemaps[i] = RenderUtils::createTextureCube(
@@ -162,8 +140,8 @@ void ApplicationResources::init()
 			render::backend::Format::R32G32B32A32_SFLOAT,
 			128,
 			1,
-			resources.getShader(config::Shaders::CubeVertex),
-			resources.getShader(config::Shaders::DiffuseIrradianceFragment),
+			resources.getShader(config::Shaders::CubemapVertex),
+			resources.getShader(config::Shaders::DiffuseIrradianceCubemapFragment),
 			environment_cubemaps[i]
 		);
 	}

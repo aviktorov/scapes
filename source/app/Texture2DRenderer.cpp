@@ -65,6 +65,7 @@ void Texture2DRenderer::render(
 
 	driver->beginRenderPass(command_buffer, framebuffer, &info);
 
+	driver->clearBindSets();
 	driver->clearShaders();
 	driver->setShader(ShaderType::VERTEX, vertex_shader);
 	driver->setShader(ShaderType::FRAGMENT, fragment_shader);

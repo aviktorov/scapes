@@ -10,7 +10,6 @@
 #include <render/SwapChain.h>
 
 #include "SkyLight.h"
-#include "Renderer.h"
 #include "RenderGraph.h"
 #include "Scene.h"
 
@@ -65,9 +64,9 @@ void Application::update()
 	const float zFar = 10000.0f;
 
 	glm::vec3 cameraPos;
-	cameraPos.x = static_cast<float>(glm::cos(camera.phi) * glm::cos(camera.theta) * camera.radius);
-	cameraPos.y = static_cast<float>(glm::sin(camera.phi) * glm::cos(camera.theta) * camera.radius);
-	cameraPos.z = static_cast<float>(glm::sin(camera.theta) * camera.radius);
+	cameraPos.x = static_cast<float>(glm::cos(camera_state.phi) * glm::cos(camera_state.theta) * camera_state.radius);
+	cameraPos.y = static_cast<float>(glm::sin(camera_state.phi) * glm::cos(camera_state.theta) * camera_state.radius);
+	cameraPos.z = static_cast<float>(glm::sin(camera_state.theta) * camera_state.radius);
 
 	glm::vec4 cameraParams;
 	cameraParams.x = zNear;
@@ -75,31 +74,31 @@ void Application::update()
 	cameraParams.z = 1.0f / zNear;
 	cameraParams.w = 1.0f / zFar;
 
-	state.view = glm::lookAt(cameraPos, zero, up);
-	state.projection = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
+	camera_state.view = glm::lookAt(cameraPos, zero, up);
+	camera_state.projection = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
 
 	// projection matrix is adjusted for OpenGL so we need to flip it for non-flipped backends :)
 	if (!driver->isFlipped())
-		state.projection[1][1] *= -1;
+		camera_state.projection[1][1] *= -1;
 
 	// TODO: move to render graph
 	// patch projection matrix for temporal supersampling
-	const glm::vec2 &temporalSample = state.temporalSamples[state.currentTemporalFrame];
-	state.projection[2][0] = temporalSample.x / width;
-	state.projection[2][1] = temporalSample.y / height;
+	const glm::vec2 &temporalSample = application_state.temporalSamples[application_state.currentTemporalFrame];
+	camera_state.projection[2][0] = temporalSample.x / width;
+	camera_state.projection[2][1] = temporalSample.y / height;
 
-	state.currentTemporalFrame = (state.currentTemporalFrame + 1) % ApplicationState::MAX_TEMPORAL_FRAMES;
+	application_state.currentTemporalFrame = (application_state.currentTemporalFrame + 1) % ApplicationState::MAX_TEMPORAL_FRAMES;
 
-	state.iview = glm::inverse(state.view);
-	state.iprojection = glm::inverse(state.projection);
-	state.cameraPosWS = cameraPos;
-	state.cameraParams = cameraParams;
-	state.currentTime = time;
+	camera_state.iview = glm::inverse(camera_state.view);
+	camera_state.iprojection = glm::inverse(camera_state.projection);
+	camera_state.cameraPosWS = cameraPos;
+	camera_state.cameraParams = cameraParams;
+	application_state.currentTime = time;
 
-	if (state.firstFrame)
+	if (application_state.firstFrame)
 	{
-		state.viewOld = state.view;
-		state.firstFrame = false;
+		camera_state.viewOld = camera_state.view;
+		application_state.firstFrame = false;
 	}
 
 	ImGui::Begin("Material Parameters");
@@ -107,21 +106,21 @@ void Application::update()
 	if (ImGui::Button("Reload Shaders"))
 	{
 		resources->reloadShaders();
-		sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(state.currentEnvironment));
-		sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(state.currentEnvironment));
+		sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(application_state.currentEnvironment));
+		sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(application_state.currentEnvironment));
 	}
 
-	int oldCurrentEnvironment = state.currentEnvironment;
-	if (ImGui::BeginCombo("Choose Your Destiny", resources->getHDRTexturePath(state.currentEnvironment)))
+	int oldCurrentEnvironment = application_state.currentEnvironment;
+	if (ImGui::BeginCombo("Choose Your Destiny", resources->getHDRTexturePath(application_state.currentEnvironment)))
 	{
 		for (int i = 0; i < resources->getNumHDRTextures(); i++)
 		{
-			bool selected = (i == state.currentEnvironment);
+			bool selected = (i == application_state.currentEnvironment);
 			if (ImGui::Selectable(resources->getHDRTexturePath(i), &selected))
 			{
-				state.currentEnvironment = i;
-				sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(state.currentEnvironment));
-				sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(state.currentEnvironment));
+				application_state.currentEnvironment = i;
+				sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(application_state.currentEnvironment));
+				sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(application_state.currentEnvironment));
 			}
 			if (selected)
 				ImGui::SetItemDefaultFocus();
@@ -129,9 +128,9 @@ void Application::update()
 		ImGui::EndCombo();
 	}
 
-	ImGui::SliderFloat("Lerp User Material", &state.lerpUserValues, 0.0f, 1.0f);
-	ImGui::SliderFloat("Metalness", &state.userMetalness, 0.0f, 1.0f);
-	ImGui::SliderFloat("Roughness", &state.userRoughness, 0.0f, 1.0f);
+	ImGui::SliderFloat("Lerp User Material", &application_state.lerpUserValues, 0.0f, 1.0f);
+	ImGui::SliderFloat("Metalness", &application_state.userMetalness, 0.0f, 1.0f);
+	ImGui::SliderFloat("Roughness", &application_state.userRoughness, 0.0f, 1.0f);
 
 	ImGui::SliderFloat("Radius", &render_graph->getSSAOKernel().cpu_data->radius, 0.0f, 100.0f);
 	ImGui::SliderFloat("Intensity", &render_graph->getSSAOKernel().cpu_data->intensity, 0.0f, 100.0f);
@@ -197,8 +196,10 @@ void Application::render()
 		return;
 	}
 
-	memcpy(frame.uniform_buffer_data, &state, sizeof(ApplicationState));
-	render_graph->render(sponza, frame);
+	memcpy(camera_gpu_data, &camera_state, sizeof(CameraState));
+	memcpy(frame.uniform_buffer_data, &application_state, sizeof(ApplicationState));
+
+	render_graph->render(sponza, frame, camera_bindings);
 
 	driver->submitSyncked(frame.command_buffer, swap_chain->getBackend());
 
@@ -211,7 +212,7 @@ void Application::render()
 
 void Application::postRender()
 {
-	state.viewOld = state.view;
+	camera_state.viewOld = camera_state.view;
 
 	// TODO: call render_scene->postRender();
 }
@@ -276,20 +277,20 @@ void Application::onMousePosition(GLFWwindow* window, double mouseX, double mous
 	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
 	assert(application != nullptr);
 
-	if (application->input.rotating)
+	if (application->input_state.rotating)
 	{
-		double deltaX = mouseX - application->input.lastMouseX;
-		double deltaY = mouseY - application->input.lastMouseY;
+		double deltaX = mouseX - application->input_state.lastMouseX;
+		double deltaY = mouseY - application->input_state.lastMouseY;
 
-		application->camera.phi -= deltaX * application->input.rotationSpeed;
-		application->camera.theta += deltaY * application->input.rotationSpeed;
+		application->camera_state.phi -= deltaX * application->input_state.rotationSpeed;
+		application->camera_state.theta += deltaY * application->input_state.rotationSpeed;
 
-		application->camera.phi = std::fmod(application->camera.phi, glm::two_pi<double>());
-		application->camera.theta = std::clamp<double>(application->camera.theta, -glm::half_pi<double>(), glm::half_pi<double>());
+		application->camera_state.phi = std::fmod(application->camera_state.phi, glm::two_pi<double>());
+		application->camera_state.theta = std::clamp<double>(application->camera_state.theta, -glm::half_pi<double>(), glm::half_pi<double>());
 	}
 
-	application->input.lastMouseX = mouseX;
-	application->input.lastMouseY = mouseY;
+	application->input_state.lastMouseX = mouseX;
+	application->input_state.lastMouseY = mouseY;
 }
 
 void Application::onMouseButton(GLFWwindow* window, int button, int action, int mods)
@@ -298,7 +299,7 @@ void Application::onMouseButton(GLFWwindow* window, int button, int action, int 
 	assert(application != nullptr);
 
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
-		application->input.rotating = (action == GLFW_PRESS);
+		application->input_state.rotating = (action == GLFW_PRESS);
 }
 
 void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
@@ -306,7 +307,7 @@ void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
 	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
 	assert(application);
 
-	application->camera.radius -= deltaY * application->input.scrollSpeed;
+	application->camera_state.radius -= deltaY * application->input_state.scrollSpeed;
 }
 
 /*
@@ -319,7 +320,12 @@ void Application::initRenderScene()
 	sponza = new Scene(driver);
 	sponza->import("scenes/pbr_sponza/sponza.obj");
 
-	sky_light = new SkyLight(driver, resources->getSkyLightVertexShader(), resources->getSkyLightFragmentShader());
+	sky_light = new SkyLight(
+		driver,
+		resources->getShader(config::Shaders::FullscreenQuadVertex),
+		resources->getShader(config::Shaders::SkylightDeferredFragment)
+	);
+
 	sky_light->setBakedBRDFTexture(resources->getBakedBRDFTexture());
 	sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(0));
 	sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(0));
@@ -357,13 +363,20 @@ void Application::initRenderers()
 	{
 		for (uint8_t x = 0; x < num_columns; ++x)
 		{
-			glm::vec2 &sample = state.temporalSamples[x + y * num_columns];
+			glm::vec2 &sample = application_state.temporalSamples[x + y * num_columns];
 			sample.x = halton2[x];
 			sample.y = halton3[y];
 
 			sample = sample * 2.0f - 1.0f;
 		}
 	}
+
+	camera_buffer = driver->createUniformBuffer(backend::BufferType::DYNAMIC, sizeof(CameraState));
+	camera_bindings = driver->createBindSet();
+
+	driver->bindUniformBuffer(camera_bindings, 0, camera_buffer);
+
+	camera_gpu_data = driver->map(camera_buffer);
 }
 
 void Application::shutdownRenderers()
@@ -447,5 +460,5 @@ void Application::recreateSwapChain()
 
 	swap_chain->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	render_graph->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-	state.firstFrame = true;
+	application_state.firstFrame = true;
 }

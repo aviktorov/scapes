@@ -113,7 +113,7 @@ public:
 	void init(const ApplicationResources *resources, uint32_t width, uint32_t height);
 	void shutdown();
 	void resize(uint32_t width, uint32_t height);
-	void render(const Scene *scene, const render::RenderFrame &frame);
+	void render(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
 
 	ImTextureID fetchTextureID(const render::backend::Texture *texture);
 
@@ -155,17 +155,17 @@ private:
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
-	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame);
-	void renderSSAO(const Scene *scene, const render::RenderFrame &frame);
+	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
+	void renderSSAO(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
 	void renderSSAOBlur(const Scene *scene, const render::RenderFrame &frame);
-	void renderSSRTrace(const Scene *scene, const render::RenderFrame &frame);
-	void renderSSRResolve(const Scene *scene, const render::RenderFrame &frame);
+	void renderSSRTrace(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
+	void renderSSRResolve(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
 	void renderSSRTemporalFilter(const Scene *scene, const render::RenderFrame &frame);
-	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame);
+	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
 	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
 	void renderCompositeTemporalFilter(const Scene *scene, const render::RenderFrame &frame);
 	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, const render::RenderFrame &frame);
-	void renderFinal(const Scene *scene, const render::RenderFrame &frame);
+	void renderTonemapping(const Scene *scene, const render::RenderFrame &frame);
 
 private:
 	render::backend::Driver *driver {nullptr};
@@ -195,24 +195,13 @@ private:
 	const render::Shader *gbuffer_pass_vertex {nullptr};
 	const render::Shader *gbuffer_pass_fragment {nullptr};
 
-	const render::Shader *ssao_pass_vertex {nullptr};
+	const render::Shader *fullscreen_quad_vertex {nullptr};
+
 	const render::Shader *ssao_pass_fragment {nullptr};
-
-	const render::Shader *ssao_blur_pass_vertex {nullptr};
 	const render::Shader *ssao_blur_pass_fragment {nullptr};
-
-	const render::Shader *ssr_trace_pass_vertex {nullptr};
 	const render::Shader *ssr_trace_pass_fragment {nullptr};
-
-	const render::Shader *ssr_resolve_pass_vertex {nullptr};
 	const render::Shader *ssr_resolve_pass_fragment {nullptr};
-
-	const render::Shader *temporal_filter_pass_vertex {nullptr};
 	const render::Shader *temporal_filter_pass_fragment {nullptr};
-
-	const render::Shader *composite_pass_vertex {nullptr};
 	const render::Shader *composite_pass_fragment {nullptr};
-
-	const render::Shader *final_pass_vertex {nullptr};
-	const render::Shader *final_pass_fragment {nullptr};
+	const render::Shader *tonemapping_pass_fragment {nullptr};
 };
