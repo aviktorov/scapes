@@ -60,15 +60,19 @@ PBR Sandbox:
             ☐ Tone map -> TAA accumulate -> Reverse Tone Map
         ☐ SSR Trace Improvements: trace rays in screen space via DDA
             http://jcgt.org/published/0003/04/04/paper.pdf
+        ☐ Animate blue noise for better TAA sampling
+        ☐ Remove unnecessary calculations in SSR motion vectors (i.e. reflectedPointNDC and so on)
+
+    Stream 59:
+        
+
     Stream 58:
-        ☐ Do clean up in shaders
-            ☐ Orgranize shaders folder structure
-            ☐ Either add .inc to GLSL extensions or replace it to .h
-            ☐ Extract common functions from brdf.inc to common.inc
-            ☐ Rename RenderState.inc to application.inc and move functions to common.inc
-            ☐ Add GBuffer struct to gbuffer.inc and samling helpers
-            ☐ Animate blue noise for better TAA sampling
-            ☐ Remove unnecessary calculations in SSR motion vectors (i.e. reflectedPointNDC and so on)
+        ✔ Do clean up in shaders @done(21-06-22 01:56)
+            ✔ Orgranize shaders folder structure @done(21-06-21 21:07)
+            ✔ Either add .inc to GLSL extensions or replace it to .h @done(21-06-21 21:07)
+            ✔ Extract common functions from brdf.inc to common.inc @done(21-06-21 23:10)
+            ✔ Rename RenderState.inc to application.inc and move functions to common.inc @done(21-06-21 23:10)
+            ✔ Add GBuffer struct to gbuffer.inc and samling helpers @done(21-06-21 23:10)
     Stream 57:
         ✔ Do clean up in render graph @done (3/26/2021, 9:08:55 PM)
             ✔ Make sure temporal filter can take any motion vectors (could be gbuffer or ssr velocity) @done (3/26/2021, 8:39:10 PM)
