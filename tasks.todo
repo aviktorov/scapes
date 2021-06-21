@@ -64,7 +64,11 @@ PBR Sandbox:
         ☐ Remove unnecessary calculations in SSR motion vectors (i.e. reflectedPointNDC and so on)
 
     Stream 59:
-        
+        ☐ Remove virtual functions from Driver
+        ☐ Add RenderPass structure
+        ☐ Add Queue structure
+        ☐ Add PipelineState structure
+        ☐ Add multiple vertex stream support to PSO
 
     Stream 58:
         ✔ Do clean up in shaders @done(21-06-22 01:56)
