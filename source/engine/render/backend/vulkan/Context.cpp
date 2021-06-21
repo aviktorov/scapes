@@ -31,7 +31,7 @@ namespace render::backend::vulkan
 
 	void Context::clearShaders()
 	{
-		memset(shaders, VK_NULL_HANDLE, sizeof(shaders));
+		memset(shaders, 0, sizeof(shaders));
 	}
 
 	void Context::setShader(ShaderType type, const Shader *shader)

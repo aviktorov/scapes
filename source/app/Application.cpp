@@ -393,7 +393,7 @@ void Application::shutdownImGui()
  */
 void Application::initDriver()
 {
-	driver = backend::Driver::create("PBR Sandbox", "Scape", render::backend::Api::OPENGL);
+	driver = backend::Driver::create("PBR Sandbox", "Scape", render::backend::Api::VULKAN);
 	compiler = new shaders::spirv::Compiler();
 }
 
