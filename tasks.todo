@@ -62,14 +62,13 @@ PBR Sandbox:
             http://jcgt.org/published/0003/04/04/paper.pdf
         ☐ Animate blue noise for better TAA sampling
         ☐ Remove unnecessary calculations in SSR motion vectors (i.e. reflectedPointNDC and so on)
-
-    Stream 59:
-        ☐ Remove virtual functions from Driver
+    Stream 60:
         ☐ Add RenderPass structure
         ☐ Add Queue structure
         ☐ Add PipelineState structure
         ☐ Add multiple vertex stream support to PSO
-
+    Stream 59:
+        ✘ Remove virtual functions from Driver @cancelled (6/27/2021, 4:23:35 AM)
     Stream 58:
         ✔ Do clean up in shaders @done(21-06-22 01:56)
             ✔ Orgranize shaders folder structure @done(21-06-21 21:07)
