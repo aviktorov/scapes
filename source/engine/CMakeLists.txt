@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.10)
 project(scapes)
 
 option(USE_RENDER_BACKEND_VK "Include Vulkan rendering backend" TRUE)
-option(USE_RENDER_BACKEND_OPENGL "Include OpenGL rendering backend" TRUE)
 
 file(GLOB PROFILER_SOURCES
 	${THIRDPARTY_DIR}/tracy/TracyClient.cpp
@@ -49,40 +48,8 @@ set(RENDER_LIBRARIES
 	IrrXml
 	zlibstatic
 	shaderc_shared
-	spirv-cross-cd
-	spirv-cross-cored
-	spirv-cross-cppd
-	spirv-cross-glsld
-	spirv-cross-hlsld
-	spirv-cross-msld
-	spirv-cross-reflectd
-	spirv-cross-utild
 )
 
-if (USE_RENDER_BACKEND_OPENGL)
-	file(GLOB GL_RENDER_SOURCES
-		${THIRDPARTY_DIR}/glad/glad.c
-		${THIRDPARTY_DIR}/glad/glad_loader.c
-		${CMAKE_CURRENT_SOURCE_DIR}/render/backend/opengl/Driver.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/render/backend/opengl/Utils.cpp
-	)
-
-	file(GLOB GL_RENDER_HEADERS
-		${CMAKE_CURRENT_SOURCE_DIR}/render/backend/opengl/*.h
-		${THIRDPARTY_DIR}/glad/glad.h
-		${THIRDPARTY_DIR}/glad/glad_loader.h
-	)
-
-	list(APPEND RENDER_SOURCES ${GL_RENDER_SOURCES})
-	list(APPEND RENDER_HEADERS ${GL_RENDER_HEADERS})
-
-	# TODO: add platform dependent checks
-	list(APPEND RENDER_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/render/backend/opengl/PlatformWGL.cpp)
-	list(APPEND RENDER_SOURCES ${THIRDPARTY_DIR}/glad/glad_wgl.c)
-	list(APPEND RENDER_HEADERS ${THIRDPARTY_DIR}/glad/glad_wgl.h)
-
-	list(APPEND RENDER_LIBRARIES opengl32)
-endif()
 
 if (USE_RENDER_BACKEND_VK)
 	file(GLOB VK_RENDER_SOURCES
