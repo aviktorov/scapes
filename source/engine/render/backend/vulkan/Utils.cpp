@@ -373,6 +373,31 @@ namespace render::backend::vulkan
 
 	/*
 	 */
+	VkAttachmentLoadOp Utils::getLoadOp(RenderPassLoadOp op)
+	{
+		static VkAttachmentLoadOp supported_load_ops[static_cast<int>(RenderPassLoadOp::MAX)] =
+		{
+			VK_ATTACHMENT_LOAD_OP_LOAD,
+			VK_ATTACHMENT_LOAD_OP_CLEAR,
+			VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+		};
+
+		return supported_load_ops[static_cast<int>(op)];
+	}
+
+	VkAttachmentStoreOp Utils::getStoreOp(RenderPassStoreOp op)
+	{
+		static VkAttachmentStoreOp supported_store_ops[static_cast<int>(RenderPassStoreOp::MAX)] =
+		{
+			VK_ATTACHMENT_STORE_OP_STORE,
+			VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		};
+
+		return supported_store_ops[static_cast<int>(op)];
+	}
+
+	/*
+	 */
 	bool Utils::checkInstanceValidationLayers(
 		const std::vector<const char *> &requiredLayers,
 		bool verbose

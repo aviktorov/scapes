@@ -22,7 +22,7 @@ namespace render::backend::vulkan
 	// TODO: move to utils
 	static VkShaderStageFlagBits toShaderStage(ShaderType type)
 	{
-		static VkShaderStageFlagBits supported_stages[] =
+		static VkShaderStageFlagBits supported_stages[12] =
 		{
 			// Graphics pipeline
 			VK_SHADER_STAGE_VERTEX_BIT,

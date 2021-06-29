@@ -29,7 +29,7 @@ struct GBuffer
 	render::backend::Texture *normal {nullptr};         // rg16f, packed normal without z
 	render::backend::Texture *depth {nullptr};          // d32f,  linear depth
 	render::backend::Texture *velocity {nullptr};       // rg16f, uv motion vector
-	render::backend::FrameBuffer *framebuffer {nullptr};
+	render::backend::FrameBuffer *frame_buffer {nullptr};
 	render::backend::BindSet *bindings {nullptr};
 	render::backend::BindSet *velocity_bindings {nullptr};
 };
@@ -38,7 +38,7 @@ struct LBuffer
 {
 	render::backend::Texture *diffuse {nullptr};        // rgb16f, hdr linear color
 	render::backend::Texture *specular {nullptr};       // rga16f, hdr linear color
-	render::backend::FrameBuffer *framebuffer {nullptr};
+	render::backend::FrameBuffer *frame_buffer {nullptr};
 	render::backend::BindSet *bindings {nullptr};
 };
 
@@ -87,16 +87,16 @@ struct SSRResolve
 	render::backend::Texture *velocity {nullptr};  // rg16f, reprojected reflected surface motion vectors
 	render::backend::BindSet *resolve_bindings {nullptr};
 	render::backend::BindSet *velocity_bindings {nullptr};
-	render::backend::FrameBuffer *framebuffer {nullptr};
+	render::backend::FrameBuffer *frame_buffer {nullptr};
 };
 
 // SSAO, r8, ao factor
-// SSR trace, rgba8, trace data
+// SSR trace, rgba16f, trace data
 // Composite, rgba16f, hdr linear color
 struct RenderBuffer
 {
 	render::backend::Texture *texture {nullptr};
-	render::backend::FrameBuffer *framebuffer {nullptr};
+	render::backend::FrameBuffer *frame_buffer {nullptr};
 	render::backend::BindSet *bindings {nullptr};
 };
 
@@ -134,6 +134,9 @@ public:
 	void buildSSAOKernel();
 
 private:
+	void initRenderPasses();
+	void shutdownRenderPasses();
+
 	void initTransient(uint32_t width, uint32_t height);
 	void shutdownTransient();
 
@@ -165,7 +168,7 @@ private:
 	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
 	void renderCompositeTemporalFilter(const Scene *scene, const render::RenderFrame &frame);
 	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, const render::RenderFrame &frame);
-	void renderTonemapping(const Scene *scene, const render::RenderFrame &frame);
+	void renderToSwapChain(const Scene *scene, const render::RenderFrame &frame);
 
 private:
 	render::backend::Driver *driver {nullptr};
@@ -191,6 +194,13 @@ private:
 
 	render::Mesh *quad {nullptr};
 	ImGuiRenderer *imgui_renderer {nullptr};
+
+	render::backend::RenderPass *gbuffer_render_pass {nullptr};
+	render::backend::RenderPass *lbuffer_render_pass {nullptr};
+	render::backend::RenderPass *ssr_resolve_render_pass {nullptr};
+	render::backend::RenderPass *ssao_render_pass {nullptr};
+	render::backend::RenderPass *hdr_render_pass {nullptr};
+	render::backend::RenderPass *swap_chain_render_pass {nullptr};
 
 	const render::Shader *gbuffer_pass_vertex {nullptr};
 	const render::Shader *gbuffer_pass_fragment {nullptr};

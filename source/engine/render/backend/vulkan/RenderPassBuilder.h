@@ -13,33 +13,14 @@ namespace render::backend::vulkan
 		RenderPassBuilder() { }
 		~RenderPassBuilder();
 
-		RenderPassBuilder &RenderPassBuilder::addColorAttachment(
+		RenderPassBuilder &RenderPassBuilder::addAttachment(
 			VkFormat format,
 			VkSampleCountFlagBits num_samples,
-			VkImageLayout final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 			VkAttachmentLoadOp load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 			VkAttachmentStoreOp store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 			VkAttachmentLoadOp stencil_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			VkAttachmentStoreOp stencil_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE
-		);
-
-		RenderPassBuilder &RenderPassBuilder::addColorResolveAttachment(
-			VkFormat format,
-			VkImageLayout final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VkAttachmentLoadOp load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			VkAttachmentStoreOp store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-			VkAttachmentLoadOp stencil_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			VkAttachmentStoreOp stencil_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE
-		);
-
-		RenderPassBuilder &addDepthStencilAttachment(
-			VkFormat format,
-			VkSampleCountFlagBits num_samples,
-			VkImageLayout final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VkAttachmentLoadOp load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			VkAttachmentStoreOp store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-			VkAttachmentLoadOp stencil_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-			VkAttachmentStoreOp stencil_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE
+			VkAttachmentStoreOp stencil_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+			VkImageLayout final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		);
 
 		RenderPassBuilder &addSubpass(

@@ -40,8 +40,6 @@ namespace render::backend::vulkan
 		inline VkShaderModule getShader(ShaderType type) const { return shaders[static_cast<uint32_t>(type)]; }
 		void setShader(ShaderType type, const Shader *shader);
 
-		void setFramebuffer(const FrameBuffer *frame_buffer);
-
 		inline VkViewport getViewport() const { return viewport; }
 		inline void setViewport(VkViewport v) { viewport = v; }
 
@@ -52,7 +50,7 @@ namespace render::backend::vulkan
 		inline uint8_t getNumColorAttachments() const { return num_color_attachments; }
 
 		inline VkRenderPass getRenderPass() const { return render_pass; }
-		inline void setRenderPass(VkRenderPass pass) { render_pass = pass; }
+		void setRenderPass(const RenderPass *pass);
 
 		inline VkCullModeFlags getCullMode() const { return state.cull_mode; }
 		inline void setCullMode(VkCullModeFlags mode) { state.cull_mode = mode; }

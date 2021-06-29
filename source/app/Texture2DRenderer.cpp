@@ -18,19 +18,36 @@ Texture2DRenderer::Texture2DRenderer(Driver *driver)
 
 /*
  */
-void Texture2DRenderer::init(const render::backend::Texture *target_texture)
+void Texture2DRenderer::init(const render::Texture *target_texture)
 {
 	assert(target_texture != nullptr);
 
 	// Create framebuffer
-	FrameBufferAttachment attachment = { target_texture };
-	framebuffer = driver->createFrameBuffer(1, &attachment);
+	FrameBufferAttachment frame_buffer_attachments[1] = { target_texture->getBackend() };
+	frame_buffer = driver->createFrameBuffer(1, frame_buffer_attachments);
+
+	// Create render pass
+	RenderPassAttachment render_pass_attachments[1] =
+	{
+		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
+	};
+
+	uint32_t color_attachments[1] = { 0 };
+
+	RenderPassDescription render_pass_description = {};
+	render_pass_description.num_color_attachments = 1;
+	render_pass_description.color_attachments = color_attachments;
+
+	render_pass = driver->createRenderPass(1, render_pass_attachments, render_pass_description);
 }
 
 void Texture2DRenderer::shutdown()
 {
-	driver->destroyFrameBuffer(framebuffer);
-	framebuffer = nullptr;
+	driver->destroyFrameBuffer(frame_buffer);
+	frame_buffer = nullptr;
+
+	driver->destroyRenderPass(render_pass);
+	render_pass = nullptr;
 
 	driver->destroyCommandBuffer(command_buffer);
 	command_buffer = nullptr;
@@ -52,18 +69,7 @@ void Texture2DRenderer::render(
 	driver->resetCommandBuffer(command_buffer);
 	driver->beginCommandBuffer(command_buffer);
 
-	RenderPassClearValue clear_value;
-	clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
-
-	RenderPassLoadOp load_op = RenderPassLoadOp::CLEAR;
-	RenderPassStoreOp store_op = RenderPassStoreOp::STORE;
-
-	RenderPassInfo info;
-	info.load_ops = &load_op;
-	info.store_ops = &store_op;
-	info.clear_values = &clear_value;
-
-	driver->beginRenderPass(command_buffer, framebuffer, &info);
+	driver->beginRenderPass(command_buffer, render_pass, frame_buffer);
 
 	driver->clearBindSets();
 	driver->clearShaders();

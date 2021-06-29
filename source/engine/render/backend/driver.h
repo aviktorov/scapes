@@ -13,7 +13,6 @@ namespace render::backend
 enum class Api : uint8_t
 {
 	VULKAN = 0,
-	OPENGL,
 	DEFAULT = VULKAN,
 
 	MAX,
@@ -164,12 +163,16 @@ enum class RenderPassLoadOp : uint8_t
 	LOAD = 0,
 	CLEAR,
 	DONT_CARE,
+
+	MAX,
 };
 
 enum class RenderPassStoreOp : uint8_t
 {
 	STORE = 0,
 	DONT_CARE,
+
+	MAX,
 };
 
 enum class ShaderType : uint8_t
@@ -247,8 +250,8 @@ struct IndexBuffer {};
 
 struct Texture {};
 struct FrameBuffer {};
+struct RenderPass {};
 struct CommandBuffer {};
-// TODO: render pass?
 
 struct UniformBuffer {};
 // TODO: shader storage buffer?
@@ -282,14 +285,13 @@ struct FrameBufferAttachment
 	uint32_t base_mip {0};
 	uint32_t base_layer {0};
 	uint32_t num_layers {1};
-	bool resolve_attachment {false};
 };
 
 union RenderPassClearColor
 {
-	float float32[4];
-	int32_t int32[4];
-	uint32_t uint32[4];
+	float as_f32[4];
+	int32_t as_i32[4];
+	uint32_t as_ui32[4];
 };
 
 struct RenderPassClearDepthStencil
@@ -300,15 +302,25 @@ struct RenderPassClearDepthStencil
 
 union RenderPassClearValue
 {
-	RenderPassClearColor color;
-	RenderPassClearDepthStencil depth_stencil;
+	RenderPassClearColor as_color;
+	RenderPassClearDepthStencil as_depth_stencil;
 };
 
-struct RenderPassInfo
+struct RenderPassAttachment
 {
-	RenderPassLoadOp *load_ops {nullptr};
-	RenderPassStoreOp *store_ops {nullptr};
-	RenderPassClearValue *clear_values {nullptr};
+	Format format {Format::UNDEFINED};
+	Multisample samples {Multisample::COUNT_1};
+	RenderPassLoadOp load_op {RenderPassLoadOp::DONT_CARE};
+	RenderPassStoreOp store_op {RenderPassStoreOp::DONT_CARE};
+	RenderPassClearValue clear_value;
+};
+
+struct RenderPassDescription
+{
+	uint32_t num_color_attachments {0};
+	uint32_t *color_attachments {nullptr};
+	uint32_t *resolve_attachments {nullptr};
+	uint32_t *depthstencil_attachment {nullptr};
 };
 
 // main backend class
@@ -380,9 +392,21 @@ public:
 	) = 0;
 
 	virtual FrameBuffer *createFrameBuffer(
-		uint8_t num_color_attachments,
-		const FrameBufferAttachment *color_attachments,
-		const FrameBufferAttachment *depthstencil_attachment = nullptr
+		uint32_t num_attachments,
+		const FrameBufferAttachment *attachments
+	) = 0;
+
+	virtual RenderPass *createRenderPass(
+		uint32_t num_attachments,
+		const RenderPassAttachment *attachments,
+		const RenderPassDescription &description
+	) = 0;
+
+	virtual RenderPass *createRenderPass(
+		const SwapChain *swap_chain,
+		RenderPassLoadOp load_op,
+		RenderPassStoreOp store_op,
+		const RenderPassClearColor *clear_color
 	) = 0;
 
 	virtual CommandBuffer *createCommandBuffer(
@@ -410,16 +434,14 @@ public:
 	) = 0;
 
 	virtual SwapChain *createSwapChain(
-		void *native_window,
-		uint32_t width,
-		uint32_t height,
-		Multisample samples
+		void *native_window
 	) = 0;
 
 	virtual void destroyVertexBuffer(VertexBuffer *vertex_buffer) = 0;
 	virtual void destroyIndexBuffer(IndexBuffer *index_buffer) = 0;
 	virtual void destroyTexture(Texture *texture) = 0;
 	virtual void destroyFrameBuffer(FrameBuffer *frame_buffer) = 0;
+	virtual void destroyRenderPass(RenderPass *render_pass) = 0;
 	virtual void destroyCommandBuffer(CommandBuffer *command_buffer) = 0;
 	virtual void destroyUniformBuffer(UniformBuffer *uniform_buffer) = 0;
 	virtual void destroyShader(Shader *shader) = 0;
@@ -594,14 +616,14 @@ public:
 	// render commands
 	virtual void beginRenderPass(
 		CommandBuffer *command_buffer,
-		const FrameBuffer *frame_buffer,
-		const RenderPassInfo *info
+		const RenderPass *render_pass,
+		const FrameBuffer *frame_buffer
 	) = 0;
 
 	virtual void beginRenderPass(
 		CommandBuffer *command_buffer,
-		const SwapChain *swap_chain,
-		const RenderPassInfo *info
+		const RenderPass *render_pass,
+		const SwapChain *swap_chain
 	) = 0;
 
 	virtual void endRenderPass(

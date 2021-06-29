@@ -1,6 +1,5 @@
 #include "render/backend/Driver.h"
 #include "render/backend/vulkan/Driver.h"
-#include "render/backend/opengl/Driver.h"
 
 #include <cassert>
 
@@ -11,7 +10,6 @@ namespace render::backend
 		switch (api)
 		{
 			case Api::VULKAN: return new vulkan::Driver(application_name, engine_name);
-			case Api::OPENGL: return new opengl::Driver(application_name, engine_name);
 		}
 
 		return nullptr;

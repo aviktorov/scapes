@@ -74,6 +74,14 @@ namespace render::backend::vulkan
 			BlendFactor factor
 		);
 
+		static VkAttachmentLoadOp getLoadOp(
+			RenderPassLoadOp op
+		);
+
+		static VkAttachmentStoreOp getStoreOp(
+			RenderPassStoreOp op
+		);
+
 		static bool checkInstanceValidationLayers(
 			const std::vector<const char *> &requiredLayers,
 			bool verbose = false

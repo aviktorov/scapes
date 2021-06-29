@@ -25,7 +25,7 @@ Texture *RenderUtils::createTexture2D(
 	result->create2D(format, width, height, mips);
 
 	Texture2DRenderer renderer(driver);
-	renderer.init(result->getBackend());
+	renderer.init(result);
 	renderer.render(vertex_shader->getBackend(), fragment_shader->getBackend());
 
 	return result;

@@ -12,63 +12,14 @@ namespace render::backend::vulkan
 
 	/*
 	 */
-	RenderPassBuilder &RenderPassBuilder::addColorAttachment(
+	RenderPassBuilder &RenderPassBuilder::addAttachment(
 		VkFormat format,
 		VkSampleCountFlagBits num_samples,
-		VkImageLayout final_layout,
 		VkAttachmentLoadOp load_op,
 		VkAttachmentStoreOp store_op,
 		VkAttachmentLoadOp stencil_load_op,
-		VkAttachmentStoreOp stencil_store_op
-	)
-	{
-		VkAttachmentDescription attachment = {};
-		attachment.format = format;
-		attachment.samples = num_samples;
-		attachment.loadOp = load_op;
-		attachment.storeOp = store_op;
-		attachment.stencilLoadOp = stencil_load_op;
-		attachment.stencilStoreOp = stencil_store_op;
-		attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		attachment.finalLayout = final_layout;
-
-		attachments.push_back(attachment);
-
-		return *this;
-	}
-
-	RenderPassBuilder &RenderPassBuilder::addColorResolveAttachment(
-		VkFormat format,
-		VkImageLayout final_layout,
-		VkAttachmentLoadOp load_op,
-		VkAttachmentStoreOp store_op,
-		VkAttachmentLoadOp stencil_load_op,
-		VkAttachmentStoreOp stencil_store_op
-	)
-	{
-		VkAttachmentDescription attachment = {};
-		attachment.format = format;
-		attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		attachment.loadOp = load_op;
-		attachment.storeOp = store_op;
-		attachment.stencilLoadOp = stencil_load_op;
-		attachment.stencilStoreOp = stencil_store_op;
-		attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		attachment.finalLayout = final_layout;
-
-		attachments.push_back(attachment);
-
-		return *this;
-	}
-
-	RenderPassBuilder &RenderPassBuilder::addDepthStencilAttachment(
-		VkFormat format,
-		VkSampleCountFlagBits num_samples,
-		VkImageLayout final_layout,
-		VkAttachmentLoadOp load_op,
-		VkAttachmentStoreOp store_op,
-		VkAttachmentLoadOp stencil_load_op,
-		VkAttachmentStoreOp stencil_store_op
+		VkAttachmentStoreOp stencil_store_op,
+		VkImageLayout final_layout
 	)
 	{
 		VkAttachmentDescription attachment = {};

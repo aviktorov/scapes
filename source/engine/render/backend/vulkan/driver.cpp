@@ -6,7 +6,6 @@
 #include "render/backend/vulkan/ImageViewCache.h"
 #include "render/backend/vulkan/PipelineLayoutCache.h"
 #include "render/backend/vulkan/PipelineCache.h"
-#include "render/backend/vulkan/RenderPassCache.h"
 #include "render/backend/vulkan/RenderPassBuilder.h"
 #include "render/backend/vulkan/Utils.h"
 
@@ -86,7 +85,7 @@ namespace render::backend::vulkan
 			texture->sampler = Utils::createSampler(device, 0, texture->num_mipmaps);
 		}
 
-		static void selectOptimalSwapChainSettings(const Device *device, SwapChain *swap_chain, uint32_t width, uint32_t height)
+		static void selectOptimalSwapChainSettings(const Device *device, SwapChain *swap_chain)
 		{
 			// Get surface capabilities
 			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device->getPhysicalDevice(), swap_chain->surface, &swap_chain->surface_capabilities);
@@ -145,24 +144,9 @@ namespace render::backend::vulkan
 
 			// Select current swap extent if window manager doesn't allow to set custom extent
 			if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
-			{
 				swap_chain->sizes = capabilities.currentExtent;
-			}
-			// Otherwise, manually set extent to match the min/max extent bounds
 			else
-			{
-				swap_chain->sizes.width = std::clamp(
-					width,
-					capabilities.minImageExtent.width,
-					capabilities.maxImageExtent.width
-				);
-
-				swap_chain->sizes.height = std::clamp(
-					height,
-					capabilities.minImageExtent.height,
-					capabilities.maxImageExtent.height
-				);
-			}
+				swap_chain->sizes = capabilities.maxImageExtent;
 
 			// Simply sticking to this minimum means that we may sometimes have to wait
 			// on the driver to complete internal operations before we can acquire another image to render to.
@@ -175,7 +159,7 @@ namespace render::backend::vulkan
 				swap_chain->num_images = std::min(swap_chain->num_images, capabilities.maxImageCount);
 		}
 
-		static bool createSwapChainObjects(Driver *driver, const Device *device, SwapChain *swap_chain, Multisample samples)
+		static bool createSwapChainObjects(Driver *driver, const Device *device, SwapChain *swap_chain)
 		{
 			const VkSurfaceCapabilitiesKHR &capabilities = swap_chain->surface_capabilities;
 
@@ -191,7 +175,7 @@ namespace render::backend::vulkan
 
 			if (device->getGraphicsQueueFamily() != swap_chain->present_queue_family)
 			{
-				uint32_t families[] = { device->getGraphicsQueueFamily(), swap_chain->present_queue_family };
+				uint32_t families[2] = { device->getGraphicsQueueFamily(), swap_chain->present_queue_family };
 				info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 				info.queueFamilyIndexCount = 2;
 				info.pQueueFamilyIndices = families;
@@ -215,37 +199,31 @@ namespace render::backend::vulkan
 				return false;
 			}
 
-			// Create depth & msaa images
 			uint32_t width = swap_chain->sizes.width;
 			uint32_t height = swap_chain->sizes.height;
 
-			Format depth_format = Utils::getApiFormat(Utils::selectOptimalDepthFormat(device->getPhysicalDevice()));
-			Format color_format = Utils::getApiFormat(swap_chain->surface_format.format);
-
-			swap_chain->depth = static_cast<vulkan::Texture *>(driver->createTexture2DMultisample(width, height, depth_format, samples));
-
-			bool have_msaa = (samples != Multisample::COUNT_1);
-			if (have_msaa)
-				swap_chain->msaa_color = static_cast<vulkan::Texture *>(driver->createTexture2DMultisample(width, height, color_format, samples));
-
-			uint8_t num_color_attachments = have_msaa ? 2 : 1;
-			FrameBufferAttachment color_attachments[] =
-			{
-				{ nullptr, 0, 0, 1, have_msaa },
-				{ swap_chain->msaa_color },
-			};
-
-			FrameBufferAttachment depth_attachment[] =
-			{
-				{ swap_chain->depth },
-			};
+			// Create dummy render pass
+			RenderPassBuilder render_pass_builder;
+			swap_chain->dummy_render_pass = render_pass_builder
+				.addAttachment(
+					swap_chain->surface_format.format,
+					VK_SAMPLE_COUNT_1_BIT,
+					VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+					VK_ATTACHMENT_STORE_OP_DONT_CARE,
+					VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+					VK_ATTACHMENT_STORE_OP_DONT_CARE,
+					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+				)
+				.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
+				.addColorAttachmentReference(0, 0)
+				.build(device->getDevice());
 
 			// Get surface images
 			vkGetSwapchainImagesKHR(device->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, nullptr);
 			assert(swap_chain->num_images != 0 && swap_chain->num_images < SwapChain::MAX_IMAGES);
 			vkGetSwapchainImagesKHR(device->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, swap_chain->images);
 
-			// Create frame objects
+			// Create frame objects (semaphores, image views, framebuffers)
 			for (size_t i = 0; i < swap_chain->num_images; i++)
 			{
 				VkSemaphoreCreateInfo semaphore_info = {};
@@ -257,19 +235,38 @@ namespace render::backend::vulkan
 					return false;
 				}
 
-				Texture swap_chain_color;
-				swap_chain_color.type = VK_IMAGE_TYPE_2D;
-				swap_chain_color.format = swap_chain->surface_format.format;
-				swap_chain_color.width = width;
-				swap_chain_color.height = height;
-				swap_chain_color.depth = 1;
-				swap_chain_color.image = swap_chain->images[i];
-				swap_chain_color.num_layers = 1;
-				swap_chain_color.num_mipmaps = 1;
+				VkImageViewCreateInfo view_info = {};
+				view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+				view_info.image = swap_chain->images[i];
+				view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+				view_info.format = swap_chain->surface_format.format;
+				view_info.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
+				view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				view_info.subresourceRange.baseMipLevel = 0;
+				view_info.subresourceRange.levelCount = 1;
+				view_info.subresourceRange.baseArrayLayer = 0;
+				view_info.subresourceRange.layerCount = 1;
 
-				color_attachments[0].texture = &swap_chain_color;
+				if (vkCreateImageView(device->getDevice(), &view_info, nullptr, &swap_chain->image_views[i]) != VK_SUCCESS)
+				{
+					std::cerr << "createSwapChainObjects(): can't create swap chain image view" << std::endl;
+					return false;
+				}
 
-				swap_chain->frame_buffers[i] = static_cast<vulkan::FrameBuffer *>(driver->createFrameBuffer(num_color_attachments, color_attachments, depth_attachment));
+				VkFramebufferCreateInfo framebuffer_info = {};
+				framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+				framebuffer_info.renderPass = swap_chain->dummy_render_pass;
+				framebuffer_info.attachmentCount = 1;
+				framebuffer_info.pAttachments = swap_chain->image_views + i;
+				framebuffer_info.width = swap_chain->sizes.width;
+				framebuffer_info.height = swap_chain->sizes.height;
+				framebuffer_info.layers = 1;
+
+				if (vkCreateFramebuffer(device->getDevice(), &framebuffer_info, nullptr, &swap_chain->frame_buffers[i]) != VK_SUCCESS)
+				{
+					std::cerr << "createSwapChainObjects(): can't create framebuffer for swap chain image view" << std::endl;
+					return false;
+				}
 			}
 
 			return true;
@@ -284,15 +281,12 @@ namespace render::backend::vulkan
 				vkDestroySemaphore(device->getDevice(), swap_chain->image_available_gpu[i], nullptr);
 				swap_chain->image_available_gpu[i] = VK_NULL_HANDLE;
 
-				driver->destroyFrameBuffer(swap_chain->frame_buffers[i]);
-				swap_chain->frame_buffers[i] = nullptr;
+				vkDestroyImageView(device->getDevice(), swap_chain->image_views[i], nullptr);
+				swap_chain->image_views[i] = VK_NULL_HANDLE;
+
+				vkDestroyFramebuffer(device->getDevice(), swap_chain->frame_buffers[i], nullptr);
+				swap_chain->frame_buffers[i] = VK_NULL_HANDLE;
 			}
-
-			driver->destroyTexture(swap_chain->depth);
-			swap_chain->depth = nullptr;
-
-			driver->destroyTexture(swap_chain->msaa_color);
-			swap_chain->msaa_color = nullptr;
 
 			vkDestroySwapchainKHR(device->getDevice(), swap_chain->swap_chain, nullptr);
 			swap_chain->swap_chain = VK_NULL_HANDLE;
@@ -337,7 +331,6 @@ namespace render::backend::vulkan
 		image_view_cache = new ImageViewCache(device);
 		pipeline_layout_cache = new PipelineLayoutCache(device, descriptor_set_layout_cache);
 		pipeline_cache = new PipelineCache(device, pipeline_layout_cache);
-		render_pass_cache = new RenderPassCache(device);
 	}
 
 	Driver::~Driver()
@@ -353,9 +346,6 @@ namespace render::backend::vulkan
 
 		delete image_view_cache;
 		image_view_cache = nullptr;
-
-		delete render_pass_cache;
-		render_pass_cache = nullptr;
 
 		delete context;
 		context = nullptr;
@@ -619,99 +609,136 @@ namespace render::backend::vulkan
 	}
 
 	backend::FrameBuffer *Driver::createFrameBuffer(
-		uint8_t num_color_attachments,
-		const FrameBufferAttachment *color_attachments,
-		const FrameBufferAttachment *depthstencil_attachment
+		uint32_t num_attachments,
+		const FrameBufferAttachment *attachments
 	)
 	{
-		// TODO: check for equal sizes (color + depthstencil)
+		assert(num_attachments <= FrameBuffer::MAX_ATTACHMENTS);
+		assert(num_attachments == 0 || (num_attachments && attachments));
 
 		FrameBuffer *result = new FrameBuffer();
 
 		uint32_t width = 0;
 		uint32_t height = 0;
-		RenderPassBuilder builder;
-
-		builder.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS);
-
-		VkImageView attachments[FrameBuffer::MAX_ATTACHMENTS];
 
 		// add color attachments
-		result->num_color_attachments = num_color_attachments;
-		for (uint8_t i = 0; i < num_color_attachments; ++i)
+		result->num_attachments = num_attachments;
+		for (uint32_t i = 0; i < num_attachments; ++i)
 		{
-			const FrameBufferAttachment &input_attachment = color_attachments[i];
-			vulkan::FrameBufferColorAttachment &target_attachment = result->color_attachments[i];
+			const FrameBufferAttachment &input_attachment = attachments[i];
+			const Texture *texture = static_cast<const Texture *>(input_attachment.texture);
 
-			const Texture *color_texture = static_cast<const Texture *>(input_attachment.texture);
+			result->attachment_views[i] = image_view_cache->fetch(texture, input_attachment.base_mip, 1, input_attachment.base_layer, input_attachment.num_layers);
+			result->attachment_formats[i] = texture->format;
+			result->attachment_samples[i] = texture->samples;
 
-			VkImageAspectFlags flags = Utils::getImageAspectFlags(color_texture->format);
-			target_attachment.view = image_view_cache->fetch(color_texture, input_attachment.base_mip, 1, input_attachment.base_layer, input_attachment.num_layers);
-			target_attachment.format = color_texture->format;
-			target_attachment.samples = color_texture->samples;
-			target_attachment.resolve = input_attachment.resolve_attachment;
-
-			width = std::max<int>(1, color_texture->width / (1 << input_attachment.base_mip));
-			height = std::max<int>(1, color_texture->height / (1 << input_attachment.base_mip));
-
-			if (target_attachment.resolve)
-			{
-				builder.addColorResolveAttachment(target_attachment.format);
-				builder.addColorResolveAttachmentReference(0, i);
-			}
-			else
-			{
-				builder.addColorAttachment(target_attachment.format, target_attachment.samples);
-				builder.addColorAttachmentReference(0, i);
-			}
-
-			attachments[result->num_attachments++] = target_attachment.view;
+			width = std::max<int>(1, texture->width / (1 << input_attachment.base_mip));
+			height = std::max<int>(1, texture->height / (1 << input_attachment.base_mip));
 		}
 
-		if (depthstencil_attachment != nullptr)
-		{
-			const FrameBufferAttachment &input_attachment = *depthstencil_attachment;
-			vulkan::FrameBufferDepthStencilAttachment &target_attachment = result->depthstencil_attachment;
-
-			const Texture *depth_texture = static_cast<const Texture *>(input_attachment.texture);
-
-			VkImageAspectFlags flags = Utils::getImageAspectFlags(depth_texture->format);
-
-			target_attachment.view = image_view_cache->fetch(depth_texture);
-			target_attachment.format = depth_texture->format;
-			target_attachment.samples = depth_texture->samples;
-
-			width = depth_texture->width;
-			height = depth_texture->height;
-
-			builder.addDepthStencilAttachment(depth_texture->format, depth_texture->samples);
-			builder.setDepthStencilAttachmentReference(0, num_color_attachments);
-
-			result->have_depthstencil_attachment = true;
-			attachments[result->num_attachments++] = target_attachment.view;
-		}
-
-		// create dummy renderpass
-		result->dummy_render_pass = builder.build(device->getDevice()); // TODO: move to render pass cache
 		result->sizes.width = width;
 		result->sizes.height = height;
 
-		// create framebuffer
-		VkFramebufferCreateInfo framebufferInfo = {};
-		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = result->dummy_render_pass;
-		framebufferInfo.attachmentCount = result->num_attachments;
-		framebufferInfo.pAttachments = attachments;
-		framebufferInfo.width = width;
-		framebufferInfo.height = height;
-		framebufferInfo.layers = 1;
+		return result;
+	}
 
-		if (vkCreateFramebuffer(device->getDevice(), &framebufferInfo, nullptr, &result->framebuffer) != VK_SUCCESS)
+	backend::RenderPass *Driver::createRenderPass(
+		uint32_t num_attachments,
+		const RenderPassAttachment *attachments,
+		const RenderPassDescription &description
+	)
+	{
+		assert(num_attachments <= RenderPass::MAX_ATTACHMENTS);
+		assert(num_attachments == 0 || (num_attachments && attachments));
+
+		RenderPassBuilder builder;
+		RenderPass *result = new RenderPass();
+
+		result->num_attachments = num_attachments;
+		for (uint32_t i = 0; i < num_attachments; ++i)
 		{
-			// TODO: log error
-			delete result;
-			result = nullptr;
+			const RenderPassAttachment &input_attachment = attachments[i];
+
+			VkFormat format = Utils::getFormat(input_attachment.format);
+			VkSampleCountFlagBits samples = Utils::getSamples(input_attachment.samples);
+			VkAttachmentLoadOp load_op = Utils::getLoadOp(input_attachment.load_op);
+			VkAttachmentStoreOp store_op = Utils::getStoreOp(input_attachment.store_op);
+
+			result->attachment_formats[i] = format;
+			result->attachment_samples[i] = samples;
+			result->attachment_load_ops[i] = load_op;
+			result->attachment_store_ops[i] = store_op;
+			memcpy(&result->attachment_clear_values[i], &input_attachment.clear_value, sizeof(VkClearValue));
+
+			builder.addAttachment(format, samples, load_op, store_op, load_op, store_op);
 		}
+
+		builder.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS); // TODO: add different binding points
+
+		result->num_color_attachments = description.num_color_attachments;
+		for (uint32_t i = 0; i < description.num_color_attachments; ++i)
+		{
+			uint32_t index = description.color_attachments[i];
+			VkSampleCountFlagBits samples = result->attachment_samples[index];
+
+			builder.addColorAttachmentReference(0, index);
+
+			if (description.resolve_attachments)
+				builder.addColorResolveAttachmentReference(0, description.resolve_attachments[i]);
+
+			result->max_samples = std::max<VkSampleCountFlagBits>(result->max_samples, samples);
+		}
+
+		if (description.depthstencil_attachment)
+			builder.setDepthStencilAttachmentReference(0, *description.depthstencil_attachment);
+
+		result->render_pass = builder.build(device->getDevice());
+
+		return result;
+	}
+
+	backend::RenderPass *Driver::createRenderPass(
+		const backend::SwapChain *swap_chain,
+		RenderPassLoadOp load_op,
+		RenderPassStoreOp store_op,
+		const RenderPassClearColor *clear_color
+	)
+	{
+		assert(swap_chain);
+
+		const SwapChain *vk_swap_chain = static_cast<const SwapChain *>(swap_chain);
+
+		RenderPass *result = new RenderPass();
+
+		result->num_attachments = 1;
+
+		VkFormat vk_format = vk_swap_chain->surface_format.format;
+		VkSampleCountFlagBits vk_samples = VK_SAMPLE_COUNT_1_BIT;
+		VkAttachmentLoadOp vk_load_op = Utils::getLoadOp(load_op);
+		VkAttachmentStoreOp vk_store_op = Utils::getStoreOp(store_op);
+
+		result->attachment_formats[0] = vk_format;
+		result->attachment_samples[0] = vk_samples;
+		result->attachment_load_ops[0] = vk_load_op;
+		result->attachment_store_ops[0] = vk_store_op;
+
+		if (clear_color)
+		{
+			result->attachment_clear_values[0].color.float32[0] = clear_color->as_f32[0];
+			result->attachment_clear_values[0].color.float32[0] = clear_color->as_f32[0];
+			result->attachment_clear_values[0].color.float32[0] = clear_color->as_f32[0];
+			result->attachment_clear_values[0].color.float32[0] = clear_color->as_f32[0];
+		}
+
+		result->num_color_attachments = 1;
+		result->max_samples = VK_SAMPLE_COUNT_1_BIT;
+
+		RenderPassBuilder builder;
+		result->render_pass = builder
+			.addAttachment(vk_format, vk_samples, vk_load_op, vk_store_op, vk_load_op, vk_store_op, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+			.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
+			.addColorAttachmentReference(0, 0)
+			.build(device->getDevice());
 
 		return result;
 	}
@@ -827,12 +854,7 @@ namespace render::backend::vulkan
 		return result;
 	}
 
-	backend::SwapChain *Driver::createSwapChain(
-		void *native_window,
-		uint32_t width,
-		uint32_t height,
-		Multisample samples
-	)
+	backend::SwapChain *Driver::createSwapChain(void *native_window)
 	{
 		assert(native_window != nullptr && "Invalid window");
 
@@ -863,8 +885,8 @@ namespace render::backend::vulkan
 			return false;
 		}
 
-		helpers::selectOptimalSwapChainSettings(device, result, width, height);
-		helpers::createSwapChainObjects(this, device, result, samples);
+		helpers::selectOptimalSwapChainSettings(device, result);
+		helpers::createSwapChainObjects(this, device, result);
 
 		return result;
 	}
@@ -928,19 +950,28 @@ namespace render::backend::vulkan
 
 		FrameBuffer *vk_frame_buffer = static_cast<FrameBuffer *>(frame_buffer);
 
-		for (uint8_t i = 0; i < vk_frame_buffer->num_color_attachments; ++i)
-			vk_frame_buffer->color_attachments[i].view = VK_NULL_HANDLE;
+		for (uint8_t i = 0; i < vk_frame_buffer->num_attachments; ++i)
+			vk_frame_buffer->attachment_views[i] = VK_NULL_HANDLE;
 
-		vk_frame_buffer->depthstencil_attachment.view = VK_NULL_HANDLE;
-
-		vkDestroyFramebuffer(device->getDevice(), vk_frame_buffer->framebuffer, nullptr);
-		vk_frame_buffer->framebuffer = VK_NULL_HANDLE;
-
-		vkDestroyRenderPass(device->getDevice(), vk_frame_buffer->dummy_render_pass, nullptr);
-		vk_frame_buffer->dummy_render_pass = VK_NULL_HANDLE;
+		vkDestroyFramebuffer(device->getDevice(), vk_frame_buffer->frame_buffer, nullptr);
+		vk_frame_buffer->frame_buffer = VK_NULL_HANDLE;
 
 		delete frame_buffer;
 		frame_buffer = nullptr;
+	}
+
+	void Driver::destroyRenderPass(backend::RenderPass *render_pass)
+	{
+		if (render_pass == nullptr)
+			return;
+
+		RenderPass *vk_render_pass = static_cast<RenderPass *>(render_pass);
+
+		vkDestroyRenderPass(device->getDevice(), vk_render_pass->render_pass, nullptr);
+		vk_render_pass->render_pass = VK_NULL_HANDLE;
+
+		delete render_pass;
+		render_pass = nullptr;
 	}
 
 	void Driver::destroyCommandBuffer(backend::CommandBuffer *command_buffer)
@@ -1267,14 +1298,6 @@ namespace render::backend::vulkan
 			info.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size());
 			info.pWaitSemaphores = wait_semaphores.data();
 		}
-
-		Utils::transitionImageLayout(
-			device,
-			vk_swap_chain->images[current_image],
-			vk_swap_chain->surface_format.format,
-			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-		);
 
 		VkResult result = vkQueuePresentKHR(vk_swap_chain->present_queue, &info);
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
@@ -1671,55 +1694,97 @@ namespace render::backend::vulkan
 		return true;
 	}
 
-	void Driver::beginRenderPass(backend::CommandBuffer *command_buffer, const backend::FrameBuffer *frame_buffer, const RenderPassInfo *info)
+	void Driver::beginRenderPass(backend::CommandBuffer *command_buffer, const backend::RenderPass *render_pass, const backend::FrameBuffer *frame_buffer)
 	{
+		assert(command_buffer);
+		assert(render_pass);
 		assert(frame_buffer);
 
-		if (command_buffer == nullptr)
-			return;
-
 		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		const RenderPass *vk_render_pass = static_cast<const RenderPass *>(render_pass);
 		const FrameBuffer *vk_frame_buffer = static_cast<const FrameBuffer *>(frame_buffer);
 
-		VkRenderPass render_pass = render_pass_cache->fetch(vk_frame_buffer, info);
-		context->setRenderPass(render_pass);
-		context->setFramebuffer(vk_frame_buffer);
+		// lazily create framebuffer
+		if (vk_frame_buffer->frame_buffer == VK_NULL_HANDLE)
+		{
+			VkFramebufferCreateInfo framebuffer_info = {};
+			framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebuffer_info.renderPass = vk_render_pass->render_pass;
+			framebuffer_info.attachmentCount = vk_frame_buffer->num_attachments;
+			framebuffer_info.pAttachments = vk_frame_buffer->attachment_views;
+			framebuffer_info.width = vk_frame_buffer->sizes.width;
+			framebuffer_info.height = vk_frame_buffer->sizes.height;
+			framebuffer_info.layers = 1;
+
+			if (vkCreateFramebuffer(device->getDevice(), &framebuffer_info, nullptr, &vk_frame_buffer->frame_buffer) != VK_SUCCESS)
+			{
+				vk_frame_buffer->frame_buffer = VK_NULL_HANDLE;
+				// TODO: log error
+				return;
+			}
+		}
+
+		VkViewport viewport = {};
+		viewport.width = static_cast<float>(vk_frame_buffer->sizes.width);
+		viewport.height = static_cast<float>(vk_frame_buffer->sizes.height);
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		VkRect2D render_area = {};
+		render_area.extent = vk_frame_buffer->sizes;
+		render_area.offset = {0, 0};
+
+		context->setRenderPass(vk_render_pass);
+		context->setViewport(viewport);
+		context->setScissor(render_area);
 
 		VkRenderPassBeginInfo render_pass_info = {};
 		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		render_pass_info.renderPass = render_pass;
-		render_pass_info.framebuffer = vk_frame_buffer->framebuffer;
-		render_pass_info.renderArea.offset = {0, 0};
-		render_pass_info.renderArea.extent = vk_frame_buffer->sizes;
+		render_pass_info.renderPass = vk_render_pass->render_pass;
+		render_pass_info.framebuffer = vk_frame_buffer->frame_buffer;
+		render_pass_info.renderArea = render_area;
 		render_pass_info.clearValueCount = vk_frame_buffer->num_attachments;
-		render_pass_info.pClearValues = reinterpret_cast<const VkClearValue *>(info->clear_values);
+		render_pass_info.pClearValues = vk_render_pass->attachment_clear_values;
 
 		vkCmdBeginRenderPass(vk_command_buffer->command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
 
-	void Driver::beginRenderPass(backend::CommandBuffer *command_buffer, const backend::SwapChain *swap_chain, const RenderPassInfo *info)
+	void Driver::beginRenderPass(backend::CommandBuffer *command_buffer, const backend::RenderPass *render_pass, const backend::SwapChain *swap_chain)
 	{
+		assert(command_buffer);
+		assert(render_pass);
 		assert(swap_chain);
 
-		if (command_buffer == nullptr)
-			return;
-
 		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		const RenderPass *vk_render_pass = static_cast<const RenderPass *>(render_pass);
 		const SwapChain *vk_swap_chain = static_cast<const SwapChain *>(swap_chain);
-		const FrameBuffer *frame_buffer = vk_swap_chain->frame_buffers[vk_swap_chain->current_image];
+		VkFramebuffer frame_buffer = vk_swap_chain->frame_buffers[vk_swap_chain->current_image];
 
-		VkRenderPass render_pass = render_pass_cache->fetch(frame_buffer, info, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-		context->setRenderPass(render_pass);
-		context->setFramebuffer(frame_buffer);
+		VkViewport viewport = {};
+		viewport.width = static_cast<float>(vk_swap_chain->sizes.width);
+		viewport.height = static_cast<float>(vk_swap_chain->sizes.height);
+		viewport.x = 0.0f;
+		viewport.y = 0.0f;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		VkRect2D render_area = {};
+		render_area.extent = vk_swap_chain->sizes;
+		render_area.offset = {0, 0};
+
+		context->setRenderPass(vk_render_pass);
+		context->setViewport(viewport);
+		context->setScissor(render_area);
 
 		VkRenderPassBeginInfo render_pass_info = {};
 		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		render_pass_info.renderPass = render_pass;
-		render_pass_info.framebuffer = frame_buffer->framebuffer;
-		render_pass_info.renderArea.offset = {0, 0};
-		render_pass_info.renderArea.extent = vk_swap_chain->sizes;
-		render_pass_info.clearValueCount = frame_buffer->num_attachments;
-		render_pass_info.pClearValues = reinterpret_cast<const VkClearValue *>(info->clear_values);
+		render_pass_info.renderPass = vk_render_pass->render_pass;
+		render_pass_info.framebuffer = frame_buffer;
+		render_pass_info.renderArea = render_area;
+		render_pass_info.clearValueCount = vk_render_pass->num_attachments;
+		render_pass_info.pClearValues = vk_render_pass->attachment_clear_values;
 
 		vkCmdBeginRenderPass(vk_command_buffer->command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
@@ -1844,8 +1909,8 @@ namespace render::backend::vulkan
 		vkCmdSetViewport(vk_command_buffer->command_buffer, 0, 1, &viewport);
 		vkCmdSetScissor(vk_command_buffer->command_buffer, 0, 1, &scissor);
 
-		VkBuffer vertex_buffers[] = { vk_vertex_buffer->buffer };
-		VkDeviceSize offsets[] = { 0 };
+		VkBuffer vertex_buffers[1] = { vk_vertex_buffer->buffer };
+		VkDeviceSize offsets[1] = { 0 };
 
 		vkCmdBindVertexBuffers(vk_command_buffer->command_buffer, 0, 1, vertex_buffers, offsets);
 		vkCmdBindIndexBuffer(vk_command_buffer->command_buffer, vk_index_buffer->buffer, 0, vk_index_buffer->index_type);

@@ -356,8 +356,8 @@ void Application::initRenderers()
 	const uint8_t num_rows = ApplicationState::MAX_TEMPORAL_FRAMES / num_columns;
 
 	// Halton 2,3 sequence
-	const float halton2[] = { 1.0f / 2.0f, 1.0f / 4.0f, 3.0f / 4.0f, 1.0f / 8.0f };
-	const float halton3[] = { 1.0f / 3.0f, 2.0f / 3.0f, 1.0f / 9.0f, 4.0f / 9.0f };
+	const float halton2[4] = { 1.0f / 2.0f, 1.0f / 4.0f, 3.0f / 4.0f, 1.0f / 8.0f };
+	const float halton3[4] = { 1.0f / 3.0f, 2.0f / 3.0f, 1.0f / 9.0f, 4.0f / 9.0f };
 
 	for (uint8_t y = 0; y < num_rows; ++y)
 	{

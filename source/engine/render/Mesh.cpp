@@ -171,7 +171,7 @@ namespace render
 	 */
 	void Mesh::createVertexBuffer()
 	{
-		static render::backend::VertexAttribute attributes[] =
+		static render::backend::VertexAttribute attributes[6] =
 		{
 			{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, position) },
 			{ render::backend::Format::R32G32_SFLOAT, offsetof(Vertex, uv) },

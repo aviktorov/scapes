@@ -43,7 +43,7 @@ void CubemapRenderer::init(
 	bind_set = driver->createBindSet();
 
 	// Create framebuffer
-	FrameBufferAttachment attachments[6] =
+	FrameBufferAttachment frame_buffer_attachments[6] =
 	{
 		{ target_texture->getBackend(), target_mip, 0, 1 },
 		{ target_texture->getBackend(), target_mip, 1, 1 },
@@ -53,7 +53,29 @@ void CubemapRenderer::init(
 		{ target_texture->getBackend(), target_mip, 5, 1 },
 	};
 
-	framebuffer = driver->createFrameBuffer(6, attachments);
+	frame_buffer = driver->createFrameBuffer(6, frame_buffer_attachments);
+
+	// Create render pass
+	RenderPassClearValue clear_value;
+	clear_value.as_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+	RenderPassAttachment render_pass_attachments[6] =
+	{
+		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
+		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
+		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
+		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
+		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
+		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
+	};
+
+	uint32_t color_attachments[6] = { 0, 1, 2, 3, 4, 5 };
+
+	RenderPassDescription render_pass_description = {};
+	render_pass_description.num_color_attachments = 6;
+	render_pass_description.color_attachments = color_attachments;
+
+	render_pass = driver->createRenderPass(6, render_pass_attachments, render_pass_description);
 
 	// Create command buffer
 	command_buffer = driver->createCommandBuffer(CommandBufferType::PRIMARY);
@@ -63,7 +85,8 @@ void CubemapRenderer::init(
 
 	const glm::mat4 &translateZ = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
-	const glm::vec3 faceDirs[6] = {
+	const glm::vec3 faceDirs[6] =
+	{
 		glm::vec3( 1.0f,  0.0f,  0.0f),
 		glm::vec3(-1.0f,  0.0f,  0.0f),
 		glm::vec3( 0.0f,  1.0f,  0.0f),
@@ -104,8 +127,11 @@ void CubemapRenderer::shutdown()
 	driver->destroyUniformBuffer(uniform_buffer);
 	uniform_buffer = nullptr;
 
-	driver->destroyFrameBuffer(framebuffer);
-	framebuffer = nullptr;
+	driver->destroyFrameBuffer(frame_buffer);
+	frame_buffer = nullptr;
+
+	driver->destroyRenderPass(render_pass);
+	render_pass = nullptr;
 
 	driver->destroyCommandBuffer(command_buffer);
 	command_buffer = nullptr;
@@ -129,21 +155,6 @@ void CubemapRenderer::render(
 {
 	driver->bindTexture(bind_set, 1, input_texture->getBackend());
 
-	RenderPassClearValue clear_values[6];
-	RenderPassLoadOp load_ops[6];
-	RenderPassStoreOp store_ops[6];
-	for (int i = 0; i < 6; ++i)
-	{
-		clear_values[i].color = {0.0f, 0.0f, 0.0f, 1.0f};
-		load_ops[i] = RenderPassLoadOp::CLEAR;
-		store_ops[i] = RenderPassStoreOp::STORE;
-	}
-
-	RenderPassInfo info;
-	info.load_ops = load_ops;
-	info.store_ops = store_ops;
-	info.clear_values = clear_values;
-
 	driver->clearPushConstants();
 	if (push_constants_size > 0)
 		driver->setPushConstants(push_constants_size, push_constants_data);
@@ -153,7 +164,7 @@ void CubemapRenderer::render(
 
 	driver->resetCommandBuffer(command_buffer);
 	driver->beginCommandBuffer(command_buffer);
-	driver->beginRenderPass(command_buffer, framebuffer, &info);
+	driver->beginRenderPass(command_buffer, render_pass, frame_buffer);
 
 	driver->clearShaders();
 	driver->setShader(ShaderType::VERTEX, vertex_shader->getBackend());

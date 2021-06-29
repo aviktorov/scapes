@@ -35,7 +35,8 @@ private:
 	render::backend::Driver *driver {nullptr};
 	render::backend::BindSet *bind_set {nullptr};
 	render::backend::CommandBuffer *command_buffer {nullptr};
-	render::backend::FrameBuffer *framebuffer {nullptr};
+	render::backend::FrameBuffer *frame_buffer {nullptr};
+	render::backend::RenderPass *render_pass {nullptr};
 	render::backend::UniformBuffer *uniform_buffer {nullptr};
 
 	render::Mesh quad;

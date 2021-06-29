@@ -49,24 +49,26 @@ namespace render
 
 	/*
 	 */
-	void Texture::create2D(render::backend::Format format, int w, int h, int mips)
+	void Texture::create2D(render::backend::Format f, int w, int h, int mips)
 	{
 		width = w;
 		height = h;
 		mip_levels = mips;
 		layers = 1;
+		format = f;
 
 		texture = driver->createTexture2D(w, h, mips, format);
 	}
 
 	/*
 	 */
-	void Texture::createCube(render::backend::Format format, int size, int mips)
+	void Texture::createCube(render::backend::Format f, int size, int mips)
 	{
 		width = size;
 		height = size;
 		mip_levels = mips;
 		layers = 6;
+		format = f;
 
 		texture = driver->createTextureCube(size, mips, format);
 	}
@@ -153,7 +155,7 @@ namespace render
 		stbi_image_free(stb_pixels);
 		stb_pixels = nullptr;
 
-		render::backend::Format format = deduceFormat(pixel_size, channels);
+		format = deduceFormat(pixel_size, channels);
 
 		// Upload CPU data to GPU
 		clearGPUData();

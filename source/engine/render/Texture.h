@@ -21,6 +21,7 @@ namespace render
 		inline int getWidth(int mip) const { return std::max<int>(1, width / (1 << mip)); }
 		inline int getHeight() const { return height; }
 		inline int getHeight(int mip) const { return std::max<int>(1, height / (1 << mip)); }
+		inline backend::Format getFormat() const { return format; }
 
 		inline const backend::Texture *getBackend() const { return texture; }
 
@@ -43,6 +44,7 @@ namespace render
 		int mip_levels {0};
 		int layers {0};
 
+		backend::Format format {backend::Format::UNDEFINED};
 		backend::Texture *texture {nullptr};
 	};
 }

@@ -58,21 +58,6 @@ namespace render::backend::vulkan
 		VkImageCreateFlags flags {0};
 	};
 
-	struct FrameBufferColorAttachment
-	{
-		VkImageView view {VK_NULL_HANDLE};
-		VkFormat format {VK_FORMAT_UNDEFINED};
-		VkSampleCountFlagBits samples {VK_SAMPLE_COUNT_1_BIT};
-		bool resolve {false};
-	};
-
-	struct FrameBufferDepthStencilAttachment
-	{
-		VkImageView view {VK_NULL_HANDLE};
-		VkFormat format {VK_FORMAT_UNDEFINED};
-		VkSampleCountFlagBits samples {VK_SAMPLE_COUNT_1_BIT};
-	};
-
 	struct FrameBuffer : public render::backend::FrameBuffer
 	{
 		enum
@@ -80,18 +65,36 @@ namespace render::backend::vulkan
 			MAX_ATTACHMENTS = 16,
 		};
 
-		VkFramebuffer framebuffer {VK_NULL_HANDLE};
+		mutable VkFramebuffer frame_buffer {VK_NULL_HANDLE};
 		VkExtent2D sizes {0, 0};
 
-		VkRenderPass dummy_render_pass {VK_NULL_HANDLE}; // TODO: move to render pass cache
-
-		uint8_t num_attachments {0};
-		uint8_t num_color_attachments {0};
-		FrameBufferColorAttachment color_attachments[MAX_ATTACHMENTS];
-
-		bool have_depthstencil_attachment {false};
-		FrameBufferDepthStencilAttachment depthstencil_attachment;
+		uint32_t num_attachments {0};
+		VkImageView attachment_views[MAX_ATTACHMENTS];
+		VkFormat attachment_formats[MAX_ATTACHMENTS];
+		VkSampleCountFlagBits attachment_samples[MAX_ATTACHMENTS];
 	};
+
+	struct RenderPass : public render::backend::RenderPass
+	{
+		enum
+		{
+			MAX_ATTACHMENTS = 16,
+		};
+
+		VkRenderPass render_pass {VK_NULL_HANDLE};
+
+		uint32_t num_attachments {0};
+		VkFormat attachment_formats[MAX_ATTACHMENTS];
+		VkSampleCountFlagBits attachment_samples[MAX_ATTACHMENTS];
+		VkAttachmentLoadOp attachment_load_ops[MAX_ATTACHMENTS];
+		VkAttachmentStoreOp attachment_store_ops[MAX_ATTACHMENTS];
+		VkClearValue attachment_clear_values[MAX_ATTACHMENTS];
+
+		VkSampleCountFlagBits max_samples {VK_SAMPLE_COUNT_1_BIT};
+		uint32_t num_color_attachments {0};
+	};
+
+	static_assert(sizeof(VkClearValue) == sizeof(RenderPassClearValue));
 
 	struct CommandBuffer : public render::backend::CommandBuffer
 	{
@@ -168,12 +171,12 @@ namespace render::backend::vulkan
 		uint32_t num_images {0};
 		uint32_t current_image {0};
 
-		Texture *msaa_color {nullptr};
-		Texture *depth {nullptr};
-		FrameBuffer *frame_buffers[SwapChain::MAX_IMAGES];
+		VkRenderPass dummy_render_pass {VK_NULL_HANDLE};
 
-		VkSemaphore image_available_gpu[SwapChain::MAX_IMAGES];
-		VkImage images[SwapChain::MAX_IMAGES];
+		VkFramebuffer frame_buffers[MAX_IMAGES];
+		VkSemaphore image_available_gpu[MAX_IMAGES];
+		VkImage images[MAX_IMAGES];
+		VkImageView image_views[MAX_IMAGES];
 	};
 
 	class Driver : public backend::Driver
@@ -247,9 +250,21 @@ namespace render::backend::vulkan
 		) final;
 
 		backend::FrameBuffer *createFrameBuffer(
-			uint8_t num_color_attachments,
-			const FrameBufferAttachment *color_attachments,
-			const FrameBufferAttachment *depthstencil_attachment
+			uint32_t num_attachments,
+			const FrameBufferAttachment *attachments
+		) final;
+
+		backend::RenderPass *createRenderPass(
+			uint32_t num_attachments,
+			const RenderPassAttachment *attachments,
+			const RenderPassDescription &description
+		) final;
+
+		backend::RenderPass *createRenderPass(
+			const backend::SwapChain *swap_chain,
+			RenderPassLoadOp load_op,
+			RenderPassStoreOp store_op,
+			const RenderPassClearColor *clear_color
 		) final;
 
 		backend::CommandBuffer *createCommandBuffer(
@@ -277,16 +292,14 @@ namespace render::backend::vulkan
 		) final;
 
 		backend::SwapChain *createSwapChain(
-			void *native_window,
-			uint32_t width,
-			uint32_t height,
-			Multisample samples
+			void *native_window
 		) final;
 
 		void destroyVertexBuffer(backend::VertexBuffer *vertex_buffer) final;
 		void destroyIndexBuffer(backend::IndexBuffer *index_buffer) final;
 		void destroyTexture(backend::Texture *texture) final;
 		void destroyFrameBuffer(backend::FrameBuffer *frame_buffer) final;
+		void destroyRenderPass(backend::RenderPass *render_pass) final;
 		void destroyCommandBuffer(backend::CommandBuffer *command_buffer) final;
 		void destroyUniformBuffer(backend::UniformBuffer *uniform_buffer) final;
 		void destroyShader(backend::Shader *shader) final;
@@ -463,14 +476,14 @@ namespace render::backend::vulkan
 		// render commands
 		void beginRenderPass(
 			backend::CommandBuffer *command_buffer,
-			const backend::FrameBuffer *frame_buffer,
-			const RenderPassInfo *info
+			const backend::RenderPass *render_pass,
+			const backend::FrameBuffer *frame_buffer
 		) final;
 
 		void beginRenderPass(
 			backend::CommandBuffer *command_buffer,
-			const backend::SwapChain *swap_chain,
-			const RenderPassInfo *info
+			const backend::RenderPass *render_pass,
+			const backend::SwapChain *swap_chain
 		) final;
 
 		void endRenderPass(
@@ -489,6 +502,5 @@ namespace render::backend::vulkan
 		ImageViewCache *image_view_cache {nullptr};
 		PipelineLayoutCache *pipeline_layout_cache {nullptr};
 		PipelineCache *pipeline_cache {nullptr};
-		RenderPassCache *render_pass_cache {nullptr};
 	};
 }

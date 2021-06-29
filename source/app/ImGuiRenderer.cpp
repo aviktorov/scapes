@@ -155,7 +155,7 @@ void ImGuiRenderer::updateBuffers(const ImDrawData *draw_data)
 		index_format = backend::IndexFormat::UINT32;
 
 	static const uint8_t num_attributes = 3;
-	static VertexAttribute attributes[] =
+	static VertexAttribute attributes[3] =
 	{
 		{ backend::Format::R32G32_SFLOAT, offsetof(ImDrawVert, pos), },
 		{ backend::Format::R32G32_SFLOAT, offsetof(ImDrawVert, uv), },

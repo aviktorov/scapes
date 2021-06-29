@@ -40,42 +40,29 @@ namespace render::backend::vulkan
  		shaders[static_cast<uint32_t>(type)] = module;
 	}
 
-	void Context::setFramebuffer(const FrameBuffer *frame_buffer)
+	void Context::setRenderPass(const RenderPass *pass)
 	{
+		render_pass = VK_NULL_HANDLE;
+		num_color_attachments = 0;
 		samples = VK_SAMPLE_COUNT_1_BIT;
 
-		if (frame_buffer == nullptr)
+		if (!pass)
 			return;
 
-		num_color_attachments = 0;
-		for (uint8_t i = 0; i < frame_buffer->num_color_attachments; ++i)
-		{
-			const FrameBufferColorAttachment &attachment = frame_buffer->color_attachments[i];
-			if (attachment.resolve)
-				continue;
-			
-			num_color_attachments++;
-			samples = std::max(samples, attachment.samples);
-		}
-
-		viewport = {};
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = static_cast<float>(frame_buffer->sizes.width);
-		viewport.height = static_cast<float>(frame_buffer->sizes.height);
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
-		scissor = {};
-		scissor.offset = {0, 0};
-		scissor.extent = frame_buffer->sizes;
+		render_pass = pass->render_pass;
+		num_color_attachments = pass->num_color_attachments;
+		samples = pass->max_samples;
 	}
 
 	void Context::clear()
 	{
 		clearBindSets();
 		clearShaders();
+
 		render_pass = VK_NULL_HANDLE;
+		num_color_attachments = 0;
+		samples = VK_SAMPLE_COUNT_1_BIT;
+
 		state = {};
 		state.cull_mode = VK_CULL_MODE_BACK_BIT;
 		state.depth_test = 1;

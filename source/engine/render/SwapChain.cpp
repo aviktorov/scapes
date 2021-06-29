@@ -24,7 +24,7 @@ namespace render
 		height = h;
 
 		backend::Multisample max_samples = driver->getMaxSampleCount();
-		swap_chain = driver->createSwapChain(native_window, width, height, max_samples);
+		swap_chain = driver->createSwapChain(native_window);
 
 		initFrames(width, height, ubo_size);
 	}
