@@ -263,17 +263,6 @@ struct PipelineState {};
 struct SwapChain {};
 
 // C structs
-struct RenderPrimitive
-{
-	RenderPrimitiveType type {RenderPrimitiveType::TRIANGLE_LIST};
-	VertexBuffer *vertices {nullptr};
-	IndexBuffer *indices {nullptr};
-	uint32_t num_indices {0};
-	uint32_t base_index {0};
-	int32_t vertex_index_offset {0};
-	// TODO: instancing
-};
-
 struct VertexAttribute
 {
 	Format format {Format::UNDEFINED};
