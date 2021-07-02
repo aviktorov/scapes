@@ -45,28 +45,33 @@ PBR Sandbox:
         ☐ Implement Oren-Nayar diffuse BRDF
         ☐ Implement microfacet Burley 12 diffuse BRDF
         ☐ Create a material class (holds textures, shaders & UBO for material params)
-        ☐ Add FileWatcher for shader auto reloading
         ☐ Add support for other platforms (Linux, MacOS, iOS, Android)
-        ☐ Add simple FileSystem with data root path for simplified content loading
-    Next Up:
-        ☐ Directional light & shadows
-        ☐ Environment / Reflection probes
-        ☐ Area lights
         ☐ HBAO / HBAO+
         ☐ VXAO
         ☐ Multiscattering GGX + Shlick
-        ☐ First person camera (WASD controls & mouse aim)
+        ☐ Render Backend Improvements
+            ☐ Add CommandQueue structure
+            ☐ Improve pipeline layout invalidation
+            ☐ Improve pipeline creation by using 'pipeline inheritance'
         ☐ Temporal Filter Improvements
             ☐ Tone map -> TAA accumulate -> Reverse Tone Map
         ☐ SSR Trace Improvements: trace rays in screen space via DDA
             http://jcgt.org/published/0003/04/04/paper.pdf
         ☐ Animate blue noise for better TAA sampling
         ☐ Remove unnecessary calculations in SSR motion vectors (i.e. reflectedPointNDC and so on)
+    Next Up:
+        ☐ Directional light & shadows
+        ☐ Environment / Reflection probes
+        ☐ Area lights
+    Stream 62:
+        ☐ Add RenderScene class
+        ☐ Add FileWatcher for shader auto reloading
+        ☐ Add simple FileSystem with data root path for simplified content loading
+        ☐ First person camera (WASD controls & mouse aim)
     Stream 61:
-        ☐ Add PipelineState structure
-        ☐ Add multiple vertex stream support to PSO
-        ☐ Add Queue structure
-        ☐ Get rid of RenderPrimitive
+        ✔ Add PipelineState structure @done (7/3/2021, 3:30:01 AM)
+        ✔ Get rid of RenderPrimitive @done (7/3/2021, 3:30:00 AM)
+        ✔ Add multiple vertex stream support to PSO @done (7/3/2021, 3:29:59 AM)
     Stream 60:
         ✔ Add RenderPass structure @done (6/30/2021, 12:22:15 AM)
     Stream 59:
