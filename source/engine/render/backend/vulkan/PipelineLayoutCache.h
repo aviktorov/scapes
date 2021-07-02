@@ -7,7 +7,7 @@ namespace render::backend::vulkan
 {
 	class DescriptorSetLayoutCache;
 	class Device;
-	class Context;
+	struct PipelineState;
 
 	/*
 	 */
@@ -18,7 +18,7 @@ namespace render::backend::vulkan
 			: device(device), layout_cache(layout_cache) { }
 		~PipelineLayoutCache();
 
-		VkPipelineLayout fetch(const Context *context);
+		VkPipelineLayout fetch(const PipelineState *pipeline_state);
 		void clear();
 
 	private:

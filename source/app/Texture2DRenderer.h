@@ -22,6 +22,7 @@ public:
 
 private:
 	render::backend::Driver *driver {nullptr};
+	render::backend::PipelineState *pipeline_state {nullptr};
 	render::backend::CommandBuffer *command_buffer {nullptr};
 	render::backend::RenderPass *render_pass {nullptr};
 	render::backend::FrameBuffer *frame_buffer {nullptr};

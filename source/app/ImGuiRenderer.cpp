@@ -69,6 +69,8 @@ void ImGuiRenderer::init(ImGuiContext *context)
 	uint32_t width, height;
 	unsigned char *pixels = nullptr;
 
+	pipeline_state = driver->createPipelineState();
+
 	ImGuiIO &io = ImGui::GetIO();
 	io.Fonts->GetTexDataAsRGBA32(&pixels, reinterpret_cast<int *>(&width), reinterpret_cast<int *>(&height));
 
@@ -100,6 +102,9 @@ void ImGuiRenderer::shutdown()
 
 	driver->destroyBindSet(font_bind_set);
 	font_bind_set = nullptr;
+
+	driver->destroyPipelineState(pipeline_state);
+	pipeline_state = nullptr;
 
 	invalidateTextureIDs();
 
@@ -198,12 +203,10 @@ void ImGuiRenderer::updateBuffers(const ImDrawData *draw_data)
 
 void ImGuiRenderer::setupRenderState(const render::RenderFrame &frame, const ImDrawData *draw_data)
 {
-	driver->clearBindSets();
-	driver->allocateBindSets(1);
+	driver->setVertexStream(pipeline_state, 0, vertices);
 
-	driver->clearShaders();
-	driver->setShader(ShaderType::VERTEX, vertex_shader->getBackend());
-	driver->setShader(ShaderType::FRAGMENT, fragment_shader->getBackend());
+	driver->setShader(pipeline_state, ShaderType::VERTEX, vertex_shader->getBackend());
+	driver->setShader(pipeline_state, ShaderType::FRAGMENT, fragment_shader->getBackend());
 
 	float L = draw_data->DisplayPos.x;
 	float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
@@ -215,14 +218,13 @@ void ImGuiRenderer::setupRenderState(const render::RenderFrame &frame, const ImD
 
 	glm::mat4 projection = glm::ortho(L, R, B, T, 0.0f, 1.0f);
 
-	driver->clearPushConstants();
-	driver->setPushConstants(sizeof(glm::mat4), &projection);
+	driver->setPushConstants(pipeline_state, sizeof(glm::mat4), &projection);
 
-	driver->setBlending(true);
-	driver->setBlendFactors(BlendFactor::SRC_ALPHA, BlendFactor::ONE_MINUS_SRC_ALPHA);
-	driver->setCullMode(CullMode::NONE);
-	driver->setDepthWrite(false);
-	driver->setDepthTest(false);
+	driver->setBlending(pipeline_state, true);
+	driver->setBlendFactors(pipeline_state, BlendFactor::SRC_ALPHA, BlendFactor::ONE_MINUS_SRC_ALPHA);
+	driver->setCullMode(pipeline_state, CullMode::NONE);
+	driver->setDepthWrite(pipeline_state, false);
+	driver->setDepthTest(pipeline_state, false);
 }
 
 void ImGuiRenderer::render(const render::RenderFrame &frame)
@@ -236,13 +238,10 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 	updateBuffers(draw_data);
 	setupRenderState(frame, draw_data);
 
-	backend::RenderPrimitive primitive;
-	primitive.type = backend::RenderPrimitiveType::TRIANGLE_LIST;
-	primitive.vertices = vertices;
-	primitive.indices = indices;
-
 	uint32_t index_offset = 0;
 	int32_t vertex_offset = 0;
+
+	driver->setViewport(pipeline_state, 0, 0, static_cast<uint32_t>(fb_size.x), static_cast<uint32_t>(fb_size.y));
 
 	for (int i = 0; i < draw_data->CmdListsCount; ++i)
 	{
@@ -261,12 +260,12 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 			}
 			else
 			{
-				primitive.num_indices = command.ElemCount;
-				primitive.base_index = index_offset + command.IdxOffset;
-				primitive.vertex_index_offset = vertex_offset + command.VtxOffset;
+				uint32_t num_indices = command.ElemCount;
+				uint32_t base_index = index_offset + command.IdxOffset;
+				int32_t base_vertex = vertex_offset + command.VtxOffset;
 
 				backend::BindSet *bind_set = reinterpret_cast<backend::BindSet *>(command.TextureId);
-				driver->setBindSet(0, bind_set);
+				driver->setBindSet(pipeline_state, 0, bind_set);
 
 				float x0 = (command.ClipRect.x - clip_offset.x) * clip_scale.x;
 				float y0 = (command.ClipRect.y - clip_offset.y) * clip_scale.y;
@@ -286,8 +285,8 @@ void ImGuiRenderer::render(const render::RenderFrame &frame)
 				uint32_t width = static_cast<uint32_t>(x1 - x0);
 				uint32_t height = static_cast<uint32_t>(y1 - y0);
 
-				driver->setScissor(static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
-				driver->drawIndexedPrimitive(frame.command_buffer, &primitive);
+				driver->setScissor(pipeline_state, static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
+				driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, indices, num_indices, base_index, base_vertex, 1, 0);
 			}
 		}
 

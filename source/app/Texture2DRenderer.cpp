@@ -12,8 +12,6 @@ Texture2DRenderer::Texture2DRenderer(Driver *driver)
 	: driver(driver)
 	, quad(driver)
 {
-	quad.createQuad(2.0f);
-	command_buffer = driver->createCommandBuffer(CommandBufferType::PRIMARY);
 }
 
 /*
@@ -39,6 +37,13 @@ void Texture2DRenderer::init(const render::Texture *target_texture)
 	render_pass_description.color_attachments = color_attachments;
 
 	render_pass = driver->createRenderPass(1, render_pass_attachments, render_pass_description);
+
+	quad.createQuad(2.0f);
+	command_buffer = driver->createCommandBuffer(CommandBufferType::PRIMARY);
+
+	pipeline_state = driver->createPipelineState();
+	driver->setViewport(pipeline_state, 0, 0, target_texture->getWidth(), target_texture->getHeight());
+	driver->setScissor(pipeline_state, 0, 0, target_texture->getWidth(), target_texture->getHeight());
 }
 
 void Texture2DRenderer::shutdown()
@@ -51,6 +56,9 @@ void Texture2DRenderer::shutdown()
 
 	driver->destroyCommandBuffer(command_buffer);
 	command_buffer = nullptr;
+
+	driver->destroyPipelineState(pipeline_state);
+	pipeline_state = nullptr;
 
 	quad.clearGPUData();
 	quad.clearCPUData();
@@ -71,12 +79,15 @@ void Texture2DRenderer::render(
 
 	driver->beginRenderPass(command_buffer, render_pass, frame_buffer);
 
-	driver->clearBindSets();
-	driver->clearShaders();
-	driver->setShader(ShaderType::VERTEX, vertex_shader);
-	driver->setShader(ShaderType::FRAGMENT, fragment_shader);
+	driver->clearBindSets(pipeline_state);
+	driver->clearShaders(pipeline_state);
+	driver->setShader(pipeline_state, ShaderType::VERTEX, vertex_shader);
+	driver->setShader(pipeline_state, ShaderType::FRAGMENT, fragment_shader);
 
-	driver->drawIndexedPrimitive(command_buffer, quad.getRenderPrimitive());
+	driver->clearVertexStreams(pipeline_state);
+	driver->setVertexStream(pipeline_state, 0, quad.getVertexBuffer());
+
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad.getIndexBuffer(), quad.getNumIndices());
 
 	driver->endRenderPass(command_buffer);
 

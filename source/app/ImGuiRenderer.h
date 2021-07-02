@@ -40,6 +40,7 @@ private:
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
 	render::backend::Texture *font_texture {nullptr};
+	render::backend::PipelineState *pipeline_state {nullptr};
 	render::Shader *vertex_shader {nullptr};
 	render::Shader *fragment_shader {nullptr};
 

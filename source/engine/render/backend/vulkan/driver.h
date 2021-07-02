@@ -102,6 +102,10 @@ namespace render::backend::vulkan
 		VkCommandBufferLevel level {VK_COMMAND_BUFFER_LEVEL_PRIMARY};
 		VkSemaphore rendering_finished_gpu {VK_NULL_HANDLE};
 		VkFence rendering_finished_cpu {VK_NULL_HANDLE};
+
+		VkRenderPass render_pass {VK_NULL_HANDLE};
+		VkSampleCountFlagBits max_samples {VK_SAMPLE_COUNT_1_BIT};
+		uint32_t num_color_attachments {0};
 	};
 
 	struct UniformBuffer : public render::backend::UniformBuffer
@@ -148,6 +152,55 @@ namespace render::backend::vulkan
 		Data binding_data[MAX_BINDINGS];
 		bool binding_used[MAX_BINDINGS];
 		bool binding_dirty[MAX_BINDINGS];
+	};
+
+	struct PipelineState : public render::backend::PipelineState
+	{
+		enum
+		{
+			MAX_BIND_SETS = 16,
+			MAX_VERTEX_STREAMS = 16,
+			MAX_PUSH_CONSTANT_SIZE = 128, // TODO: use HW device capabilities for upper limit
+			MAX_SHADERS = static_cast<int>(ShaderType::MAX),
+		};
+
+		// render state
+		uint8_t depth_test : 1;
+		uint8_t depth_write : 1;
+		uint8_t blending : 1;
+
+		VkCompareOp depth_compare_func {VK_COMPARE_OP_LESS_OR_EQUAL};
+		VkCullModeFlags cull_mode {VK_CULL_MODE_BACK_BIT};
+		VkPrimitiveTopology primitive_topology {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST};
+
+		VkBlendFactor blend_src_factor;
+		VkBlendFactor blend_dst_factor;
+
+		VkViewport viewport;
+		VkRect2D scissor;
+
+		// resources
+		uint8_t push_constants[MAX_PUSH_CONSTANT_SIZE];
+		uint8_t push_constants_size {0};
+
+		BindSet *bind_sets[MAX_BIND_SETS]; // TODO: made this safer
+		uint8_t num_bind_sets {0};
+
+		VertexBuffer *vertex_streams[MAX_VERTEX_STREAMS]; // TODO: made this safer
+		uint8_t num_vertex_streams {0};
+
+		VkShaderModule shaders[MAX_SHADERS];
+
+		VkRenderPass render_pass {VK_NULL_HANDLE};
+		VkSampleCountFlagBits max_samples {VK_SAMPLE_COUNT_1_BIT};
+		uint8_t num_color_attachments {0};
+
+		// internal mutable state
+		VkPipeline pipeline {VK_NULL_HANDLE};
+		VkPipelineLayout pipeline_layout {VK_NULL_HANDLE};
+
+		// TODO: pipeline caches here
+		// IDEA: get rid of pipeline layout cache, recreate layout if needed and be happy
 	};
 
 	struct SwapChain : public render::backend::SwapChain
@@ -291,6 +344,9 @@ namespace render::backend::vulkan
 		backend::BindSet *createBindSet(
 		) final;
 
+		backend::PipelineState *createPipelineState(
+		) final;
+
 		backend::SwapChain *createSwapChain(
 			void *native_window
 		) final;
@@ -304,6 +360,7 @@ namespace render::backend::vulkan
 		void destroyUniformBuffer(backend::UniformBuffer *uniform_buffer) final;
 		void destroyShader(backend::Shader *shader) final;
 		void destroyBindSet(backend::BindSet *bind_set) final;
+		void destroyPipelineState(backend::PipelineState *pipeline_state) final;
 		void destroySwapChain(backend::SwapChain *swap_chain) final;
 
 	public:
@@ -325,6 +382,9 @@ namespace render::backend::vulkan
 
 		void *map(backend::UniformBuffer *uniform_buffer) final;
 		void unmap(backend::UniformBuffer *uniform_buffer) final;
+
+		void flush(backend::BindSet *bind_set) final;
+		void flush(backend::PipelineState *pipeline_state) final;
 
 	public:
 		bool acquire(
@@ -371,74 +431,93 @@ namespace render::backend::vulkan
 	public:
 		// pipeline state
 		void clearPushConstants(
+			backend::PipelineState *pipeline_state
 		) final;
 
 		void setPushConstants(
+			backend::PipelineState *pipeline_state,
 			uint8_t size,
 			const void *data
 		) final;
 
 		void clearBindSets(
-		) final;
-
-		void allocateBindSets(
-			uint8_t num_bind_sets
-		) final;
-
-		void pushBindSet(
-			backend::BindSet *bind_set
+			backend::PipelineState *pipeline_state
 		) final;
 
 		void setBindSet(
-			uint32_t binding,
+			backend::PipelineState *pipeline_state,
+			uint8_t binding,
 			backend::BindSet *bind_set
 		) final;
 
 		void clearShaders(
+			backend::PipelineState *pipeline_state
 		) final;
 
 		void setShader(
+			backend::PipelineState *pipeline_state,
 			ShaderType type,
 			const backend::Shader *shader
 		) final;
 
-	public:
-		// render state
-		void setViewport(
-			float x,
-			float y,
-			float width,
-			float height
+		void clearVertexStreams(
+			backend::PipelineState *pipeline_state
 		) final;
 
-		void setScissor(
+		void setVertexStream(
+			backend::PipelineState *pipeline_state,
+			uint8_t binding,
+			backend::VertexBuffer *vertex_buffer
+		) final;
+
+		void setViewport(
+			backend::PipelineState *pipeline_state,
 			int32_t x,
 			int32_t y,
 			uint32_t width,
 			uint32_t height
 		) final;
 
+		void setScissor(
+			backend::PipelineState *pipeline_state,
+			int32_t x,
+			int32_t y,
+			uint32_t width,
+			uint32_t height
+		) final;
+
+		void setPrimitiveType(
+			backend::PipelineState *pipeline_state,
+			RenderPrimitiveType type
+		) final;
+
 		void setCullMode(
+			backend::PipelineState *pipeline_state,
 			CullMode mode
 		) final;
 
 		void setDepthTest(
+			backend::PipelineState *pipeline_state,
 			bool enabled
 		) final;
 
 		void setDepthWrite(
+			backend::PipelineState *pipeline_state,
 			bool enabled
 		) final;
 
 		void setDepthCompareFunc(
+			backend::PipelineState *pipeline_state,
 			DepthCompareFunc func
 		) final;
 
 		void setBlending(
+			backend::PipelineState *pipeline_state,
 			bool enabled
 		) final;
 
 		void setBlendFactors(
+			backend::PipelineState *pipeline_state,
 			BlendFactor src_factor,
 			BlendFactor dest_factor
 		) final;
@@ -490,17 +569,22 @@ namespace render::backend::vulkan
 			backend::CommandBuffer *command_buffer
 		) final;
 
-		void drawIndexedPrimitive(
+		void drawIndexedPrimitiveInstanced(
 			backend::CommandBuffer *command_buffer,
-			const backend::RenderPrimitive *render_primitive
+			backend::PipelineState *pipeline_state,
+			const backend::IndexBuffer *index_buffer,
+			uint32_t num_indices,
+			uint32_t base_index,
+			int32_t base_vertex,
+			uint32_t num_instances,
+			uint32_t base_instance
 		) final;
 
 	private:
 		Device *device {nullptr};
-		Context *context {nullptr};
 		DescriptorSetLayoutCache *descriptor_set_layout_cache {nullptr};
-		ImageViewCache *image_view_cache {nullptr};
 		PipelineLayoutCache *pipeline_layout_cache {nullptr};
+		ImageViewCache *image_view_cache {nullptr};
 		PipelineCache *pipeline_cache {nullptr};
 	};
 }

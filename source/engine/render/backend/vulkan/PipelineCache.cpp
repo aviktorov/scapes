@@ -4,7 +4,6 @@
 
 #include "render/backend/vulkan/Driver.h"
 #include "render/backend/vulkan/Device.h"
-#include "render/backend/vulkan/Context.h"
 #include "render/backend/vulkan/Utils.h"
 
 #include <vector>
@@ -54,24 +53,19 @@ namespace render::backend::vulkan
 		clear();
 	}
 
-	VkPipeline PipelineCache::fetch(const Context *context, const backend::RenderPrimitive *primitive)
-	{
-		VkPipelineLayout layout = layout_cache->fetch(context);
-		return fetch(layout, context, primitive);
-	}
-
-	VkPipeline PipelineCache::fetch(VkPipelineLayout layout, const Context *context, const backend::RenderPrimitive *primitive)
+	VkPipeline PipelineCache::fetch(VkPipelineLayout layout, const PipelineState *pipeline_state)
 	{
 		assert(layout != VK_NULL_HANDLE);
-		assert(context->getRenderPass() != VK_NULL_HANDLE);
+		assert(pipeline_state);
+		assert(pipeline_state->render_pass != VK_NULL_HANDLE);
 
-		uint64_t hash = getHash(layout, context, primitive);
+		uint64_t hash = getHash(layout, pipeline_state);
 
 		auto it = cache.find(hash);
 		if (it != cache.end())
 			return it->second;
 
-		GraphicsPipelineBuilder builder(layout, context->getRenderPass());
+		GraphicsPipelineBuilder builder(layout, pipeline_state->render_pass);
 
 		builder.addViewport(VkViewport());
 		builder.addScissor(VkRect2D());
@@ -80,34 +74,39 @@ namespace render::backend::vulkan
 
 		for (uint8_t i = 0; i < static_cast<uint8_t>(ShaderType::MAX); ++i)
 		{
-			VkShaderModule module = context->getShader(static_cast<ShaderType>(i));
+			VkShaderModule module = pipeline_state->shaders[i];
 			if (module == VK_NULL_HANDLE)
 				continue;
 
 			builder.addShaderStage(module, toShaderStage(static_cast<ShaderType>(i)));
 		}
 
-		const VertexBuffer *vertex_buffer = static_cast<const VertexBuffer *>(primitive->vertices);
+		uint32_t attribute_location = 0;
+		for (uint8_t i = 0; i < pipeline_state->num_vertex_streams; ++i)
+		{
+			const VertexBuffer *vertex_buffer = pipeline_state->vertex_streams[i];
 
-		VkVertexInputBindingDescription input_binding = { 0, vertex_buffer->vertex_size, VK_VERTEX_INPUT_RATE_VERTEX };
-		std::vector<VkVertexInputAttributeDescription> attributes(vertex_buffer->num_attributes);
+			VkVertexInputBindingDescription input_binding = { i, vertex_buffer->vertex_size, VK_VERTEX_INPUT_RATE_VERTEX };
+			std::vector<VkVertexInputAttributeDescription> attributes(vertex_buffer->num_attributes);
 
-		for (uint8_t i = 0; i < vertex_buffer->num_attributes; ++i)
-			attributes[i] = { i, 0, vertex_buffer->attribute_formats[i], vertex_buffer->attribute_offsets[i] };
+			for (uint8_t j = 0; j < vertex_buffer->num_attributes; ++j)
+				attributes[j] = { attribute_location++, i, vertex_buffer->attribute_formats[j], vertex_buffer->attribute_offsets[j] };
 
-		builder.setInputAssemblyState(Utils::getPrimitiveTopology(primitive->type));
-		builder.addVertexInput(input_binding, attributes);
+			builder.addVertexInput(input_binding, attributes);
+		}
 
-		builder.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, context->getCullMode(), VK_FRONT_FACE_COUNTER_CLOCKWISE);
-		builder.setDepthStencilState(context->isDepthTestEnabled(), context->isDepthWriteEnabled(), context->getDepthCompareFunc());
+		builder.setInputAssemblyState(pipeline_state->primitive_topology);
 
-		builder.setMultisampleState(context->getMaxSampleCount(), true);
+		builder.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, pipeline_state->cull_mode, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+		builder.setDepthStencilState(pipeline_state->depth_test, pipeline_state->depth_write, pipeline_state->depth_compare_func);
 
-		bool blending_enabled = context->isBlendingEnabled();
-		VkBlendFactor src_factor = context->getBlendSrcFactor();
-		VkBlendFactor dst_factor = context->getBlendDstFactor();
+		builder.setMultisampleState(pipeline_state->max_samples, true);
 
-		for (uint8_t i = 0; i < context->getNumColorAttachments(); ++i)
+		bool blending_enabled = pipeline_state->blending;
+		VkBlendFactor src_factor = pipeline_state->blend_src_factor;
+		VkBlendFactor dst_factor = pipeline_state->blend_dst_factor;
+
+		for (uint8_t i = 0; i < pipeline_state->num_color_attachments; ++i)
 			builder.addBlendColorAttachment(
 				blending_enabled,
 				src_factor,
@@ -130,26 +129,31 @@ namespace render::backend::vulkan
 		cache.clear();
 	}
 
-	uint64_t PipelineCache::getHash(VkPipelineLayout layout, const Context *context, const RenderPrimitive *primitive) const
+	uint64_t PipelineCache::getHash(VkPipelineLayout layout, const PipelineState *pipeline_state) const
 	{
-		assert(context);
+		assert(pipeline_state);
 
 		uint64_t hash = 0;
 		hashCombine(hash, layout);
-		hashCombine(hash, context->getRenderPass());
+		hashCombine(hash, pipeline_state->render_pass);
 
-		const VertexBuffer *vertex_buffer = static_cast<const VertexBuffer *>(primitive->vertices);
-		for (uint8_t i = 0; i < vertex_buffer->num_attributes; ++i)
+		for (uint8_t i = 0; i < pipeline_state->num_vertex_streams; ++i)
 		{
-			hashCombine(hash, vertex_buffer->attribute_formats[i]);
-			hashCombine(hash, vertex_buffer->attribute_offsets[i]);
+			const VertexBuffer *vertex_buffer = pipeline_state->vertex_streams[i];
+
+			for (uint8_t j = 0; j < vertex_buffer->num_attributes; ++j)
+			{
+				hashCombine(hash, vertex_buffer->attribute_formats[j]);
+				hashCombine(hash, vertex_buffer->attribute_offsets[j]);
+
+			}
 		}
 
-		hashCombine(hash, Utils::getPrimitiveTopology(primitive->type));
+		hashCombine(hash, pipeline_state->primitive_topology);
 
 		for (uint8_t i = 0; i < static_cast<uint8_t>(ShaderType::MAX); ++i)
 		{
-			VkShaderModule module = context->getShader(static_cast<ShaderType>(i));
+			VkShaderModule module = pipeline_state->shaders[i];
 			if (module == VK_NULL_HANDLE)
 				continue;
 
@@ -157,15 +161,15 @@ namespace render::backend::vulkan
 			hashCombine(hash, module);
 		}
 
-		hashCombine(hash, context->getNumColorAttachments());
-		hashCombine(hash, context->getMaxSampleCount());
-		hashCombine(hash, context->getCullMode());
-		hashCombine(hash, context->getDepthCompareFunc());
-		hashCombine(hash, context->isDepthTestEnabled());
-		hashCombine(hash, context->isDepthWriteEnabled());
-		hashCombine(hash, context->isBlendingEnabled());
-		hashCombine(hash, context->getBlendSrcFactor());
-		hashCombine(hash, context->getBlendDstFactor());
+		hashCombine(hash, pipeline_state->num_color_attachments);
+		hashCombine(hash, pipeline_state->max_samples);
+		hashCombine(hash, pipeline_state->cull_mode);
+		hashCombine(hash, pipeline_state->depth_compare_func);
+		hashCombine(hash, pipeline_state->depth_test);
+		hashCombine(hash, pipeline_state->depth_write);
+		hashCombine(hash, pipeline_state->blending);
+		hashCombine(hash, pipeline_state->blend_src_factor);
+		hashCombine(hash, pipeline_state->blend_dst_factor);
 
 		return hash;
 	}

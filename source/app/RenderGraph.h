@@ -172,6 +172,7 @@ private:
 
 private:
 	render::backend::Driver *driver {nullptr};
+	render::backend::PipelineState *pipeline_state {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
 
 	GBuffer gbuffer;

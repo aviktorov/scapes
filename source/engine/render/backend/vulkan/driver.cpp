@@ -1,5 +1,4 @@
 #include "render/backend/vulkan/Driver.h"
-#include "render/backend/vulkan/Context.h"
 #include "render/backend/vulkan/Device.h"
 #include "render/backend/vulkan/Platform.h"
 #include "render/backend/vulkan/DescriptorSetLayoutCache.h"
@@ -326,7 +325,6 @@ namespace render::backend::vulkan
 		device = new Device();
 		device->init(application_name, engine_name);
 
-		context = new Context();
 		descriptor_set_layout_cache = new DescriptorSetLayoutCache(device);
 		image_view_cache = new ImageViewCache(device);
 		pipeline_layout_cache = new PipelineLayoutCache(device, descriptor_set_layout_cache);
@@ -346,9 +344,6 @@ namespace render::backend::vulkan
 
 		delete image_view_cache;
 		image_view_cache = nullptr;
-
-		delete context;
-		context = nullptr;
 
 		if (device)
 		{
@@ -854,6 +849,18 @@ namespace render::backend::vulkan
 		return result;
 	}
 
+	backend::PipelineState *Driver::createPipelineState()
+	{
+		PipelineState *result = new PipelineState();
+		memset(result, 0, sizeof(PipelineState));
+
+		result->cull_mode = VK_CULL_MODE_BACK_BIT;
+		result->primitive_topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		result->depth_compare_func = VK_COMPARE_OP_LESS_OR_EQUAL;
+
+		return result;
+	}
+
 	backend::SwapChain *Driver::createSwapChain(void *native_window)
 	{
 		assert(native_window != nullptr && "Invalid window");
@@ -1050,6 +1057,17 @@ namespace render::backend::vulkan
 		bind_set = nullptr;
 	}
 
+	void Driver::destroyPipelineState(backend::PipelineState *pipeline_state)
+	{
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		delete pipeline_state;
+		pipeline_state = nullptr;
+	}
+
 	void Driver::destroySwapChain(backend::SwapChain *swap_chain)
 	{
 		if (swap_chain == nullptr)
@@ -1237,6 +1255,106 @@ namespace render::backend::vulkan
 		assert(vk_uniform_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
 
 		vmaUnmapMemory(device->getVRAMAllocator(), vk_uniform_buffer->memory);
+	}
+
+	/*
+	 */
+	void Driver::flush(backend::BindSet *bind_set)
+	{
+		if (bind_set == nullptr)
+			return;
+
+		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
+
+		VkWriteDescriptorSet writes[BindSet::MAX_BINDINGS];
+		VkDescriptorImageInfo image_infos[BindSet::MAX_BINDINGS];
+		VkDescriptorBufferInfo buffer_infos[BindSet::MAX_BINDINGS];
+
+		uint32_t write_size = 0;
+		uint32_t image_size = 0;
+		uint32_t buffer_size = 0;
+
+		VkDescriptorSetLayout new_layout = descriptor_set_layout_cache->fetch(vk_bind_set);
+		helpers::updateBindSetLayout(device, vk_bind_set, new_layout);
+
+		for (uint8_t i = 0; i < BindSet::MAX_BINDINGS; ++i)
+		{
+			if (!vk_bind_set->binding_used[i])
+				continue;
+
+			if (!vk_bind_set->binding_dirty[i])
+				continue;
+
+			VkDescriptorType descriptor_type = vk_bind_set->bindings[i].descriptorType;
+			const BindSet::Data &data = vk_bind_set->binding_data[i];
+
+			VkWriteDescriptorSet write_set = {};
+			write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			write_set.dstSet = vk_bind_set->set;
+			write_set.dstBinding = i;
+			write_set.dstArrayElement = 0;
+
+			switch (descriptor_type)
+			{
+				case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+				{
+					VkDescriptorImageInfo info = {};
+					info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					info.imageView = data.texture.view;
+					info.sampler = data.texture.sampler;
+
+					image_infos[image_size++] = info;
+					write_set.pImageInfo = &image_infos[image_size - 1];
+				}
+				break;
+				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				{
+					VkDescriptorBufferInfo info = {};
+					info.buffer = data.ubo.buffer;
+					info.offset = data.ubo.offset;
+					info.range = data.ubo.size;
+
+					buffer_infos[buffer_size++] = info;
+					write_set.pBufferInfo = &buffer_infos[buffer_size - 1];
+				}
+				break;
+				default:
+				{
+					assert(false && "Unsupported descriptor type");
+				}
+				break;
+			}
+
+			write_set.descriptorType = descriptor_type;
+			write_set.descriptorCount = 1;
+
+			writes[write_size++] = write_set;
+
+			vk_bind_set->binding_dirty[i] = false;
+		}
+
+		if (write_size > 0)
+			vkUpdateDescriptorSets(device->getDevice(), write_size, writes, 0, nullptr);
+	}
+
+	void Driver::flush(backend::PipelineState *pipeline_state)
+	{
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		for (uint32_t i = 0; i < vk_pipeline_state->num_bind_sets; ++i)
+			flush(vk_pipeline_state->bind_sets[i]);
+
+		if (vk_pipeline_state->pipeline_layout == VK_NULL_HANDLE)
+		{
+			vk_pipeline_state->pipeline_layout = pipeline_layout_cache->fetch(vk_pipeline_state);
+			vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+		}
+
+		if (vk_pipeline_state->pipeline == VK_NULL_HANDLE)
+			vk_pipeline_state->pipeline = pipeline_cache->fetch(vk_pipeline_state->pipeline_layout, vk_pipeline_state);
 	}
 
 	/*
@@ -1460,103 +1578,245 @@ namespace render::backend::vulkan
 
 	/*
 	 */
-	void Driver::clearPushConstants()
+	void Driver::clearPushConstants(backend::PipelineState *pipeline_state)
 	{
-		context->clearPushConstants();
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->push_constants_size = 0;
+		memset(vk_pipeline_state->push_constants, 0, PipelineState::MAX_PUSH_CONSTANT_SIZE);
+
+		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
+		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Driver::setPushConstants(uint8_t size, const void *data)
+	void Driver::setPushConstants(backend::PipelineState *pipeline_state, uint8_t size, const void *data)
 	{
-		context->setPushConstants(size, data);
+		assert(size <= PipelineState::MAX_PUSH_CONSTANT_SIZE);
+
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->push_constants_size = size;
+		memcpy(vk_pipeline_state->push_constants, data, size);
+
+		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
+		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Driver::clearBindSets()
+	void Driver::clearBindSets(backend::PipelineState *pipeline_state)
 	{
-		context->clearBindSets();
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		for (uint32_t i = 0; i < PipelineState::MAX_BIND_SETS; ++i)
+			vk_pipeline_state->bind_sets[i] = nullptr;
+
+		vk_pipeline_state->num_bind_sets = 0;
+
+		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
+		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Driver::allocateBindSets(uint8_t size)
+	void Driver::setBindSet(backend::PipelineState *pipeline_state, uint8_t binding, backend::BindSet *bind_set)
 	{
-		context->allocateBindSets(size);
+		assert(binding < PipelineState::MAX_BIND_SETS);
+
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
+
+		vk_pipeline_state->bind_sets[binding] = vk_bind_set;
+		vk_pipeline_state->num_bind_sets = std::max<uint32_t>(vk_pipeline_state->num_bind_sets, binding + 1);
+
+		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
+		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Driver::pushBindSet(backend::BindSet *set)
+	void Driver::clearShaders(backend::PipelineState *pipeline_state)
 	{
-		BindSet *vk_set = static_cast<BindSet *>(set);
-		context->pushBindSet(vk_set);
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		for (uint32_t i = 0; i < PipelineState::MAX_SHADERS; ++i)
+			vk_pipeline_state->shaders[i] = VK_NULL_HANDLE;
+
+		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
+		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Driver::setBindSet(uint32_t binding, backend::BindSet *set)
+	void Driver::setShader(backend::PipelineState *pipeline_state, ShaderType type, const backend::Shader *shader)
 	{
-		BindSet *vk_set = static_cast<BindSet *>(set);
-		context->setBindSet(binding, vk_set);
-	}
+		if (pipeline_state == nullptr)
+			return;
 
-	void Driver::clearShaders()
-	{
-		context->clearShaders();
-	}
-
-	void Driver::setShader(ShaderType type, const backend::Shader *shader)
-	{
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
 		const Shader *vk_shader = static_cast<const Shader *>(shader);
-		context->setShader(type, vk_shader);
+
+		vk_pipeline_state->shaders[static_cast<int>(type)] = (vk_shader) ? vk_shader->module : VK_NULL_HANDLE;
+
+		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
+		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
+	}
+
+	void Driver::clearVertexStreams(backend::PipelineState *pipeline_state)
+	{
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		for (uint32_t i = 0; i < PipelineState::MAX_VERTEX_STREAMS; ++i)
+			vk_pipeline_state->vertex_streams[i] = nullptr;
+
+		vk_pipeline_state->num_vertex_streams = 0;
+
+		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
+		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
+	}
+
+	void Driver::setVertexStream(backend::PipelineState *pipeline_state, uint8_t binding, backend::VertexBuffer *vertex_buffer)
+	{
+		assert(binding < PipelineState::MAX_VERTEX_STREAMS);
+
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		VertexBuffer *vk_vertex_buffer = static_cast<VertexBuffer *>(vertex_buffer);
+
+		vk_pipeline_state->vertex_streams[binding] = vk_vertex_buffer;
+		vk_pipeline_state->num_vertex_streams = std::max<uint32_t>(vk_pipeline_state->num_vertex_streams, binding + 1);
+
+		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
+		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
 	}
 
 	/*
 	 */
-	void Driver::setViewport(float x, float y, float width, float height)
+	void Driver::setViewport(backend::PipelineState *pipeline_state, int32_t x, int32_t y, uint32_t width, uint32_t height)
 	{
-		VkViewport viewport;
-		viewport.x = x;
-		viewport.y = y;
-		viewport.width = width;
-		viewport.height = height;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-		context->setViewport(viewport);
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->viewport.x = static_cast<float>(x);
+		vk_pipeline_state->viewport.y = static_cast<float>(y);
+		vk_pipeline_state->viewport.width = static_cast<float>(width);
+		vk_pipeline_state->viewport.height = static_cast<float>(height);
+		vk_pipeline_state->viewport.minDepth = 0.0f;
+		vk_pipeline_state->viewport.maxDepth = 1.0f;
+
+		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Driver::setScissor(int32_t x, int32_t y, uint32_t width, uint32_t height)
+	void Driver::setScissor(backend::PipelineState *pipeline_state, int32_t x, int32_t y, uint32_t width, uint32_t height)
 	{
-		VkRect2D scissor;
-		scissor.offset = { x, y };
-		scissor.extent = { width, height };
-		context->setScissor(scissor);
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->scissor.offset = { x, y };
+		vk_pipeline_state->scissor.extent = { width, height };
+
+		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Driver::setCullMode(CullMode mode)
+	void Driver::setPrimitiveType(backend::PipelineState *pipeline_state, RenderPrimitiveType type)
 	{
-		VkCullModeFlags vk_mode = Utils::getCullMode(mode);
-		context->setCullMode(vk_mode);
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->primitive_topology = Utils::getPrimitiveTopology(type);
+
+		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Driver::setDepthTest(bool enabled)
+	void Driver::setCullMode(backend::PipelineState *pipeline_state, CullMode mode)
 	{
-		context->setDepthTest(enabled);
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->cull_mode = Utils::getCullMode(mode);
+
+		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Driver::setDepthWrite(bool enabled)
+	void Driver::setDepthTest(backend::PipelineState *pipeline_state, bool enabled)
 	{
-		context->setDepthWrite(enabled);
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->depth_test = enabled;
+
+		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Driver::setDepthCompareFunc(DepthCompareFunc func)
+	void Driver::setDepthWrite(backend::PipelineState *pipeline_state, bool enabled)
 	{
-		VkCompareOp vk_func = Utils::getDepthCompareFunc(func);
-		context->setDepthCompareFunc(vk_func);
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->depth_write = enabled;
+
+		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Driver::setBlending(bool enabled)
+	void Driver::setDepthCompareFunc(backend::PipelineState *pipeline_state, DepthCompareFunc func)
 	{
-		context->setBlending(enabled);
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->depth_compare_func = Utils::getDepthCompareFunc(func);
+
+		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Driver::setBlendFactors(BlendFactor src_factor, BlendFactor dest_factor)
+	void Driver::setBlending(backend::PipelineState *pipeline_state, bool enabled)
 	{
-		VkBlendFactor vk_src_factor = Utils::getBlendFactor(src_factor);
-		VkBlendFactor vk_dest_factor = Utils::getBlendFactor(dest_factor);
-		context->setBlendFactors(vk_src_factor, vk_dest_factor);
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->blending = enabled;
+
+		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+	}
+
+	void Driver::setBlendFactors(backend::PipelineState *pipeline_state, BlendFactor src_factor, BlendFactor dst_factor)
+	{
+		if (pipeline_state == nullptr)
+			return;
+
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+
+		vk_pipeline_state->blend_src_factor = Utils::getBlendFactor(src_factor);
+		vk_pipeline_state->blend_dst_factor = Utils::getBlendFactor(dst_factor);
+
+		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
 	}
 
 	/*
@@ -1736,9 +1996,9 @@ namespace render::backend::vulkan
 		render_area.extent = vk_frame_buffer->sizes;
 		render_area.offset = {0, 0};
 
-		context->setRenderPass(vk_render_pass);
-		context->setViewport(viewport);
-		context->setScissor(render_area);
+		vk_command_buffer->render_pass = vk_render_pass->render_pass;
+		vk_command_buffer->max_samples = vk_render_pass->max_samples;
+		vk_command_buffer->num_color_attachments = vk_render_pass->num_color_attachments;
 
 		VkRenderPassBeginInfo render_pass_info = {};
 		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1774,9 +2034,9 @@ namespace render::backend::vulkan
 		render_area.extent = vk_swap_chain->sizes;
 		render_area.offset = {0, 0};
 
-		context->setRenderPass(vk_render_pass);
-		context->setViewport(viewport);
-		context->setScissor(render_area);
+		vk_command_buffer->render_pass = vk_render_pass->render_pass;
+		vk_command_buffer->max_samples = vk_render_pass->max_samples;
+		vk_command_buffer->num_color_attachments = vk_render_pass->num_color_attachments;
 
 		VkRenderPassBeginInfo render_pass_info = {};
 		render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -1797,10 +2057,19 @@ namespace render::backend::vulkan
 		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
 		vkCmdEndRenderPass(vk_command_buffer->command_buffer);
 
-		context->setRenderPass(VK_NULL_HANDLE);
+		vk_command_buffer->render_pass = VK_NULL_HANDLE;
 	}
 
-	void Driver::drawIndexedPrimitive(backend::CommandBuffer *command_buffer, const backend::RenderPrimitive *render_primitive)
+	void Driver::drawIndexedPrimitiveInstanced(
+		backend::CommandBuffer *command_buffer,
+		backend::PipelineState *pipeline_state,
+		const backend::IndexBuffer *index_buffer,
+		uint32_t num_indices,
+		uint32_t base_index,
+		int32_t base_vertex,
+		uint32_t num_instances,
+		uint32_t base_instance
+	)
 	{
 		ZoneScoped;
 
@@ -1808,115 +2077,58 @@ namespace render::backend::vulkan
 			return;
 
 		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
-		const VertexBuffer *vk_vertex_buffer = static_cast<const VertexBuffer *>(render_primitive->vertices);
-		const IndexBuffer *vk_index_buffer = static_cast<const IndexBuffer *>(render_primitive->indices);
+		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		const IndexBuffer *vk_index_buffer = static_cast<const IndexBuffer *>(index_buffer);
 
-		std::array<VkDescriptorSet, Context::MAX_SETS> sets;
-		std::array<VkWriteDescriptorSet, BindSet::MAX_BINDINGS * Context::MAX_SETS> writes;
-		std::array<VkDescriptorImageInfo, BindSet::MAX_BINDINGS * Context::MAX_SETS> image_infos;
-		std::array<VkDescriptorBufferInfo, BindSet::MAX_BINDINGS * Context::MAX_SETS> buffer_infos;
+		assert(vk_command_buffer->render_pass != VK_NULL_HANDLE);
 
-		size_t set_size = 0;
-		size_t write_size = 0;
-		size_t image_size = 0;
-		size_t buffer_size = 0;
+		vk_pipeline_state->render_pass = vk_command_buffer->render_pass;
+		vk_pipeline_state->num_color_attachments = vk_command_buffer->num_color_attachments;
+		vk_pipeline_state->max_samples = vk_command_buffer->max_samples;
 
-		for (uint8_t i = 0; i < context->getNumBindSets(); ++i)
-		{
-			BindSet *bind_set = context->getBindSet(i);
-
-			VkDescriptorSetLayout new_layout = descriptor_set_layout_cache->fetch(bind_set);
-			helpers::updateBindSetLayout(device, bind_set, new_layout);
-
-			sets[set_size++] = bind_set->set;
-
-			for (uint8_t j = 0; j < BindSet::MAX_BINDINGS; ++j)
-			{
-				if (!bind_set->binding_used[j])
-					continue;
-
-				if (!bind_set->binding_dirty[j])
-					continue;
-
-				VkDescriptorType descriptor_type = bind_set->bindings[j].descriptorType;
-				const BindSet::Data &data = bind_set->binding_data[j];
-
-				VkWriteDescriptorSet write_set = {};
-				write_set.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				write_set.dstSet = bind_set->set;
-				write_set.dstBinding = j;
-				write_set.dstArrayElement = 0;
-
-				switch (descriptor_type)
-				{
-					case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-					{
-						VkDescriptorImageInfo info = {};
-						info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-						info.imageView = data.texture.view;
-						info.sampler = data.texture.sampler;
-
-						image_infos[image_size++] = info;
-						write_set.pImageInfo = &image_infos[image_size - 1];
-					}
-					break;
-					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-					{
-						VkDescriptorBufferInfo info = {};
-						info.buffer = data.ubo.buffer;
-						info.offset = data.ubo.offset;
-						info.range = data.ubo.size;
-
-						buffer_infos[buffer_size++] = info;
-						write_set.pBufferInfo = &buffer_infos[buffer_size - 1];
-					}
-					break;
-					default:
-					{
-						assert(false && "Unsupported descriptor type");
-					}
-					break;
-				}
-
-				write_set.descriptorType = descriptor_type;
-				write_set.descriptorCount = 1;
-
-				writes[write_size++] = write_set;
-
-				bind_set->binding_dirty[j] = false;
-			}
-		}
-
-		if (write_size > 0)
-			vkUpdateDescriptorSets(device->getDevice(), static_cast<uint32_t>(write_size), writes.data(), 0, nullptr);
+		flush(pipeline_state);
 
 		ZoneNamedN(actual_draw_call, "Actual draw call", true);
 
-		VkPipelineLayout pipeline_layout = pipeline_layout_cache->fetch(context);
-		VkPipeline pipeline = pipeline_cache->fetch(pipeline_layout, context, render_primitive);
-
-		vkCmdBindPipeline(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-		if (context->getPushConstantsSize() > 0)
-			vkCmdPushConstants(vk_command_buffer->command_buffer, pipeline_layout, VK_SHADER_STAGE_ALL, 0, context->getPushConstantsSize(), context->getPushConstants());
-
-		if (set_size > 0)
-			vkCmdBindDescriptorSets(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(set_size), sets.data(), 0, nullptr);
-
-		VkViewport viewport = context->getViewport();
-		VkRect2D scissor = context->getScissor();
+		VkPipeline pipeline = vk_pipeline_state->pipeline;
+		VkPipelineLayout pipeline_layout = vk_pipeline_state->pipeline_layout;
+		VkViewport viewport = vk_pipeline_state->viewport;
+		VkRect2D scissor = vk_pipeline_state->scissor;
 
 		vkCmdSetViewport(vk_command_buffer->command_buffer, 0, 1, &viewport);
 		vkCmdSetScissor(vk_command_buffer->command_buffer, 0, 1, &scissor);
 
-		VkBuffer vertex_buffers[1] = { vk_vertex_buffer->buffer };
-		VkDeviceSize offsets[1] = { 0 };
+		vkCmdBindPipeline(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-		vkCmdBindVertexBuffers(vk_command_buffer->command_buffer, 0, 1, vertex_buffers, offsets);
-		vkCmdBindIndexBuffer(vk_command_buffer->command_buffer, vk_index_buffer->buffer, 0, vk_index_buffer->index_type);
+		if (vk_pipeline_state->push_constants_size > 0)
+			vkCmdPushConstants(vk_command_buffer->command_buffer, pipeline_layout, VK_SHADER_STAGE_ALL, 0, vk_pipeline_state->push_constants_size, vk_pipeline_state->push_constants);
 
-		uint32_t num_instances = 1;
-		uint32_t base_instance = 0;
-		vkCmdDrawIndexed(vk_command_buffer->command_buffer, render_primitive->num_indices, num_instances, render_primitive->base_index, render_primitive->vertex_index_offset, base_instance);
+		if (vk_pipeline_state->num_bind_sets > 0)
+		{
+			VkDescriptorSet sets[PipelineState::MAX_BIND_SETS];
+			for (uint32_t i = 0; i < vk_pipeline_state->num_bind_sets; ++i)
+				sets[i] = vk_pipeline_state->bind_sets[i]->set;
+
+			vkCmdBindDescriptorSets(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, vk_pipeline_state->num_bind_sets, sets, 0, nullptr);
+		}
+
+		if (vk_pipeline_state->num_vertex_streams > 0)
+		{
+			VkBuffer vertex_buffers[PipelineState::MAX_VERTEX_STREAMS];
+			VkDeviceSize offsets[PipelineState::MAX_VERTEX_STREAMS];
+
+			for (uint32_t i = 0; i < vk_pipeline_state->num_vertex_streams; ++i)
+			{
+				vertex_buffers[i] = vk_pipeline_state->vertex_streams[i]->buffer;
+				offsets[i] = 0;
+			}
+
+			vkCmdBindVertexBuffers(vk_command_buffer->command_buffer, 0, vk_pipeline_state->num_vertex_streams, vertex_buffers, offsets);
+		}
+
+		if (vk_index_buffer)
+			vkCmdBindIndexBuffer(vk_command_buffer->command_buffer, vk_index_buffer->buffer, 0, vk_index_buffer->index_type);
+
+		vkCmdDrawIndexed(vk_command_buffer->command_buffer, num_indices, num_instances, base_index, base_vertex, base_instance);
 	}
 }

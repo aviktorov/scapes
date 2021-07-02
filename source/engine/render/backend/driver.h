@@ -258,6 +258,7 @@ struct UniformBuffer {};
 
 struct Shader {};
 struct BindSet {};
+struct PipelineState {};
 
 struct SwapChain {};
 
@@ -433,6 +434,9 @@ public:
 	virtual BindSet *createBindSet(
 	) = 0;
 
+	virtual PipelineState *createPipelineState(
+	) = 0;
+
 	virtual SwapChain *createSwapChain(
 		void *native_window
 	) = 0;
@@ -446,6 +450,7 @@ public:
 	virtual void destroyUniformBuffer(UniformBuffer *uniform_buffer) = 0;
 	virtual void destroyShader(Shader *shader) = 0;
 	virtual void destroyBindSet(BindSet *bind_set) = 0;
+	virtual void destroyPipelineState(PipelineState *pipeline_state) = 0;
 	virtual void destroySwapChain(SwapChain *swap_chain) = 0;
 
 public:
@@ -467,6 +472,9 @@ public:
 
 	virtual void *map(UniformBuffer *uniform_buffer) = 0;
 	virtual void unmap(UniformBuffer *uniform_buffer) = 0;
+
+	virtual void flush(BindSet *bind_set) = 0;
+	virtual void flush(PipelineState *pipeline_state) = 0;
 
 public:
 	virtual bool acquire(
@@ -512,74 +520,94 @@ public:
 public:
 	// pipeline state
 	virtual void clearPushConstants(
+		PipelineState *pipeline_state
 	) = 0;
 
 	virtual void setPushConstants(
+		PipelineState *pipeline_state,
 		uint8_t size,
 		const void *data
 	) = 0;
 
 	virtual void clearBindSets(
-	) = 0;
-
-	virtual void allocateBindSets(
-		uint8_t size
-	) = 0;
-
-	virtual void pushBindSet(
-		BindSet *bind_set
+		PipelineState *pipeline_state
 	) = 0;
 
 	virtual void setBindSet(
-		uint32_t binding,
+		PipelineState *pipeline_state,
+		uint8_t binding,
 		BindSet *bind_set
 	) = 0;
 
 	virtual void clearShaders(
+		PipelineState *pipeline_state
 	) = 0;
 
 	virtual void setShader(
+		PipelineState *pipeline_state,
 		ShaderType type,
 		const Shader *shader
 	) = 0;
 
-public:
-	// render state
-	virtual void setViewport(
-		float x,
-		float y,
-		float width,
-		float height
+	virtual void clearVertexStreams(
+		PipelineState *pipeline_state
 	) = 0;
 
-	virtual void setScissor(
+	virtual void setVertexStream(
+		PipelineState *pipeline_state,
+		uint8_t binding,
+		VertexBuffer *vertex_buffer
+		// TODO: vertex stream usage (per vertex or per instance)
+	) = 0;
+
+	virtual void setViewport(
+		PipelineState *pipeline_state,
 		int32_t x,
 		int32_t y,
 		uint32_t width,
 		uint32_t height
 	) = 0;
 
+	virtual void setScissor(
+		PipelineState *pipeline_state,
+		int32_t x,
+		int32_t y,
+		uint32_t width,
+		uint32_t height
+	) = 0;
+
+	virtual void setPrimitiveType(
+		PipelineState *pipeline_state,
+		RenderPrimitiveType type
+	) = 0;
+
 	virtual void setCullMode(
+		PipelineState *pipeline_state,
 		CullMode mode
 	) = 0;
 
 	virtual void setDepthTest(
+		PipelineState *pipeline_state,
 		bool enabled
 	) = 0;
 
 	virtual void setDepthWrite(
+		PipelineState *pipeline_state,
 		bool enabled
 	) = 0;
 
 	virtual void setDepthCompareFunc(
+		PipelineState *pipeline_state,
 		DepthCompareFunc func
 	) = 0;
 
 	virtual void setBlending(
+		PipelineState *pipeline_state,
 		bool enabled
 	) = 0;
 
 	virtual void setBlendFactors(
+		PipelineState *pipeline_state,
 		BlendFactor src_factor,
 		BlendFactor dest_factor
 	) = 0;
@@ -630,9 +658,15 @@ public:
 		CommandBuffer *command_buffer
 	) = 0;
 
-	virtual void drawIndexedPrimitive(
+	virtual void drawIndexedPrimitiveInstanced(
 		CommandBuffer *command_buffer,
-		const RenderPrimitive *render_primitive
+		PipelineState *pipeline_state,
+		const IndexBuffer *index_buffer,
+		uint32_t num_indices,
+		uint32_t base_index = 0,
+		int32_t base_vertex = 0,
+		uint32_t num_instances = 1,
+		uint32_t base_instance = 0
 	) = 0;
 };
 

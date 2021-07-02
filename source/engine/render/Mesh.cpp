@@ -181,7 +181,7 @@ namespace render
 			{ render::backend::Format::R32G32B32_SFLOAT, offsetof(Vertex, color) },
 		};
 
-		render_primitive->vertices = driver->createVertexBuffer(
+		vertex_buffer = driver->createVertexBuffer(
 			render::backend::BufferType::STATIC,
 			sizeof(Vertex), static_cast<uint32_t>(vertices.size()),
 			6, attributes,
@@ -191,12 +191,12 @@ namespace render
 
 	void Mesh::createIndexBuffer()
 	{
-		render_primitive->num_indices = static_cast<uint32_t>(indices.size());
+		num_indices = static_cast<uint32_t>(indices.size());
 
-		render_primitive->indices = driver->createIndexBuffer(
+		index_buffer = driver->createIndexBuffer(
 			render::backend::BufferType::STATIC,
 			render::backend::IndexFormat::UINT32,
-			render_primitive->num_indices,
+			num_indices,
 			indices.data()
 		);
 	}
@@ -207,22 +207,14 @@ namespace render
 	{
 		clearGPUData();
 
-		render_primitive = new backend::RenderPrimitive();
-		render_primitive->type = backend::RenderPrimitiveType::TRIANGLE_LIST;
-
 		createVertexBuffer();
 		createIndexBuffer();
 	}
 
 	void Mesh::clearGPUData()
 	{
-		if (render_primitive)
-		{
-			driver->destroyVertexBuffer(render_primitive->vertices);
-			driver->destroyIndexBuffer(render_primitive->indices);
-		}
-
-		delete render_primitive;
+		driver->destroyVertexBuffer(vertex_buffer);
+		driver->destroyIndexBuffer(index_buffer);
 	}
 
 	void Mesh::clearCPUData()

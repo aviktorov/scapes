@@ -1,10 +1,8 @@
 #include "render/backend/vulkan/PipelineLayoutCache.h"
 #include "render/backend/vulkan/PipelineLayoutBuilder.h"
-#include "render/backend/vulkan/DescriptorSetLayoutCache.h"
 
 #include "render/backend/vulkan/Driver.h"
 #include "render/backend/vulkan/Device.h"
-#include "render/backend/vulkan/Context.h"
 
 #include <array>
 #include <vector>
@@ -24,19 +22,21 @@ namespace render::backend::vulkan
 		clear();
 	}
 
-	VkPipelineLayout PipelineLayoutCache::fetch(const Context *context)
+	VkPipelineLayout PipelineLayoutCache::fetch(const PipelineState *pipeline_state)
 	{
-		uint8_t push_constants_size = context->getPushConstantsSize();
-		uint8_t num_bind_sets = context->getNumBindSets();
+		uint8_t push_constants_size = pipeline_state->push_constants_size;
+		uint8_t num_bind_sets = pipeline_state->num_bind_sets;
 
-		std::array<VkDescriptorSetLayout, Context::MAX_SETS> layouts;
+		VkDescriptorSetLayout layouts[PipelineState::MAX_BIND_SETS];
 		for (uint8_t i = 0; i < num_bind_sets; ++i)
 		{
-			const BindSet *bind_set = context->getBindSet(i);
-			layouts[i] = (bind_set) ? bind_set->set_layout : VK_NULL_HANDLE;
+			BindSet *bind_set = pipeline_state->bind_sets[i];
+			assert(bind_set);
+
+			layouts[i] = bind_set->set_layout;
 		}
 
-		uint64_t hash = getHash(num_bind_sets, layouts.data(), push_constants_size);
+		uint64_t hash = getHash(num_bind_sets, layouts, push_constants_size);
 
 		auto it = cache.find(hash);
 		if (it != cache.end())

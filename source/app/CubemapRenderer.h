@@ -38,6 +38,7 @@ private:
 	render::backend::FrameBuffer *frame_buffer {nullptr};
 	render::backend::RenderPass *render_pass {nullptr};
 	render::backend::UniformBuffer *uniform_buffer {nullptr};
+	render::backend::PipelineState *pipeline_state {nullptr};
 
 	render::Mesh quad;
 };

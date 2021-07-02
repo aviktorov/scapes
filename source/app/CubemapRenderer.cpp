@@ -80,6 +80,11 @@ void CubemapRenderer::init(
 	// Create command buffer
 	command_buffer = driver->createCommandBuffer(CommandBufferType::PRIMARY);
 
+	// Create pipeline state
+	pipeline_state = driver->createPipelineState();
+	driver->setViewport(pipeline_state, 0, 0, target_texture->getWidth(target_mip), target_texture->getHeight(target_mip));
+	driver->setScissor(pipeline_state, 0, 0, target_texture->getWidth(target_mip), target_texture->getHeight(target_mip));
+
 	// Fill uniform buffer
 	CubemapFaceOrientationData *ubo = reinterpret_cast<CubemapFaceOrientationData *>(driver->map(uniform_buffer));
 
@@ -139,6 +144,9 @@ void CubemapRenderer::shutdown()
 	driver->destroyBindSet(bind_set);
 	bind_set = nullptr;
 
+	driver->destroyPipelineState(pipeline_state);
+	pipeline_state = nullptr;
+
 	quad.clearGPUData();
 	quad.clearCPUData();
 }
@@ -155,21 +163,18 @@ void CubemapRenderer::render(
 {
 	driver->bindTexture(bind_set, 1, input_texture->getBackend());
 
-	driver->clearPushConstants();
-	if (push_constants_size > 0)
-		driver->setPushConstants(push_constants_size, push_constants_data);
+	driver->setPushConstants(pipeline_state, push_constants_size, push_constants_data);
+	driver->setBindSet(pipeline_state, 0, bind_set);
+	driver->setShader(pipeline_state, ShaderType::VERTEX, vertex_shader->getBackend());
+	driver->setShader(pipeline_state, ShaderType::FRAGMENT, fragment_shader->getBackend());
 
-	driver->clearBindSets();
-	driver->pushBindSet(bind_set);
+	driver->setVertexStream(pipeline_state, 0, quad.getVertexBuffer());
 
 	driver->resetCommandBuffer(command_buffer);
 	driver->beginCommandBuffer(command_buffer);
 	driver->beginRenderPass(command_buffer, render_pass, frame_buffer);
 
-	driver->clearShaders();
-	driver->setShader(ShaderType::VERTEX, vertex_shader->getBackend());
-	driver->setShader(ShaderType::FRAGMENT, fragment_shader->getBackend());
-	driver->drawIndexedPrimitive(command_buffer, quad.getRenderPrimitive());
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad.getIndexBuffer(), quad.getNumIndices());
 
 	driver->endRenderPass(command_buffer);
 	driver->endCommandBuffer(command_buffer);

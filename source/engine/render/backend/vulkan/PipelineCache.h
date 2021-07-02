@@ -12,7 +12,7 @@ namespace render::backend::vulkan
 {
 	class PipelineLayoutCache;
 	class Device;
-	class Context;
+	struct PipelineState;
 
 	/*
 	 */
@@ -23,12 +23,11 @@ namespace render::backend::vulkan
 			: device(device), layout_cache(layout_cache) { }
 		~PipelineCache();
 
-		VkPipeline fetch(const Context *context, const backend::RenderPrimitive *primitive);
-		VkPipeline fetch(VkPipelineLayout layout, const Context *context, const backend::RenderPrimitive *primitive);
+		VkPipeline fetch(VkPipelineLayout layout, const PipelineState *pipeline_state);
 		void clear();
 
 	private:
-		uint64_t getHash(VkPipelineLayout layout, const Context *context, const backend::RenderPrimitive *primitive) const;
+		uint64_t getHash(VkPipelineLayout layout, const PipelineState *pipeline_state) const;
 
 	private:
 		const Device *device {nullptr};

@@ -13,7 +13,6 @@ namespace render
 		class Driver;
 		struct VertexBuffer;
 		struct IndexBuffer;
-		struct RenderPrimitive;
 	}
 
 	/*
@@ -26,8 +25,9 @@ namespace render
 
 		~Mesh();
 
-		inline uint32_t getNumIndices() const { return static_cast<uint32_t>(indices.size()); }
-		inline const backend::RenderPrimitive *getRenderPrimitive() const { return render_primitive; }
+		inline uint32_t getNumIndices() const { return num_indices; }
+		inline backend::VertexBuffer *getVertexBuffer() const { return vertex_buffer; }
+		inline backend::IndexBuffer *getIndexBuffer() const { return index_buffer; }
 
 		bool import(const char *path);
 		bool import(const aiMesh *mesh);
@@ -59,6 +59,8 @@ namespace render
 		std::vector<Vertex> vertices;
 		std::vector<uint32_t> indices;
 
-		backend::RenderPrimitive *render_primitive {nullptr};
+		backend::VertexBuffer *vertex_buffer {nullptr};
+		backend::IndexBuffer *index_buffer {nullptr};
+		uint32_t num_indices {0};
 	};
 }
