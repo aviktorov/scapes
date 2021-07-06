@@ -1,14 +1,14 @@
 #include "ResourceManager.h"
 
-#include <render/Mesh.h>
-#include <render/Shader.h>
-#include <render/Texture.h>
+#include "Mesh.h"
+#include "Shader.h"
+#include "Texture.h"
 
 #include <iostream>
 
 /*
  */
-render::Mesh *ResourceManager::getMesh(int id) const
+Mesh *ResourceManager::getMesh(int id) const
 {
 	auto it = meshes.find(id);
 	if (it != meshes.end())
@@ -17,7 +17,7 @@ render::Mesh *ResourceManager::getMesh(int id) const
 	return nullptr;
 }
 
-render::Mesh *ResourceManager::createCubeMesh(int id, float size)
+Mesh *ResourceManager::createCubeMesh(int id, float size)
 {
 	auto it = meshes.find(id);
 	if (it != meshes.end())
@@ -26,14 +26,14 @@ render::Mesh *ResourceManager::createCubeMesh(int id, float size)
 		return nullptr;
 	}
 
-	render::Mesh *mesh = new render::Mesh(driver);
+	Mesh *mesh = new Mesh(driver);
 	mesh->createSkybox(size);
 
 	meshes.insert(std::make_pair(id, mesh));
 	return mesh;
 }
 
-render::Mesh *ResourceManager::loadMesh(int id, const char *path)
+Mesh *ResourceManager::loadMesh(int id, const char *path)
 {
 	auto it = meshes.find(id);
 	if (it != meshes.end())
@@ -42,7 +42,7 @@ render::Mesh *ResourceManager::loadMesh(int id, const char *path)
 		return nullptr;
 	}
 
-	render::Mesh *mesh = new render::Mesh(driver);
+	Mesh *mesh = new Mesh(driver);
 	if (!mesh->import(path))
 		return nullptr;
 
@@ -62,7 +62,7 @@ void ResourceManager::unloadMesh(int id)
 
 /*
  */
-render::Shader *ResourceManager::getShader(int id) const
+Shader *ResourceManager::getShader(int id) const
 {
 	auto it = shaders.find(id);
 	if (it != shaders.end())
@@ -71,7 +71,7 @@ render::Shader *ResourceManager::getShader(int id) const
 	return nullptr;
 }
 
-render::Shader *ResourceManager::loadShader(int id, render::backend::ShaderType type, const char *path)
+Shader *ResourceManager::loadShader(int id, render::backend::ShaderType type, const char *path)
 {
 	auto it = shaders.find(id);
 	if (it != shaders.end())
@@ -80,7 +80,7 @@ render::Shader *ResourceManager::loadShader(int id, render::backend::ShaderType 
 		return nullptr;
 	}
 
-	render::Shader *shader = new render::Shader(driver, compiler);
+	Shader *shader = new Shader(driver, compiler);
 	if (!shader->compileFromFile(type, path))
 	{
 		// TODO: log warning
@@ -111,7 +111,7 @@ void ResourceManager::unloadShader(int id)
 
 /*
  */
-render::Texture *ResourceManager::getTexture(int id) const
+Texture *ResourceManager::getTexture(int id) const
 {
 	auto it = textures.find(id);
 	if (it != textures.end())
@@ -120,7 +120,7 @@ render::Texture *ResourceManager::getTexture(int id) const
 	return nullptr;
 }
 
-render::Texture *ResourceManager::loadTexture(int id, const char *path)
+Texture *ResourceManager::loadTexture(int id, const char *path)
 {
 	auto it = textures.find(id);
 	if (it != textures.end())
@@ -129,7 +129,7 @@ render::Texture *ResourceManager::loadTexture(int id, const char *path)
 		return nullptr;
 	}
 
-	render::Texture *texture = new render::Texture(driver);
+	Texture *texture = new Texture(driver);
 	if (!texture->import(path))
 		return nullptr;
 

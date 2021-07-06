@@ -1,8 +1,8 @@
 #include "Scene.h"
 
 #include <render/backend/Driver.h>
-#include <render/Mesh.h>
-#include <render/Texture.h>
+#include "Mesh.h"
+#include "Texture.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -11,19 +11,16 @@
 #include <iostream>
 #include <sstream>
 
-using namespace render;
-using namespace render::backend;
+/*
+ */
+static render::backend::Texture *default_albedo = nullptr;
+static render::backend::Texture *default_normal = nullptr;
+static render::backend::Texture *default_roughness = nullptr;
+static render::backend::Texture *default_metalness = nullptr;
 
 /*
  */
-static backend::Texture *default_albedo = nullptr;
-static backend::Texture *default_normal = nullptr;
-static backend::Texture *default_roughness = nullptr;
-static backend::Texture *default_metalness = nullptr;
-
-/*
- */
-static backend::Texture *generateTexture(Driver *driver, uint8_t r, uint8_t g, uint8_t b)
+static render::backend::Texture *generateTexture(render::backend::Driver *driver, uint8_t r, uint8_t g, uint8_t b)
 {
 	uint8_t pixels[16] = {
 		r, g, b, 255,
@@ -32,10 +29,10 @@ static backend::Texture *generateTexture(Driver *driver, uint8_t r, uint8_t g, u
 		r, g, b, 255,
 	};
 
-	return driver->createTexture2D(2, 2, 1, Format::R8G8B8A8_UNORM, pixels);
+	return driver->createTexture2D(2, 2, 1, render::backend::Format::R8G8B8A8_UNORM, pixels);
 }
 
-static void generateDefaultTextures(Driver *driver)
+static void generateDefaultTextures(render::backend::Driver *driver)
 {
 	if (default_albedo == nullptr)
 		default_albedo = generateTexture(driver, 127, 127, 127);
@@ -108,7 +105,7 @@ bool Scene::import(const char *path)
 	meshes.resize(scene->mNumMeshes);
 	for (unsigned int i = 0; i < scene->mNumMeshes; ++i)
 	{
-		render::Mesh *mesh = new render::Mesh(driver);
+		Mesh *mesh = new Mesh(driver);
 		mesh->import(scene->mMeshes[i]);
 
 		meshes[i] = mesh;
@@ -118,7 +115,7 @@ bool Scene::import(const char *path)
 	for (unsigned int i = 0; i < scene->mNumTextures; ++i)
 	{
 		std::stringstream path_builder;
-		render::Texture *texture = new render::Texture(driver);
+		Texture *texture = new Texture(driver);
 		
 		path_builder << dir << '/' << scene->mTextures[i]->mFilename.C_Str();
 		const std::string &texture_path = path_builder.str();
@@ -130,7 +127,7 @@ bool Scene::import(const char *path)
 	// import materials
 	materials.resize(scene->mNumMaterials);
 
-	auto import_material_texture = [=](const aiMaterial *material, aiTextureType type) -> render::Texture *
+	auto import_material_texture = [=](const aiMaterial *material, aiTextureType type) -> Texture *
 	{
 		aiString path;
 		material->GetTexture(type, 0, &path);
@@ -145,7 +142,7 @@ bool Scene::import(const char *path)
 		auto it = textures.find(texture_path);
 		if (it == textures.end())
 		{
-			render::Texture *texture = new render::Texture(driver);
+			Texture *texture = new Texture(driver);
 			texture->import(texture_path.c_str());
 
 			textures.insert({texture_path, texture});
@@ -167,10 +164,10 @@ bool Scene::import(const char *path)
 
 		render_material.bindings = driver->createBindSet();
 
-		const backend::Texture *albedo = (render_material.albedo) ? render_material.albedo->getBackend() : default_albedo;
-		const backend::Texture *normal = (render_material.normal) ? render_material.normal->getBackend() : default_normal;
-		const backend::Texture *roughness = (render_material.roughness) ? render_material.roughness->getBackend() : default_roughness;
-		const backend::Texture *metalness = (render_material.metalness) ? render_material.metalness->getBackend() : default_metalness;
+		const render::backend::Texture *albedo = (render_material.albedo) ? render_material.albedo->getBackend() : default_albedo;
+		const render::backend::Texture *normal = (render_material.normal) ? render_material.normal->getBackend() : default_normal;
+		const render::backend::Texture *roughness = (render_material.roughness) ? render_material.roughness->getBackend() : default_roughness;
+		const render::backend::Texture *metalness = (render_material.metalness) ? render_material.metalness->getBackend() : default_metalness;
 
 		driver->bindTexture(render_material.bindings, 0, albedo);
 		driver->bindTexture(render_material.bindings, 1, normal);
@@ -215,7 +212,7 @@ void Scene::importNodes(const aiScene *scene, const aiNode *root, const glm::mat
 		unsigned int mesh_index = root->mMeshes[i];
 		int32_t material_index = static_cast<int32_t>(scene->mMeshes[mesh_index]->mMaterialIndex);
 
-		render::Mesh *mesh = meshes[mesh_index];
+		Mesh *mesh = meshes[mesh_index];
 
 		RenderNode node;
 		node.mesh = mesh;

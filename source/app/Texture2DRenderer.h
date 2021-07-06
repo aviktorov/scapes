@@ -1,13 +1,10 @@
 #pragma once
 
-#include <render/Mesh.h>
-#include <render/backend/driver.h>
+#include "Mesh.h"
+#include <render/backend/Driver.h>
 
-namespace render
-{
-	class Shader;
-	class Texture;
-}
+class Shader;
+class Texture;
 
 /*
  */
@@ -16,9 +13,9 @@ class Texture2DRenderer
 public:
 	Texture2DRenderer(render::backend::Driver *driver);
 
-	void init(const render::Texture *target_texture);
+	void init(const Texture *target_texture);
 	void shutdown();
-	void render(const render::backend::Shader *vertex_shader, const render::backend::Shader *fragment_shader);
+	void render(const Shader *vertex_shader, const Shader *fragment_shader);
 
 private:
 	render::backend::Driver *driver {nullptr};
@@ -27,5 +24,5 @@ private:
 	render::backend::RenderPass *render_pass {nullptr};
 	render::backend::FrameBuffer *frame_buffer {nullptr};
 
-	render::Mesh quad;
+	Mesh quad;
 };

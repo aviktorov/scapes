@@ -9,16 +9,14 @@
 #include "ImGuiRenderer.h"
 #include "imgui.h"
 
-#include <render/Mesh.h>
-#include <render/SwapChain.h>
-#include <render/Shader.h>
-#include <render/Texture.h>
+#include "Mesh.h"
+#include "SwapChain.h"
+#include "Shader.h"
+#include "Texture.h"
 
 #include <GLM/glm.hpp>
 
 #include <cassert>
-
-using namespace render::backend;
 
 // TODO: move to utils
 static float randf()
@@ -49,7 +47,7 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	initSSRData(resources->getBlueNoiseTexture());
 	initTransient(width, height);
 
-	quad = new render::Mesh(driver);
+	quad = new Mesh(driver);
 	quad->createQuad(2.0f);
 
 	gbuffer_pass_vertex = resources->getShader(config::Shaders::GBufferVertex);
@@ -98,23 +96,25 @@ void RenderGraph::shutdown()
 
 void RenderGraph::initRenderPasses()
 {
+	render::backend::Multisample samples = render::backend::Multisample::COUNT_1;
+
 	{ // GBuffer
-		RenderPassClearValue clear_depth;
+		render::backend::RenderPassClearValue clear_depth;
 		clear_depth.as_depth_stencil = { 1.0f, 0 };
 
-		RenderPassAttachment render_pass_attachments[5] =
+		render::backend::RenderPassAttachment render_pass_attachments[5] =
 		{
-			{ Format::D32_SFLOAT, Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_depth },
-			{ Format::R8G8B8A8_UNORM, Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
-			{ Format::R16G16B16A16_SFLOAT, Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
-			{ Format::R8G8_UNORM, Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
-			{ Format::R16G16_SFLOAT, Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
+			{ render::backend::Format::D32_SFLOAT, samples, render::backend::RenderPassLoadOp::CLEAR, render::backend::RenderPassStoreOp::STORE, clear_depth },
+			{ render::backend::Format::R8G8B8A8_UNORM, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
+			{ render::backend::Format::R16G16B16A16_SFLOAT, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
+			{ render::backend::Format::R8G8_UNORM, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
+			{ render::backend::Format::R16G16_SFLOAT, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
 		};
 
 		uint32_t color_attachments[4] = { 1, 2, 3, 4 };
 		uint32_t depthstencil_attachment[1] = { 0 };
 
-		RenderPassDescription render_pass_description = {};
+		render::backend::RenderPassDescription render_pass_description = {};
 		render_pass_description.num_color_attachments = 4;
 		render_pass_description.color_attachments = color_attachments;
 		render_pass_description.depthstencil_attachment = depthstencil_attachment;
@@ -123,15 +123,15 @@ void RenderGraph::initRenderPasses()
 	}
 
 	{ // LBuffer
-		RenderPassAttachment render_pass_attachments[2] =
+		render::backend::RenderPassAttachment render_pass_attachments[2] =
 		{
-			{ Format::R16G16B16A16_SFLOAT, Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
-			{ Format::R16G16B16A16_SFLOAT, Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
+			{ render::backend::Format::R16G16B16A16_SFLOAT, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
+			{ render::backend::Format::R16G16B16A16_SFLOAT, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
 		};
 
 		uint32_t color_attachments[2] = { 0, 1 };
 
-		RenderPassDescription render_pass_description = {};
+		render::backend::RenderPassDescription render_pass_description = {};
 		render_pass_description.num_color_attachments = 2;
 		render_pass_description.color_attachments = color_attachments;
 
@@ -139,15 +139,15 @@ void RenderGraph::initRenderPasses()
 	}
 
 	{ // SSR Resolve
-		RenderPassAttachment render_pass_attachments[2] =
+		render::backend::RenderPassAttachment render_pass_attachments[2] =
 		{
-			{ Format::R16G16B16A16_SFLOAT, Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
-			{ Format::R16G16_SFLOAT, Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
+			{ render::backend::Format::R16G16B16A16_SFLOAT, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
+			{ render::backend::Format::R16G16_SFLOAT, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
 		};
 
 		uint32_t color_attachments[2] = { 0, 1 };
 
-		RenderPassDescription render_pass_description = {};
+		render::backend::RenderPassDescription render_pass_description = {};
 		render_pass_description.num_color_attachments = 2;
 		render_pass_description.color_attachments = color_attachments;
 
@@ -155,14 +155,14 @@ void RenderGraph::initRenderPasses()
 	}
 
 	{ // SSAO
-		RenderPassAttachment render_pass_attachments[1] =
+		render::backend::RenderPassAttachment render_pass_attachments[1] =
 		{
-			{ Format::R8_UNORM, Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
+			{ render::backend::Format::R8_UNORM, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
 		};
 
 		uint32_t color_attachments[1] = { 0 };
 
-		RenderPassDescription render_pass_description = {};
+		render::backend::RenderPassDescription render_pass_description = {};
 		render_pass_description.num_color_attachments = 1;
 		render_pass_description.color_attachments = color_attachments;
 
@@ -170,14 +170,14 @@ void RenderGraph::initRenderPasses()
 	}
 
 	{ // HDR
-		RenderPassAttachment render_pass_attachments[1] =
+		render::backend::RenderPassAttachment render_pass_attachments[1] =
 		{
-			{ Format::R16G16B16A16_SFLOAT, Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
+			{ render::backend::Format::R16G16B16A16_SFLOAT, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
 		};
 
 		uint32_t color_attachments[1] = { 0 };
 
-		RenderPassDescription render_pass_description = {};
+		render::backend::RenderPassDescription render_pass_description = {};
 		render_pass_description.num_color_attachments = 1;
 		render_pass_description.color_attachments = color_attachments;
 
@@ -210,17 +210,17 @@ void RenderGraph::initTransient(uint32_t width, uint32_t height)
 {
 	initGBuffer(width, height);
 	initLBuffer(width, height);
-	initRenderBuffer(composite_temp, Format::R16G16B16A16_SFLOAT, width, height);
-	initRenderBuffer(composite, Format::R16G16B16A16_SFLOAT, width, height);
-	initRenderBuffer(old_composite, Format::R16G16B16A16_SFLOAT, width, height);
+	initRenderBuffer(composite_temp, render::backend::Format::R16G16B16A16_SFLOAT, width, height);
+	initRenderBuffer(composite, render::backend::Format::R16G16B16A16_SFLOAT, width, height);
+	initRenderBuffer(old_composite, render::backend::Format::R16G16B16A16_SFLOAT, width, height);
 
-	initRenderBuffer(ssao_noised, Format::R8_UNORM, width, height);
-	initRenderBuffer(ssao_blurred, Format::R8_UNORM, width, height);
+	initRenderBuffer(ssao_noised, render::backend::Format::R8_UNORM, width, height);
+	initRenderBuffer(ssao_blurred, render::backend::Format::R8_UNORM, width, height);
 
-	initRenderBuffer(ssr_trace, Format::R16G16B16A16_SFLOAT, width, height);
+	initRenderBuffer(ssr_trace, render::backend::Format::R16G16B16A16_SFLOAT, width, height);
 	initSSRResolve(ssr_resolve, width, height);
-	initRenderBuffer(ssr, Format::R16G16B16A16_SFLOAT, width, height);
-	initRenderBuffer(old_ssr, Format::R16G16B16A16_SFLOAT, width, height);
+	initRenderBuffer(ssr, render::backend::Format::R16G16B16A16_SFLOAT, width, height);
+	initRenderBuffer(old_ssr, render::backend::Format::R16G16B16A16_SFLOAT, width, height);
 }
 
 void RenderGraph::shutdownTransient()
@@ -243,13 +243,13 @@ void RenderGraph::shutdownTransient()
 
 void RenderGraph::initGBuffer(uint32_t width, uint32_t height)
 {
-	gbuffer.base_color = driver->createTexture2D(width, height, 1, Format::R8G8B8A8_UNORM);
-	gbuffer.normal = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
-	gbuffer.shading = driver->createTexture2D(width, height, 1, Format::R8G8_UNORM);
-	gbuffer.depth = driver->createTexture2D(width, height, 1, Format::D32_SFLOAT);
-	gbuffer.velocity = driver->createTexture2D(width, height, 1, Format::R16G16_SFLOAT);
+	gbuffer.base_color = driver->createTexture2D(width, height, 1, render::backend::Format::R8G8B8A8_UNORM);
+	gbuffer.normal = driver->createTexture2D(width, height, 1, render::backend::Format::R16G16B16A16_SFLOAT);
+	gbuffer.shading = driver->createTexture2D(width, height, 1, render::backend::Format::R8G8_UNORM);
+	gbuffer.depth = driver->createTexture2D(width, height, 1, render::backend::Format::D32_SFLOAT);
+	gbuffer.velocity = driver->createTexture2D(width, height, 1, render::backend::Format::R16G16_SFLOAT);
 
-	FrameBufferAttachment gbuffer_attachments[5] = {
+	render::backend::FrameBufferAttachment gbuffer_attachments[5] = {
 		{ gbuffer.depth },
 		{ gbuffer.base_color },
 		{ gbuffer.normal },
@@ -288,7 +288,7 @@ void RenderGraph::shutdownGBuffer()
 
 void RenderGraph::initSSAOKernel()
 {
-	ssao_kernel.gpu_data = driver->createUniformBuffer(BufferType::DYNAMIC, sizeof(SSAOKernel::CPUData));
+	ssao_kernel.gpu_data = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, sizeof(SSAOKernel::CPUData));
 	ssao_kernel.cpu_data = reinterpret_cast<SSAOKernel::CPUData *>(driver->map(ssao_kernel.gpu_data));
 
 	uint32_t data[SSAOKernel::MAX_NOISE_SAMPLES];
@@ -298,7 +298,7 @@ void RenderGraph::initSSAOKernel()
 		data[i] = glm::packHalf2x16(noise);
 	}
 
-	ssao_kernel.noise_texture = driver->createTexture2D(4, 4, 1, Format::R16G16_SFLOAT, data);
+	ssao_kernel.noise_texture = driver->createTexture2D(4, 4, 1, render::backend::Format::R16G16_SFLOAT, data);
 
 	ssao_kernel.cpu_data->num_samples = 32;
 	ssao_kernel.cpu_data->intensity = 1.5f;
@@ -348,9 +348,9 @@ void RenderGraph::shutdownSSAOKernel()
 	memset(&ssao_kernel, 0, sizeof(SSAOKernel));
 }
 
-void RenderGraph::initSSRData(const render::Texture *blue_noise)
+void RenderGraph::initSSRData(const Texture *blue_noise)
 {
-	ssr_data.gpu_data = driver->createUniformBuffer(BufferType::DYNAMIC, sizeof(SSRData::CPUData));
+	ssr_data.gpu_data = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, sizeof(SSRData::CPUData));
 	ssr_data.cpu_data = reinterpret_cast<SSRData::CPUData *>(driver->map(ssr_data.gpu_data));
 
 	ssr_data.cpu_data->coarse_step_size = 100.0f;
@@ -374,11 +374,11 @@ void RenderGraph::shutdownSSRData()
 	memset(&ssr_data, 0, sizeof(SSRData));
 }
 
-void RenderGraph::initRenderBuffer(RenderBuffer &ssr, Format format, uint32_t width, uint32_t height)
+void RenderGraph::initRenderBuffer(RenderBuffer &ssr, render::backend::Format format, uint32_t width, uint32_t height)
 {
 	ssr.texture = driver->createTexture2D(width, height, 1, format);
 
-	FrameBufferAttachment ssr_attachments[1] = {
+	render::backend::FrameBufferAttachment ssr_attachments[1] = {
 		{ ssr.texture },
 	};
 
@@ -399,10 +399,10 @@ void RenderGraph::shutdownRenderBuffer(RenderBuffer &ssr)
 
 void RenderGraph::initSSRResolve(SSRResolve &ssr, uint32_t width, uint32_t height)
 {
-	ssr.resolve = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
-	ssr.velocity = driver->createTexture2D(width, height, 1, Format::R16G16_SFLOAT);
+	ssr.resolve = driver->createTexture2D(width, height, 1, render::backend::Format::R16G16B16A16_SFLOAT);
+	ssr.velocity = driver->createTexture2D(width, height, 1, render::backend::Format::R16G16_SFLOAT);
 
-	FrameBufferAttachment ssr_attachments[2] = {
+	render::backend::FrameBufferAttachment ssr_attachments[2] = {
 		{ ssr.resolve },
 		{ ssr.velocity },
 	};
@@ -429,10 +429,10 @@ void RenderGraph::shutdownSSRResolve(SSRResolve &ssr)
 
 void RenderGraph::initLBuffer(uint32_t width, uint32_t height)
 {
-	lbuffer.diffuse = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
-	lbuffer.specular = driver->createTexture2D(width, height, 1, Format::R16G16B16A16_SFLOAT);
+	lbuffer.diffuse = driver->createTexture2D(width, height, 1, render::backend::Format::R16G16B16A16_SFLOAT);
+	lbuffer.specular = driver->createTexture2D(width, height, 1, render::backend::Format::R16G16B16A16_SFLOAT);
 
-	FrameBufferAttachment lbuffer_attachments[2] = {
+	render::backend::FrameBufferAttachment lbuffer_attachments[2] = {
 		{ lbuffer.diffuse },
 		{ lbuffer.specular },
 	};
@@ -476,7 +476,7 @@ ImTextureID RenderGraph::fetchTextureID(const render::backend::Texture *texture)
 
 /*
  */
-void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::render(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
 {
 	driver->resetCommandBuffer(frame.command_buffer);
 	driver->beginCommandBuffer(frame.command_buffer);
@@ -583,7 +583,7 @@ void RenderGraph::render(const Scene *scene, const render::RenderFrame &frame, r
 	driver->endCommandBuffer(frame.command_buffer);
 }
 
-void RenderGraph::renderGBuffer(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderGBuffer(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
 {
 	driver->beginRenderPass(frame.command_buffer, gbuffer_render_pass, gbuffer.frame_buffer);
 
@@ -599,7 +599,7 @@ void RenderGraph::renderGBuffer(const Scene *scene, const render::RenderFrame &f
 	driver->clearVertexStreams(pipeline_state);
 	for (size_t i = 0; i < scene->getNumNodes(); ++i)
 	{
-		const render::Mesh *node_mesh = scene->getNodeMesh(i);
+		const Mesh *node_mesh = scene->getNodeMesh(i);
 		const glm::mat4 &node_transform = scene->getNodeWorldTransform(i);
 		render::backend::BindSet *node_bindings = scene->getNodeBindings(i);
 
@@ -614,7 +614,7 @@ void RenderGraph::renderGBuffer(const Scene *scene, const render::RenderFrame &f
 	driver->endRenderPass(frame.command_buffer);
 }
 
-void RenderGraph::renderSSAO(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderSSAO(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
 {
 	driver->beginRenderPass(frame.command_buffer, ssao_render_pass, ssao_noised.frame_buffer);
 
@@ -635,7 +635,7 @@ void RenderGraph::renderSSAO(const Scene *scene, const render::RenderFrame &fram
 	driver->endRenderPass(frame.command_buffer);
 }
 
-void RenderGraph::renderSSAOBlur(const Scene *scene, const render::RenderFrame &frame)
+void RenderGraph::renderSSAOBlur(const Scene *scene, const RenderFrame &frame)
 {
 	driver->beginRenderPass(frame.command_buffer, ssao_render_pass, ssao_blurred.frame_buffer);
 
@@ -655,7 +655,7 @@ void RenderGraph::renderSSAOBlur(const Scene *scene, const render::RenderFrame &
 	driver->endRenderPass(frame.command_buffer);
 }
 
-void RenderGraph::renderSSRTrace(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderSSRTrace(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
 {
 	driver->beginRenderPass(frame.command_buffer, hdr_render_pass, ssr_trace.frame_buffer);
 
@@ -677,7 +677,7 @@ void RenderGraph::renderSSRTrace(const Scene *scene, const render::RenderFrame &
 	driver->endRenderPass(frame.command_buffer);
 }
 
-void RenderGraph::renderSSRResolve(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderSSRResolve(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
 {
 	driver->beginRenderPass(frame.command_buffer, ssr_resolve_render_pass, ssr_resolve.frame_buffer);
 
@@ -701,7 +701,7 @@ void RenderGraph::renderSSRResolve(const Scene *scene, const render::RenderFrame
 	driver->endRenderPass(frame.command_buffer);
 }
 
-void RenderGraph::renderSSRTemporalFilter(const Scene *scene, const render::RenderFrame &frame)
+void RenderGraph::renderSSRTemporalFilter(const Scene *scene, const RenderFrame &frame)
 {
 	RenderBuffer ssr_resolve_temp { ssr_resolve.resolve, nullptr, ssr_resolve.resolve_bindings };
 	RenderBuffer ssr_velocity_temp { ssr_resolve.velocity, nullptr, ssr_resolve.velocity_bindings };
@@ -709,7 +709,7 @@ void RenderGraph::renderSSRTemporalFilter(const Scene *scene, const render::Rend
 	renderTemporalFilter(ssr, old_ssr, ssr_resolve_temp, ssr_velocity_temp, frame);
 }
 
-void RenderGraph::renderLBuffer(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderLBuffer(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
 {
 	driver->beginRenderPass(frame.command_buffer, lbuffer_render_pass, lbuffer.frame_buffer);
 
@@ -722,9 +722,10 @@ void RenderGraph::renderLBuffer(const Scene *scene, const render::RenderFrame &f
 	{
 		const Light *light = scene->getLight(i);
 
-		const render::Shader *vertex_shader = light->getVertexShader();
-		const render::Shader *fragment_shader = light->getFragmentShader();
-		const render::Mesh *light_mesh = light->getMesh();
+		const Shader *vertex_shader = light->getVertexShader();
+		const Shader *fragment_shader = light->getFragmentShader();
+		const Mesh *light_mesh = light->getMesh();
+
 		render::backend::BindSet *light_bindings = light->getBindSet();
 
 		driver->clearShaders(pipeline_state);
@@ -742,7 +743,7 @@ void RenderGraph::renderLBuffer(const Scene *scene, const render::RenderFrame &f
 	driver->endRenderPass(frame.command_buffer);
 }
 
-void RenderGraph::renderComposite(const Scene *scene, const render::RenderFrame &frame)
+void RenderGraph::renderComposite(const Scene *scene, const RenderFrame &frame)
 {
 	driver->beginRenderPass(frame.command_buffer, hdr_render_pass, composite_temp.frame_buffer);
 
@@ -765,14 +766,14 @@ void RenderGraph::renderComposite(const Scene *scene, const render::RenderFrame 
 	driver->endRenderPass(frame.command_buffer);
 }
 
-void RenderGraph::renderCompositeTemporalFilter(const Scene *scene, const render::RenderFrame &frame)
+void RenderGraph::renderCompositeTemporalFilter(const Scene *scene, const RenderFrame &frame)
 {
 	RenderBuffer gbuffer_velocity { gbuffer.velocity, nullptr, gbuffer.velocity_bindings };
 
 	renderTemporalFilter(composite, old_composite, composite_temp, gbuffer_velocity, frame);
 }
 
-void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, const render::RenderFrame &frame)
+void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, const RenderFrame &frame)
 {
 	driver->beginRenderPass(frame.command_buffer, hdr_render_pass, current.frame_buffer);
 
@@ -793,10 +794,10 @@ void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer
 	driver->endRenderPass(frame.command_buffer);
 }
 
-void RenderGraph::renderToSwapChain(const Scene *scene, const render::RenderFrame &frame)
+void RenderGraph::renderToSwapChain(const Scene *scene, const RenderFrame &frame)
 {
 	if (swap_chain_render_pass == nullptr)
-		swap_chain_render_pass = driver->createRenderPass(frame.swap_chain, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE, nullptr);
+		swap_chain_render_pass = driver->createRenderPass(frame.swap_chain, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE, nullptr);
 
 	driver->beginRenderPass(frame.command_buffer, swap_chain_render_pass, frame.swap_chain);
 

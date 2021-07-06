@@ -148,8 +148,8 @@ namespace render::backend::vulkan
 
 		static VkShaderModule createShaderModule(
 			const Device *device,
-			const uint32_t *bytecode,
-			size_t bytecodeSize
+			const uint32_t *data,
+			size_t size
 		);
 
 		static void createImage(

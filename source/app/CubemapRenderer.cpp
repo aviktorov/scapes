@@ -1,15 +1,12 @@
 #include "CubemapRenderer.h"
 
-#include <render/Shader.h>
-#include <render/Texture.h>
+#include "Shader.h"
+#include "Texture.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLM/glm.hpp>
 #include <GLM/gtc/matrix_transform.hpp>
-
-using namespace render;
-using namespace render::backend;
 
 /*
  */
@@ -20,7 +17,7 @@ struct CubemapFaceOrientationData
 
 /*
  */
-CubemapRenderer::CubemapRenderer(Driver *driver)
+CubemapRenderer::CubemapRenderer(render::backend::Driver *driver)
 	: driver(driver)
 	, quad(driver)
 {
@@ -29,7 +26,7 @@ CubemapRenderer::CubemapRenderer(Driver *driver)
 /*
  */
 void CubemapRenderer::init(
-	const render::Texture *target_texture,
+	const Texture *target_texture,
 	uint32_t target_mip
 )
 {
@@ -37,13 +34,13 @@ void CubemapRenderer::init(
 
 	// Create uniform buffers
 	uint32_t ubo_size = sizeof(CubemapFaceOrientationData);
-	uniform_buffer = driver->createUniformBuffer(BufferType::DYNAMIC, ubo_size);
+	uniform_buffer = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, ubo_size);
 
 	// Create bind set
 	bind_set = driver->createBindSet();
 
 	// Create framebuffer
-	FrameBufferAttachment frame_buffer_attachments[6] =
+	render::backend::FrameBufferAttachment frame_buffer_attachments[6] =
 	{
 		{ target_texture->getBackend(), target_mip, 0, 1 },
 		{ target_texture->getBackend(), target_mip, 1, 1 },
@@ -56,29 +53,33 @@ void CubemapRenderer::init(
 	frame_buffer = driver->createFrameBuffer(6, frame_buffer_attachments);
 
 	// Create render pass
-	RenderPassClearValue clear_value;
+	render::backend::RenderPassClearValue clear_value;
 	clear_value.as_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-	RenderPassAttachment render_pass_attachments[6] =
+	render::backend::Multisample samples = render::backend::Multisample::COUNT_1;
+	render::backend::RenderPassLoadOp load_op = render::backend::RenderPassLoadOp::CLEAR;
+	render::backend::RenderPassStoreOp store_op = render::backend::RenderPassStoreOp::STORE;
+
+	render::backend::RenderPassAttachment render_pass_attachments[6] =
 	{
-		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
-		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
-		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
-		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
-		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
-		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::CLEAR, RenderPassStoreOp::STORE, clear_value },
+		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
+		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
+		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
+		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
+		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
+		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
 	};
 
 	uint32_t color_attachments[6] = { 0, 1, 2, 3, 4, 5 };
 
-	RenderPassDescription render_pass_description = {};
+	render::backend::RenderPassDescription render_pass_description = {};
 	render_pass_description.num_color_attachments = 6;
 	render_pass_description.color_attachments = color_attachments;
 
 	render_pass = driver->createRenderPass(6, render_pass_attachments, render_pass_description);
 
 	// Create command buffer
-	command_buffer = driver->createCommandBuffer(CommandBufferType::PRIMARY);
+	command_buffer = driver->createCommandBuffer(render::backend::CommandBufferType::PRIMARY);
 
 	// Create pipeline state
 	pipeline_state = driver->createPipelineState();
@@ -109,6 +110,7 @@ void CubemapRenderer::init(
 		glm::vec3( 0.0f, -1.0f,  0.0f),
 	};
 
+	// TODO: get rid of this mess
 	const glm::mat4 faceRotations[6] = {
 		glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
 		glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
@@ -154,9 +156,9 @@ void CubemapRenderer::shutdown()
 /*
  */
 void CubemapRenderer::render(
-	const render::Shader *vertex_shader,
-	const render::Shader *fragment_shader,
-	const render::Texture *input_texture,
+	const Shader *vertex_shader,
+	const Shader *fragment_shader,
+	const Texture *input_texture,
 	uint8_t push_constants_size,
 	const uint8_t *push_constants_data
 )
@@ -165,8 +167,8 @@ void CubemapRenderer::render(
 
 	driver->setPushConstants(pipeline_state, push_constants_size, push_constants_data);
 	driver->setBindSet(pipeline_state, 0, bind_set);
-	driver->setShader(pipeline_state, ShaderType::VERTEX, vertex_shader->getBackend());
-	driver->setShader(pipeline_state, ShaderType::FRAGMENT, fragment_shader->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->getBackend());
 
 	driver->setVertexStream(pipeline_state, 0, quad.getVertexBuffer());
 

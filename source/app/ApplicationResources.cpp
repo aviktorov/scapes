@@ -1,7 +1,7 @@
 #include "ApplicationResources.h"
 #include "RenderUtils.h"
 
-#include <render/Texture.h>
+#include "Texture.h"
 
 #include <vector>
 #include <cassert>
@@ -10,28 +10,28 @@ namespace config
 {
 	// Meshes
 	static std::vector<const char *> meshes = {
-		"models/SciFiHelmet.fbx",
+		"assets/models/SciFiHelmet.fbx",
 	};
 
 	// Shaders
 	static std::vector<const char *> shaders = {
-		"shaders/common/Cubemap.vert",
-		"shaders/common/FullscreenQuad.vert",
-		"shaders/utils/EquirectangularProjection.frag",
-		"shaders/utils/PrefilteredSpecularCubemap.frag",
-		"shaders/utils/DiffuseIrradianceCubemap.frag",
-		"shaders/utils/BakedBRDF.frag",
-		"shaders/deferred/SkylightDeferred.frag",
-		"shaders/deferred/GBuffer.vert",
-		"shaders/deferred/GBuffer.frag",
-		"shaders/deferred/SSAO.frag",
-		"shaders/deferred/SSAOBlur.frag",
-		"shaders/deferred/SSRTrace.frag",
-		"shaders/deferred/SSRResolve.frag",
-		"shaders/deferred/Composite.frag",
-		"shaders/render/TemporalFilter.frag",
-		"shaders/render/Tonemapping.frag",
-		"shaders/render/Final.frag",
+		"assets/shaders/common/Cubemap.vert",
+		"assets/shaders/common/FullscreenQuad.vert",
+		"assets/shaders/utils/EquirectangularProjection.frag",
+		"assets/shaders/utils/PrefilteredSpecularCubemap.frag",
+		"assets/shaders/utils/DiffuseIrradianceCubemap.frag",
+		"assets/shaders/utils/BakedBRDF.frag",
+		"assets/shaders/deferred/SkylightDeferred.frag",
+		"assets/shaders/deferred/GBuffer.vert",
+		"assets/shaders/deferred/GBuffer.frag",
+		"assets/shaders/deferred/SSAO.frag",
+		"assets/shaders/deferred/SSAOBlur.frag",
+		"assets/shaders/deferred/SSRTrace.frag",
+		"assets/shaders/deferred/SSRResolve.frag",
+		"assets/shaders/deferred/Composite.frag",
+		"assets/shaders/render/TemporalFilter.frag",
+		"assets/shaders/render/Tonemapping.frag",
+		"assets/shaders/render/Final.frag",
 	};
 
 	static std::vector<render::backend::ShaderType> shaderTypes = {
@@ -56,20 +56,20 @@ namespace config
 
 	// Textures
 	static std::vector<const char *> textures = {
-		"textures/SciFiHelmet_BaseColor.png",
-		"textures/SciFiHelmet_Normal.png",
-		"textures/SciFiHelmet_AmbientOcclusion.png",
-		"textures/SciFiHelmet_MetallicRoughness.png",
-		"textures/Default_emissive.jpg",
+		"assets/textures/SciFiHelmet_BaseColor.png",
+		"assets/textures/SciFiHelmet_Normal.png",
+		"assets/textures/SciFiHelmet_AmbientOcclusion.png",
+		"assets/textures/SciFiHelmet_MetallicRoughness.png",
+		"assets/textures/Default_emissive.jpg",
 	};
 
 	static std::vector<const char *> hdrTextures = {
-		"textures/environment/arctic.hdr",
-		"textures/environment/umbrellas.hdr",
-		"textures/environment/shanghai_bund_4k.hdr",
+		"assets/textures/environment/arctic.hdr",
+		"assets/textures/environment/umbrellas.hdr",
+		"assets/textures/environment/shanghai_bund_4k.hdr",
 	};
 
-	static const char *blueNoise = "textures/blue_noise.png";
+	static const char *blueNoise = "assets/textures/blue_noise.png";
 }
 
 /*
@@ -146,7 +146,7 @@ void ApplicationResources::init()
 		);
 	}
 
-	blue_noise = new render::Texture(driver);
+	blue_noise = new Texture(driver);
 	blue_noise->import(config::blueNoise);
 }
 

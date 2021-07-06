@@ -825,18 +825,19 @@ namespace render::backend::vulkan
 	}
 
 	backend::Shader *Driver::createShaderFromIL(
-		const shaders::ShaderIL *shader_il
+		ShaderType type,
+		ShaderILType il_type,
+		size_t size,
+		const void *data
 	)
 	{
-		const shaders::spirv::ShaderIL *spirv_shader_il = static_cast<const shaders::spirv::ShaderIL *>(shader_il);
-
-		assert(spirv_shader_il && "Invalid shader IL");
-		assert(spirv_shader_il->bytecode_size > 0 && "Invalid shader IL size");
-		assert(spirv_shader_il->bytecode_data != nullptr && "Invalid shader IL data");
+		assert(il_type == ShaderILType::SPIRV);
+		assert(size > 0 && "Invalid shader IL size");
+		assert(data != nullptr && "Invalid shader IL data");
 
 		Shader *result = new Shader();
-		result->type = spirv_shader_il->type;
-		result->module = Utils::createShaderModule(device, spirv_shader_il->bytecode_data, spirv_shader_il->bytecode_size);
+		result->type = type;
+		result->module = Utils::createShaderModule(device, reinterpret_cast<const uint32_t *>(data), size);
 
 		return result;
 	}

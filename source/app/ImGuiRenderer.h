@@ -4,13 +4,10 @@
 #include <render/backend/Driver.h>
 #include <map>
 
-namespace render
-{
-	struct RenderFrame;
-	class SwapChain;
-	class Texture;
-	class Shader;
-}
+struct RenderFrame;
+class SwapChain;
+class Texture;
+class Shader;
 
 struct ImGuiContext;
 struct ImDrawData;
@@ -27,22 +24,22 @@ public:
 
 	void init(ImGuiContext *imguiContext);
 	void shutdown();
-	void render(const render::RenderFrame &frame);
+	void render(const RenderFrame &frame);
 
 	ImTextureID fetchTextureID(const render::backend::Texture *texture);
 	void invalidateTextureIDs();
 
 private:
 	void updateBuffers(const ImDrawData *draw_data);
-	void setupRenderState(const render::RenderFrame &frame, const ImDrawData *draw_data);
+	void setupRenderState(const RenderFrame &frame, const ImDrawData *draw_data);
 
 private:
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
 	render::backend::Texture *font_texture {nullptr};
 	render::backend::PipelineState *pipeline_state {nullptr};
-	render::Shader *vertex_shader {nullptr};
-	render::Shader *fragment_shader {nullptr};
+	Shader *vertex_shader {nullptr};
+	Shader *fragment_shader {nullptr};
 
 	render::backend::VertexBuffer *vertices {nullptr};
 	render::backend::IndexBuffer *indices {nullptr};

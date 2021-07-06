@@ -42,6 +42,10 @@ namespace config
 	};
 }
 
+class Mesh;
+class Shader;
+class Texture;
+
 /*
  */
 class ApplicationResources
@@ -55,26 +59,26 @@ public:
 	void init();
 	void shutdown();
 
-	inline const render::Shader *getShader(config::Shaders index) const { return resources.getShader(index); }
+	inline const Shader *getShader(config::Shaders index) const { return resources.getShader(index); }
 
-	inline const render::Texture *getAlbedoTexture() const { return resources.getTexture(config::Textures::Albedo); }
-	inline const render::Texture *getNormalTexture() const { return resources.getTexture(config::Textures::Normal); }
-	inline const render::Texture *getAOTexture() const { return resources.getTexture(config::Textures::AO); }
-	inline const render::Texture *getShadingTexture() const { return resources.getTexture(config::Textures::Shading); }
-	inline const render::Texture *getEmissionTexture() const { return resources.getTexture(config::Textures::Emission); }
+	inline const Texture *getAlbedoTexture() const { return resources.getTexture(config::Textures::Albedo); }
+	inline const Texture *getNormalTexture() const { return resources.getTexture(config::Textures::Normal); }
+	inline const Texture *getAOTexture() const { return resources.getTexture(config::Textures::AO); }
+	inline const Texture *getShadingTexture() const { return resources.getTexture(config::Textures::Shading); }
+	inline const Texture *getEmissionTexture() const { return resources.getTexture(config::Textures::Emission); }
 
-	inline const render::Texture *getBlueNoiseTexture() const { return blue_noise; }
+	inline const Texture *getBlueNoiseTexture() const { return blue_noise; }
 
-	inline const render::Texture *getHDRTexture(int index) const { return resources.getTexture(config::Textures::EnvironmentBase + index); }
-	inline const render::Texture *getHDREnvironmentCubemap(int index) const { return environment_cubemaps[index]; }
-	inline const render::Texture *getHDRIrradianceCubemap(int index) const { return irradiance_cubemaps[index]; }
+	inline const Texture *getHDRTexture(int index) const { return resources.getTexture(config::Textures::EnvironmentBase + index); }
+	inline const Texture *getHDREnvironmentCubemap(int index) const { return environment_cubemaps[index]; }
+	inline const Texture *getHDRIrradianceCubemap(int index) const { return irradiance_cubemaps[index]; }
 	const char *getHDRTexturePath(int index) const;
 	size_t getNumHDRTextures() const;
 
-	inline const render::Texture *getBakedBRDFTexture() const { return baked_brdf; }
+	inline const Texture *getBakedBRDFTexture() const { return baked_brdf; }
 
-	inline const render::Mesh *getMesh() const { return resources.getMesh(config::Meshes::Helmet); }
-	inline const render::Mesh *getSkybox() const { return resources.getMesh(config::Meshes::Skybox); }
+	inline const Mesh *getMesh() const { return resources.getMesh(config::Meshes::Helmet); }
+	inline const Mesh *getSkybox() const { return resources.getMesh(config::Meshes::Skybox); }
 
 	void reloadShaders();
 
@@ -83,9 +87,9 @@ private:
 	render::shaders::Compiler *compiler {nullptr};
 	ResourceManager resources;
 
-	render::Texture *baked_brdf {nullptr};
-	std::vector<render::Texture *> environment_cubemaps;
-	std::vector<render::Texture *> irradiance_cubemaps;
+	Texture *baked_brdf {nullptr};
+	std::vector<Texture *> environment_cubemaps;
+	std::vector<Texture *> irradiance_cubemaps;
 
-	render::Texture *blue_noise {nullptr};
+	Texture *blue_noise {nullptr};
 };

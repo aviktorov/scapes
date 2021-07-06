@@ -5,10 +5,10 @@
 #include "Application.h"
 #include "ApplicationResources.h"
 
-#include <render/shaders/spirv/Compiler.h>
+#include <render/shaders/Compiler.h>
 #include <render/backend/Driver.h>
-#include <render/SwapChain.h>
 
+#include "SwapChain.h"
 #include "SkyLight.h"
 #include "RenderGraph.h"
 #include "Scene.h"
@@ -22,9 +22,6 @@
 #include <algorithm>
 #include <iostream>
 #include <chrono>
-
-using namespace render;
-using namespace render::backend;
 
 /*
  */
@@ -318,7 +315,7 @@ void Application::initRenderScene()
 	resources->init();
 
 	sponza = new Scene(driver);
-	sponza->import("scenes/pbr_sponza/sponza.obj");
+	sponza->import("assets/scenes/pbr_sponza/sponza.obj");
 
 	sky_light = new SkyLight(
 		driver,
@@ -371,7 +368,7 @@ void Application::initRenderers()
 		}
 	}
 
-	camera_buffer = driver->createUniformBuffer(backend::BufferType::DYNAMIC, sizeof(CameraState));
+	camera_buffer = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, sizeof(CameraState));
 	camera_bindings = driver->createBindSet();
 
 	driver->bindUniformBuffer(camera_bindings, 0, camera_buffer);
@@ -406,8 +403,8 @@ void Application::shutdownImGui()
  */
 void Application::initDriver()
 {
-	driver = backend::Driver::create("PBR Sandbox", "Scape", render::backend::Api::VULKAN);
-	compiler = new shaders::spirv::Compiler();
+	driver = render::backend::Driver::create("PBR Sandbox", "Scape", render::backend::Api::VULKAN);
+	compiler = render::shaders::Compiler::create(render::shaders::ShaderILType::SPIRV);
 }
 
 void Application::shutdownDriver()
@@ -430,7 +427,7 @@ void Application::initSwapChain()
 #endif
 
 	if (!swap_chain)
-		swap_chain = new render::SwapChain(driver, nativeWindow);
+		swap_chain = new SwapChain(driver, nativeWindow);
 
 	int width, height;
 	glfwGetWindowSize(window, &width, &height);

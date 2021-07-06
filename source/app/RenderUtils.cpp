@@ -3,17 +3,15 @@
 #include "CubemapRenderer.h"
 #include "Texture2DRenderer.h"
 
-#include <render/Mesh.h>
-#include <render/Texture.h>
-#include <render/Shader.h>
-
-using namespace render;
+#include "Mesh.h"
+#include "Texture.h"
+#include "Shader.h"
 
 /*
  */
 Texture *RenderUtils::createTexture2D(
-	backend::Driver *driver,
-	backend::Format format,
+	render::backend::Driver *driver,
+	render::backend::Format format,
 	uint32_t width,
 	uint32_t height,
 	uint32_t mips,
@@ -26,14 +24,14 @@ Texture *RenderUtils::createTexture2D(
 
 	Texture2DRenderer renderer(driver);
 	renderer.init(result);
-	renderer.render(vertex_shader->getBackend(), fragment_shader->getBackend());
+	renderer.render(vertex_shader, fragment_shader);
 
 	return result;
 }
 
 Texture *RenderUtils::createTextureCube(
-	backend::Driver *driver,
-	backend::Format format,
+	render::backend::Driver *driver,
+	render::backend::Format format,
 	uint32_t size,
 	uint32_t mips,
 	const Shader *vertex_shader,
@@ -42,7 +40,7 @@ Texture *RenderUtils::createTextureCube(
 )
 {
 	Texture *result = new Texture(driver);
-	result->createCube(backend::Format::R32G32B32A32_SFLOAT, size, mips);
+	result->createCube(format, size, mips);
 
 	CubemapRenderer renderer(driver);
 	renderer.init(result, 0);
@@ -54,22 +52,22 @@ Texture *RenderUtils::createTextureCube(
 /*
  */
 Texture *RenderUtils::hdriToCube(
-	backend::Driver *driver,
-	backend::Format format,
+	render::backend::Driver *driver,
+	render::backend::Format format,
 	uint32_t size,
 	const Texture *hdri,
 	const Shader *vertex_shader,
 	const Shader *hdri_fragment_shader,
-	const render::Shader *prefilter_fragment_shader
+	const Shader *prefilter_fragment_shader
 )
 {
 	uint32_t mips = static_cast<int>(std::floor(std::log2(size)) + 1);
 
 	Texture *temp = new Texture(driver);
-	temp->createCube(backend::Format::R32G32B32A32_SFLOAT, size, 1);
+	temp->createCube(format, size, 1);
 
 	Texture *result = new Texture(driver);
-	result->createCube(backend::Format::R32G32B32A32_SFLOAT, size, mips);
+	result->createCube(format, size, mips);
 
 	CubemapRenderer renderer(driver);
 	renderer.init(temp, 0);

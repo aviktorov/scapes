@@ -715,14 +715,14 @@ namespace render::backend::vulkan
 	 */
 	VkShaderModule Utils::createShaderModule(
 		const Device *device,
-		const uint32_t *bytecode,
-		size_t bytecodeSize
+		const uint32_t *data,
+		size_t size
 	)
 	{
 		VkShaderModuleCreateInfo shaderInfo = {};
 		shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		shaderInfo.codeSize = bytecodeSize;
-		shaderInfo.pCode = bytecode;
+		shaderInfo.codeSize = size;
+		shaderInfo.pCode = data;
 
 		VkShaderModule shader = VK_NULL_HANDLE;
 		if (vkCreateShaderModule(device->getDevice(), &shaderInfo, nullptr, &shader) != VK_SUCCESS)

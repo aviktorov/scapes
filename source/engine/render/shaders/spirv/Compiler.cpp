@@ -9,28 +9,28 @@ namespace render::shaders::spirv
 {
 	namespace shaderc
 	{
-		static shaderc_shader_kind getShaderKind(backend::ShaderType type)
+		static shaderc_shader_kind getShaderKind(ShaderType type)
 		{
 			switch(type)
 			{
 				// Graphics pipeline
-				case backend::ShaderType::VERTEX: return shaderc_vertex_shader;
-				case backend::ShaderType::TESSELLATION_CONTROL: return shaderc_tess_control_shader;
-				case backend::ShaderType::TESSELLATION_EVALUATION: return shaderc_tess_evaluation_shader;
-				case backend::ShaderType::GEOMETRY: return shaderc_geometry_shader;
-				case backend::ShaderType::FRAGMENT: return shaderc_fragment_shader;
+				case ShaderType::VERTEX: return shaderc_vertex_shader;
+				case ShaderType::TESSELLATION_CONTROL: return shaderc_tess_control_shader;
+				case ShaderType::TESSELLATION_EVALUATION: return shaderc_tess_evaluation_shader;
+				case ShaderType::GEOMETRY: return shaderc_geometry_shader;
+				case ShaderType::FRAGMENT: return shaderc_fragment_shader;
 
 				// Compute pipeline
-				case backend::ShaderType::COMPUTE: return shaderc_compute_shader;
+				case ShaderType::COMPUTE: return shaderc_compute_shader;
 
 #if NV_EXTENSIONS
 				// Raytrace pipeline
-				case backend::ShaderType::RAY_GENERATION: return shaderc_raygen_shader;
-				case backend::ShaderType::INTERSECTION: return shaderc_intersection_shader;
-				case backend::ShaderType::ANY_HIT: return shaderc_anyhit_shader;
-				case backend::ShaderType::CLOSEST_HIT: return shaderc_closesthit_shader;
-				case backend::ShaderType::MISS: return shaderc_miss_shader;
-				case backend::ShaderType::CALLABLE: return shaderc_callable_shader;
+				case ShaderType::RAY_GENERATION: return shaderc_raygen_shader;
+				case ShaderType::INTERSECTION: return shaderc_intersection_shader;
+				case ShaderType::ANY_HIT: return shaderc_anyhit_shader;
+				case ShaderType::CLOSEST_HIT: return shaderc_closesthit_shader;
+				case ShaderType::MISS: return shaderc_miss_shader;
+				case ShaderType::CALLABLE: return shaderc_callable_shader;
 #endif
 			}
 
@@ -52,14 +52,14 @@ namespace render::shaders::spirv
 			result->content = nullptr;
 			result->content_length = 0;
 
-			std::string target_dir = "";
+			std::string target_dir = "assets/";
 
 			switch (type)
 			{
 				case shaderc_include_type_standard:
 				{
 					// TODO: remove this, not generic
-					target_dir = "shaders/";
+					target_dir += "shaders/";
 				}
 				break;
 
@@ -69,7 +69,7 @@ namespace render::shaders::spirv
 					size_t pos = source_path.find_last_of("/\\");
 
 					if (pos != std::string_view::npos)
-						target_dir = source_path.substr(0, pos + 1);
+						target_dir += source_path.substr(0, pos + 1);
 				}
 				break;
 			}
@@ -112,7 +112,7 @@ namespace render::shaders::spirv
 	}
 
 	shaders::ShaderIL *Compiler::createShaderIL(
-		backend::ShaderType type,
+		ShaderType type,
 		uint32_t size,
 		const char *data,
 		const char *path
@@ -158,6 +158,7 @@ namespace render::shaders::spirv
 		result->bytecode_size = bytecode_size;
 		result->bytecode_data = new uint32_t[bytecode_size];
 		result->type = type;
+		result->il_type = ShaderILType::SPIRV;
 
 		memcpy(result->bytecode_data, bytecode_data, bytecode_size);
 

@@ -5,11 +5,6 @@
 #include <GLM/glm.hpp>
 #include <GLM/gtc/matrix_transform.hpp>
 
-namespace render
-{
-	class SwapChain;
-}
-
 namespace render::shaders
 {
 	class Compiler;
@@ -29,6 +24,7 @@ class Renderer;
 class ImGuiRenderer;
 class Scene;
 class SkyLight;
+class SwapChain;
 
 /*
  */
@@ -129,7 +125,7 @@ private:
 	CameraState camera_state;
 	InputState input_state;
 
-	render::SwapChain *swap_chain {nullptr};
+	SwapChain *swap_chain {nullptr};
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
 

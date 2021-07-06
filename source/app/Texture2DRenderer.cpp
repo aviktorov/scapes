@@ -1,14 +1,11 @@
 #include "Texture2DRenderer.h"
 
-#include <render/Shader.h>
-#include <render/Texture.h>
-
-using namespace render;
-using namespace render::backend;
+#include "Shader.h"
+#include "Texture.h"
 
 /*
  */
-Texture2DRenderer::Texture2DRenderer(Driver *driver)
+Texture2DRenderer::Texture2DRenderer(render::backend::Driver *driver)
 	: driver(driver)
 	, quad(driver)
 {
@@ -16,30 +13,30 @@ Texture2DRenderer::Texture2DRenderer(Driver *driver)
 
 /*
  */
-void Texture2DRenderer::init(const render::Texture *target_texture)
+void Texture2DRenderer::init(const Texture *target_texture)
 {
 	assert(target_texture != nullptr);
 
 	// Create framebuffer
-	FrameBufferAttachment frame_buffer_attachments[1] = { target_texture->getBackend() };
+	render::backend::FrameBufferAttachment frame_buffer_attachments[1] = { target_texture->getBackend() };
 	frame_buffer = driver->createFrameBuffer(1, frame_buffer_attachments);
 
 	// Create render pass
-	RenderPassAttachment render_pass_attachments[1] =
+	render::backend::RenderPassAttachment render_pass_attachments[1] =
 	{
-		{ target_texture->getFormat(), Multisample::COUNT_1, RenderPassLoadOp::DONT_CARE, RenderPassStoreOp::STORE },
+		{ target_texture->getFormat(), render::backend::Multisample::COUNT_1, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
 	};
 
 	uint32_t color_attachments[1] = { 0 };
 
-	RenderPassDescription render_pass_description = {};
+	render::backend::RenderPassDescription render_pass_description = {};
 	render_pass_description.num_color_attachments = 1;
 	render_pass_description.color_attachments = color_attachments;
 
 	render_pass = driver->createRenderPass(1, render_pass_attachments, render_pass_description);
 
 	quad.createQuad(2.0f);
-	command_buffer = driver->createCommandBuffer(CommandBufferType::PRIMARY);
+	command_buffer = driver->createCommandBuffer(render::backend::CommandBufferType::PRIMARY);
 
 	pipeline_state = driver->createPipelineState();
 	driver->setViewport(pipeline_state, 0, 0, target_texture->getWidth(), target_texture->getHeight());
@@ -67,8 +64,8 @@ void Texture2DRenderer::shutdown()
 /*
  */
 void Texture2DRenderer::render(
-	const render::backend::Shader *vertex_shader,
-	const render::backend::Shader *fragment_shader
+	const Shader *vertex_shader,
+	const Shader *fragment_shader
 )
 {
 	assert(vertex_shader != nullptr);
@@ -81,8 +78,8 @@ void Texture2DRenderer::render(
 
 	driver->clearBindSets(pipeline_state);
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, ShaderType::VERTEX, vertex_shader);
-	driver->setShader(pipeline_state, ShaderType::FRAGMENT, fragment_shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->getBackend());
 
 	driver->clearVertexStreams(pipeline_state);
 	driver->setVertexStream(pipeline_state, 0, quad.getVertexBuffer());

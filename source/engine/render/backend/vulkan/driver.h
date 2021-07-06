@@ -1,6 +1,7 @@
 #pragma once
 
-#include "render/backend/driver.h"
+#include <render/backend/Driver.h>
+
 #include <volk.h>
 #include <vk_mem_alloc.h>
 
@@ -338,7 +339,10 @@ namespace render::backend::vulkan
 		) final;
 
 		backend::Shader *createShaderFromIL(
-			const shaders::ShaderIL *shader_il
+			ShaderType type,
+			ShaderILType il_type,
+			size_t size,
+			const void *data
 		) final;
 
 		backend::BindSet *createBindSet(

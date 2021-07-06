@@ -1,21 +1,17 @@
 #pragma once
 
-#include <render/backend/driver.h>
+#include <render/backend/Driver.h>
 #include <glm/vec4.hpp>
 
 class ApplicationResources;
 class Scene;
+class Shader;
+class Mesh;
+class Texture;
+struct RenderFrame;
+
 class ImGuiRenderer;
-
 typedef void* ImTextureID;
-
-namespace render
-{
-	class Shader;
-	class Mesh;
-	class Texture;
-	struct RenderFrame;
-}
 
 namespace render::shaders
 {
@@ -113,7 +109,7 @@ public:
 	void init(const ApplicationResources *resources, uint32_t width, uint32_t height);
 	void shutdown();
 	void resize(uint32_t width, uint32_t height);
-	void render(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
+	void render(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
 
 	ImTextureID fetchTextureID(const render::backend::Texture *texture);
 
@@ -146,7 +142,7 @@ private:
 	void initSSAOKernel();
 	void shutdownSSAOKernel();
 
-	void initSSRData(const render::Texture *blue_noise);
+	void initSSRData(const Texture *blue_noise);
 	void shutdownSSRData();
 
 	void initRenderBuffer(RenderBuffer &ssr, render::backend::Format format, uint32_t width, uint32_t height);
@@ -158,17 +154,17 @@ private:
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
-	void renderGBuffer(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
-	void renderSSAO(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
-	void renderSSAOBlur(const Scene *scene, const render::RenderFrame &frame);
-	void renderSSRTrace(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
-	void renderSSRResolve(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
-	void renderSSRTemporalFilter(const Scene *scene, const render::RenderFrame &frame);
-	void renderLBuffer(const Scene *scene, const render::RenderFrame &frame, render::backend::BindSet *camera_bindings);
-	void renderComposite(const Scene *scene, const render::RenderFrame &frame);
-	void renderCompositeTemporalFilter(const Scene *scene, const render::RenderFrame &frame);
-	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, const render::RenderFrame &frame);
-	void renderToSwapChain(const Scene *scene, const render::RenderFrame &frame);
+	void renderGBuffer(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
+	void renderSSAO(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
+	void renderSSAOBlur(const Scene *scene, const RenderFrame &frame);
+	void renderSSRTrace(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
+	void renderSSRResolve(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
+	void renderSSRTemporalFilter(const Scene *scene, const RenderFrame &frame);
+	void renderLBuffer(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
+	void renderComposite(const Scene *scene, const RenderFrame &frame);
+	void renderCompositeTemporalFilter(const Scene *scene, const RenderFrame &frame);
+	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, const RenderFrame &frame);
+	void renderToSwapChain(const Scene *scene, const RenderFrame &frame);
 
 private:
 	render::backend::Driver *driver {nullptr};
@@ -193,7 +189,7 @@ private:
 	RenderBuffer composite;
 	RenderBuffer old_composite;
 
-	render::Mesh *quad {nullptr};
+	Mesh *quad {nullptr};
 	ImGuiRenderer *imgui_renderer {nullptr};
 
 	render::backend::RenderPass *gbuffer_render_pass {nullptr};
@@ -203,16 +199,16 @@ private:
 	render::backend::RenderPass *hdr_render_pass {nullptr};
 	render::backend::RenderPass *swap_chain_render_pass {nullptr};
 
-	const render::Shader *gbuffer_pass_vertex {nullptr};
-	const render::Shader *gbuffer_pass_fragment {nullptr};
+	const Shader *gbuffer_pass_vertex {nullptr};
+	const Shader *gbuffer_pass_fragment {nullptr};
 
-	const render::Shader *fullscreen_quad_vertex {nullptr};
+	const Shader *fullscreen_quad_vertex {nullptr};
 
-	const render::Shader *ssao_pass_fragment {nullptr};
-	const render::Shader *ssao_blur_pass_fragment {nullptr};
-	const render::Shader *ssr_trace_pass_fragment {nullptr};
-	const render::Shader *ssr_resolve_pass_fragment {nullptr};
-	const render::Shader *temporal_filter_pass_fragment {nullptr};
-	const render::Shader *composite_pass_fragment {nullptr};
-	const render::Shader *tonemapping_pass_fragment {nullptr};
+	const Shader *ssao_pass_fragment {nullptr};
+	const Shader *ssao_blur_pass_fragment {nullptr};
+	const Shader *ssr_trace_pass_fragment {nullptr};
+	const Shader *ssr_resolve_pass_fragment {nullptr};
+	const Shader *temporal_filter_pass_fragment {nullptr};
+	const Shader *composite_pass_fragment {nullptr};
+	const Shader *tonemapping_pass_fragment {nullptr};
 };
