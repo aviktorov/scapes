@@ -63,11 +63,16 @@ PBR Sandbox:
         ☐ Directional light & shadows
         ☐ Environment / Reflection probes
         ☐ Area lights
-    Stream 62:
         ☐ Add RenderScene class
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ First person camera (WASD controls & mouse aim)
+    Stream 62:
+        ✔ Move high-level render mesh / shader / swap chain / texture classes to app @done (7/6/2021, 11:03:17 PM)
+        ✔ Decouple render/shaders module from render/backend module @done (7/6/2021, 11:38:49 PM)
+        ✔ Move public backend / shader headers to dedicated folder and call it engine API @done (7/6/2021, 11:03:13 PM)
+        ☐ Make first release on github
+        ☐ Try entt
     Stream 61:
         ✔ Add PipelineState structure @done (7/3/2021, 3:30:01 AM)
         ✔ Get rid of RenderPrimitive @done (7/3/2021, 3:30:00 AM)
