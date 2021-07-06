@@ -183,6 +183,24 @@ void RenderGraph::initRenderPasses()
 
 		hdr_render_pass = driver->createRenderPass(1, render_pass_attachments, render_pass_description);
 	}
+
+	{ // HDR Clear
+		render::backend::RenderPassClearValue clear_color;
+		clear_color.as_color = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+		render::backend::RenderPassAttachment render_pass_attachments[1] =
+		{
+			{ render::backend::Format::R16G16B16A16_SFLOAT, samples, render::backend::RenderPassLoadOp::CLEAR, render::backend::RenderPassStoreOp::STORE, clear_color },
+		};
+
+		uint32_t color_attachments[1] = { 0 };
+
+		render::backend::RenderPassDescription render_pass_description = {};
+		render_pass_description.num_color_attachments = 1;
+		render_pass_description.color_attachments = color_attachments;
+
+		hdr_clear_render_pass = driver->createRenderPass(1, render_pass_attachments, render_pass_description);
+	}
 }
 
 void RenderGraph::shutdownRenderPasses()
@@ -201,6 +219,9 @@ void RenderGraph::shutdownRenderPasses()
 
 	driver->destroyRenderPass(hdr_render_pass);
 	hdr_render_pass = nullptr;
+
+	driver->destroyRenderPass(hdr_clear_render_pass);
+	hdr_clear_render_pass = nullptr;
 
 	driver->destroyRenderPass(swap_chain_render_pass);
 	swap_chain_render_pass = nullptr;
@@ -221,6 +242,8 @@ void RenderGraph::initTransient(uint32_t width, uint32_t height)
 	initSSRResolve(ssr_resolve, width, height);
 	initRenderBuffer(ssr, render::backend::Format::R16G16B16A16_SFLOAT, width, height);
 	initRenderBuffer(old_ssr, render::backend::Format::R16G16B16A16_SFLOAT, width, height);
+
+	first_frame = true;
 }
 
 void RenderGraph::shutdownTransient()
@@ -480,6 +503,13 @@ void RenderGraph::render(const Scene *scene, const RenderFrame &frame, render::b
 {
 	driver->resetCommandBuffer(frame.command_buffer);
 	driver->beginCommandBuffer(frame.command_buffer);
+
+	if (first_frame)
+	{
+		prepareOldTexture(old_composite, frame);
+		prepareOldTexture(old_ssr, frame);
+		first_frame = false;
+	}
 
 	{
 		ZoneScopedN("GBuffer pass");
@@ -815,6 +845,24 @@ void RenderGraph::renderToSwapChain(const Scene *scene, const RenderFrame &frame
 	driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
 
 	imgui_renderer->render(frame);
+
+	driver->endRenderPass(frame.command_buffer);
+}
+
+void RenderGraph::prepareOldTexture(const RenderBuffer &old, const RenderFrame &frame)
+{
+	driver->beginRenderPass(frame.command_buffer, hdr_clear_render_pass, old.frame_buffer);
+
+	driver->clearPushConstants(pipeline_state);
+	driver->clearBindSets(pipeline_state);
+
+	driver->clearShaders(pipeline_state);
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->getBackend());
+
+	driver->clearVertexStreams(pipeline_state);
+	driver->setVertexStream(pipeline_state, 0, quad->getVertexBuffer());
+
+	driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
 
 	driver->endRenderPass(frame.command_buffer);
 }

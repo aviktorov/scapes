@@ -166,6 +166,8 @@ private:
 	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, const RenderFrame &frame);
 	void renderToSwapChain(const Scene *scene, const RenderFrame &frame);
 
+	void prepareOldTexture(const RenderBuffer &old, const RenderFrame &frame);
+
 private:
 	render::backend::Driver *driver {nullptr};
 	render::backend::PipelineState *pipeline_state {nullptr};
@@ -189,6 +191,8 @@ private:
 	RenderBuffer composite;
 	RenderBuffer old_composite;
 
+	bool first_frame {true};
+
 	Mesh *quad {nullptr};
 	ImGuiRenderer *imgui_renderer {nullptr};
 
@@ -197,6 +201,7 @@ private:
 	render::backend::RenderPass *ssr_resolve_render_pass {nullptr};
 	render::backend::RenderPass *ssao_render_pass {nullptr};
 	render::backend::RenderPass *hdr_render_pass {nullptr};
+	render::backend::RenderPass *hdr_clear_render_pass {nullptr};
 	render::backend::RenderPass *swap_chain_render_pass {nullptr};
 
 	const Shader *gbuffer_pass_vertex {nullptr};
