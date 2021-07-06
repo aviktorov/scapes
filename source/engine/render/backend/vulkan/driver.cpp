@@ -1363,15 +1363,15 @@ namespace render::backend::vulkan
 	bool Driver::acquire(backend::SwapChain *swap_chain, uint32_t *new_image)
 	{
 		SwapChain *vk_swap_chain = static_cast<SwapChain *>(swap_chain);
-		uint32_t current_image = vk_swap_chain->current_image;
+		uint32_t current_frame = vk_swap_chain->current_frame;
 
 		VkResult result = vkAcquireNextImageKHR(
 			device->getDevice(),
 			vk_swap_chain->swap_chain,
 			std::numeric_limits<uint64_t>::max(),
-			vk_swap_chain->image_available_gpu[current_image],
+			vk_swap_chain->image_available_gpu[current_frame],
 			VK_NULL_HANDLE,
-			new_image
+			&vk_swap_chain->current_image
 		);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -1384,25 +1384,22 @@ namespace render::backend::vulkan
 			return false;
 		}
 
+		*new_image = vk_swap_chain->current_frame;
 		return true;
 	}
 
 	bool Driver::present(backend::SwapChain *swap_chain, uint32_t num_wait_command_buffers, backend::CommandBuffer * const *wait_command_buffers)
 	{
 		SwapChain *vk_swap_chain = static_cast<SwapChain *>(swap_chain);
-		uint32_t current_image = vk_swap_chain->current_image;
 
 		std::vector<VkSemaphore> wait_semaphores(num_wait_command_buffers);
-		std::vector<VkFence> wait_fences(num_wait_command_buffers);
 
 		if (num_wait_command_buffers != 0 && wait_command_buffers != nullptr)
 		{
-
 			for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
 			{
 				const CommandBuffer *vk_wait_command_buffer = static_cast<const CommandBuffer *>(wait_command_buffers[i]);
 				wait_semaphores[i] = vk_wait_command_buffer->rendering_finished_gpu;
-				wait_fences[i] = vk_wait_command_buffer->rendering_finished_cpu;
 			}
 		}
 
@@ -1410,7 +1407,7 @@ namespace render::backend::vulkan
 		info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		info.swapchainCount = 1;
 		info.pSwapchains = &vk_swap_chain->swap_chain;
-		info.pImageIndices = &current_image;
+		info.pImageIndices = &vk_swap_chain->current_image;
 
 		if (wait_semaphores.size())
 		{
@@ -1429,17 +1426,8 @@ namespace render::backend::vulkan
 			return false;
 		}
 
-		if (wait_fences.size())
-			vkWaitForFences(
-				device->getDevice(),
-				static_cast<uint32_t>(wait_fences.size()),
-				wait_fences.data(),
-				VK_TRUE,
-				std::numeric_limits<uint64_t>::max()
-			);
-
-		vk_swap_chain->current_image++;
-		vk_swap_chain->current_image %= vk_swap_chain->num_images;
+		vk_swap_chain->current_frame++;
+		vk_swap_chain->current_frame %= vk_swap_chain->num_images;
 
 		return true;
 	}
@@ -1900,10 +1888,10 @@ namespace render::backend::vulkan
 		if (wait_swap_chain != nullptr)
 		{
 			const SwapChain *vk_wait_swap_chain = static_cast<const SwapChain *>(wait_swap_chain);
-			uint32_t current_image = vk_wait_swap_chain->current_image;
+			uint32_t current_frame = vk_wait_swap_chain->current_frame;
 
 			info.waitSemaphoreCount = 1;
-			info.pWaitSemaphores = &vk_wait_swap_chain->image_available_gpu[current_image];
+			info.pWaitSemaphores = &vk_wait_swap_chain->image_available_gpu[current_frame];
 			info.pWaitDstStageMask = &wait_stage;
 		}
 

@@ -224,6 +224,7 @@ namespace render::backend::vulkan
 
 		uint32_t num_images {0};
 		uint32_t current_image {0};
+		uint32_t current_frame {0};
 
 		VkRenderPass dummy_render_pass {VK_NULL_HANDLE};
 

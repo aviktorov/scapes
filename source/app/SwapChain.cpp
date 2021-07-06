@@ -21,7 +21,6 @@ void SwapChain::init(uint32_t w, uint32_t h, uint32_t s)
 	width = w;
 	height = h;
 
-	render::backend::Multisample max_samples = driver->getMaxSampleCount();
 	swap_chain = driver->createSwapChain(native_window);
 
 	initFrames(width, height, ubo_size);
@@ -50,12 +49,15 @@ bool SwapChain::acquire(RenderFrame &frame)
 		return false;
 
 	frame = frames[image_index];
+
 	return true;
 }
 
 bool SwapChain::present(const RenderFrame &frame)
 {
-	return driver->present(swap_chain, 1, &frame.command_buffer);
+	bool result = driver->present(swap_chain, 1, &frame.command_buffer);
+	driver->wait(1, &frame.command_buffer);
+	return result;
 }
 
 /*
