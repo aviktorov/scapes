@@ -1,16 +1,16 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include <materials/pbr/BRDF.h>
+#include <shaders/materials/pbr/BRDF.h>
 
 #define CAMERA_SET 0
-#include <common/Camera.h>
+#include <shaders/common/Camera.h>
 
 #define GBUFFER_SET 1
-#include <deferred/GBuffer.h>
+#include <shaders/deferred/GBuffer.h>
 
 #define SKYLIGHT_SET 2
-#include <common/Skylight.h>
+#include <shaders/common/Skylight.h>
 
 // Input
 layout(location = 0) in vec2 inUV;

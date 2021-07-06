@@ -1,7 +1,7 @@
 #ifndef BRDF_H_
 #define BRDF_H_
 
-#include <common/Common.h>
+#include <shaders/common/Common.h>
 
 struct Surface
 {

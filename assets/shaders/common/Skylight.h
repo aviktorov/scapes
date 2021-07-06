@@ -1,7 +1,7 @@
 #ifndef SKYLIGHT_INC_
 #define SKYLIGHT_INC_
 
-#include <materials/pbr/BRDF.h>
+#include <shaders/materials/pbr/BRDF.h>
 
 layout(set = SKYLIGHT_SET, binding = 0) uniform sampler2D texSkyLightBakedBRDF;
 layout(set = SKYLIGHT_SET, binding = 1) uniform samplerCube texSkyLightEnvironment;

@@ -1,19 +1,19 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include <common/Common.h>
+#include <shaders/common/Common.h>
 
 #define APPLICATION_STATE_SET 0
-#include <common/ApplicationState.h>
+#include <shaders/common/ApplicationState.h>
 
 #define CAMERA_SET 1
-#include <common/Camera.h>
+#include <shaders/common/Camera.h>
 
 #define GBUFFER_SET 2
-#include <deferred/GBuffer.h>
+#include <shaders/deferred/GBuffer.h>
 
 #define SSR_DATA_SET 3
-#include <deferred/SSRData.h>
+#include <shaders/deferred/SSRData.h>
 
 layout(location = 0) in vec2 inUV;
 

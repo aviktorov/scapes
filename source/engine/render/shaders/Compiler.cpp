@@ -5,11 +5,11 @@
 
 namespace render::shaders
 {
-	Compiler *Compiler::create(ShaderILType type)
+	Compiler *Compiler::create(ShaderILType type, io::IFileSystem *file_system)
 	{
 		switch (type)
 		{
-			case ShaderILType::SPIRV: return new spirv::Compiler();
+			case ShaderILType::SPIRV: return new spirv::Compiler(file_system);
 		}
 
 		return nullptr;

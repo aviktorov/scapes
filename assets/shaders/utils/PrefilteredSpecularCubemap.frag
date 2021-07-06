@@ -1,7 +1,7 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include <common/Common.h>
+#include <shaders/common/Common.h>
 
 layout(push_constant) uniform UserData
 {

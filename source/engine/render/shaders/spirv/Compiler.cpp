@@ -1,8 +1,9 @@
 #include "render/shaders/spirv/Compiler.h"
 
+#include <common/IO.h>
 #include <shaderc/shaderc.h>
+
 #include <iostream>
-#include <fstream>
 #include <cassert>
 
 namespace render::shaders::spirv
@@ -23,6 +24,7 @@ namespace render::shaders::spirv
 				// Compute pipeline
 				case ShaderType::COMPUTE: return shaderc_compute_shader;
 
+// TODO: get rid of this (probably update shaderc?)
 #if NV_EXTENSIONS
 				// Raytrace pipeline
 				case ShaderType::RAY_GENERATION: return shaderc_raygen_shader;
@@ -45,6 +47,8 @@ namespace render::shaders::spirv
 			size_t include_depth
 		)
 		{
+			io::IFileSystem *file_system = reinterpret_cast<io::IFileSystem *>(user_data);
+
 			shaderc_include_result *result = new shaderc_include_result();
 			result->user_data = user_data;
 			result->source_name = nullptr;
@@ -52,44 +56,37 @@ namespace render::shaders::spirv
 			result->content = nullptr;
 			result->content_length = 0;
 
-			std::string target_dir = "assets/";
+			std::string target_dir = "";
 
 			switch (type)
 			{
-				case shaderc_include_type_standard:
-				{
-					// TODO: remove this, not generic
-					target_dir += "shaders/";
-				}
-				break;
-
 				case shaderc_include_type_relative:
 				{
 					std::string_view source_path = requesting_source;
 					size_t pos = source_path.find_last_of("/\\");
 
 					if (pos != std::string_view::npos)
-						target_dir += source_path.substr(0, pos + 1);
+						target_dir = source_path.substr(0, pos + 1);
 				}
 				break;
 			}
 
 			std::string target_path = target_dir + std::string(requested_source);
 
-			std::ifstream file(target_path, std::ios::ate | std::ios::binary);
+			io::IStream *file = file_system->open(target_path.c_str(), "rb");
 
-			if (!file.is_open())
+			if (!file)
 			{
 				std::cerr << "shaderc::include_resolver(): can't load include at \"" << target_path << "\"" << std::endl;
 				return result;
 			}
 
-			size_t fileSize = static_cast<size_t>(file.tellg());
-			char *buffer = new char[fileSize];
+			size_t file_size = static_cast<size_t>(file->size());
+			char *buffer = new char[file_size];
 
-			file.seekg(0);
-			file.read(buffer, fileSize);
-			file.close();
+			file->seek(0, io::SeekOrigin::SET);
+			file->read(buffer, sizeof(char), file_size);
+			file_system->close(file);
 
 			char *path = new char[target_path.size() + 1];
 			memcpy(path, target_path.c_str(), target_path.size());
@@ -98,7 +95,7 @@ namespace render::shaders::spirv
 			result->source_name = path;
 			result->source_name_length = target_path.size() + 1;
 			result->content = buffer;
-			result->content_length = fileSize;
+			result->content_length = file_size;
 
 			return result;
 		}
@@ -126,7 +123,7 @@ namespace render::shaders::spirv
 		shaderc_compile_options_t options = shaderc_compile_options_initialize();
 
 		// set compile options
-		shaderc_compile_options_set_include_callbacks(options, shaderc::includeResolver, shaderc::includeResultReleaser, nullptr);
+		shaderc_compile_options_set_include_callbacks(options, shaderc::includeResolver, shaderc::includeResultReleaser, file_system);
 
 		// compile shader
 		shaderc_compilation_result_t compilation_result = shaderc_compile_into_spv(

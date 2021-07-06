@@ -2,6 +2,11 @@
 
 #include <cstdint>
 
+namespace io
+{
+	class IFileSystem;
+}
+
 namespace render::shaders
 {
 	enum class ShaderILType : uint8_t
@@ -46,7 +51,7 @@ namespace render::shaders
 	class Compiler
 	{
 	public:
-		static Compiler *create(ShaderILType type = ShaderILType::DEFAULT);
+		static Compiler *create(ShaderILType type = ShaderILType::DEFAULT, io::IFileSystem *file_system = nullptr);
 
 		virtual ShaderIL *createShaderIL(
 			ShaderType type,

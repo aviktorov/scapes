@@ -1,16 +1,16 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include <common/Common.h>
+#include <shaders/common/Common.h>
 
 #define LBUFFER_SET 0
-#include <deferred/LBuffer.h>
+#include <shaders/deferred/LBuffer.h>
 
 #define SSAO_SET 1
-#include <deferred/SSAO.h>
+#include <shaders/deferred/SSAO.h>
 
 #define SSR_SET 2
-#include <deferred/SSR.h>
+#include <shaders/deferred/SSR.h>
 
 // input
 layout(location = 0) in vec2 inUV;

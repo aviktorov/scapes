@@ -2,13 +2,13 @@
 #pragma shader_stage(vertex)
 
 #define APPLICATION_STATE_SET 0
-#include <common/ApplicationState.h>
+#include <shaders/common/ApplicationState.h>
 
 #define CAMERA_SET 1
-#include <common/Camera.h>
+#include <shaders/common/Camera.h>
 
 #define PBR_MATERIAL_SET 2
-#include <materials/pbr/MaterialData.h>
+#include <shaders/materials/pbr/MaterialData.h>
 
 layout(push_constant) uniform Node
 {

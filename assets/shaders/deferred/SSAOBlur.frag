@@ -2,7 +2,7 @@
 #pragma shader_stage(fragment)
 
 #define SSAO_SET 1
-#include <deferred/SSAO.h>
+#include <shaders/deferred/SSAO.h>
 
 layout(location = 0) in vec2 inUV;
 

@@ -1,25 +1,25 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include <materials/pbr/BRDF.h>
+#include <shaders/materials/pbr/BRDF.h>
 
 #define APPLICATION_STATE_SET 0
-#include <common/ApplicationState.h>
+#include <shaders/common/ApplicationState.h>
 
 #define CAMERA_SET 1
-#include <common/Camera.h>
+#include <shaders/common/Camera.h>
 
 #define GBUFFER_SET 2
-#include <deferred/GBuffer.h>
+#include <shaders/deferred/GBuffer.h>
 
 #define SSR_SET 3
-#include <deferred/SSR.h>
+#include <shaders/deferred/SSR.h>
 
 #define SSR_DATA_SET 4
-#include <deferred/SSRData.h>
+#include <shaders/deferred/SSRData.h>
 
 #define COMPOSITE_SET 5
-#include <deferred/Composite.h>
+#include <shaders/deferred/Composite.h>
 
 layout(location = 0) in vec2 inUV;
 

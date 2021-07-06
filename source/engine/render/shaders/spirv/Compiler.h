@@ -11,6 +11,9 @@ namespace render::shaders::spirv
 	class Compiler : public shaders::Compiler
 	{
 	public:
+		Compiler(io::IFileSystem *file_system)
+			: file_system(file_system) {}
+
 		shaders::ShaderIL *createShaderIL(
 			ShaderType type,
 			uint32_t size,
@@ -19,5 +22,8 @@ namespace render::shaders::spirv
 		) override;
 
 		void destroyShaderIL(shaders::ShaderIL *il) override;
+
+	private:
+		io::IFileSystem *file_system {nullptr};
 	};
 }

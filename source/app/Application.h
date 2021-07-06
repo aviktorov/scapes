@@ -18,6 +18,7 @@ namespace render::backend
 }
 
 struct GLFWwindow;
+class ApplicationFileSystem;
 class ApplicationResources;
 class RenderGraph;
 class Renderer;
@@ -122,6 +123,7 @@ private:
 	RenderGraph *render_graph {nullptr};
 	ApplicationResources *resources {nullptr};
 	ApplicationState application_state;
+	ApplicationFileSystem *file_system {nullptr};
 	CameraState camera_state;
 	InputState input_state;
 

@@ -1,7 +1,7 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include <common/Common.h>
+#include <shaders/common/Common.h>
 
 layout(set = 0, binding = 0) uniform sampler2D texColor;
 layout(set = 1, binding = 0) uniform sampler2D texColorOld;

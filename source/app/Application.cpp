@@ -4,6 +4,7 @@
 
 #include "Application.h"
 #include "ApplicationResources.h"
+#include "IO.h"
 
 #include <render/shaders/Compiler.h>
 #include <render/backend/Driver.h>
@@ -403,8 +404,10 @@ void Application::shutdownImGui()
  */
 void Application::initDriver()
 {
+	file_system = new ApplicationFileSystem("assets/");
+
 	driver = render::backend::Driver::create("PBR Sandbox", "Scape", render::backend::Api::VULKAN);
-	compiler = render::shaders::Compiler::create(render::shaders::ShaderILType::SPIRV);
+	compiler = render::shaders::Compiler::create(render::shaders::ShaderILType::SPIRV, file_system);
 }
 
 void Application::shutdownDriver()
@@ -414,6 +417,9 @@ void Application::shutdownDriver()
 
 	delete compiler;
 	compiler = nullptr;
+
+	delete file_system;
+	file_system = nullptr;
 }
 
 /*

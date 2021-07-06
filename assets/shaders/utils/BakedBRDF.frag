@@ -1,8 +1,8 @@
 #version 450
 #pragma shader_stage(fragment)
 
-#include <common/Common.h>
-#include <materials/pbr/BRDF.h>
+#include <shaders/common/Common.h>
+#include <shaders/materials/pbr/BRDF.h>
 
 layout(location = 0) in vec2 inUV;
 

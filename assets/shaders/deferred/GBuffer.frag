@@ -2,13 +2,13 @@
 #pragma shader_stage(fragment)
 
 #define APPLICATION_STATE_SET 0
-#include <common/ApplicationState.h>
+#include <shaders/common/ApplicationState.h>
 
 #define CAMERA_SET 1
-#include <common/Camera.h>
+#include <shaders/common/Camera.h>
 
 #define PBR_MATERIAL_SET 2
-#include <materials/pbr/MaterialData.h>
+#include <shaders/materials/pbr/MaterialData.h>
 
 // Input
 layout(location = 0) in vec2 inUV;
@@ -20,7 +20,7 @@ layout(location = 5) in vec4 inPositionOldNDC;
 
 // Output
 #define GBUFFER_WRITE
-#include <deferred/GBuffer.h>
+#include <shaders/deferred/GBuffer.h>
 
 void main()
 {
