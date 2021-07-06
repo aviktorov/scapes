@@ -50,7 +50,6 @@ set(RENDER_LIBRARIES
 	shaderc_shared
 )
 
-
 if (USE_RENDER_BACKEND_VK)
 	file(GLOB VK_RENDER_SOURCES
 		${THIRDPARTY_DIR}/volk/volk.c
@@ -67,6 +66,7 @@ if (USE_RENDER_BACKEND_VK)
 
 	# TODO: add platform dependent checks
 	list(APPEND RENDER_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+	list(APPEND RENDER_DEBUG_DEFINES SCAPES_VULKAN_USE_VALIDATION_LAYERS)
 endif()
 
 add_library(
@@ -77,7 +77,7 @@ add_library(
 )
 
 target_include_directories(scapes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${ENGINE_API_DIR})
-target_compile_definitions(scapes PUBLIC ${RENDER_DEFINES} ${PROFILER_DEFINES})
+target_compile_definitions(scapes PUBLIC ${RENDER_DEFINES} $<$<CONFIG:Debug>:${RENDER_DEBUG_DEFINES}> ${PROFILER_DEFINES})
 target_link_libraries(scapes PUBLIC ${RENDER_LIBRARIES})
 
 # TODO: add common library for all engine modules

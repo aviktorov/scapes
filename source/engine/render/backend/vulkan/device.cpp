@@ -59,9 +59,11 @@ namespace render::backend::vulkan
 		if (!Utils::checkInstanceExtensions(requiredInstanceExtensions, true))
 			throw std::runtime_error("This device doesn't have required Vulkan extensions");
 
+#if SCAPES_VULKAN_USE_VALIDATION_LAYERS
 		// Check required instance validation layers
 		if (!Utils::checkInstanceValidationLayers(requiredValidationLayers, true))
 			throw std::runtime_error("This device doesn't have required Vulkan validation layers");
+#endif
 
 		// Fill instance structures
 		VkApplicationInfo appInfo = {};
@@ -84,9 +86,12 @@ namespace render::backend::vulkan
 		instanceInfo.pApplicationInfo = &appInfo;
 		instanceInfo.enabledExtensionCount = static_cast<uint32_t>(requiredInstanceExtensions.size());
 		instanceInfo.ppEnabledExtensionNames = requiredInstanceExtensions.data();
+		instanceInfo.pNext = &debugMessengerInfo;
+
+#if SCAPES_VULKAN_USE_VALIDATION_LAYERS
 		instanceInfo.enabledLayerCount = static_cast<uint32_t>(requiredValidationLayers.size());
 		instanceInfo.ppEnabledLayerNames = requiredValidationLayers.data();
-		instanceInfo.pNext = &debugMessengerInfo;
+#endif
 
 		// Create Vulkan instance
 		VkResult result = vkCreateInstance(&instanceInfo, nullptr, &instance);
@@ -151,8 +156,10 @@ namespace render::backend::vulkan
 		deviceCreateInfo.ppEnabledExtensionNames = requiredPhysicalDeviceExtensions.data();
 
 		// next two parameters are ignored, but it's still good to pass layers for backward compatibility
+#if SCAPES_VULKAN_USE_VALIDATION_LAYERS
 		deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(requiredValidationLayers.size()); 
 		deviceCreateInfo.ppEnabledLayerNames = requiredValidationLayers.data();
+#endif
 
 		result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device);
 		if (result != VK_SUCCESS)
