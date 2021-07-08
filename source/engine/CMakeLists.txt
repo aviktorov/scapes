@@ -37,16 +37,14 @@ file(GLOB RENDER_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/render/backend/*.h
 )
 
-# TODO: add platform dependent checks
-set(RENDER_DEFINES
-	SCAPES_PLATFORM_WIN32
-	NOMINMAX
-)
+if (WIN32)
+	set(PLATFORM_DEFINES
+		SCAPES_PLATFORM_WIN32
+		NOMINMAX
+	)
+endif()
 
 set(RENDER_LIBRARIES
-	assimp-vc141-mt
-	IrrXml
-	zlibstatic
 	shaderc_shared
 )
 
@@ -64,8 +62,10 @@ if (USE_RENDER_BACKEND_VK)
 	list(APPEND RENDER_SOURCES ${VK_RENDER_SOURCES})
 	list(APPEND RENDER_HEADERS ${VK_RENDER_HEADERS})
 
-	# TODO: add platform dependent checks
-	list(APPEND RENDER_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+	if (WIN32)
+		list(APPEND PLATFORM_DEFINES VK_USE_PLATFORM_WIN32_KHR)
+	endif()
+
 	list(APPEND RENDER_DEBUG_DEFINES SCAPES_VULKAN_USE_VALIDATION_LAYERS)
 endif()
 
@@ -77,7 +77,6 @@ add_library(
 )
 
 target_include_directories(scapes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${ENGINE_API_DIR})
-target_compile_definitions(scapes PUBLIC ${RENDER_DEFINES} $<$<CONFIG:Debug>:${RENDER_DEBUG_DEFINES}> ${PROFILER_DEFINES})
+target_compile_definitions(scapes PUBLIC ${PLATFORM_DEFINES} ${RENDER_DEFINES} ${PROFILER_DEFINES})
+target_compile_definitions(scapes PUBLIC $<$<CONFIG:Debug>:${RENDER_DEBUG_DEFINES}>)
 target_link_libraries(scapes PUBLIC ${RENDER_LIBRARIES})
-
-# TODO: add common library for all engine modules

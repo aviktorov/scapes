@@ -13,15 +13,17 @@ file(GLOB HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/*.h
 )
 
-set (DEFINES
-	SCAPES_PLATFORM_WIN32
-)
+if (WIN32)
+	set (DEFINES
+		GLFW_EXPOSE_NATIVE_WIN32
+	)
+endif()
 
 add_executable(app ${SOURCES} ${HEADERS})
 
 target_include_directories(app PUBLIC ${API_DIR})
 target_compile_definitions(app PUBLIC ${DEFINES})
-target_link_libraries(app PUBLIC glfw3 scapes)
+target_link_libraries(app PUBLIC glfw3 scapes assimp-vc141-mt IrrXml zlibstatic)
 
 add_custom_command(
 	TARGET app POST_BUILD

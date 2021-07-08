@@ -1,7 +1,3 @@
-#if defined(SCAPES_PLATFORM_WIN32)
-	#define GLFW_EXPOSE_NATIVE_WIN32
-#endif
-
 #include "Application.h"
 #include "ApplicationResources.h"
 #include "IO.h"
