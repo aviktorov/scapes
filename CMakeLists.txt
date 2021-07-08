@@ -25,6 +25,7 @@ include_directories("3rdparty/vulkan")
 include_directories("3rdparty/imgui")
 include_directories("3rdparty/imgui/examples")
 include_directories("3rdparty/tracy")
+include_directories("3rdparty/flecs")
 
 link_directories("3rdparty/assimp/lib")
 link_directories("3rdparty/glfw/lib")
