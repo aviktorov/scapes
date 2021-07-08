@@ -67,9 +67,20 @@ PBR Sandbox:
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ First person camera (WASD controls & mouse aim)
-    Stream 63:
-        ☐ Make first release on github
+    Stream 64:
+        ☐ Add systems to ecs::render
+            ☐ Draw all renderables
+            ☐ Draw all visible renderables
+            ☐ Draw all lights
+            ☐ Draw all visible lights
+            ☐ Do culling
+        ☐ Use ecs::render systems in RenderGraph
+            ☐ GBuffer culling & rendering
+            ☐ LBuffer culling & rendering
         ☐ Try entt
+    Stream 63:
+        ✔ Make first release on github @done (7/8/2021, 8:34:42 PM)
+        ✔ Try flecs @done (7/8/2021, 11:59:44 PM)
     Stream 62:
         ✔ Move high-level render mesh / shader / swap chain / texture classes to app @done (7/6/2021, 11:03:17 PM)
         ✔ Decouple render/shaders module from render/backend module @done (7/6/2021, 11:38:49 PM)
