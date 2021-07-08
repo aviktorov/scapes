@@ -13,6 +13,7 @@ endif()
 set(THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty)
 set(ENGINE_API_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+include_directories("3rdparty/")
 include_directories("3rdparty/assimp/include")
 include_directories("3rdparty/glfw/include")
 include_directories("3rdparty/glm")
