@@ -21,70 +21,21 @@ namespace render::backend::vulkan
 		clear();
 	}
 
-	VkImageView ImageViewCache::fetch(const SwapChain *swap_chain, uint32_t base_image)
-	{
-		assert(swap_chain);
-		assert(base_image < swap_chain->num_images);
-
-		VkImageAspectFlags aspect_flags = Utils::getImageAspectFlags(swap_chain->surface_format.format);
-		VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_2D;
-
-		uint64_t hash = getHash(
-			swap_chain->images[base_image],
-			swap_chain->surface_format.format,
-			aspect_flags,
-			view_type
-		);
-
-		auto it = cache.find(hash);
-		if (it != cache.end())
-			return it->second;
-
-		VkImageView result = Utils::createImageView(
-			device,
-			swap_chain->images[base_image],
-			swap_chain->surface_format.format,
-			aspect_flags,
-			view_type
-		);
-
-		cache[hash] = result;
-		return result;
-	}
-
 	VkImageView ImageViewCache::fetch(const Texture *texture, uint32_t base_mip, uint32_t num_mips, uint32_t base_layer, uint32_t num_layers)
 	{
 		assert(texture);
 		assert(num_layers > 0);
 		assert(num_mips > 0);
+		assert(base_mip + num_mips <= texture->num_mipmaps);
+		assert(base_layer + num_layers <= texture->num_layers);
 
-		VkImageAspectFlags aspect_flags = Utils::getImageAspectFlags(texture->format);
-		VkImageViewType view_type = Utils::getImageBaseViewType(texture->type, texture->flags, num_layers);
-
-		uint64_t hash = getHash(
-			texture->image,
-			texture->format,
-			aspect_flags,
-			view_type,
-			base_mip,
-			num_mips,
-			base_layer,
-			num_layers
-		);
+		uint64_t hash = getHash(texture, base_mip, num_mips, base_layer, num_layers);
 
 		auto it = cache.find(hash);
 		if (it != cache.end())
 			return it->second;
 
-		VkImageView result = Utils::createImageView(
-			device,
-			texture->image,
-			texture->format,
-			aspect_flags,
-			view_type,
-			base_mip, num_mips,
-			base_layer, num_layers
-		);
+		VkImageView result = Utils::createImageView(device, texture, base_mip, num_mips, base_layer, num_layers);
 
 		cache[hash] = result;
 		return result;
@@ -98,21 +49,21 @@ namespace render::backend::vulkan
 		cache.clear();
 	}
 
-	uint64_t ImageViewCache::getHash(
-			VkImage image,
-			VkFormat format,
-			VkImageAspectFlags aspect_flags,
-			VkImageViewType view_type,
-			uint32_t base_mip,
-			uint32_t num_mips,
-			uint32_t base_layer,
-			uint32_t num_layers
-	) const
+	uint64_t ImageViewCache::getHash(const Texture *texture, uint32_t base_mip, uint32_t num_mips, uint32_t base_layer, uint32_t num_layers) const
 	{
+		assert(texture);
+		assert(num_layers > 0);
+		assert(num_mips > 0);
+		assert(base_mip + num_mips <= texture->num_mipmaps);
+		assert(base_layer + num_layers <= texture->num_layers);
+
+		VkImageAspectFlags aspect_flags = Utils::getImageAspectFlags(texture->format);
+		VkImageViewType view_type = Utils::getImageBaseViewType(texture->type, texture->flags, num_layers);
+
 		uint64_t hash = 0;
 
-		hashCombine(hash, image);
-		hashCombine(hash, format);
+		hashCombine(hash, texture->image);
+		hashCombine(hash, texture->format);
 		hashCombine(hash, aspect_flags);
 		hashCombine(hash, view_type);
 		hashCombine(hash, base_mip);

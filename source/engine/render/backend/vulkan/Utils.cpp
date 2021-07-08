@@ -745,7 +745,6 @@ namespace render::backend::vulkan
 		VkFormat format,
 		VkImageTiling tiling,
 		VkImageUsageFlags usage,
-		VkMemoryPropertyFlags memoryProperties,
 		VkImageCreateFlags flags,
 		VkImage &image,
 		VmaAllocation &memory
@@ -771,93 +770,39 @@ namespace render::backend::vulkan
 		VmaAllocationCreateInfo allocInfo = {};
 		allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-		if (vmaCreateImage(device->getVRAMAllocator(), &imageInfo, &allocInfo, &image, &memory, nullptr) != VK_SUCCESS)
-		{
-			// TODO: log error "Can't create image"
-		}
-	}
-
-	void Utils::createImageCube(
-		const Device *device,
-		uint32_t width,
-		uint32_t height,
-		uint32_t mipLevels,
-		VkSampleCountFlagBits numSamples,
-		VkFormat format,
-		VkImageTiling tiling,
-		VkImageUsageFlags usage,
-		VkMemoryPropertyFlags memoryProperties,
-		VkImage &image,
-		VmaAllocation &memory
-	)
-	{
-		createImage(
-			device,
-			VK_IMAGE_TYPE_2D,
-			width, height, 1,
-			mipLevels, 6, numSamples,
-			format, tiling,
-			usage, memoryProperties,
-			VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT,
-			image, memory
-		);
-	}
-
-	void Utils::createImage2D(
-		const Device *device,
-		uint32_t width,
-		uint32_t height,
-		uint32_t mipLevels,
-		VkSampleCountFlagBits numSamples,
-		VkFormat format,
-		VkImageTiling tiling,
-		VkImageUsageFlags usage,
-		VkMemoryPropertyFlags memoryProperties,
-		VkImage &image,
-		VmaAllocation &memory
-	)
-	{
-		createImage(
-			device,
-			VK_IMAGE_TYPE_2D,
-			width, height, 1,
-			mipLevels, 1, numSamples,
-			format, tiling,
-			usage, memoryProperties,
-			0,
-			image, memory
-		);
+		VkResult result = vmaCreateImage(device->getVRAMAllocator(), &imageInfo, &allocInfo, &image, &memory, nullptr);
+		assert((result == VK_SUCCESS) && "Can't create image");
 	}
 
 	VkImageView Utils::createImageView(
 		const Device *device,
-		VkImage image,
-		VkFormat format,
-		VkImageAspectFlags aspectFlags,
-		VkImageViewType viewType,
-		uint32_t baseMipLevel,
-		uint32_t numMipLevels,
-		uint32_t baseLayer,
-		uint32_t numLayers
+		const Texture *texture,
+		uint32_t base_mip,
+		uint32_t num_mips,
+		uint32_t base_layer,
+		uint32_t num_layers
 	)
 	{
-		VkImageViewCreateInfo viewInfo = {};
-		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		viewInfo.image = image;
-		viewInfo.viewType = viewType;
-		viewInfo.format = format;
-		viewInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
-		viewInfo.subresourceRange.aspectMask = aspectFlags;
-		viewInfo.subresourceRange.baseMipLevel = baseMipLevel;
-		viewInfo.subresourceRange.levelCount = numMipLevels;
-		viewInfo.subresourceRange.baseArrayLayer = baseLayer;
-		viewInfo.subresourceRange.layerCount = numLayers;
+		VkImageAspectFlags aspect_flags = Utils::getImageAspectFlags(texture->format);
+		VkImageViewType view_type = Utils::getImageBaseViewType(texture->type, texture->flags, num_layers);
 
-		VkImageView imageView = VK_NULL_HANDLE;
-		if (vkCreateImageView(device->getDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+		VkImageViewCreateInfo info = {};
+		info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		info.image = texture->image;
+		info.viewType = view_type;
+		info.format = texture->format;
+		info.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
+		info.subresourceRange.aspectMask = aspect_flags;
+		info.subresourceRange.baseMipLevel = base_mip;
+		info.subresourceRange.levelCount = num_mips;
+		info.subresourceRange.baseArrayLayer = base_layer;
+		info.subresourceRange.layerCount = num_layers;
+
+		VkImageView result = VK_NULL_HANDLE;
+		if (vkCreateImageView(device->getDevice(), &info, nullptr, &result) != VK_SUCCESS)
 			return VK_NULL_HANDLE;
 
-		return imageView;
+		return result;
 	}
 
 	VkSampler Utils::createSampler(
@@ -1108,6 +1053,24 @@ namespace render::backend::vulkan
 		uint32_t num_layers
 	)
 	{
+		struct LayoutTransition
+		{
+			VkImageLayout layout;
+			VkAccessFlags access_mask;
+			VkPipelineStageFlags stage;
+		};
+
+		static std::vector<LayoutTransition> supported_transitions =
+		{
+			{ VK_IMAGE_LAYOUT_UNDEFINED, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT },
+			{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT },
+			{ VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT },
+			{ VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,	VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT },
+			{ VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,	VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT },
+			{ VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,	VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT },
+			{ VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT },
+		};
+
 		VkCommandBuffer command_buffer = beginSingleTimeCommands(device);
 
 		VkImageMemoryBarrier barrier = {};
@@ -1124,24 +1087,6 @@ namespace render::backend::vulkan
 		barrier.subresourceRange.levelCount = num_mips;
 		barrier.subresourceRange.baseArrayLayer = base_layer;
 		barrier.subresourceRange.layerCount = num_layers;
-
-		struct LayoutTransition
-		{
-			VkImageLayout layout;
-			VkAccessFlags access_mask;
-			VkPipelineStageFlags stage;
-		};
-
-		static std::vector<LayoutTransition> supported_transitions =
-		{
-			{ VK_IMAGE_LAYOUT_UNDEFINED, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT },
-			{ VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT },
-			{ VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT },
-			{ VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,	VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT },
-			{ VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,	VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT },
-			{ VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,	VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT },
-			{ VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,	0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT },
-		};
 
 		VkPipelineStageFlags src_stage;
 		VkPipelineStageFlags dst_stage;
@@ -1211,23 +1156,23 @@ namespace render::backend::vulkan
 		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceInfo.flags = 0;
 
-		VkFence fence;
-		if (vkCreateFence(device->getDevice(), &fenceInfo, nullptr, &fence) != VK_SUCCESS)
-			throw std::runtime_error("Can't create fence");
+		VkFence fence = VK_NULL_HANDLE;
+
+		VkResult result = vkCreateFence(device->getDevice(), &fenceInfo, nullptr, &fence);
+		assert((result == VK_SUCCESS) && "Can't create fence");
 
 		VkSubmitInfo submitInfo = {};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &commandBuffer;
 
-		if (vkQueueSubmit(device->getGraphicsQueue(), 1, &submitInfo, fence) != VK_SUCCESS)
-			throw std::runtime_error("Can't submit command buffer");
+		result = vkQueueSubmit(device->getGraphicsQueue(), 1, &submitInfo, fence);
+		assert((result == VK_SUCCESS) && "Can't submit command buffer");
 		
-		if (vkWaitForFences(device->getDevice(), 1, &fence, VK_TRUE, UINT64_MAX) != VK_SUCCESS)
-			throw std::runtime_error("Can't wait for a fence");
+		result = vkWaitForFences(device->getDevice(), 1, &fence, VK_TRUE, UINT64_MAX);
+		assert((result == VK_SUCCESS) && "Can't wait for a fence");
 
 		vkDestroyFence(device->getDevice(), fence, nullptr);
-
 		vkFreeCommandBuffers(device->getDevice(), device->getCommandPool(), 1, &commandBuffer);
 	}
 }

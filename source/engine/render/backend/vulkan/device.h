@@ -25,7 +25,6 @@ namespace render::backend::vulkan
 	public:
 		void init(const char *applicationName, const char *engineName);
 		void shutdown();
-		void wait();
 
 	private:
 		struct QueueFamilyIndices

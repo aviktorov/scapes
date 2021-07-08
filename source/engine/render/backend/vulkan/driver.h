@@ -57,6 +57,7 @@ namespace render::backend::vulkan
 		VkImageTiling tiling {VK_IMAGE_TILING_OPTIMAL};
 		VkSampleCountFlagBits samples {VK_SAMPLE_COUNT_1_BIT};
 		VkImageCreateFlags flags {0};
+		ImageViewCache *image_view_cache {nullptr};
 	};
 
 	struct FrameBuffer : public render::backend::FrameBuffer
@@ -589,7 +590,6 @@ namespace render::backend::vulkan
 		Device *device {nullptr};
 		DescriptorSetLayoutCache *descriptor_set_layout_cache {nullptr};
 		PipelineLayoutCache *pipeline_layout_cache {nullptr};
-		ImageViewCache *image_view_cache {nullptr};
 		PipelineCache *pipeline_cache {nullptr};
 	};
 }

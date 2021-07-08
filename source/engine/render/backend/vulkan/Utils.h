@@ -164,65 +164,18 @@ namespace render::backend::vulkan
 			VkFormat format,
 			VkImageTiling tiling,
 			VkImageUsageFlags usage,
-			VkMemoryPropertyFlags memoryProperties,
 			VkImageCreateFlags flags,
-			VkImage &image,
-			VmaAllocation &memory
-		);
-
-		static void createImageCube(
-			const Device *device,
-			uint32_t width,
-			uint32_t height,
-			uint32_t mipLevels,
-			VkSampleCountFlagBits numSamples,
-			VkFormat format,
-			VkImageTiling tiling,
-			VkImageUsageFlags usage,
-			VkMemoryPropertyFlags memoryProperties,
-			VkImage &image,
-			VmaAllocation &memory
-		);
-
-		static void createImage2D(
-			const Device *device,
-			uint32_t width,
-			uint32_t height,
-			uint32_t mipLevels,
-			VkSampleCountFlagBits numSamples,
-			VkFormat format,
-			VkImageTiling tiling,
-			VkImageUsageFlags usage,
-			VkMemoryPropertyFlags memoryProperties,
-			VkImage &image,
-			VmaAllocation &memory
-		);
-
-		static void createImage2D(
-			const Device *device,
-			uint32_t width,
-			uint32_t height,
-			uint32_t mipLevels,
-			uint32_t pixelSize,
-			const void *data,
-			uint32_t dataMipLevels,
-			VkSampleCountFlagBits numSamples,
-			VkFormat format,
-			VkImageTiling tiling,
 			VkImage &image,
 			VmaAllocation &memory
 		);
 
 		static VkImageView createImageView(
 			const Device *device,
-			VkImage image,
-			VkFormat format,
-			VkImageAspectFlags aspectFlags,
-			VkImageViewType viewType,
-			uint32_t baseMipLevel = 0,
-			uint32_t numMipLevels = 1,
-			uint32_t baseLayer = 0,
-			uint32_t numLayers = 1
+			const Texture *texture,
+			uint32_t base_mip = 0,
+			uint32_t num_mips = 1,
+			uint32_t base_layer = 0,
+			uint32_t num_layers = 1
 		);
 
 		static VkSampler createSampler(

@@ -31,9 +31,11 @@ namespace render::backend::vulkan
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 	};
 
+#ifdef SCAPES_VULKAN_USE_VALIDATION_LAYERS
 	static std::vector<const char *> requiredValidationLayers = {
 		"VK_LAYER_KHRONOS_validation",
 	};
+#endif
 
 	/*
 	 */
@@ -234,13 +236,6 @@ namespace render::backend::vulkan
 
 		maxMSAASamples = VK_SAMPLE_COUNT_1_BIT;
 		physicalDevice = VK_NULL_HANDLE;
-	}
-
-	/*
-	 */
-	void Device::wait()
-	{
-		vkDeviceWaitIdle(device);
 	}
 
 	/*

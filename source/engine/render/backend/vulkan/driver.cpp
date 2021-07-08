@@ -32,7 +32,6 @@ namespace render::backend::vulkan
 				texture->num_mipmaps, texture->num_layers,
 				texture->samples, texture->format, texture->tiling,
 				VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | usage_flags,
-				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				texture->flags,
 				texture->image,
 				texture->memory
@@ -80,8 +79,9 @@ namespace render::backend::vulkan
 				0, texture->num_layers
 			);
 
-			// create base sampler
+			// create base sampler & view cache
 			texture->sampler = Utils::createSampler(device, 0, texture->num_mipmaps);
+			texture->image_view_cache = new ImageViewCache(device);
 		}
 
 		static void selectOptimalSwapChainSettings(const Device *device, SwapChain *swap_chain)
@@ -145,7 +145,7 @@ namespace render::backend::vulkan
 			if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 				swap_chain->sizes = capabilities.currentExtent;
 			else
-				swap_chain->sizes = capabilities.maxImageExtent;
+				swap_chain->sizes = capabilities.minImageExtent;
 
 			// Simply sticking to this minimum means that we may sometimes have to wait
 			// on the driver to complete internal operations before we can acquire another image to render to.
@@ -171,26 +171,20 @@ namespace render::backend::vulkan
 			info.imageExtent = swap_chain->sizes;
 			info.imageArrayLayers = 1;
 			info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-			if (device->getGraphicsQueueFamily() != swap_chain->present_queue_family)
-			{
-				uint32_t families[2] = { device->getGraphicsQueueFamily(), swap_chain->present_queue_family };
-				info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-				info.queueFamilyIndexCount = 2;
-				info.pQueueFamilyIndices = families;
-			}
-			else
-			{
-				info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-				info.queueFamilyIndexCount = 0;
-				info.pQueueFamilyIndices = nullptr;
-			}
-
+			info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 			info.preTransform = capabilities.currentTransform;
 			info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 			info.presentMode = swap_chain->present_mode;
 			info.clipped = VK_TRUE;
 			info.oldSwapchain = VK_NULL_HANDLE;
+
+			uint32_t families[2] = { device->getGraphicsQueueFamily(), swap_chain->present_queue_family };
+			if (device->getGraphicsQueueFamily() != swap_chain->present_queue_family)
+			{
+				info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+				info.queueFamilyIndexCount = 2;
+				info.pQueueFamilyIndices = families;
+			}
 
 			if (vkCreateSwapchainKHR(device->getDevice(), &info, nullptr, &swap_chain->swap_chain) != VK_SUCCESS)
 			{
@@ -198,8 +192,10 @@ namespace render::backend::vulkan
 				return false;
 			}
 
-			uint32_t width = swap_chain->sizes.width;
-			uint32_t height = swap_chain->sizes.height;
+			// Get surface images
+			vkGetSwapchainImagesKHR(device->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, nullptr);
+			assert(swap_chain->num_images != 0 && swap_chain->num_images < SwapChain::MAX_IMAGES);
+			vkGetSwapchainImagesKHR(device->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, swap_chain->images);
 
 			// Create dummy render pass
 			RenderPassBuilder render_pass_builder;
@@ -216,11 +212,6 @@ namespace render::backend::vulkan
 				.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
 				.addColorAttachmentReference(0, 0)
 				.build(device->getDevice());
-
-			// Get surface images
-			vkGetSwapchainImagesKHR(device->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, nullptr);
-			assert(swap_chain->num_images != 0 && swap_chain->num_images < SwapChain::MAX_IMAGES);
-			vkGetSwapchainImagesKHR(device->getDevice(), swap_chain->swap_chain, &swap_chain->num_images, swap_chain->images);
 
 			// Create frame objects (semaphores, image views, framebuffers)
 			for (size_t i = 0; i < swap_chain->num_images; i++)
@@ -287,6 +278,9 @@ namespace render::backend::vulkan
 				swap_chain->frame_buffers[i] = VK_NULL_HANDLE;
 			}
 
+			vkDestroyRenderPass(device->getDevice(), swap_chain->dummy_render_pass, nullptr);
+			swap_chain->dummy_render_pass = VK_NULL_HANDLE;
+
 			vkDestroySwapchainKHR(device->getDevice(), swap_chain->swap_chain, nullptr);
 			swap_chain->swap_chain = VK_NULL_HANDLE;
 		}
@@ -326,7 +320,6 @@ namespace render::backend::vulkan
 		device->init(application_name, engine_name);
 
 		descriptor_set_layout_cache = new DescriptorSetLayoutCache(device);
-		image_view_cache = new ImageViewCache(device);
 		pipeline_layout_cache = new PipelineLayoutCache(device, descriptor_set_layout_cache);
 		pipeline_cache = new PipelineCache(device, pipeline_layout_cache);
 	}
@@ -342,12 +335,9 @@ namespace render::backend::vulkan
 		delete descriptor_set_layout_cache;
 		descriptor_set_layout_cache = nullptr;
 
-		delete image_view_cache;
-		image_view_cache = nullptr;
-
 		if (device)
 		{
-			device->wait();
+			vkDeviceWaitIdle(device->getDevice());
 			device->shutdown();
 		}
 
@@ -623,7 +613,7 @@ namespace render::backend::vulkan
 			const FrameBufferAttachment &input_attachment = attachments[i];
 			const Texture *texture = static_cast<const Texture *>(input_attachment.texture);
 
-			result->attachment_views[i] = image_view_cache->fetch(texture, input_attachment.base_mip, 1, input_attachment.base_layer, input_attachment.num_layers);
+			result->attachment_views[i] = texture->image_view_cache->fetch(texture, input_attachment.base_mip, 1, input_attachment.base_layer, input_attachment.num_layers);
 			result->attachment_formats[i] = texture->format;
 			result->attachment_samples[i] = texture->samples;
 
@@ -720,9 +710,9 @@ namespace render::backend::vulkan
 		if (clear_color)
 		{
 			result->attachment_clear_values[0].color.float32[0] = clear_color->as_f32[0];
-			result->attachment_clear_values[0].color.float32[0] = clear_color->as_f32[0];
-			result->attachment_clear_values[0].color.float32[0] = clear_color->as_f32[0];
-			result->attachment_clear_values[0].color.float32[0] = clear_color->as_f32[0];
+			result->attachment_clear_values[0].color.float32[1] = clear_color->as_f32[1];
+			result->attachment_clear_values[0].color.float32[2] = clear_color->as_f32[2];
+			result->attachment_clear_values[0].color.float32[3] = clear_color->as_f32[3];
 		}
 
 		result->num_color_attachments = 1;
@@ -911,8 +901,8 @@ namespace render::backend::vulkan
 		vk_vertex_buffer->buffer = VK_NULL_HANDLE;
 		vk_vertex_buffer->memory = VK_NULL_HANDLE;
 
-		delete vertex_buffer;
-		vertex_buffer = nullptr;
+		delete vk_vertex_buffer;
+		vk_vertex_buffer = nullptr;
 	}
 
 	void Driver::destroyIndexBuffer(backend::IndexBuffer *index_buffer)
@@ -927,8 +917,8 @@ namespace render::backend::vulkan
 		vk_index_buffer->buffer = VK_NULL_HANDLE;
 		vk_index_buffer->memory = VK_NULL_HANDLE;
 
-		delete index_buffer;
-		index_buffer = nullptr;
+		delete vk_index_buffer;
+		vk_index_buffer = nullptr;
 	}
 
 	void Driver::destroyTexture(backend::Texture *texture)
@@ -947,8 +937,11 @@ namespace render::backend::vulkan
 		vkDestroySampler(device->getDevice(), vk_texture->sampler, nullptr);
 		vk_texture->sampler = VK_NULL_HANDLE;
 
-		delete texture;
-		texture = nullptr;
+		delete vk_texture->image_view_cache;
+		vk_texture->image_view_cache = nullptr;
+
+		delete vk_texture;
+		vk_texture = nullptr;
 	}
 
 	void Driver::destroyFrameBuffer(backend::FrameBuffer *frame_buffer)
@@ -964,8 +957,8 @@ namespace render::backend::vulkan
 		vkDestroyFramebuffer(device->getDevice(), vk_frame_buffer->frame_buffer, nullptr);
 		vk_frame_buffer->frame_buffer = VK_NULL_HANDLE;
 
-		delete frame_buffer;
-		frame_buffer = nullptr;
+		delete vk_frame_buffer;
+		vk_frame_buffer = nullptr;
 	}
 
 	void Driver::destroyRenderPass(backend::RenderPass *render_pass)
@@ -978,8 +971,8 @@ namespace render::backend::vulkan
 		vkDestroyRenderPass(device->getDevice(), vk_render_pass->render_pass, nullptr);
 		vk_render_pass->render_pass = VK_NULL_HANDLE;
 
-		delete render_pass;
-		render_pass = nullptr;
+		delete vk_render_pass;
+		vk_render_pass = nullptr;
 	}
 
 	void Driver::destroyCommandBuffer(backend::CommandBuffer *command_buffer)
@@ -998,8 +991,8 @@ namespace render::backend::vulkan
 		vkDestroyFence(device->getDevice(), vk_command_buffer->rendering_finished_cpu, nullptr);
 		vk_command_buffer->rendering_finished_cpu = VK_NULL_HANDLE;
 
-		delete command_buffer;
-		command_buffer = nullptr;
+		delete vk_command_buffer;
+		vk_command_buffer = nullptr;
 	}
 
 	void Driver::destroyUniformBuffer(backend::UniformBuffer *uniform_buffer)
@@ -1014,8 +1007,8 @@ namespace render::backend::vulkan
 		vk_uniform_buffer->buffer = VK_NULL_HANDLE;
 		vk_uniform_buffer->memory = VK_NULL_HANDLE;
 
-		delete uniform_buffer;
-		uniform_buffer = nullptr;
+		delete vk_uniform_buffer;
+		vk_uniform_buffer = nullptr;
 	}
 
 	void Driver::destroyShader(backend::Shader *shader)
@@ -1028,8 +1021,8 @@ namespace render::backend::vulkan
 		vkDestroyShaderModule(device->getDevice(), vk_shader->module, nullptr);
 		vk_shader->module = VK_NULL_HANDLE;
 
-		delete shader;
-		shader = nullptr;
+		delete vk_shader;
+		vk_shader = nullptr;
 	}
 
 	void Driver::destroyBindSet(backend::BindSet *bind_set)
@@ -1054,8 +1047,8 @@ namespace render::backend::vulkan
 		if (vk_bind_set->set != VK_NULL_HANDLE)
 			vkFreeDescriptorSets(device->getDevice(), device->getDescriptorPool(), 1, &vk_bind_set->set);
 
-		delete bind_set;
-		bind_set = nullptr;
+		delete vk_bind_set;
+		vk_bind_set = nullptr;
 	}
 
 	void Driver::destroyPipelineState(backend::PipelineState *pipeline_state)
@@ -1065,8 +1058,8 @@ namespace render::backend::vulkan
 
 		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
 
-		delete pipeline_state;
-		pipeline_state = nullptr;
+		delete vk_pipeline_state;
+		vk_pipeline_state = nullptr;
 	}
 
 	void Driver::destroySwapChain(backend::SwapChain *swap_chain)
@@ -1085,13 +1078,14 @@ namespace render::backend::vulkan
 
 		vk_swap_chain->num_images = 0;
 		vk_swap_chain->current_image = 0;
+		vk_swap_chain->current_frame = 0;
 
 		// Destroy platform surface
 		Platform::destroySurface(device, vk_swap_chain->surface);
 		vk_swap_chain->surface = nullptr;
 
-		delete swap_chain;
-		swap_chain = nullptr;
+		delete vk_swap_chain;
+		vk_swap_chain = nullptr;
 	}
 
 	/*
@@ -1363,13 +1357,17 @@ namespace render::backend::vulkan
 	bool Driver::acquire(backend::SwapChain *swap_chain, uint32_t *new_image)
 	{
 		SwapChain *vk_swap_chain = static_cast<SwapChain *>(swap_chain);
-		uint32_t current_frame = vk_swap_chain->current_frame;
+
+		vk_swap_chain->current_frame++;
+		vk_swap_chain->current_frame %= vk_swap_chain->num_images;
+
+		VkSemaphore sync = vk_swap_chain->image_available_gpu[vk_swap_chain->current_frame];
 
 		VkResult result = vkAcquireNextImageKHR(
 			device->getDevice(),
 			vk_swap_chain->swap_chain,
 			std::numeric_limits<uint64_t>::max(),
-			vk_swap_chain->image_available_gpu[current_frame],
+			sync,
 			VK_NULL_HANDLE,
 			&vk_swap_chain->current_image
 		);
@@ -1384,7 +1382,9 @@ namespace render::backend::vulkan
 			return false;
 		}
 
-		*new_image = vk_swap_chain->current_frame;
+		if (new_image)
+			*new_image = vk_swap_chain->current_image;
+
 		return true;
 	}
 
@@ -1426,9 +1426,6 @@ namespace render::backend::vulkan
 			return false;
 		}
 
-		vk_swap_chain->current_frame++;
-		vk_swap_chain->current_frame %= vk_swap_chain->num_images;
-
 		return true;
 	}
 
@@ -1436,7 +1433,7 @@ namespace render::backend::vulkan
 	{
 		assert(device != nullptr && "Invalid device");
 
-		device->wait();
+		vkDeviceWaitIdle(device->getDevice());
 	}
 
 	bool Driver::wait(
@@ -1545,7 +1542,7 @@ namespace render::backend::vulkan
 
 		if (vk_texture)
 		{
-			view = image_view_cache->fetch(vk_texture, base_mip, num_mipmaps, base_layer, num_layers);
+			view = vk_texture->image_view_cache->fetch(vk_texture, base_mip, num_mipmaps, base_layer, num_layers);
 			sampler = vk_texture->sampler;
 		}
 
@@ -1928,10 +1925,10 @@ namespace render::backend::vulkan
 			{
 				const CommandBuffer *vk_wait_command_buffer = static_cast<const CommandBuffer *>(wait_command_buffers[i]);
 				wait_semaphores[i] = vk_wait_command_buffer->rendering_finished_gpu;
-				wait_stages[i] = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				wait_stages[i] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 			}
 
-			info.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size());
+			info.waitSemaphoreCount = num_wait_command_buffers;
 			info.pWaitSemaphores = wait_semaphores.data();
 			info.pWaitDstStageMask = wait_stages.data();
 		}
