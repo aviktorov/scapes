@@ -116,6 +116,8 @@ private:
 private:
 	GLFWwindow *window {nullptr};
 	bool windowResized {false};
+	uint32_t width {0};
+	uint32_t height {0};
 
 	Scene *sponza {nullptr};
 	SkyLight *sky_light {nullptr};
@@ -134,4 +136,8 @@ private:
 	render::backend::UniformBuffer *camera_buffer {nullptr};
 	render::backend::BindSet *camera_bindings {nullptr};
 	void *camera_gpu_data {nullptr};
+
+	render::backend::UniformBuffer *application_buffer {nullptr};
+	render::backend::BindSet *application_bindings {nullptr};
+	void *application_gpu_data {nullptr};
 };

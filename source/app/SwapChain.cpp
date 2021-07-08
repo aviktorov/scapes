@@ -15,21 +15,17 @@ SwapChain::~SwapChain()
 
 /*
  */
-void SwapChain::init(uint32_t w, uint32_t h, uint32_t s)
+void SwapChain::init()
 {
-	ubo_size = s;
-	width = w;
-	height = h;
-
 	swap_chain = driver->createSwapChain(native_window);
 
-	initFrames(width, height, ubo_size);
+	initFrames();
 }
 
-void SwapChain::resize(uint32_t w, uint32_t h)
+void SwapChain::recreate()
 {
-	shutdown();
-	init(w, h, ubo_size);
+	driver->destroySwapChain(swap_chain);
+	swap_chain = driver->createSwapChain(native_window);
 }
 
 void SwapChain::shutdown()
@@ -42,66 +38,39 @@ void SwapChain::shutdown()
 
 /*
  */
-bool SwapChain::acquire(RenderFrame &frame)
+render::backend::CommandBuffer *SwapChain::acquire()
 {
 	uint32_t image_index = 0;
 	if (!driver->acquire(swap_chain, &image_index))
-		return false;
+		return nullptr;
 
-	frame = frames[image_index];
+	render::backend::CommandBuffer *command_buffer = command_buffers[current_in_flight_frame];
+	driver->wait(1, &command_buffer);
 
-	return true;
+	return command_buffer;
 }
 
-bool SwapChain::present(const RenderFrame &frame)
+bool SwapChain::present(render::backend::CommandBuffer *command_buffer)
 {
-	bool result = driver->present(swap_chain, 1, &frame.command_buffer);
-	driver->wait(1, &frame.command_buffer);
+	bool result = driver->present(swap_chain, 1, &command_buffer);
+	current_in_flight_frame = (current_in_flight_frame + 1) % NUM_IN_FLIGHT_FRAMES;
+
 	return result;
 }
 
 /*
  */
-void SwapChain::initFrames(uint32_t width, uint32_t height, uint32_t ubo_size)
+void SwapChain::initFrames()
 {
-	uint32_t num_images = driver->getNumSwapChainImages(swap_chain);
-
-	// Create uniform buffers
-	frames.resize(num_images);
-
-	for (int i = 0; i < frames.size(); i++)
-	{
-		RenderFrame &frame = frames[i];
-		frame = {};
-
-		// Create uniform buffer object
-		if (ubo_size > 0)
-		{
-			frame.uniform_buffer = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, ubo_size);
-			frame.uniform_buffer_data = driver->map(frame.uniform_buffer);
-		}
-
-		// Create bind set
-		frame.bindings = driver->createBindSet();
-
-		if (ubo_size > 0)
-			driver->bindUniformBuffer(frame.bindings, 0, frame.uniform_buffer);
-
-		// Create commandbuffer
-		frame.command_buffer = driver->createCommandBuffer(render::backend::CommandBufferType::PRIMARY);
-
-		frame.swap_chain = swap_chain;
-	}
+	for (int i = 0; i < NUM_IN_FLIGHT_FRAMES; i++)
+		command_buffers[i] = driver->createCommandBuffer(render::backend::CommandBufferType::PRIMARY);
 }
 
 void SwapChain::shutdownFrames()
 {
-	for (RenderFrame &frame : frames)
+	for (int i = 0; i < NUM_IN_FLIGHT_FRAMES; i++)
 	{
-		driver->unmap(frame.uniform_buffer);
-		driver->destroyUniformBuffer(frame.uniform_buffer);
-		driver->destroyCommandBuffer(frame.command_buffer);
-		driver->destroyBindSet(frame.bindings);
+		driver->destroyCommandBuffer(command_buffers[i]);
+		command_buffers[i] = nullptr;
 	}
-	frames.clear();
 }

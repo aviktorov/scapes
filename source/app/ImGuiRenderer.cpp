@@ -197,7 +197,7 @@ void ImGuiRenderer::updateBuffers(const ImDrawData *draw_data)
 	driver->unmap(indices);
 }
 
-void ImGuiRenderer::setupRenderState(const RenderFrame &frame, const ImDrawData *draw_data)
+void ImGuiRenderer::setupRenderState(const ImDrawData *draw_data)
 {
 	driver->setVertexStream(pipeline_state, 0, vertices);
 
@@ -223,7 +223,7 @@ void ImGuiRenderer::setupRenderState(const RenderFrame &frame, const ImDrawData 
 	driver->setDepthTest(pipeline_state, false);
 }
 
-void ImGuiRenderer::render(const RenderFrame &frame)
+void ImGuiRenderer::render(render::backend::CommandBuffer *command_buffer)
 {
 	const ImDrawData *draw_data = ImGui::GetDrawData();
 	const ImVec2 &clip_offset = draw_data->DisplayPos;
@@ -232,7 +232,7 @@ void ImGuiRenderer::render(const RenderFrame &frame)
 	ImVec2 fb_size(draw_data->DisplaySize.x * clip_scale.x, draw_data->DisplaySize.y * clip_scale.y); 
 
 	updateBuffers(draw_data);
-	setupRenderState(frame, draw_data);
+	setupRenderState(draw_data);
 
 	uint32_t index_offset = 0;
 	int32_t vertex_offset = 0;
@@ -250,7 +250,7 @@ void ImGuiRenderer::render(const RenderFrame &frame)
 			if (command.UserCallback)
 			{
 				if (command.UserCallback == ImDrawCallback_ResetRenderState)
-					setupRenderState(frame, draw_data);
+					setupRenderState(draw_data);
 				else
 					command.UserCallback(list, &command);
 			}
@@ -282,7 +282,7 @@ void ImGuiRenderer::render(const RenderFrame &frame)
 				uint32_t height = static_cast<uint32_t>(y1 - y0);
 
 				driver->setScissor(pipeline_state, static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
-				driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, indices, num_indices, base_index, base_vertex, 1, 0);
+				driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, indices, num_indices, base_index, base_vertex, 1, 0);
 			}
 		}
 

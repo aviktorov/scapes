@@ -109,7 +109,7 @@ public:
 	void init(const ApplicationResources *resources, uint32_t width, uint32_t height);
 	void shutdown();
 	void resize(uint32_t width, uint32_t height);
-	void render(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
+	void render(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings, const Scene *scene);
 
 	ImTextureID fetchTextureID(const render::backend::Texture *texture);
 
@@ -154,19 +154,19 @@ private:
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
-	void renderGBuffer(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
-	void renderSSAO(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
-	void renderSSAOBlur(const Scene *scene, const RenderFrame &frame);
-	void renderSSRTrace(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
-	void renderSSRResolve(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
-	void renderSSRTemporalFilter(const Scene *scene, const RenderFrame &frame);
-	void renderLBuffer(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings);
-	void renderComposite(const Scene *scene, const RenderFrame &frame);
-	void renderCompositeTemporalFilter(const Scene *scene, const RenderFrame &frame);
-	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, const RenderFrame &frame);
-	void renderToSwapChain(const Scene *scene, const RenderFrame &frame);
+	void renderGBuffer(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void renderSSAO(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
+	void renderSSAOBlur(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings);
+	void renderSSRTrace(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void renderSSRResolve(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void renderSSRTemporalFilter(const Scene *scene, render::backend::CommandBuffer *command_buffer);
+	void renderLBuffer(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
+	void renderComposite(const Scene *scene, render::backend::CommandBuffer *command_buffer);
+	void renderCompositeTemporalFilter(const Scene *scene, render::backend::CommandBuffer *command_buffer);
+	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, render::backend::CommandBuffer *command_buffer);
+	void renderToSwapChain(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain);
 
-	void prepareOldTexture(const RenderBuffer &old, const RenderFrame &frame);
+	void prepareOldTexture(const RenderBuffer &old, render::backend::CommandBuffer *command_buffer);
 
 private:
 	render::backend::Driver *driver {nullptr};

@@ -51,9 +51,9 @@ void Application::update()
 	const glm::vec3 &up = {0.0f, 0.0f, 1.0f};
 	const glm::vec3 &zero = {0.0f, 0.0f, 0.0f};
 
-	const float width = static_cast<float>(swap_chain->getWidth());
-	const float height = static_cast<float>(swap_chain->getHeight());
-	const float aspect =  width / height;
+	const float viewport_width = static_cast<float>(width);
+	const float viewport_height = static_cast<float>(height);
+	const float aspect =  viewport_width / viewport_height;
 	const float zNear = 0.1f;
 	const float zFar = 10000.0f;
 
@@ -183,21 +183,22 @@ void Application::update()
  */
 void Application::render()
 {
-	RenderFrame frame;
-	if (!swap_chain->acquire(frame))
+	render::backend::CommandBuffer *command_buffer = swap_chain->acquire();
+
+	if (!command_buffer)
 	{
 		recreateSwapChain();
 		return;
 	}
 
 	memcpy(camera_gpu_data, &camera_state, sizeof(CameraState));
-	memcpy(frame.uniform_buffer_data, &application_state, sizeof(ApplicationState));
+	memcpy(application_gpu_data, &application_state, sizeof(ApplicationState));
+	
+	render_graph->render(command_buffer, swap_chain->getBackend(), application_bindings, camera_bindings, sponza);
 
-	render_graph->render(sponza, frame, camera_bindings);
+	driver->submitSyncked(command_buffer, swap_chain->getBackend());
 
-	driver->submitSyncked(frame.command_buffer, swap_chain->getBackend());
-
-	if (!swap_chain->present(frame) || windowResized)
+	if (!swap_chain->present(command_buffer) || windowResized)
 	{
 		windowResized = false;
 		recreateSwapChain();
@@ -239,8 +240,11 @@ void Application::mainloop()
  */
 void Application::initWindow()
 {
+	width = 800;
+	height = 600;
+
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(800, 600, "Scapes v1.0", nullptr, nullptr);
+	window = glfwCreateWindow(width, height, "Scapes v1.0", nullptr, nullptr);
 
 	glfwSetWindowUserPointer(window, this);
 
@@ -248,6 +252,7 @@ void Application::initWindow()
 	glfwSetCursorPosCallback(window, &Application::onMousePosition);
 	glfwSetMouseButtonCallback(window, &Application::onMouseButton);
 	glfwSetScrollCallback(window, &Application::onScroll);
+
 }
 
 void Application::shutdownWindow()
@@ -260,10 +265,15 @@ void Application::shutdownWindow()
  */
 void Application::onFramebufferResize(GLFWwindow *window, int width, int height)
 {
+	if (width == 0 || height == 0)
+		return;
+
 	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
 	assert(application != nullptr);
 
 	application->windowResized = true;
+	application->width = static_cast<uint32_t>(width);
+	application->height = static_cast<uint32_t>(height);
 }
 
 void Application::onMousePosition(GLFWwindow* window, double mouseX, double mouseY)
@@ -344,7 +354,7 @@ void Application::shutdownRenderScene()
 void Application::initRenderers()
 {
 	render_graph = new RenderGraph(driver, compiler);
-	render_graph->init(resources, swap_chain->getWidth(), swap_chain->getHeight());
+	render_graph->init(resources, width, height);
 
 	const uint8_t num_columns = ApplicationState::MAX_TEMPORAL_FRAMES / 4;
 	const uint8_t num_rows = ApplicationState::MAX_TEMPORAL_FRAMES / num_columns;
@@ -371,12 +381,35 @@ void Application::initRenderers()
 	driver->bindUniformBuffer(camera_bindings, 0, camera_buffer);
 
 	camera_gpu_data = driver->map(camera_buffer);
+
+	application_buffer = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, sizeof(ApplicationState));
+	application_bindings = driver->createBindSet();
+
+	driver->bindUniformBuffer(application_bindings, 0, application_buffer);
+
+	application_gpu_data = driver->map(application_buffer);
 }
 
 void Application::shutdownRenderers()
 {
 	delete render_graph;
 	render_graph = nullptr;
+
+	driver->unmap(camera_buffer);
+	driver->destroyUniformBuffer(camera_buffer);
+	camera_buffer = nullptr;
+	camera_gpu_data = nullptr;
+
+	driver->destroyBindSet(camera_bindings);
+	camera_bindings = nullptr;
+
+	driver->unmap(application_buffer);
+	driver->destroyUniformBuffer(application_buffer);
+	application_buffer = nullptr;
+	application_gpu_data = nullptr;
+
+	driver->destroyBindSet(application_bindings);
+	application_bindings = nullptr;
 }
 
 /*
@@ -431,12 +464,7 @@ void Application::initSwapChain()
 	if (!swap_chain)
 		swap_chain = new SwapChain(driver, nativeWindow);
 
-	int width, height;
-	glfwGetWindowSize(window, &width, &height);
-
-	uint32_t ubo_size = static_cast<uint32_t>(sizeof(ApplicationState));
-
-	swap_chain->init(static_cast<uint32_t>(width), static_cast<uint32_t>(height), ubo_size);
+	swap_chain->init();
 }
 
 void Application::shutdownSwapChain()
@@ -447,17 +475,9 @@ void Application::shutdownSwapChain()
 
 void Application::recreateSwapChain()
 {
-	int width = 0, height = 0;
-	while (width == 0 || height == 0)
-	{
-		glfwGetFramebufferSize(window, &width, &height);
-		glfwWaitEvents();
-	}
 	driver->wait();
 
-	glfwGetWindowSize(window, &width, &height);
-
-	swap_chain->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-	render_graph->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+	swap_chain->recreate();
+	render_graph->resize(width, height);
 	application_state.firstFrame = true;
 }

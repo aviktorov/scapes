@@ -499,15 +499,15 @@ ImTextureID RenderGraph::fetchTextureID(const render::backend::Texture *texture)
 
 /*
  */
-void RenderGraph::render(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings, const Scene *scene)
 {
-	driver->resetCommandBuffer(frame.command_buffer);
-	driver->beginCommandBuffer(frame.command_buffer);
+	driver->resetCommandBuffer(command_buffer);
+	driver->beginCommandBuffer(command_buffer);
 
 	if (first_frame)
 	{
-		prepareOldTexture(old_composite, frame);
-		prepareOldTexture(old_ssr, frame);
+		prepareOldTexture(old_composite, command_buffer);
+		prepareOldTexture(old_ssr, command_buffer);
 		first_frame = false;
 	}
 
@@ -519,7 +519,7 @@ void RenderGraph::render(const Scene *scene, const RenderFrame &frame, render::b
 		driver->setDepthWrite(pipeline_state, true);
 		driver->setDepthTest(pipeline_state, true);
 
-		renderGBuffer(scene, frame, camera_bindings);
+		renderGBuffer(scene, command_buffer, application_bindings, camera_bindings);
 	}
 
 	{
@@ -530,7 +530,7 @@ void RenderGraph::render(const Scene *scene, const RenderFrame &frame, render::b
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderSSAO(scene, frame, camera_bindings);
+		renderSSAO(scene, command_buffer, camera_bindings);
 	}
 
 	{
@@ -541,13 +541,13 @@ void RenderGraph::render(const Scene *scene, const RenderFrame &frame, render::b
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderSSAOBlur(scene, frame);
+		renderSSAOBlur(scene, command_buffer, application_bindings);
 	}
 
 	{
 		ZoneScopedN("LBuffer pass");
 
-		renderLBuffer(scene, frame, camera_bindings);
+		renderLBuffer(scene, command_buffer, camera_bindings);
 	}
 
 	{
@@ -558,7 +558,7 @@ void RenderGraph::render(const Scene *scene, const RenderFrame &frame, render::b
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderSSRTrace(scene, frame, camera_bindings);
+		renderSSRTrace(scene, command_buffer, application_bindings, camera_bindings);
 	}
 
 	{
@@ -569,7 +569,7 @@ void RenderGraph::render(const Scene *scene, const RenderFrame &frame, render::b
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderSSRResolve(scene, frame, camera_bindings);
+		renderSSRResolve(scene, command_buffer, application_bindings, camera_bindings);
 	}
 
 	{
@@ -580,13 +580,13 @@ void RenderGraph::render(const Scene *scene, const RenderFrame &frame, render::b
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderSSRTemporalFilter(scene, frame);
+		renderSSRTemporalFilter(scene, command_buffer);
 	}
 
 	{
 		ZoneScopedN("Composite pass");
 
-		renderComposite(scene, frame);
+		renderComposite(scene, command_buffer);
 	}
 
 	{
@@ -597,29 +597,29 @@ void RenderGraph::render(const Scene *scene, const RenderFrame &frame, render::b
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderCompositeTemporalFilter(scene, frame);
+		renderCompositeTemporalFilter(scene, command_buffer);
 	}
 
 	{
 		ZoneScopedN("Tonemapping + ImGui pass");
 
-		renderToSwapChain(scene, frame);
+		renderToSwapChain(scene, command_buffer, swap_chain);
 	}
 
 	// Swap temporal filters
 	std::swap(old_ssr, ssr);
 	std::swap(old_composite, composite);
 
-	driver->endCommandBuffer(frame.command_buffer);
+	driver->endCommandBuffer(command_buffer);
 }
 
-void RenderGraph::renderGBuffer(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderGBuffer(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
 {
-	driver->beginRenderPass(frame.command_buffer, gbuffer_render_pass, gbuffer.frame_buffer);
+	driver->beginRenderPass(command_buffer, gbuffer_render_pass, gbuffer.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
-	driver->setBindSet(pipeline_state, 0, frame.bindings);
+	driver->setBindSet(pipeline_state, 0, application_bindings);
 	driver->setBindSet(pipeline_state, 1, camera_bindings);
 
 	driver->clearShaders(pipeline_state);
@@ -638,15 +638,15 @@ void RenderGraph::renderGBuffer(const Scene *scene, const RenderFrame &frame, re
 		driver->setBindSet(pipeline_state, 2, node_bindings);
 		driver->setPushConstants(pipeline_state, static_cast<uint8_t>(sizeof(glm::mat4)), &node_transform);
 
-		driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, node_mesh->getIndexBuffer(), node_mesh->getNumIndices());
+		driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, node_mesh->getIndexBuffer(), node_mesh->getNumIndices());
 	}
 
-	driver->endRenderPass(frame.command_buffer);
+	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderSSAO(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderSSAO(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings)
 {
-	driver->beginRenderPass(frame.command_buffer, ssao_render_pass, ssao_noised.frame_buffer);
+	driver->beginRenderPass(command_buffer, ssao_render_pass, ssao_noised.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
@@ -661,17 +661,17 @@ void RenderGraph::renderSSAO(const Scene *scene, const RenderFrame &frame, rende
 	driver->clearVertexStreams(pipeline_state);
 	driver->setVertexStream(pipeline_state, 0, quad->getVertexBuffer());
 
-	driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
-	driver->endRenderPass(frame.command_buffer);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
+	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderSSAOBlur(const Scene *scene, const RenderFrame &frame)
+void RenderGraph::renderSSAOBlur(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings)
 {
-	driver->beginRenderPass(frame.command_buffer, ssao_render_pass, ssao_blurred.frame_buffer);
+	driver->beginRenderPass(command_buffer, ssao_render_pass, ssao_blurred.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
-	driver->setBindSet(pipeline_state, 0, frame.bindings);
+	driver->setBindSet(pipeline_state, 0, application_bindings);
 	driver->setBindSet(pipeline_state, 1, ssao_noised.bindings);
 
 	driver->clearShaders(pipeline_state);
@@ -681,17 +681,17 @@ void RenderGraph::renderSSAOBlur(const Scene *scene, const RenderFrame &frame)
 	driver->clearVertexStreams(pipeline_state);
 	driver->setVertexStream(pipeline_state, 0, quad->getVertexBuffer());
 
-	driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
-	driver->endRenderPass(frame.command_buffer);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
+	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderSSRTrace(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderSSRTrace(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
 {
-	driver->beginRenderPass(frame.command_buffer, hdr_render_pass, ssr_trace.frame_buffer);
+	driver->beginRenderPass(command_buffer, hdr_render_pass, ssr_trace.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
-	driver->setBindSet(pipeline_state, 0, frame.bindings);
+	driver->setBindSet(pipeline_state, 0, application_bindings);
 	driver->setBindSet(pipeline_state, 1, camera_bindings);
 	driver->setBindSet(pipeline_state, 2, gbuffer.bindings);
 	driver->setBindSet(pipeline_state, 3, ssr_data.bindings);
@@ -703,17 +703,17 @@ void RenderGraph::renderSSRTrace(const Scene *scene, const RenderFrame &frame, r
 	driver->clearVertexStreams(pipeline_state);
 	driver->setVertexStream(pipeline_state, 0, quad->getVertexBuffer());
 
-	driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
-	driver->endRenderPass(frame.command_buffer);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
+	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderSSRResolve(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderSSRResolve(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
 {
-	driver->beginRenderPass(frame.command_buffer, ssr_resolve_render_pass, ssr_resolve.frame_buffer);
+	driver->beginRenderPass(command_buffer, ssr_resolve_render_pass, ssr_resolve.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
-	driver->setBindSet(pipeline_state, 0, frame.bindings);
+	driver->setBindSet(pipeline_state, 0, application_bindings);
 	driver->setBindSet(pipeline_state, 1, camera_bindings);
 	driver->setBindSet(pipeline_state, 2, gbuffer.bindings);
 	driver->setBindSet(pipeline_state, 3, ssr_trace.bindings);
@@ -727,21 +727,21 @@ void RenderGraph::renderSSRResolve(const Scene *scene, const RenderFrame &frame,
 	driver->clearVertexStreams(pipeline_state);
 	driver->setVertexStream(pipeline_state, 0, quad->getVertexBuffer());
 
-	driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
-	driver->endRenderPass(frame.command_buffer);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
+	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderSSRTemporalFilter(const Scene *scene, const RenderFrame &frame)
+void RenderGraph::renderSSRTemporalFilter(const Scene *scene, render::backend::CommandBuffer *command_buffer)
 {
 	RenderBuffer ssr_resolve_temp { ssr_resolve.resolve, nullptr, ssr_resolve.resolve_bindings };
 	RenderBuffer ssr_velocity_temp { ssr_resolve.velocity, nullptr, ssr_resolve.velocity_bindings };
 
-	renderTemporalFilter(ssr, old_ssr, ssr_resolve_temp, ssr_velocity_temp, frame);
+	renderTemporalFilter(ssr, old_ssr, ssr_resolve_temp, ssr_velocity_temp, command_buffer);
 }
 
-void RenderGraph::renderLBuffer(const Scene *scene, const RenderFrame &frame, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderLBuffer(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings)
 {
-	driver->beginRenderPass(frame.command_buffer, lbuffer_render_pass, lbuffer.frame_buffer);
+	driver->beginRenderPass(command_buffer, lbuffer_render_pass, lbuffer.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
@@ -767,15 +767,15 @@ void RenderGraph::renderLBuffer(const Scene *scene, const RenderFrame &frame, re
 		driver->clearVertexStreams(pipeline_state);
 		driver->setVertexStream(pipeline_state, 0, light_mesh->getVertexBuffer());
 
-		driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, light_mesh->getIndexBuffer(), light_mesh->getNumIndices());
+		driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, light_mesh->getIndexBuffer(), light_mesh->getNumIndices());
 	}
 
-	driver->endRenderPass(frame.command_buffer);
+	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderComposite(const Scene *scene, const RenderFrame &frame)
+void RenderGraph::renderComposite(const Scene *scene, render::backend::CommandBuffer *command_buffer)
 {
-	driver->beginRenderPass(frame.command_buffer, hdr_render_pass, composite_temp.frame_buffer);
+	driver->beginRenderPass(command_buffer, hdr_render_pass, composite_temp.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
@@ -792,20 +792,20 @@ void RenderGraph::renderComposite(const Scene *scene, const RenderFrame &frame)
 	driver->clearVertexStreams(pipeline_state);
 	driver->setVertexStream(pipeline_state, 0, quad->getVertexBuffer());
 
-	driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
-	driver->endRenderPass(frame.command_buffer);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
+	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderCompositeTemporalFilter(const Scene *scene, const RenderFrame &frame)
+void RenderGraph::renderCompositeTemporalFilter(const Scene *scene, render::backend::CommandBuffer *command_buffer)
 {
 	RenderBuffer gbuffer_velocity { gbuffer.velocity, nullptr, gbuffer.velocity_bindings };
 
-	renderTemporalFilter(composite, old_composite, composite_temp, gbuffer_velocity, frame);
+	renderTemporalFilter(composite, old_composite, composite_temp, gbuffer_velocity, command_buffer);
 }
 
-void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, const RenderFrame &frame)
+void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, render::backend::CommandBuffer *command_buffer)
 {
-	driver->beginRenderPass(frame.command_buffer, hdr_render_pass, current.frame_buffer);
+	driver->beginRenderPass(command_buffer, hdr_render_pass, current.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
@@ -820,16 +820,16 @@ void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer
 	driver->clearVertexStreams(pipeline_state);
 	driver->setVertexStream(pipeline_state, 0, quad->getVertexBuffer());
 
-	driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
-	driver->endRenderPass(frame.command_buffer);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
+	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderToSwapChain(const Scene *scene, const RenderFrame &frame)
+void RenderGraph::renderToSwapChain(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain)
 {
 	if (swap_chain_render_pass == nullptr)
-		swap_chain_render_pass = driver->createRenderPass(frame.swap_chain, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE, nullptr);
+		swap_chain_render_pass = driver->createRenderPass(swap_chain, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE, nullptr);
 
-	driver->beginRenderPass(frame.command_buffer, swap_chain_render_pass, frame.swap_chain);
+	driver->beginRenderPass(command_buffer, swap_chain_render_pass, swap_chain);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
@@ -842,16 +842,16 @@ void RenderGraph::renderToSwapChain(const Scene *scene, const RenderFrame &frame
 	driver->clearVertexStreams(pipeline_state);
 	driver->setVertexStream(pipeline_state, 0, quad->getVertexBuffer());
 
-	driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
 
-	imgui_renderer->render(frame);
+	imgui_renderer->render(command_buffer);
 
-	driver->endRenderPass(frame.command_buffer);
+	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::prepareOldTexture(const RenderBuffer &old, const RenderFrame &frame)
+void RenderGraph::prepareOldTexture(const RenderBuffer &old, render::backend::CommandBuffer *command_buffer)
 {
-	driver->beginRenderPass(frame.command_buffer, hdr_clear_render_pass, old.frame_buffer);
+	driver->beginRenderPass(command_buffer, hdr_clear_render_pass, old.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
@@ -862,7 +862,7 @@ void RenderGraph::prepareOldTexture(const RenderBuffer &old, const RenderFrame &
 	driver->clearVertexStreams(pipeline_state);
 	driver->setVertexStream(pipeline_state, 0, quad->getVertexBuffer());
 
-	driver->drawIndexedPrimitiveInstanced(frame.command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->getIndexBuffer(), quad->getNumIndices());
 
-	driver->endRenderPass(frame.command_buffer);
+	driver->endRenderPass(command_buffer);
 }

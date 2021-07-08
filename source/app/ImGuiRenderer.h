@@ -24,14 +24,14 @@ public:
 
 	void init(ImGuiContext *imguiContext);
 	void shutdown();
-	void render(const RenderFrame &frame);
+	void render(render::backend::CommandBuffer *command_buffer);
 
 	ImTextureID fetchTextureID(const render::backend::Texture *texture);
 	void invalidateTextureIDs();
 
 private:
 	void updateBuffers(const ImDrawData *draw_data);
-	void setupRenderState(const RenderFrame &frame, const ImDrawData *draw_data);
+	void setupRenderState(const ImDrawData *draw_data);
 
 private:
 	render::backend::Driver *driver {nullptr};
