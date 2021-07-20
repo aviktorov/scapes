@@ -2,6 +2,7 @@
 #include "RenderUtils.h"
 
 #include "Texture.h"
+#include "Mesh.h"
 
 #include <vector>
 #include <cassert>
@@ -148,6 +149,9 @@ void ApplicationResources::init()
 
 	blue_noise = new Texture(driver);
 	blue_noise->import(config::blueNoise);
+
+	fullscreen_quad = new Mesh(driver);
+	fullscreen_quad->createQuad(2.0f);
 }
 
 void ApplicationResources::shutdown()
@@ -179,6 +183,7 @@ void ApplicationResources::shutdown()
 	irradiance_cubemaps.clear();
 
 	delete blue_noise;
+	delete fullscreen_quad;
 }
 
 void ApplicationResources::reloadShaders()

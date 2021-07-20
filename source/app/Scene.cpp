@@ -1,8 +1,14 @@
 #include "Scene.h"
 
-#include <render/backend/Driver.h>
 #include "Mesh.h"
 #include "Texture.h"
+#include "RenderModule.h"
+
+#include <glm/mat4x4.hpp>
+
+#include <render/backend/Driver.h>
+
+#include <flecs.h>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -63,17 +69,24 @@ static glm::mat4 toGlm(const aiMatrix4x4 &transform)
 
 /*
  */
+Scene::Scene(render::backend::Driver *driver)
+	: driver(driver)
+{
+	world = new flecs::world();
+	generateDefaultTextures(driver);
+}
+
 Scene::~Scene()
 {
 	clear();
+	delete world;
+	world = nullptr;
 }
 
 /*
  */
 bool Scene::import(const char *path)
 {
-	generateDefaultTextures(driver);
-
 	Assimp::Importer importer;
 
 	const aiScene *scene = importer.ReadFile(path, aiProcessPreset_TargetRealtime_MaxQuality);
@@ -105,6 +118,7 @@ bool Scene::import(const char *path)
 	meshes.resize(scene->mNumMeshes);
 	for (unsigned int i = 0; i < scene->mNumMeshes; ++i)
 	{
+		// TODO: fetch from resource manager
 		Mesh *mesh = new Mesh(driver);
 		mesh->import(scene->mMeshes[i]);
 
@@ -114,6 +128,7 @@ bool Scene::import(const char *path)
 	// import textures
 	for (unsigned int i = 0; i < scene->mNumTextures; ++i)
 	{
+		// TODO: fetch from resource manager
 		std::stringstream path_builder;
 		Texture *texture = new Texture(driver);
 		
@@ -138,6 +153,7 @@ bool Scene::import(const char *path)
 		std::stringstream path_builder;
 		path_builder << dir << '/' << path.C_Str();
 
+		// TODO: fetch from resource manager
 		const std::string &texture_path = path_builder.str();
 		auto it = textures.find(texture_path);
 		if (it == textures.end())
@@ -156,23 +172,27 @@ bool Scene::import(const char *path)
 	{
 		const aiMaterial *material = scene->mMaterials[i];
 
-		RenderMaterial &render_material = materials[i];
-		render_material.albedo = import_material_texture(material, aiTextureType_DIFFUSE);
-		render_material.normal = import_material_texture(material, aiTextureType_HEIGHT);
-		render_material.roughness = import_material_texture(material, aiTextureType_SHININESS);
-		render_material.metalness = import_material_texture(material, aiTextureType_AMBIENT);
+		ecs::render::RenderMaterialData *render_material = new ecs::render::RenderMaterialData();
 
-		render_material.bindings = driver->createBindSet();
+		render_material->albedo = import_material_texture(material, aiTextureType_DIFFUSE);
+		render_material->normal = import_material_texture(material, aiTextureType_HEIGHT);
+		render_material->roughness = import_material_texture(material, aiTextureType_SHININESS);
+		render_material->metalness = import_material_texture(material, aiTextureType_AMBIENT);
 
-		const render::backend::Texture *albedo = (render_material.albedo) ? render_material.albedo->getBackend() : default_albedo;
-		const render::backend::Texture *normal = (render_material.normal) ? render_material.normal->getBackend() : default_normal;
-		const render::backend::Texture *roughness = (render_material.roughness) ? render_material.roughness->getBackend() : default_roughness;
-		const render::backend::Texture *metalness = (render_material.metalness) ? render_material.metalness->getBackend() : default_metalness;
+		render_material->bindings = driver->createBindSet();
+		render_material->parameters = nullptr;
 
-		driver->bindTexture(render_material.bindings, 0, albedo);
-		driver->bindTexture(render_material.bindings, 1, normal);
-		driver->bindTexture(render_material.bindings, 2, roughness);
-		driver->bindTexture(render_material.bindings, 3, metalness);
+		const render::backend::Texture *albedo = (render_material->albedo) ? render_material->albedo->getBackend() : default_albedo;
+		const render::backend::Texture *normal = (render_material->normal) ? render_material->normal->getBackend() : default_normal;
+		const render::backend::Texture *roughness = (render_material->roughness) ? render_material->roughness->getBackend() : default_roughness;
+		const render::backend::Texture *metalness = (render_material->metalness) ? render_material->metalness->getBackend() : default_metalness;
+
+		driver->bindTexture(render_material->bindings, 0, albedo);
+		driver->bindTexture(render_material->bindings, 1, normal);
+		driver->bindTexture(render_material->bindings, 2, roughness);
+		driver->bindTexture(render_material->bindings, 3, metalness);
+
+		materials[i] = render_material;
 	}
 
 	// import nodes
@@ -181,31 +201,77 @@ bool Scene::import(const char *path)
 	// TODO: remove later
 	aiMatrix4x4 rotation = aiMatrix4x4::RotationX(AI_DEG_TO_RAD(90.0f), aiMatrix4x4());
 
-	importNodes(scene, root, toGlm(root->mTransformation * rotation));
+	importNodes(scene, root, root->mTransformation * rotation);
 
 	return true;
 }
 
+flecs::entity Scene::createEntity()
+{
+	return world->entity();
+}
+
 void Scene::clear()
 {
+	world->delete_entities(flecs::filter());
+
+	// TODO: move to resource manager
+	for (size_t i = 0; i < materials.size(); ++i)
+	{
+		ecs::render::RenderMaterialData *material = materials[i];
+
+		driver->destroyBindSet(material->bindings);
+		driver->destroyUniformBuffer(material->parameters);
+		delete material;
+	}
+
+	for (size_t i = 0; i < environment_textures.size(); ++i)
+	{
+		ecs::render::EnvironmentTexture *environment_texture = environment_textures[i];
+
+		driver->destroyBindSet(environment_texture->bindings);
+		delete environment_texture;
+	}
+
+	materials.clear();
+	environment_textures.clear();
+
 	for (size_t i = 0; i < meshes.size(); ++i)
 		delete meshes[i];
-
-	for (size_t i = 0; i < materials.size(); ++i)
-		driver->destroyBindSet(materials[i].bindings);
 
 	for (auto it = textures.begin(); it != textures.end(); ++it)
 		delete it->second;
 
 	meshes.clear();
-	materials.clear();
 	textures.clear();
-	nodes.clear();
 }
 
 /*
  */
-void Scene::importNodes(const aiScene *scene, const aiNode *root, const glm::mat4 &transform)
+const ecs::render::EnvironmentTexture *Scene::fetchEnvironmentTexture(
+	const Texture *baked_brdf,
+	const Texture *prefiltered_specular_cubemap,
+	const Texture *diffuse_irradiance_cubemap
+)
+{
+	ecs::render::EnvironmentTexture *environment_texture = new ecs::render::EnvironmentTexture();
+
+	environment_texture->baked_brdf = baked_brdf;
+	environment_texture->prefiltered_specular_cubemap = prefiltered_specular_cubemap;
+	environment_texture->diffuse_irradiance_cubemap = diffuse_irradiance_cubemap;
+	environment_texture->bindings = driver->createBindSet();
+
+	driver->bindTexture(environment_texture->bindings, 0, baked_brdf->getBackend());
+	driver->bindTexture(environment_texture->bindings, 1, prefiltered_specular_cubemap->getBackend());
+	driver->bindTexture(environment_texture->bindings, 2, diffuse_irradiance_cubemap->getBackend());
+
+	environment_textures.push_back(environment_texture);
+	return environment_texture;
+}
+
+/*
+ */
+void Scene::importNodes(const aiScene *scene, const aiNode *root, const aiMatrix4x4 &transform)
 {
 	for (unsigned int i = 0; i < root->mNumMeshes; ++i)
 	{
@@ -214,18 +280,16 @@ void Scene::importNodes(const aiScene *scene, const aiNode *root, const glm::mat
 
 		Mesh *mesh = meshes[mesh_index];
 
-		RenderNode node;
-		node.mesh = mesh;
-		node.transform = transform;
-		node.render_material_index = material_index;
+		flecs::entity entity = world->entity();
 
-		nodes.push_back(node);
+		entity.set<ecs::render::Transform>({toGlm(transform)});
+		entity.set<ecs::render::Renderable>({mesh, materials[material_index]});
 	}
 
 	for (unsigned int i = 0; i < root->mNumChildren; ++i)
 	{
 		const aiNode *child = root->mChildren[i];
-		const glm::mat4 &child_transform = transform * toGlm(child->mTransformation);
+		const aiMatrix4x4 &child_transform = transform * child->mTransformation;
 
 		importNodes(scene, child, child_transform);
 	}

@@ -2,9 +2,12 @@
 #include "ApplicationResources.h"
 #include "IO.h"
 
+#include <flecs.h>
+
 #include <render/shaders/Compiler.h>
 #include <render/backend/Driver.h>
 
+#include "RenderModule.h"
 #include "SwapChain.h"
 #include "SkyLight.h"
 #include "RenderGraph.h"
@@ -252,7 +255,6 @@ void Application::initWindow()
 	glfwSetCursorPosCallback(window, &Application::onMousePosition);
 	glfwSetMouseButtonCallback(window, &Application::onMouseButton);
 	glfwSetScrollCallback(window, &Application::onScroll);
-
 }
 
 void Application::shutdownWindow()
@@ -322,19 +324,23 @@ void Application::initRenderScene()
 	resources->init();
 
 	sponza = new Scene(driver);
+	ecs::render::init(sponza->getBackend());
+
 	sponza->import("assets/scenes/pbr_sponza/sponza.obj");
 
-	sky_light = new SkyLight(
-		driver,
-		resources->getShader(config::Shaders::FullscreenQuadVertex),
-		resources->getShader(config::Shaders::SkylightDeferredFragment)
+	const ecs::render::EnvironmentTexture *env = sponza->fetchEnvironmentTexture(
+		resources->getBakedBRDFTexture(),
+		resources->getHDREnvironmentCubemap(0),
+		resources->getHDRIrradianceCubemap(0)
 	);
 
-	sky_light->setBakedBRDFTexture(resources->getBakedBRDFTexture());
-	sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(0));
-	sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(0));
-
-	sponza->addLight(sky_light);
+	flecs::entity sky_light = sponza->createEntity();
+	sky_light.set<ecs::render::SkyLight>({
+		env,
+		resources->getFullscreenQuad(),
+		resources->getShader(config::Shaders::FullscreenQuadVertex),
+		resources->getShader(config::Shaders::SkylightDeferredFragment)
+	});
 }
 
 void Application::shutdownRenderScene()

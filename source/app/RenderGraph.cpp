@@ -1,7 +1,6 @@
 #include "RenderGraph.h"
-
+#include "RenderModule.h"
 #include "Scene.h"
-#include "SkyLight.h"
 #include "ApplicationResources.h"
 
 #include <Tracy.hpp>
@@ -13,8 +12,6 @@
 #include "SwapChain.h"
 #include "Shader.h"
 #include "Texture.h"
-
-#include <GLM/glm.hpp>
 
 #include <cassert>
 
@@ -47,8 +44,7 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	initSSRData(resources->getBlueNoiseTexture());
 	initTransient(width, height);
 
-	quad = new Mesh(driver);
-	quad->createQuad(2.0f);
+	quad = resources->getFullscreenQuad();
 
 	gbuffer_pass_vertex = resources->getShader(config::Shaders::GBufferVertex);
 	gbuffer_pass_fragment = resources->getShader(config::Shaders::GBufferFragment);
@@ -77,7 +73,6 @@ void RenderGraph::shutdown()
 	delete imgui_renderer;
 	imgui_renderer = nullptr;
 
-	delete quad;
 	quad = nullptr;
 
 	gbuffer_pass_vertex = nullptr;
@@ -627,19 +622,8 @@ void RenderGraph::renderGBuffer(const Scene *scene, render::backend::CommandBuff
 	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, gbuffer_pass_fragment->getBackend());
 
 	driver->clearVertexStreams(pipeline_state);
-	for (size_t i = 0; i < scene->getNumNodes(); ++i)
-	{
-		const Mesh *node_mesh = scene->getNodeMesh(i);
-		const glm::mat4 &node_transform = scene->getNodeWorldTransform(i);
-		render::backend::BindSet *node_bindings = scene->getNodeBindings(i);
 
-		driver->setVertexStream(pipeline_state, 0, node_mesh->getVertexBuffer());
-
-		driver->setBindSet(pipeline_state, 2, node_bindings);
-		driver->setPushConstants(pipeline_state, static_cast<uint8_t>(sizeof(glm::mat4)), &node_transform);
-
-		driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, node_mesh->getIndexBuffer(), node_mesh->getNumIndices());
-	}
+	ecs::render::drawRenderables(scene->getBackend(), driver, 2, pipeline_state, command_buffer);
 
 	driver->endRenderPass(command_buffer);
 }
@@ -748,27 +732,7 @@ void RenderGraph::renderLBuffer(const Scene *scene, render::backend::CommandBuff
 	driver->setBindSet(pipeline_state, 0, camera_bindings);
 	driver->setBindSet(pipeline_state, 1, gbuffer.bindings);
 
-	for (size_t i = 0; i < scene->getNumLights(); ++i)
-	{
-		const Light *light = scene->getLight(i);
-
-		const Shader *vertex_shader = light->getVertexShader();
-		const Shader *fragment_shader = light->getFragmentShader();
-		const Mesh *light_mesh = light->getMesh();
-
-		render::backend::BindSet *light_bindings = light->getBindSet();
-
-		driver->clearShaders(pipeline_state);
-		driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader->getBackend());
-		driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->getBackend());
-
-		driver->setBindSet(pipeline_state, 2, light_bindings);
-
-		driver->clearVertexStreams(pipeline_state);
-		driver->setVertexStream(pipeline_state, 0, light_mesh->getVertexBuffer());
-
-		driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, light_mesh->getIndexBuffer(), light_mesh->getNumIndices());
-	}
+	ecs::render::drawSkyLights(scene->getBackend(), driver, 2, pipeline_state, command_buffer);
 
 	driver->endRenderPass(command_buffer);
 }

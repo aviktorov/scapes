@@ -1,10 +1,16 @@
 #pragma once
 
 #include <render/backend/Driver.h>
+#include <glm/mat4x4.hpp>
 
 class Mesh;
 class Texture;
 class Shader;
+
+namespace flecs
+{
+	class world;
+}
 
 namespace ecs::render
 {
@@ -36,10 +42,6 @@ namespace ecs::render
 	struct SkyLight
 	{
 		const EnvironmentTexture *environment {nullptr};
-	};
-
-	struct Light
-	{
 		const ::Mesh *mesh {nullptr};
 		const ::Shader *vertex_shader {nullptr};
 		const ::Shader *fragment_shader {nullptr};
@@ -51,6 +53,26 @@ namespace ecs::render
 		const RenderMaterialData *materials {nullptr};
 	};
 
+	// TODO: upgrade this into class
+
+	// Module
+	extern void init(flecs::world *world);
+	extern void shutdown();
+
 	// Systems
-	// TODO:
+	extern void drawRenderables(
+		const flecs::world *world,
+		::render::backend::Driver *driver,
+		uint8_t material_binding,
+		::render::backend::PipelineState *pipeline_state,
+		::render::backend::CommandBuffer *command_buffer
+	);
+
+	extern void drawSkyLights(
+		const flecs::world *world,
+		::render::backend::Driver *driver,
+		uint8_t light_binding,
+		::render::backend::PipelineState *pipeline_state,
+		::render::backend::CommandBuffer *command_buffer
+	);
 }

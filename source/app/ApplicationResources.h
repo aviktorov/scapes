@@ -79,6 +79,7 @@ public:
 
 	inline const Mesh *getMesh() const { return resources.getMesh(config::Meshes::Helmet); }
 	inline const Mesh *getSkybox() const { return resources.getMesh(config::Meshes::Skybox); }
+	inline const Mesh *getFullscreenQuad() const { return fullscreen_quad; }
 
 	void reloadShaders();
 
@@ -86,6 +87,8 @@ private:
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
 	ResourceManager resources;
+
+	Mesh *fullscreen_quad {nullptr};
 
 	Texture *baked_brdf {nullptr};
 	std::vector<Texture *> environment_cubemaps;

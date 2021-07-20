@@ -193,7 +193,6 @@ private:
 
 	bool first_frame {true};
 
-	Mesh *quad {nullptr};
 	ImGuiRenderer *imgui_renderer {nullptr};
 
 	render::backend::RenderPass *gbuffer_render_pass {nullptr};
@@ -203,6 +202,8 @@ private:
 	render::backend::RenderPass *hdr_render_pass {nullptr};
 	render::backend::RenderPass *hdr_clear_render_pass {nullptr};
 	render::backend::RenderPass *swap_chain_render_pass {nullptr};
+
+	const Mesh *quad {nullptr};
 
 	const Shader *gbuffer_pass_vertex {nullptr};
 	const Shader *gbuffer_pass_fragment {nullptr};
