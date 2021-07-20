@@ -67,17 +67,28 @@ PBR Sandbox:
         ☐ Add FileWatcher for shader auto reloading
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ First person camera (WASD controls & mouse aim)
-    Stream 64:
-        ☐ Add systems to ecs::render
-            ☐ Draw all renderables
-            ☐ Draw all visible renderables
-            ☐ Draw all lights
-            ☐ Draw all visible lights
-            ☐ Do culling
-        ☐ Use ecs::render systems in RenderGraph
-            ☐ GBuffer culling & rendering
-            ☐ LBuffer culling & rendering
         ☐ Try entt
+    Stream 66:
+        ☐ Data-driven render graph + REPL
+        ☐ Resource management + REPL
+    Stream 65:
+        ☐ Move Transform component to CommonModule
+        ☐ Add CommonModule as a dependency to RenderModule
+        ☐ Try to abstract flecs::world & flecs::entity behind own 'render backend'-like API
+            ☐ Extract Improrter from Scene class
+            ☐ Add ability to create entities in Scene class
+            ☐ Add component management API
+            ☐ Scene -> World
+        ☐ Make another release
+            ☐ Make sure shaderc is either removed or linked statically
+            ☐ Try to include game API if have time
+    Stream 64:
+        ✔ Add systems to ecs::render @done (7/21/2021, 12:01:48 AM)
+            ✔ Draw all renderables @done (7/21/2021, 12:01:50 AM)
+            ✔ Draw all lights @done (7/21/2021, 12:01:51 AM)
+        ✔ Use ecs::render systems in RenderGraph @done (7/21/2021, 12:01:54 AM)
+            ✔ GBuffer rendering @done (7/21/2021, 12:01:55 AM)
+            ✔ LBuffer rendering @done (7/21/2021, 12:01:56 AM)
     Stream 63:
         ✔ Make first release on github @done (7/8/2021, 8:34:42 PM)
         ✔ Try flecs @done (7/8/2021, 11:59:44 PM)
