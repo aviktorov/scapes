@@ -51,6 +51,7 @@ add_executable(app
 )
 set_target_properties(app PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG ${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI})
 set_target_properties(app PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI})
+set_target_properties(app PROPERTIES DEBUG_POSTFIX d)
 
 # ==================================================================================================
 # Includes
