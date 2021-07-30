@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <common/Common.h>
 
 namespace render::backend
 {
@@ -319,7 +319,10 @@ namespace render::backend
 	class Driver
 	{
 	public:
-		static Driver *create(const char *application_name, const char *engine_name, Api api = Api::DEFAULT);
+		static SCAPES_API Driver *create(const char *application_name, const char *engine_name, Api api = Api::DEFAULT);
+		static SCAPES_API void destroy(Driver *driver);
+
+		virtual ~Driver() { }
 
 	public:
 		virtual VertexBuffer *createVertexBuffer(

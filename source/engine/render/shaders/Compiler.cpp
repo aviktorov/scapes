@@ -14,4 +14,9 @@ namespace render::shaders
 
 		return nullptr;
 	}
+
+	void Compiler::destroy(Compiler *compiler)
+	{
+		delete compiler;
+	}
 }

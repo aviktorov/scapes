@@ -459,10 +459,10 @@ void Application::initDriver()
 
 void Application::shutdownDriver()
 {
-	delete driver;
+	render::backend::Driver::destroy(driver);
 	driver = nullptr;
 
-	delete compiler;
+	render::shaders::Compiler::destroy(compiler);
 	compiler = nullptr;
 
 	delete file_system;

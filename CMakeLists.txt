@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.10)
 
 project(PBRSandbox VERSION 1.0.0)
 
+# ==================================================================================================
+# Variables
+# ==================================================================================================
+set(DIR_THIRDPARTY ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty)
+set(DIR_EXPORT ${CMAKE_CURRENT_SOURCE_DIR}/build)
+set(DIR_ENGINE_API ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+# ==================================================================================================
+# General compile flags
+# ==================================================================================================
 if (WIN32)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17 /Zc:__cplusplus")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING")
@@ -10,9 +20,9 @@ else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fstrict-aliasing -Wno-unknown-pragmas -Wno-unused-function")
 endif()
 
-set(THIRDPARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty)
-set(ENGINE_API_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
+# ==================================================================================================
+# General includes
+# ==================================================================================================
 include_directories("3rdparty/")
 include_directories("3rdparty/assimp/include")
 include_directories("3rdparty/glfw/include")
@@ -27,10 +37,16 @@ include_directories("3rdparty/imgui/examples")
 include_directories("3rdparty/tracy")
 include_directories("3rdparty/flecs")
 
+# ==================================================================================================
+# General libraries
+# ==================================================================================================
 link_directories("3rdparty/assimp/lib")
 link_directories("3rdparty/glfw/lib")
 link_directories("3rdparty/shaderc/lib")
 link_directories("3rdparty/spirv-cross/lib")
 
+# ==================================================================================================
+# Sub-projects
+# ==================================================================================================
 add_subdirectory(source/engine)
 add_subdirectory(source/app)

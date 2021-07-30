@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <common/Common.h>
 
 namespace io
 {
@@ -51,8 +51,12 @@ namespace render::shaders
 	class Compiler
 	{
 	public:
-		static Compiler *create(ShaderILType type = ShaderILType::DEFAULT, io::IFileSystem *file_system = nullptr);
+		static SCAPES_API Compiler *create(ShaderILType type = ShaderILType::DEFAULT, io::IFileSystem *file_system = nullptr);
+		static SCAPES_API void destroy(Compiler *compiler);
 
+		virtual ~Compiler() { }
+
+	public:
 		virtual ShaderIL *createShaderIL(
 			ShaderType type,
 			uint32_t size,

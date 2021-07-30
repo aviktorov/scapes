@@ -1,29 +1,34 @@
 cmake_minimum_required(VERSION 3.10)
 project(scapes)
 
+# ==================================================================================================
+# Options
+# ==================================================================================================
 option(USE_RENDER_BACKEND_VK "Include Vulkan rendering backend" TRUE)
 
+# ==================================================================================================
+# Variables
+# ==================================================================================================
+if (WIN32)
+	set(SCAPES_PLATFORM windows)
+	set(SCAPES_ABI x64)
+endif()
+
+# ==================================================================================================
+# Dependencies
+# ==================================================================================================
 add_library(shaderc STATIC IMPORTED)
 
 if (WIN32)
-	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_RELEASE ${THIRDPARTY_DIR}/shaderc/lib/windows/x64/shaderc_combined.lib)
-	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_MINSIZEREL ${THIRDPARTY_DIR}/shaderc/lib/windows/x64/shaderc_combined.lib)
-	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_RELWITHDEBINFO ${THIRDPARTY_DIR}/shaderc/lib/windows/x64/shaderc_combined.lib)
-	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_DEBUG ${THIRDPARTY_DIR}/shaderc/lib/windows/x64/shaderc_combinedd.lib)
+	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_RELEASE ${DIR_THIRDPARTY}/shaderc/lib/${SCAPES_PLATFORM}/${SCAPES_ABI}/shaderc_combined.lib)
+	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_MINSIZEREL ${DIR_THIRDPARTY}/shaderc/lib/${SCAPES_PLATFORM}/${SCAPES_ABI}/shaderc_combined.lib)
+	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_RELWITHDEBINFO ${DIR_THIRDPARTY}/shaderc/lib/${SCAPES_PLATFORM}/${SCAPES_ABI}/shaderc_combined.lib)
+	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_DEBUG ${DIR_THIRDPARTY}/shaderc/lib/${SCAPES_PLATFORM}/${SCAPES_ABI}/shaderc_combinedd.lib)
 endif()
 
-file(GLOB PROFILER_SOURCES
-	${THIRDPARTY_DIR}/tracy/TracyClient.cpp
-)
-
-file(GLOB PROFILER_HEADERS
-	${THIRDPARTY_DIR}/tracy/Tracy.hpp
-)
-
-set(PROFILER_DEFINES
-	TRACY_ENABLE
-)
-
+# ==================================================================================================
+# Sources
+# ==================================================================================================
 file(GLOB COMMON_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/common/*.cpp
 )
@@ -35,13 +40,13 @@ file(GLOB HEADER_SOURCES
 file(GLOB GAME_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/game/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/game/flecs/*.cpp
-	${THIRDPARTY_DIR}/flecs/flecs.c
+	${DIR_THIRDPARTY}/flecs/flecs.c
 )
 
 file(GLOB GAME_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/game/*.h
 	${CMAKE_CURRENT_SOURCE_DIR}/game/flecs/*.h
-	${THIRDPARTY_DIR}/flecs/flecs.h
+	${DIR_THIRDPARTY}/flecs/flecs.h
 )
 
 file(GLOB RENDER_SOURCES
@@ -67,12 +72,12 @@ endif()
 
 if (USE_RENDER_BACKEND_VK)
 	file(GLOB VK_RENDER_SOURCES
-		${THIRDPARTY_DIR}/volk/volk.c
+		${DIR_THIRDPARTY}/volk/volk.c
 		${CMAKE_CURRENT_SOURCE_DIR}/render/backend/vulkan/*.cpp
 	)
 
 	file(GLOB VK_RENDER_HEADERS
-		${THIRDPARTY_DIR}/volk/volk.h
+		${DIR_THIRDPARTY}/volk/volk.h
 		${CMAKE_CURRENT_SOURCE_DIR}/render/backend/vulkan/*.h
 	)
 
@@ -86,15 +91,30 @@ if (USE_RENDER_BACKEND_VK)
 	list(APPEND RENDER_DEBUG_DEFINES SCAPES_VULKAN_USE_VALIDATION_LAYERS)
 endif()
 
+# ==================================================================================================
+# Target
+# ==================================================================================================
 add_library(
-	scapes STATIC
+	scapes SHARED
 	${COMMON_SOURCES} ${COMMON_HEADERS}
 	${GAME_SOURCES} ${GAME_HEADERS}
 	${RENDER_SOURCES} ${RENDER_HEADERS}
-	${PROFILER_SOURCES} ${PROFILER_HEADERS}
 )
+set_target_properties(scapes PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG ${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI})
+set_target_properties(scapes PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI})
 
-target_include_directories(scapes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${ENGINE_API_DIR})
-target_compile_definitions(scapes PUBLIC ${PLATFORM_DEFINES} ${RENDER_DEFINES} ${PROFILER_DEFINES})
+# ==================================================================================================
+# Includes
+# ==================================================================================================
+target_include_directories(scapes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${DIR_ENGINE_API})
+
+# ==================================================================================================
+# Preprocessor
+# ==================================================================================================
+target_compile_definitions(scapes PUBLIC SCAPES_SHARED_LIBRARY ${PLATFORM_DEFINES} ${RENDER_DEFINES})
 target_compile_definitions(scapes PUBLIC $<$<CONFIG:Debug>:${RENDER_DEBUG_DEFINES}>)
+
+# ==================================================================================================
+# Libraries
+# ==================================================================================================
 target_link_libraries(scapes PUBLIC shaderc)

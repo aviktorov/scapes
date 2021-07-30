@@ -1,8 +1,6 @@
 #pragma once
 
-#include <cstdint>
-#include <cassert>
-#include <tuple>
+#include <common/Common.h>
 
 namespace game
 {
@@ -12,8 +10,8 @@ namespace game
 	class World
 	{
 	public:
-		static World *create();
-		static void destroy(World *world);
+		static SCAPES_API World *create();
+		static SCAPES_API void destroy(World *world);
 
 		virtual ~World() {}
 

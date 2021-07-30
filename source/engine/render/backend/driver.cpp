@@ -14,4 +14,9 @@ namespace render::backend
 
 		return nullptr;
 	}
+
+	void Driver::destroy(Driver *driver)
+	{
+		delete driver;
+	}
 }

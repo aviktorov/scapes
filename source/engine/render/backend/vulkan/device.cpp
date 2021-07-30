@@ -213,9 +213,6 @@ namespace render::backend::vulkan
 
 	void Device::shutdown()
 	{
-		vmaDestroyAllocator(vram_allocator);
-		vram_allocator = VK_NULL_HANDLE;
-
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 		descriptorPool = VK_NULL_HANDLE;
 
@@ -236,6 +233,9 @@ namespace render::backend::vulkan
 
 		maxMSAASamples = VK_SAMPLE_COUNT_1_BIT;
 		physicalDevice = VK_NULL_HANDLE;
+
+		vmaDestroyAllocator(vram_allocator);
+		vram_allocator = VK_NULL_HANDLE;
 	}
 
 	/*
