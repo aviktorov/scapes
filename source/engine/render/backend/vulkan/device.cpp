@@ -219,6 +219,9 @@ namespace render::backend::vulkan
 		vkDestroyCommandPool(device, commandPool, nullptr);
 		commandPool = VK_NULL_HANDLE;
 
+		vmaDestroyAllocator(vram_allocator);
+		vram_allocator = VK_NULL_HANDLE;
+
 		vkDestroyDevice(device, nullptr);
 		device = VK_NULL_HANDLE;
 
@@ -233,9 +236,6 @@ namespace render::backend::vulkan
 
 		maxMSAASamples = VK_SAMPLE_COUNT_1_BIT;
 		physicalDevice = VK_NULL_HANDLE;
-
-		vmaDestroyAllocator(vram_allocator);
-		vram_allocator = VK_NULL_HANDLE;
 	}
 
 	/*
