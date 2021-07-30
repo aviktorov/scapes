@@ -77,7 +77,7 @@ PBR Sandbox:
             ☐ Move Transform component to CommonModule
             ☐ Add CommonModule as a dependency to RenderModule
     Stream 65:
-        ☐ Make another release
+        ✔ Make another release @done (7/31/2021, 5:50:49 AM)
             ✔ Make sure shaderc is either removed or linked statically @done (7/31/2021, 5:29:24 AM)
             ✔ Try to include game API if have time @done (7/31/2021, 3:19:02 AM)
         ✔ Try to abstract flecs::world & flecs::entity behind own 'render backend'-like API @done (7/31/2021, 2:53:12 AM)
