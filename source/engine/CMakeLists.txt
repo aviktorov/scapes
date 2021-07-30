@@ -3,6 +3,15 @@ project(scapes)
 
 option(USE_RENDER_BACKEND_VK "Include Vulkan rendering backend" TRUE)
 
+add_library(shaderc STATIC IMPORTED)
+
+if (WIN32)
+	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_RELEASE ${THIRDPARTY_DIR}/shaderc/lib/windows/x64/shaderc_combined.lib)
+	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_MINSIZEREL ${THIRDPARTY_DIR}/shaderc/lib/windows/x64/shaderc_combined.lib)
+	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_RELWITHDEBINFO ${THIRDPARTY_DIR}/shaderc/lib/windows/x64/shaderc_combined.lib)
+	set_target_properties(shaderc PROPERTIES IMPORTED_LOCATION_DEBUG ${THIRDPARTY_DIR}/shaderc/lib/windows/x64/shaderc_combinedd.lib)
+endif()
+
 file(GLOB PROFILER_SOURCES
 	${THIRDPARTY_DIR}/tracy/TracyClient.cpp
 )
@@ -56,10 +65,6 @@ if (WIN32)
 	)
 endif()
 
-set(RENDER_LIBRARIES
-	shaderc_shared
-)
-
 if (USE_RENDER_BACKEND_VK)
 	file(GLOB VK_RENDER_SOURCES
 		${THIRDPARTY_DIR}/volk/volk.c
@@ -92,4 +97,4 @@ add_library(
 target_include_directories(scapes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${ENGINE_API_DIR})
 target_compile_definitions(scapes PUBLIC ${PLATFORM_DEFINES} ${RENDER_DEFINES} ${PROFILER_DEFINES})
 target_compile_definitions(scapes PUBLIC $<$<CONFIG:Debug>:${RENDER_DEBUG_DEFINES}>)
-target_link_libraries(scapes PUBLIC ${RENDER_LIBRARIES})
+target_link_libraries(scapes PUBLIC shaderc)
