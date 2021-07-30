@@ -34,13 +34,19 @@ namespace game::flecs
 	{
 		QueryID *result = new QueryID();
 
-		for (uint32_t i = 0; i < num_types; ++i)
-			fetchComponentID(type_names[i], type_sizes[i], type_alignments[i]);
-
 		std::stringstream ss;
-		ss << wrapTypeName(type_names[0]);
-		for (uint32_t i = 1; i < num_types; ++i)
-			ss << ", " << wrapTypeName(type_names[i]);
+		for (uint32_t i = 0; i < num_types; ++i)
+		{
+			if (i)
+				ss << ", ";
+
+			::flecs::entity_t comp_id = fetchComponentID(type_names[i], type_sizes[i], type_alignments[i]);
+
+			char *full_flecs_path = ecs_get_fullpath(world.c_ptr(), comp_id);
+			ss << full_flecs_path;
+
+			delete[] full_flecs_path;
+		}
 
 		const std::string &expression = ss.str();
 
@@ -155,28 +161,18 @@ namespace game::flecs
 
 	/*
 	 */
-	std::string World::wrapTypeName(const char *type_name) const
-	{
-		std::string result(type_name);
-		std::replace(result.begin(), result.end(), ':', '_'); // WTF flecs
-
-		return result;
-	}
-
 	::flecs::entity_t World::fetchComponentID(const char *type_name, size_t size, size_t alignment) const
 	{
-		const std::string &name = wrapTypeName(type_name);
-
 		uint64_t hash = 0;
-		hashCombine(hash, name);
-		hashCombine(hash, size);
-		hashCombine(hash, alignment);
+		hashCombine(hash, std::string_view(type_name));
 
 		auto it = registered_components.find(hash);
 		if (it != registered_components.end())
 			return it->second;
 
-		::flecs::entity_t result = ecs_new_component(world.c_ptr(), 0, name.c_str(), size, alignment);
+		::flecs::entity_t result = ecs_new_component(world.c_ptr(), 0, nullptr, size, alignment);
+		ecs_add_path_w_sep(world.c_ptr(), result, 0, type_name, "::", "::");
+
 		registered_components[hash] = result;
 
 		return result;

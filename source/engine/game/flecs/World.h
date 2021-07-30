@@ -36,7 +36,6 @@ namespace game::flecs
 		void *getComponent(EntityID *entity, const char *type_name, size_t type_size, size_t type_alignment) const final;
 
 	private:
-		std::string wrapTypeName(const char *type_name) const;
 		::flecs::entity_t fetchComponentID(const char *type_name, size_t size, size_t alignment) const;
 
 	private:
