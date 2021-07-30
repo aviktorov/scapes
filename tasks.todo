@@ -68,20 +68,22 @@ PBR Sandbox:
         ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Try entt
-    Stream 66:
         ☐ Data-driven render graph + REPL
         ☐ Resource management + REPL
+    Stream 66:
+        ☐ Rename Scene to Importer
+        ☐ Create template based resource manager
+        ☐ Create Common ecs module
+            ☐ Move Transform component to CommonModule
+            ☐ Add CommonModule as a dependency to RenderModule
     Stream 65:
-        ☐ Move Transform component to CommonModule
-        ☐ Add CommonModule as a dependency to RenderModule
-        ☐ Try to abstract flecs::world & flecs::entity behind own 'render backend'-like API
-            ☐ Extract Improrter from Scene class
-            ☐ Add ability to create entities in Scene class
-            ☐ Add component management API
-            ☐ Scene -> World
         ☐ Make another release
-            ☐ Make sure shaderc is either removed or linked statically
-            ☐ Try to include game API if have time
+            ✔ Make sure shaderc is either removed or linked statically @done (7/31/2021, 5:29:24 AM)
+            ✔ Try to include game API if have time @done (7/31/2021, 3:19:02 AM)
+        ✔ Try to abstract flecs::world & flecs::entity behind own 'render backend'-like API @done (7/31/2021, 2:53:12 AM)
+            ✔ Add ability to create entities in Scene class @done (7/31/2021, 12:25:54 AM)
+            ✔ Add component management API @done (7/31/2021, 12:25:52 AM)
+            ✔ Scene -> World @done (7/31/2021, 12:25:51 AM)
     Stream 64:
         ✔ Add systems to ecs::render @done (7/21/2021, 12:01:48 AM)
             ✔ Draw all renderables @done (7/21/2021, 12:01:50 AM)
