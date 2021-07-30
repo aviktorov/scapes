@@ -1,16 +1,13 @@
 #pragma once
 
+#include <game/World.h>
 #include <render/backend/Driver.h>
+
 #include <glm/mat4x4.hpp>
 
 class Mesh;
 class Texture;
 class Shader;
-
-namespace flecs
-{
-	class world;
-}
 
 namespace ecs::render
 {
@@ -56,12 +53,12 @@ namespace ecs::render
 	// TODO: upgrade this into class
 
 	// Module
-	extern void init(flecs::world *world);
-	extern void shutdown();
+	extern void init(game::World *world);
+	extern void shutdown(game::World *world);
 
 	// Systems
 	extern void drawRenderables(
-		const flecs::world *world,
+		const game::World *world,
 		::render::backend::Driver *driver,
 		uint8_t material_binding,
 		::render::backend::PipelineState *pipeline_state,
@@ -69,10 +66,31 @@ namespace ecs::render
 	);
 
 	extern void drawSkyLights(
-		const flecs::world *world,
+		const game::World *world,
 		::render::backend::Driver *driver,
 		uint8_t light_binding,
 		::render::backend::PipelineState *pipeline_state,
 		::render::backend::CommandBuffer *command_buffer
 	);
+}
+
+namespace game
+{
+	template<>
+	struct TypeTraits<ecs::render::Transform>
+	{
+		static constexpr const char *name = "ecs::render::Transform";
+	};
+
+	template<>
+	struct TypeTraits<ecs::render::SkyLight>
+	{
+		static constexpr const char *name = "ecs::render::SkyLight";
+	};
+
+	template<>
+	struct TypeTraits<ecs::render::Renderable>
+	{
+		static constexpr const char *name = "ecs::render::Renderable";
+	};
 }

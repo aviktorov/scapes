@@ -2,8 +2,6 @@
 #include "ApplicationResources.h"
 #include "IO.h"
 
-#include <flecs.h>
-
 #include <render/shaders/Compiler.h>
 #include <render/backend/Driver.h>
 
@@ -98,13 +96,13 @@ void Application::update()
 		application_state.firstFrame = false;
 	}
 
+	bool reset_environment = false;
 	ImGui::Begin("Material Parameters");
 
 	if (ImGui::Button("Reload Shaders"))
 	{
 		resources->reloadShaders();
-		sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(application_state.currentEnvironment));
-		sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(application_state.currentEnvironment));
+		reset_environment = true;
 	}
 
 	int oldCurrentEnvironment = application_state.currentEnvironment;
@@ -116,8 +114,7 @@ void Application::update()
 			if (ImGui::Selectable(resources->getHDRTexturePath(i), &selected))
 			{
 				application_state.currentEnvironment = i;
-				sky_light->setEnvironmentCubemap(resources->getHDREnvironmentCubemap(application_state.currentEnvironment));
-				sky_light->setIrradianceCubemap(resources->getHDRIrradianceCubemap(application_state.currentEnvironment));
+				reset_environment = true;
 			}
 			if (selected)
 				ImGui::SetItemDefaultFocus();
@@ -180,6 +177,18 @@ void Application::update()
 	ImGui::EndGroup();
 
 	ImGui::End();
+
+	if (reset_environment)
+	{
+		ecs::render::SkyLight &comp = sky_light.getComponent<ecs::render::SkyLight>();
+
+		const ecs::render::EnvironmentTexture *env = sponza->fetchEnvironmentTexture(
+			resources->getBakedBRDFTexture(),
+			resources->getHDREnvironmentCubemap(application_state.currentEnvironment),
+			resources->getHDRIrradianceCubemap(application_state.currentEnvironment)
+		);
+		comp.environment = env;
+	}
 }
 
 /*
@@ -197,7 +206,7 @@ void Application::render()
 	memcpy(camera_gpu_data, &camera_state, sizeof(CameraState));
 	memcpy(application_gpu_data, &application_state, sizeof(ApplicationState));
 	
-	render_graph->render(command_buffer, swap_chain->getBackend(), application_bindings, camera_bindings, sponza);
+	render_graph->render(command_buffer, swap_chain->getBackend(), world, application_bindings, camera_bindings);
 
 	driver->submitSyncked(command_buffer, swap_chain->getBackend());
 
@@ -323,8 +332,10 @@ void Application::initRenderScene()
 	resources = new ApplicationResources(driver, compiler);
 	resources->init();
 
-	sponza = new Scene(driver);
-	ecs::render::init(sponza->getBackend());
+	world = game::World::create();
+	ecs::render::init(world);
+
+	sponza = new Scene(driver, world);
 
 	sponza->import("assets/scenes/pbr_sponza/sponza.obj");
 
@@ -334,25 +345,26 @@ void Application::initRenderScene()
 		resources->getHDRIrradianceCubemap(0)
 	);
 
-	flecs::entity sky_light = sponza->createEntity();
-	sky_light.set<ecs::render::SkyLight>({
+	sky_light = game::Entity(world);
+	sky_light.addComponent<ecs::render::SkyLight>(
 		env,
 		resources->getFullscreenQuad(),
 		resources->getShader(config::Shaders::FullscreenQuadVertex),
 		resources->getShader(config::Shaders::SkylightDeferredFragment)
-	});
+	);
 }
 
 void Application::shutdownRenderScene()
 {
-	delete sky_light;
-	sky_light = nullptr;
-
 	delete resources;
 	resources = nullptr;
 
 	delete sponza;
 	sponza = nullptr;
+
+	ecs::render::shutdown(world);
+	game::World::destroy(world);
+	world = nullptr;
 }
 
 /*

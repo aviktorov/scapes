@@ -4,7 +4,6 @@
 #include <glm/vec4.hpp>
 
 class ApplicationResources;
-class Scene;
 class Shader;
 class Mesh;
 class Texture;
@@ -12,6 +11,11 @@ struct RenderFrame;
 
 class ImGuiRenderer;
 typedef void* ImTextureID;
+
+namespace game
+{
+	class World;
+}
 
 namespace render::shaders
 {
@@ -109,7 +113,7 @@ public:
 	void init(const ApplicationResources *resources, uint32_t width, uint32_t height);
 	void shutdown();
 	void resize(uint32_t width, uint32_t height);
-	void render(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings, const Scene *scene);
+	void render(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain, const game::World *world, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
 
 	ImTextureID fetchTextureID(const render::backend::Texture *texture);
 
@@ -154,17 +158,17 @@ private:
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
-	void renderGBuffer(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
-	void renderSSAO(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
-	void renderSSAOBlur(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings);
-	void renderSSRTrace(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
-	void renderSSRResolve(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
-	void renderSSRTemporalFilter(const Scene *scene, render::backend::CommandBuffer *command_buffer);
-	void renderLBuffer(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
-	void renderComposite(const Scene *scene, render::backend::CommandBuffer *command_buffer);
-	void renderCompositeTemporalFilter(const Scene *scene, render::backend::CommandBuffer *command_buffer);
+	void renderGBuffer(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void renderSSAO(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
+	void renderSSAOBlur(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings);
+	void renderSSRTrace(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void renderSSRResolve(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void renderSSRTemporalFilter(const game::World *world, render::backend::CommandBuffer *command_buffer);
+	void renderLBuffer(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
+	void renderComposite(const game::World *world, render::backend::CommandBuffer *command_buffer);
+	void renderCompositeTemporalFilter(const game::World *world, render::backend::CommandBuffer *command_buffer);
 	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, render::backend::CommandBuffer *command_buffer);
-	void renderToSwapChain(const Scene *scene, render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain);
+	void renderToSwapChain(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain);
 
 	void prepareOldTexture(const RenderBuffer &old, render::backend::CommandBuffer *command_buffer);
 

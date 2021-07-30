@@ -7,8 +7,7 @@
 #include <glm/mat4x4.hpp>
 
 #include <render/backend/Driver.h>
-
-#include <flecs.h>
+#include <game/World.h>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -69,18 +68,15 @@ static glm::mat4 toGlm(const aiMatrix4x4 &transform)
 
 /*
  */
-Scene::Scene(render::backend::Driver *driver)
-	: driver(driver)
+Scene::Scene(render::backend::Driver *driver, game::World *world)
+	: driver(driver), world(world)
 {
-	world = new flecs::world();
 	generateDefaultTextures(driver);
 }
 
 Scene::~Scene()
 {
 	clear();
-	delete world;
-	world = nullptr;
 }
 
 /*
@@ -206,14 +202,9 @@ bool Scene::import(const char *path)
 	return true;
 }
 
-flecs::entity Scene::createEntity()
-{
-	return world->entity();
-}
-
 void Scene::clear()
 {
-	world->delete_entities(flecs::filter());
+	world->clear();
 
 	// TODO: move to resource manager
 	for (size_t i = 0; i < materials.size(); ++i)
@@ -254,6 +245,7 @@ const ecs::render::EnvironmentTexture *Scene::fetchEnvironmentTexture(
 	const Texture *diffuse_irradiance_cubemap
 )
 {
+	// TODO: don't allocate every time the same resource was requested
 	ecs::render::EnvironmentTexture *environment_texture = new ecs::render::EnvironmentTexture();
 
 	environment_texture->baked_brdf = baked_brdf;
@@ -280,10 +272,10 @@ void Scene::importNodes(const aiScene *scene, const aiNode *root, const aiMatrix
 
 		Mesh *mesh = meshes[mesh_index];
 
-		flecs::entity entity = world->entity();
+		game::Entity entity = game::Entity(world);
 
-		entity.set<ecs::render::Transform>({toGlm(transform)});
-		entity.set<ecs::render::Renderable>({mesh, materials[material_index]});
+		entity.addComponent<ecs::render::Transform>(toGlm(transform));
+		entity.addComponent<ecs::render::Renderable>(mesh, materials[material_index]);
 	}
 
 	for (unsigned int i = 0; i < root->mNumChildren; ++i)

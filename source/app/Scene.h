@@ -15,10 +15,9 @@ namespace ecs::render
 	struct EnvironmentTexture;
 }
 
-namespace flecs
+namespace game
 {
-	class world;
-	class entity;
+	class World;
 }
 
 namespace render::backend
@@ -34,13 +33,11 @@ struct aiScene;
 class Scene
 {
 public:
-	Scene(render::backend::Driver *driver);
+	Scene(render::backend::Driver *driver, game::World *world);
 	~Scene();
 
 	bool import(const char *path);
 	void clear();
-
-	flecs::entity createEntity();
 
 	// TODO: move to resource manager
 	const ecs::render::EnvironmentTexture *fetchEnvironmentTexture(
@@ -49,16 +46,12 @@ public:
 		const Texture *diffuse_irradiance_cubemap
 	);
 
-	inline const flecs::world *getBackend() const { return world; }
-	inline flecs::world *getBackend() { return world; }
-
 private:
 	void importNodes(const aiScene *scene, const aiNode *root, const aiMatrix4x4 &transform);
 
 private:
 	render::backend::Driver *driver {nullptr};
-
-	flecs::world *world;
+	game::World *world {nullptr};
 
 	// TODO: move to resource manager
 	std::vector<Mesh *> meshes;

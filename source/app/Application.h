@@ -4,6 +4,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLM/glm.hpp>
 #include <GLM/gtc/matrix_transform.hpp>
+#include <game/World.h>
 
 namespace render::shaders
 {
@@ -120,7 +121,7 @@ private:
 	uint32_t height {0};
 
 	Scene *sponza {nullptr};
-	SkyLight *sky_light {nullptr};
+	game::Entity sky_light;
 
 	RenderGraph *render_graph {nullptr};
 	ApplicationResources *resources {nullptr};
@@ -132,6 +133,7 @@ private:
 	SwapChain *swap_chain {nullptr};
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
+	game::World *world {nullptr};
 
 	render::backend::UniformBuffer *camera_buffer {nullptr};
 	render::backend::BindSet *camera_bindings {nullptr};

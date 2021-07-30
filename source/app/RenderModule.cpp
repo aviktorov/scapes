@@ -2,46 +2,43 @@
 #include "Mesh.h"
 #include "Shader.h"
 
-#include <flecs.h>
-
 namespace ecs::render
 {
-	static flecs::filter renderable_iter;
-	static flecs::filter skylight_iter;
+	static game::Query<Transform, Renderable> *renderable_query {nullptr};
+	static game::Query<SkyLight> *skylight_query {nullptr};
 
-	void init(flecs::world *world)
+	void init(game::World *world)
 	{
-		renderable_iter = flecs::filter(*world)
-			.include<Renderable>()
-			.include<Transform>()
-			.include_kind(flecs::MatchAll);
-
-		skylight_iter = flecs::filter(*world)
-			.include<SkyLight>()
-			.include_kind(flecs::MatchAll);
+		renderable_query = new game::Query<Transform, Renderable>(world);
+		skylight_query = new game::Query<SkyLight>(world);
 	}
 
-	void shutdown()
+	void shutdown(game::World *world)
 	{
+		delete renderable_query;
+		delete skylight_query;
 	}
 
 	void drawRenderables(
-		const flecs::world *world,
+		const game::World *world,
 		::render::backend::Driver *driver,
 		uint8_t material_binding,
 		::render::backend::PipelineState *pipeline_state,
 		::render::backend::CommandBuffer *command_buffer
 	)
 	{
-		for (flecs::iter it : world->filter(renderable_iter))
-		{
-			flecs::column<Renderable> renderables = it.table_column<Renderable>();
-			flecs::column<Transform> transforms = it.table_column<Transform>();
+		renderable_query->begin();
 
-			for (size_t row : it)
+		while (renderable_query->next())
+		{
+			uint32_t num_items = renderable_query->getNumComponents();
+			Transform *transforms = renderable_query->getComponents<Transform>(0);
+			Renderable *renderables = renderable_query->getComponents<Renderable>(1);
+
+			for (uint32_t i = 0; i < num_items; ++i)
 			{
-				const Transform &transform = transforms[row];
-				const Renderable &renderable = renderables[row];
+				const Transform &transform = transforms[i];
+				const Renderable &renderable = renderables[i];
 				const glm::mat4 &node_transform = transform.transform;
 
 				const Mesh *mesh = renderable.mesh;
@@ -59,20 +56,23 @@ namespace ecs::render
 	}
 
 	void drawSkyLights(
-		const flecs::world *world,
+		const game::World *world,
 		::render::backend::Driver *driver,
 		uint8_t light_binding,
 		::render::backend::PipelineState *pipeline_state,
 		::render::backend::CommandBuffer *command_buffer
 	)
 	{
-		for (flecs::iter it : world->filter(skylight_iter))
-		{
-			flecs::column<SkyLight> skylights = it.table_column<SkyLight>();
+		skylight_query->begin();
 
-			for (size_t row : it)
+		while (skylight_query->next())
+		{
+			uint32_t num_items = skylight_query->getNumComponents();
+			SkyLight *skylights = skylight_query->getComponents<SkyLight>(0);
+
+			for (uint32_t i = 0; i < num_items; ++i)
 			{
-				const SkyLight &light = skylights[row];
+				const SkyLight &light = skylights[i];
 
 				driver->clearShaders(pipeline_state);
 				driver->setShader(pipeline_state, ::render::backend::ShaderType::VERTEX, light.vertex_shader->getBackend());
