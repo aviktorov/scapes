@@ -63,20 +63,20 @@ PBR Sandbox:
         ☐ Directional light & shadows
         ☐ Environment / Reflection probes
         ☐ Area lights
-        ☐ Add RenderScene class
         ☐ Add FileWatcher for shader auto reloading
-        ☐ Add simple FileSystem with data root path for simplified content loading
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Try entt
         ☐ Data-driven render graph + REPL
-        ☐ Resource management + REPL
     Stream 66:
+        ☐ Resource management + REPL
         ☐ Rename Scene to Importer
         ☐ Create template based resource manager
+        ☐ Move TypeTraits to common folder
         ☐ Create Common ecs module
             ☐ Move Transform component to CommonModule
             ☐ Add CommonModule as a dependency to RenderModule
     Stream 65:
+        ✔ Add simple FileSystem with data root path for simplified content loading @done (7/31/2021, 7:05:29 AM)
         ✔ Make another release @done (7/31/2021, 5:50:49 AM)
             ✔ Make sure shaderc is either removed or linked statically @done (7/31/2021, 5:29:24 AM)
             ✔ Try to include game API if have time @done (7/31/2021, 3:19:02 AM)
