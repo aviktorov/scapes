@@ -1,6 +1,7 @@
 #pragma once
 
 #include <common/Common.h>
+#include <common/Type.h>
 
 namespace game
 {
@@ -29,12 +30,6 @@ namespace game
 
 		virtual void *addComponent(EntityID *entity, const char *type_name, size_t type_size, size_t type_alignment, const void *data) = 0;
 		virtual void *getComponent(EntityID *entity, const char *type_name, size_t type_size, size_t type_alignment) const = 0;
-	};
-
-	template<typename T>
-	struct TypeTraits
-	{
-		static constexpr const char *name = nullptr;
 	};
 
 	class Entity
