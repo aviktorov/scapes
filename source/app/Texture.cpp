@@ -85,30 +85,56 @@ void Texture::setSamplerWrapMode(render::backend::SamplerWrapMode mode)
  */
 bool Texture::import(const char *path)
 {
-	if (stbi_info(path, nullptr, nullptr, nullptr) == 0)
+	FILE *file = fopen(path, "rb");
+	if (!file)
 	{
-		std::cerr << "Texture::import(): unsupported image format for \"" << path << "\" file" << std::endl;
+		std::cerr << "Texture::import(): can't open \"" << path << "\" file" << std::endl;
+		return false;
+	}
+
+	fseek(file, 0, SEEK_END);
+	size_t size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+
+	uint8_t *data = new uint8_t[size];
+	fread(data, sizeof(uint8_t), size, file);
+	fclose(file);
+
+	bool result = importFromMemory(data, size);
+	delete[] data;
+
+	return result;
+}
+
+bool Texture::importFromMemory(const uint8_t *data, size_t size)
+{
+	if (stbi_info_from_memory(data, static_cast<int>(size), nullptr, nullptr, nullptr) == 0)
+	{
+		std::cerr << "Texture::importFromMemory(): unsupported image format" << std::endl;
 		return false;
 	}
 
 	void *stb_pixels = nullptr;
 	size_t pixel_size = 0;
 	int channels = 0;
+	int default_value = 0;
 
-	if (stbi_is_hdr(path))
+	if (stbi_is_hdr_from_memory(data, static_cast<int>(size)))
 	{
-		stb_pixels = stbi_loadf(path, &width, &height, &channels, STBI_default);
+		stb_pixels = stbi_loadf_from_memory(data, static_cast<int>(size), &width, &height, &channels, STBI_default);
 		pixel_size = sizeof(float);
+		default_value = 0;
 	}
 	else
 	{
-		stb_pixels = stbi_load(path, &width, &height, &channels, STBI_default);
+		stb_pixels = stbi_load_from_memory(data, static_cast<int>(size), &width, &height, &channels, STBI_default);
 		pixel_size = sizeof(stbi_uc);
+		default_value = 255;
 	}
 
 	if (!stb_pixels)
 	{
-		std::cerr << "Texture::import(): " << stbi_failure_reason() << std::endl;
+		std::cerr << "Texture::importFromMemory(): " << stbi_failure_reason() << std::endl;
 		return false;
 	}
 
@@ -143,7 +169,7 @@ bool Texture::import(const char *path)
 			s += stride;
 			d += stride;
 
-			memset(d, 0, pixel_size);
+			memset(d, default_value, pixel_size);
 			d+= pixel_size;
 		}
 	}

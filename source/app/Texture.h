@@ -29,6 +29,7 @@ public:
 	void setSamplerWrapMode(render::backend::SamplerWrapMode mode);
 
 	bool import(const char *path);
+	bool importFromMemory(const uint8_t *data, size_t size);
 
 	void clearGPUData();
 	void clearCPUData();
