@@ -97,13 +97,16 @@ void RenderGraph::initRenderPasses()
 		render::backend::RenderPassClearValue clear_depth;
 		clear_depth.as_depth_stencil = { 1.0f, 0 };
 
+		render::backend::RenderPassClearValue clear_color;
+		clear_color.as_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+
 		render::backend::RenderPassAttachment render_pass_attachments[5] =
 		{
 			{ render::backend::Format::D32_SFLOAT, samples, render::backend::RenderPassLoadOp::CLEAR, render::backend::RenderPassStoreOp::STORE, clear_depth },
-			{ render::backend::Format::R8G8B8A8_UNORM, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
-			{ render::backend::Format::R16G16B16A16_SFLOAT, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
-			{ render::backend::Format::R8G8_UNORM, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
-			{ render::backend::Format::R16G16_SFLOAT, samples, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
+			{ render::backend::Format::R8G8B8A8_UNORM, samples, render::backend::RenderPassLoadOp::CLEAR, render::backend::RenderPassStoreOp::STORE, clear_color },
+			{ render::backend::Format::R16G16B16A16_SFLOAT, samples, render::backend::RenderPassLoadOp::CLEAR, render::backend::RenderPassStoreOp::STORE, clear_color },
+			{ render::backend::Format::R8G8_UNORM, samples, render::backend::RenderPassLoadOp::CLEAR, render::backend::RenderPassStoreOp::STORE, clear_color },
+			{ render::backend::Format::R16G16_SFLOAT, samples, render::backend::RenderPassLoadOp::CLEAR, render::backend::RenderPassStoreOp::STORE, clear_color },
 		};
 
 		uint32_t color_attachments[4] = { 1, 2, 3, 4 };
