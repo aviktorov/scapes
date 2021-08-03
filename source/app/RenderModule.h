@@ -74,23 +74,20 @@ namespace ecs::render
 	);
 }
 
-namespace game
+template<>
+struct TypeTraits<ecs::render::Transform>
 {
-	template<>
-	struct TypeTraits<ecs::render::Transform>
-	{
-		static constexpr const char *name = "ecs::render::Transform";
-	};
+	static constexpr const char *name = "ecs::render::Transform";
+};
 
-	template<>
-	struct TypeTraits<ecs::render::SkyLight>
-	{
-		static constexpr const char *name = "ecs::render::SkyLight";
-	};
+template<>
+struct TypeTraits<ecs::render::SkyLight>
+{
+	static constexpr const char *name = "ecs::render::SkyLight";
+};
 
-	template<>
-	struct TypeTraits<ecs::render::Renderable>
-	{
-		static constexpr const char *name = "ecs::render::Renderable";
-	};
-}
+template<>
+struct TypeTraits<ecs::render::Renderable>
+{
+	static constexpr const char *name = "ecs::render::Renderable";
+};
