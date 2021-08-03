@@ -11,6 +11,11 @@ Texture2DRenderer::Texture2DRenderer(render::backend::Driver *driver)
 {
 }
 
+Texture2DRenderer::~Texture2DRenderer()
+{
+	shutdown();
+}
+
 /*
  */
 void Texture2DRenderer::init(const Texture *target_texture)
@@ -56,9 +61,6 @@ void Texture2DRenderer::shutdown()
 
 	driver->destroyPipelineState(pipeline_state);
 	pipeline_state = nullptr;
-
-	quad.clearGPUData();
-	quad.clearCPUData();
 }
 
 /*

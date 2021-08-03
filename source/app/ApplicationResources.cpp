@@ -73,6 +73,18 @@ namespace config
 	static const char *blueNoise = "assets/textures/blue_noise.png";
 }
 
+static render::backend::Texture *generateTexture(render::backend::Driver *driver, uint8_t r, uint8_t g, uint8_t b)
+{
+	uint8_t pixels[16] = {
+		r, g, b, 255,
+		r, g, b, 255,
+		r, g, b, 255,
+		r, g, b, 255,
+	};
+
+	return driver->createTexture2D(2, 2, 1, render::backend::Format::R8G8B8A8_UNORM, pixels);
+}
+
 /*
  */
 const char *ApplicationResources::getHDRTexturePath(int index) const
@@ -152,23 +164,16 @@ void ApplicationResources::init()
 
 	fullscreen_quad = new Mesh(driver);
 	fullscreen_quad->createQuad(2.0f);
+
+	default_albedo = generateTexture(driver, 127, 127, 127);
+	default_normal = generateTexture(driver, 127, 127, 255);
+	default_roughness = generateTexture(driver, 255, 255, 255);
+	default_metalness = generateTexture(driver, 0, 0, 0);
 }
 
 void ApplicationResources::shutdown()
 {
-	for (int i = 0; i < config::meshes.size(); ++i)
-		resources.unloadMesh(i);
-
-	resources.unloadMesh(config::Meshes::Skybox);
-
-	for (int i = 0; i < config::shaders.size(); ++i)
-		resources.unloadShader(i);
-
-	for (int i = 0; i < config::textures.size(); ++i)
-		resources.unloadTexture(i);
-
-	for (int i = 0; i < config::hdrTextures.size(); ++i)
-		resources.unloadTexture(config::Textures::EnvironmentBase + i);
+	resources.clear();
 
 	delete baked_brdf;
 	baked_brdf = nullptr;
@@ -183,7 +188,20 @@ void ApplicationResources::shutdown()
 	irradiance_cubemaps.clear();
 
 	delete blue_noise;
+	blue_noise = nullptr;
+
 	delete fullscreen_quad;
+	fullscreen_quad = nullptr;
+
+	driver->destroyTexture(default_albedo);
+	driver->destroyTexture(default_normal);
+	driver->destroyTexture(default_roughness);
+	driver->destroyTexture(default_metalness);
+
+	default_albedo = nullptr;
+	default_normal = nullptr;
+	default_roughness = nullptr;
+	default_metalness = nullptr;
 }
 
 void ApplicationResources::reloadShaders()

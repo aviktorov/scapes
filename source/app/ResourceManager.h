@@ -20,6 +20,10 @@ public:
 	ResourceManager(render::backend::Driver *driver, render::shaders::Compiler *compiler)
 		: driver(driver), compiler(compiler) {}
 
+	~ResourceManager();
+
+	void clear();
+
 	Mesh *getMesh(int id) const;
 	Mesh *createCubeMesh(int id, float size);
 	Mesh *loadMesh(int id, const char *path);

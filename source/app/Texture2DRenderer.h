@@ -12,6 +12,7 @@ class Texture2DRenderer
 {
 public:
 	Texture2DRenderer(render::backend::Driver *driver);
+	~Texture2DRenderer();
 
 	void init(const Texture *target_texture);
 	void shutdown();

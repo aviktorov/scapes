@@ -23,6 +23,11 @@ CubemapRenderer::CubemapRenderer(render::backend::Driver *driver)
 {
 }
 
+CubemapRenderer::~CubemapRenderer()
+{
+	shutdown();
+}
+
 /*
  */
 void CubemapRenderer::init(
@@ -148,9 +153,6 @@ void CubemapRenderer::shutdown()
 
 	driver->destroyPipelineState(pipeline_state);
 	pipeline_state = nullptr;
-
-	quad.clearGPUData();
-	quad.clearCPUData();
 }
 
 /*

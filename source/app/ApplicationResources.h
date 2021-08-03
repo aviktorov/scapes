@@ -81,6 +81,11 @@ public:
 	inline const Mesh *getSkybox() const { return resources.getMesh(config::Meshes::Skybox); }
 	inline const Mesh *getFullscreenQuad() const { return fullscreen_quad; }
 
+	inline render::backend::Texture *getDefaultAlbedo() const { return default_albedo;}
+	inline render::backend::Texture *getDefaultNormal() const { return default_normal;}
+	inline render::backend::Texture *getDefaultRoughness() const { return default_roughness;}
+	inline render::backend::Texture *getDefaultMetalness() const { return default_metalness;}
+
 	void reloadShaders();
 
 private:
@@ -95,4 +100,9 @@ private:
 	std::vector<Texture *> irradiance_cubemaps;
 
 	Texture *blue_noise {nullptr};
+
+	render::backend::Texture *default_albedo {nullptr};
+	render::backend::Texture *default_normal {nullptr};
+	render::backend::Texture *default_roughness {nullptr};
+	render::backend::Texture *default_metalness {nullptr};
 };

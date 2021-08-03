@@ -12,6 +12,7 @@ class CubemapRenderer
 {
 public:
 	CubemapRenderer(render::backend::Driver *driver);
+	~CubemapRenderer();
 
 	void init(
 		const Texture *target_texture,

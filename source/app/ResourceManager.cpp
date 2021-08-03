@@ -8,6 +8,31 @@
 
 /*
  */
+ResourceManager::~ResourceManager()
+{
+	clear();
+}
+
+/*
+ */
+void ResourceManager::clear()
+{
+	for (auto it : meshes)
+		delete it.second;
+
+	for (auto it : shaders)
+		delete it.second;
+
+	for (auto it : textures)
+		delete it.second;
+
+	meshes.clear();
+	shaders.clear();
+	textures.clear();
+}
+
+/*
+ */
 Mesh *ResourceManager::getMesh(int id) const
 {
 	auto it = meshes.find(id);
@@ -43,7 +68,7 @@ Mesh *ResourceManager::loadMesh(int id, const char *path)
 	}
 
 	Mesh *mesh = new Mesh(driver);
-	if (!mesh->import(path))
+	if (!mesh->importAssimp(path))
 		return nullptr;
 
 	meshes.insert(std::make_pair(id, mesh));
