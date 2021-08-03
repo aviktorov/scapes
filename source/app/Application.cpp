@@ -9,7 +9,7 @@
 #include "SwapChain.h"
 #include "SkyLight.h"
 #include "RenderGraph.h"
-#include "Scene.h"
+#include "SceneImporter.h"
 
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
@@ -182,7 +182,7 @@ void Application::update()
 	{
 		ecs::render::SkyLight &comp = sky_light.getComponent<ecs::render::SkyLight>();
 
-		const ecs::render::EnvironmentTexture *env = sponza->fetchEnvironmentTexture(
+		const ecs::render::EnvironmentTexture *env = importer->fetchEnvironmentTexture(
 			resources->getBakedBRDFTexture(),
 			resources->getHDREnvironmentCubemap(application_state.currentEnvironment),
 			resources->getHDRIrradianceCubemap(application_state.currentEnvironment)
@@ -335,11 +335,10 @@ void Application::initRenderScene()
 	world = game::World::create();
 	ecs::render::init(world);
 
-	sponza = new Scene(driver, world);
+	importer = new SceneImporter(driver, world);
+	importer->importCGLTF("assets/scenes/blender_splash/blender_splash.glb", resources);
 
-	sponza->import("assets/scenes/pbr_sponza/sponza.obj");
-
-	const ecs::render::EnvironmentTexture *env = sponza->fetchEnvironmentTexture(
+	const ecs::render::EnvironmentTexture *env = importer->fetchEnvironmentTexture(
 		resources->getBakedBRDFTexture(),
 		resources->getHDREnvironmentCubemap(0),
 		resources->getHDRIrradianceCubemap(0)
@@ -359,8 +358,8 @@ void Application::shutdownRenderScene()
 	delete resources;
 	resources = nullptr;
 
-	delete sponza;
-	sponza = nullptr;
+	delete importer;
+	importer = nullptr;
 
 	ecs::render::shutdown(world);
 	game::World::destroy(world);

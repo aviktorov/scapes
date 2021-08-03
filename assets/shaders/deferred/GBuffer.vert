@@ -37,7 +37,7 @@ void main()
 	mat4 modelviewOld = camera.viewOld * node.transform; // TODO: old node transform
 
 	outUV = inUV;
-	outTangentVS = vec3(modelview * vec4(inTangent, 0.0f));
+	outTangentVS = vec3(modelview * vec4(inTangent.xyz, 0.0f));
 	outBinormalVS = vec3(modelview * vec4(inBinormal, 0.0f));
 	outNormalVS = vec3(modelview * vec4(inNormal, 0.0f));
 	outPositionNDC = vec4(camera.projection * modelview * vec4(inPosition, 1.0f));

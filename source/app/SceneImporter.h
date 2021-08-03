@@ -2,10 +2,8 @@
 
 #include <map>
 #include <vector>
-#include <string>
 
-#include <assimp/matrix4x4.h>
-
+class ApplicationResources;
 class Mesh;
 class Texture;
 
@@ -25,18 +23,16 @@ namespace render::backend
 	class Driver;
 }
 
-struct aiNode;
-struct aiScene;
-
 /*
  */
-class Scene
+class SceneImporter
 {
 public:
-	Scene(render::backend::Driver *driver, game::World *world);
-	~Scene();
+	SceneImporter(render::backend::Driver *driver, game::World *world);
+	~SceneImporter();
 
-	bool import(const char *path);
+	bool importCGLTF(const char *path, const ApplicationResources *resources);
+	bool importAssimp(const char *path, const ApplicationResources *resources);
 	void clear();
 
 	// TODO: move to resource manager
@@ -47,15 +43,12 @@ public:
 	);
 
 private:
-	void importNodes(const aiScene *scene, const aiNode *root, const aiMatrix4x4 &transform);
-
-private:
 	render::backend::Driver *driver {nullptr};
 	game::World *world {nullptr};
 
 	// TODO: move to resource manager
 	std::vector<Mesh *> meshes;
-	std::map<std::string, Texture *> textures;
+	std::vector<Texture *> textures;
 	std::vector<ecs::render::RenderMaterialData *> materials;
 	std::vector<ecs::render::EnvironmentTexture *> environment_textures;
 };

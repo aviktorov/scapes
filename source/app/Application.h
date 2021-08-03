@@ -24,7 +24,7 @@ class ApplicationResources;
 class RenderGraph;
 class Renderer;
 class ImGuiRenderer;
-class Scene;
+class SceneImporter;
 class SkyLight;
 class SwapChain;
 
@@ -120,7 +120,7 @@ private:
 	uint32_t width {0};
 	uint32_t height {0};
 
-	Scene *sponza {nullptr};
+	SceneImporter *importer {nullptr};
 	game::Entity sky_light;
 
 	RenderGraph *render_graph {nullptr};
@@ -135,6 +135,7 @@ private:
 	render::shaders::Compiler *compiler {nullptr};
 	game::World *world {nullptr};
 
+	// TODO: make this better
 	render::backend::UniformBuffer *camera_buffer {nullptr};
 	render::backend::BindSet *camera_bindings {nullptr};
 	void *camera_gpu_data {nullptr};

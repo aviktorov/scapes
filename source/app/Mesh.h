@@ -4,6 +4,7 @@
 #include <GLM/glm.hpp>
 
 struct aiMesh;
+struct cgltf_mesh;
 
 namespace render::backend
 {
@@ -26,8 +27,9 @@ public:
 	inline render::backend::VertexBuffer *getVertexBuffer() const { return vertex_buffer; }
 	inline render::backend::IndexBuffer *getIndexBuffer() const { return index_buffer; }
 
-	bool import(const char *path);
-	bool import(const aiMesh *mesh);
+	bool importAssimp(const char *path);
+	bool importAssimp(const aiMesh *mesh);
+	bool importCGLTF(const cgltf_mesh &mesh);
 
 	void createSkybox(float size);
 	void createQuad(float size);
@@ -46,10 +48,10 @@ private:
 	struct Vertex
 	{
 		glm::vec3 position;
-		glm::vec3 tangent;
+		glm::vec4 tangent;
 		glm::vec3 binormal;
 		glm::vec3 normal;
-		glm::vec3 color;
+		glm::vec4 color;
 		glm::vec2 uv;
 	};
 
