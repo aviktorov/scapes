@@ -36,6 +36,7 @@ include_directories("3rdparty/imgui")
 include_directories("3rdparty/imgui/examples")
 include_directories("3rdparty/tracy")
 include_directories("3rdparty/flecs")
+include_directories("3rdparty/cgltf")
 
 # ==================================================================================================
 # General libraries
