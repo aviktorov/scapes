@@ -67,12 +67,19 @@ PBR Sandbox:
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Try entt
         ☐ Data-driven render graph + REPL
-    Stream 67:
-        ☐ Resource management + REPL
-            ☐ Create template based resource manager
         ☐ Create Common ecs module
             ☐ Move Transform component to CommonModule
             ☐ Add CommonModule as a dependency to RenderModule
+    Stream 68:
+        ☐ Get rid of ApplicationResources
+        ☐ Migrate existing render resources to new resource manager
+            ☐ Migrate shaders
+            ☐ Migrate textures
+            ☐ Migrate meshes
+            ☐ Migrate ecs::render resources
+            ☐ Move all resources under ecs::render namespace
+    Stream 67:
+        ✔ Create template based resource manager @done (8/11/2021, 2:20:49 AM)
     Stream 66:
         ✔ Move TypeTraits to common folder @done (8/3/2021, 11:33:35 PM)
         ✔ Rename Scene to Importer @done (8/4/2021, 5:39:11 AM)
