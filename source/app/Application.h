@@ -124,7 +124,7 @@ private:
 	game::Entity sky_light;
 
 	RenderGraph *render_graph {nullptr};
-	ApplicationResources *resources {nullptr};
+	ApplicationResources *application_resources {nullptr};
 	ApplicationState application_state;
 	ApplicationFileSystem *file_system {nullptr};
 	CameraState camera_state;

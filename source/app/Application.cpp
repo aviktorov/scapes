@@ -101,17 +101,17 @@ void Application::update()
 
 	if (ImGui::Button("Reload Shaders"))
 	{
-		resources->reloadShaders();
+		application_resources->reloadShaders();
 		reset_environment = true;
 	}
 
 	int oldCurrentEnvironment = application_state.currentEnvironment;
-	if (ImGui::BeginCombo("Choose Your Destiny", resources->getHDRTexturePath(application_state.currentEnvironment)))
+	if (ImGui::BeginCombo("Choose Your Destiny", application_resources->getHDRTexturePath(application_state.currentEnvironment)))
 	{
-		for (int i = 0; i < resources->getNumHDRTextures(); i++)
+		for (int i = 0; i < application_resources->getNumHDRTextures(); i++)
 		{
 			bool selected = (i == application_state.currentEnvironment);
-			if (ImGui::Selectable(resources->getHDRTexturePath(i), &selected))
+			if (ImGui::Selectable(application_resources->getHDRTexturePath(i), &selected))
 			{
 				application_state.currentEnvironment = i;
 				reset_environment = true;
@@ -183,9 +183,9 @@ void Application::update()
 		ecs::render::SkyLight &comp = sky_light.getComponent<ecs::render::SkyLight>();
 
 		const ecs::render::EnvironmentTexture *env = importer->fetchEnvironmentTexture(
-			resources->getBakedBRDFTexture(),
-			resources->getHDREnvironmentCubemap(application_state.currentEnvironment),
-			resources->getHDRIrradianceCubemap(application_state.currentEnvironment)
+			application_resources->getBakedBRDFTexture(),
+			application_resources->getHDREnvironmentCubemap(application_state.currentEnvironment),
+			application_resources->getHDRIrradianceCubemap(application_state.currentEnvironment)
 		);
 		comp.environment = env;
 	}
@@ -329,34 +329,34 @@ void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
  */
 void Application::initRenderScene()
 {
-	resources = new ApplicationResources(driver, compiler);
-	resources->init();
+	application_resources = new ApplicationResources(driver, compiler);
+	application_resources->init();
 
 	world = game::World::create();
 	ecs::render::init(world);
 
 	importer = new SceneImporter(driver, world);
-	importer->importCGLTF("assets/scenes/blender_splash/blender_splash.glb", resources);
+	importer->importCGLTF("assets/scenes/blender_splash/blender_splash.glb", application_resources);
 
 	const ecs::render::EnvironmentTexture *env = importer->fetchEnvironmentTexture(
-		resources->getBakedBRDFTexture(),
-		resources->getHDREnvironmentCubemap(0),
-		resources->getHDRIrradianceCubemap(0)
+		application_resources->getBakedBRDFTexture(),
+		application_resources->getHDREnvironmentCubemap(0),
+		application_resources->getHDRIrradianceCubemap(0)
 	);
 
 	sky_light = game::Entity(world);
 	sky_light.addComponent<ecs::render::SkyLight>(
 		env,
-		resources->getFullscreenQuad(),
-		resources->getShader(config::Shaders::FullscreenQuadVertex),
-		resources->getShader(config::Shaders::SkylightDeferredFragment)
+		application_resources->getFullscreenQuad(),
+		application_resources->getShader(config::Shaders::FullscreenQuadVertex),
+		application_resources->getShader(config::Shaders::SkylightDeferredFragment)
 	);
 }
 
 void Application::shutdownRenderScene()
 {
-	delete resources;
-	resources = nullptr;
+	delete application_resources;
+	application_resources = nullptr;
 
 	delete importer;
 	importer = nullptr;
@@ -371,7 +371,7 @@ void Application::shutdownRenderScene()
 void Application::initRenderers()
 {
 	render_graph = new RenderGraph(driver, compiler);
-	render_graph->init(resources, width, height);
+	render_graph->init(application_resources, width, height);
 
 	const uint8_t num_columns = ApplicationState::MAX_TEMPORAL_FRAMES / 4;
 	const uint8_t num_rows = ApplicationState::MAX_TEMPORAL_FRAMES / num_columns;
