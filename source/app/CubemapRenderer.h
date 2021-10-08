@@ -4,7 +4,7 @@
 #include <render/backend/driver.h>
 
 class Shader;
-class Texture;
+struct Texture;
 
 /*
  */

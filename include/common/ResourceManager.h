@@ -5,10 +5,12 @@
 
 namespace resources
 {
+	// TODO: better types
 	typedef int timestamp_t;
 	typedef int generation_t;
 
-	typedef const char * ResourceID;
+	// TODO: move to IO module
+	typedef const char * URI;
 
 	template <typename T>
 	struct ResourceTraits { };
@@ -85,32 +87,45 @@ namespace resources
 
 	public:
 		template <typename T>
-		ResourceHandle<T> fetch(const ResourceID &id)
+		ResourceHandle<T> create()
 		{
-			void *memory = get(id, TypeTraits<T>::name, sizeof(T), alignof(T));
-			
-			T *obj = nullptr;
-			if (!memory)
-			{
-				memory = allocate(id, TypeTraits<T>::name, sizeof(T), alignof(T));
-				assert(memory);
-				obj = new (memory) T();
-			}
+			void *memory = allocate(TypeTraits<T>::name, sizeof(T), alignof(T));
+			assert(memory);
+			new (memory) T();
 
 			return ResourceHandle<T>(memory);
 		}
 
 		template <typename T, typename... Arguments>
-		ResourceHandle<T> import(const ResourceID &id, Arguments&&... params)
+		ResourceHandle<T> import(const URI &uri, Arguments&&... params)
 		{
-			ResourceHandle<T> resource = fetch<T>(id);
-			ResourcePipeline<T>::import(id, resource, std::forward<Arguments>(params)...);
+			// TODO: use I/O to load resource into temp memory and provide to resource pipeline
+			ResourceHandle<T> resource = create<T>();
+			ResourcePipeline<T>::import(resource, uri, std::forward<Arguments>(params)...);
 
 			return resource;
 		}
 
+		template <typename T, typename... Arguments>
+		ResourceHandle<T> importFromMemory(const uint8_t *data, size_t size, Arguments&&... params)
+		{
+			ResourceHandle<T> resource = create<T>();
+			ResourcePipeline<T>::importFromMemory(resource, data, size, std::forward<Arguments>(params)...);
+
+			return resource;
+		}
+
+		template <typename T, typename... Arguments>
+		void destroy(ResourceHandle<T> resource, Arguments&&... params)
+		{
+			ResourcePipeline<T>::destroy(resource, std::forward<Arguments>(params)...);
+			resource.get()->~T();
+
+			deallocate(resource.get(), TypeTraits<T>::name, sizeof(T), alignof(T));
+		}
+
 	protected:
-		virtual void *get(const ResourceID &id, const char *type_name, size_t type_size, size_t type_alignment) = 0;
-		virtual void *allocate(const ResourceID &id, const char *type_name, size_t type_size, size_t type_alignment) = 0;
+		virtual void *allocate(const char *type_name, size_t type_size, size_t type_alignment) = 0;
+		virtual void deallocate(void *memory, const char *type_name, size_t type_size, size_t type_alignment) = 0;
 	};
 }

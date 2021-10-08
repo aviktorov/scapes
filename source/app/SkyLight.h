@@ -4,7 +4,7 @@
 
 class Mesh;
 class Shader;
-class Texture;
+struct Texture;
 
 class Light
 {

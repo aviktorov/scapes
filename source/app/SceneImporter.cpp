@@ -24,6 +24,8 @@
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 
+using namespace resources;
+
 /*
  */
 static glm::mat4 toGlm(const aiMatrix4x4 &transform)
@@ -91,7 +93,7 @@ SceneImporter::~SceneImporter()
 
 /*
  */
-bool SceneImporter::importCGLTF(const char *path, const ApplicationResources *resources)
+bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resources)
 {
 	cgltf_options options = {};
 	cgltf_data *data = nullptr;
@@ -125,7 +127,7 @@ bool SceneImporter::importCGLTF(const char *path, const ApplicationResources *re
 	}
 
 	// import images
-	std::map<const cgltf_image *, Texture *> mapped_textures;
+	std::map<const cgltf_image *, ResourceHandle<Texture> > mapped_textures;
 	for (cgltf_size i = 0; i < data->images_count; ++i)
 	{
 		const cgltf_image &image = data->images[i];
@@ -137,20 +139,18 @@ bool SceneImporter::importCGLTF(const char *path, const ApplicationResources *re
 		assert(size);
 		
 		// TODO: fetch from resource manager
-		Texture *texture = new Texture(driver);
+		ResourceHandle<Texture> texture = resources->loadTextureFromMemory(data, size);
 
-		texture->importFromMemory(data, size);
 		mapped_textures.insert({&image, texture});
-		textures.push_back(texture);
 	}
 
 
 	// import materials
 	ecs::render::RenderMaterialData *default_material = new ecs::render::RenderMaterialData();
-	default_material->albedo = nullptr;
-	default_material->normal = nullptr;
-	default_material->roughness = nullptr;
-	default_material->metalness = nullptr;
+	default_material->albedo = {};
+	default_material->normal = {};
+	default_material->roughness = {};
+	default_material->metalness = {};
 
 	default_material->bindings = driver->createBindSet();
 	default_material->parameters = nullptr;
@@ -168,19 +168,25 @@ bool SceneImporter::importCGLTF(const char *path, const ApplicationResources *re
 
 		const cgltf_texture *base_color_texture = material.pbr_metallic_roughness.base_color_texture.texture;
 		const cgltf_texture *normal_texture = material.normal_texture.texture;
+
 		// TODO: metalness / roughness maps
 
 		ecs::render::RenderMaterialData *result = new ecs::render::RenderMaterialData();
-		result->albedo = (base_color_texture) ? mapped_textures[base_color_texture->image] : nullptr;
-		result->normal = (normal_texture) ? mapped_textures[normal_texture->image] : nullptr;
-		result->roughness = nullptr;
-		result->metalness = nullptr;
+		result->albedo = (base_color_texture) ? mapped_textures[base_color_texture->image] : ResourceHandle<Texture>();
+		result->normal = (normal_texture) ? mapped_textures[normal_texture->image] : ResourceHandle<Texture>();
+		result->roughness = {};
+		result->metalness = {};
 
 		result->bindings = driver->createBindSet();
 		result->parameters = nullptr;
 
-		driver->bindTexture(result->bindings, 0, (result->albedo) ? result->albedo->getBackend() : resources->getDefaultAlbedo());
-		driver->bindTexture(result->bindings, 1, (result->normal) ? result->normal->getBackend() : resources->getDefaultNormal());
+		const Texture *resource_albedo = result->albedo.get();
+		const Texture *resource_normal = result->normal.get();
+		const Texture *resource_roughness = result->roughness.get();
+		const Texture *resource_metalness = result->metalness.get();
+
+		driver->bindTexture(result->bindings, 0, (resource_albedo) ? resource_albedo->gpu_data : resources->getDefaultAlbedo());
+		driver->bindTexture(result->bindings, 1, (resource_normal) ? resource_normal->gpu_data : resources->getDefaultNormal());
 		driver->bindTexture(result->bindings, 2, resources->getDefaultRoughness());
 		driver->bindTexture(result->bindings, 3, resources->getDefaultMetalness());
 
@@ -226,7 +232,7 @@ bool SceneImporter::importCGLTF(const char *path, const ApplicationResources *re
 	return true;
 }
 
-bool SceneImporter::importAssimp(const char *path, const ApplicationResources *resources)
+bool SceneImporter::importAssimp(const char *path, ApplicationResources *resources)
 {
 	Assimp::Importer importer;
 
@@ -267,30 +273,29 @@ bool SceneImporter::importAssimp(const char *path, const ApplicationResources *r
 	}
 
 	// import textures
-	std::map<std::string, Texture *> mapped_textures;
+	std::map<std::string, ResourceHandle<Texture> > mapped_textures;
 	for (unsigned int i = 0; i < scene->mNumTextures; ++i)
 	{
 		// TODO: fetch from resource manager
 		std::stringstream path_builder;
-		Texture *texture = new Texture(driver);
 		
 		path_builder << dir << '/' << scene->mTextures[i]->mFilename.C_Str();
 		const std::string &texture_path = path_builder.str();
-		texture->import(texture_path.c_str());
+
+		ResourceHandle<Texture> texture = resources->loadTexture(texture_path.c_str());
 
 		mapped_textures.insert({texture_path, texture});
-		textures.push_back(texture);
 	}
 
 	// import materials
 	materials.resize(scene->mNumMaterials);
-	auto import_material_texture = [&mapped_textures, &dir, this](const aiMaterial *material, aiTextureType type) -> Texture *
+	auto import_material_texture = [&mapped_textures, &dir, this, resources](const aiMaterial *material, aiTextureType type) -> ResourceHandle<Texture>
 	{
 		aiString path;
 		material->GetTexture(type, 0, &path);
 
 		if (path.length == 0)
-			return nullptr;
+			return ResourceHandle<Texture>();
 
 		std::stringstream path_builder;
 		path_builder << dir << '/' << path.C_Str();
@@ -300,11 +305,9 @@ bool SceneImporter::importAssimp(const char *path, const ApplicationResources *r
 		auto it = mapped_textures.find(texture_path);
 		if (it == mapped_textures.end())
 		{
-			Texture *texture = new Texture(driver);
-			texture->import(texture_path.c_str());
+			ResourceHandle<Texture> texture = resources->loadTexture(texture_path.c_str());
 
 			mapped_textures.insert({texture_path, texture});
-			textures.push_back(texture);
 			return texture;
 		}
 
@@ -325,10 +328,15 @@ bool SceneImporter::importAssimp(const char *path, const ApplicationResources *r
 		render_material->bindings = driver->createBindSet();
 		render_material->parameters = nullptr;
 
-		const render::backend::Texture *albedo = (render_material->albedo) ? render_material->albedo->getBackend() : resources->getDefaultAlbedo();
-		const render::backend::Texture *normal = (render_material->normal) ? render_material->normal->getBackend() : resources->getDefaultNormal();
-		const render::backend::Texture *roughness = (render_material->roughness) ? render_material->roughness->getBackend() : resources->getDefaultRoughness();
-		const render::backend::Texture *metalness = (render_material->metalness) ? render_material->metalness->getBackend() : resources->getDefaultMetalness();
+		const Texture *resource_albedo = render_material->albedo.get();
+		const Texture *resource_normal = render_material->normal.get();
+		const Texture *resource_roughness = render_material->roughness.get();
+		const Texture *resource_metalness = render_material->metalness.get();
+
+		const render::backend::Texture *albedo = (resource_albedo) ? resource_albedo->gpu_data : resources->getDefaultAlbedo();
+		const render::backend::Texture *normal = (resource_normal) ? resource_normal->gpu_data : resources->getDefaultNormal();
+		const render::backend::Texture *roughness = (resource_roughness) ? resource_roughness->gpu_data : resources->getDefaultRoughness();
+		const render::backend::Texture *metalness = (resource_metalness) ? resource_metalness->gpu_data : resources->getDefaultMetalness();
 
 		driver->bindTexture(render_material->bindings, 0, albedo);
 		driver->bindTexture(render_material->bindings, 1, normal);
@@ -411,9 +419,9 @@ void SceneImporter::clear()
 /*
  */
 const ecs::render::EnvironmentTexture *SceneImporter::fetchEnvironmentTexture(
-	const Texture *baked_brdf,
-	const Texture *prefiltered_specular_cubemap,
-	const Texture *diffuse_irradiance_cubemap
+	ResourceHandle<Texture> baked_brdf,
+	ResourceHandle<Texture> prefiltered_specular_cubemap,
+	ResourceHandle<Texture> diffuse_irradiance_cubemap
 )
 {
 	// TODO: don't allocate every time the same resource was requested
@@ -424,9 +432,9 @@ const ecs::render::EnvironmentTexture *SceneImporter::fetchEnvironmentTexture(
 	environment_texture->diffuse_irradiance_cubemap = diffuse_irradiance_cubemap;
 	environment_texture->bindings = driver->createBindSet();
 
-	driver->bindTexture(environment_texture->bindings, 0, baked_brdf->getBackend());
-	driver->bindTexture(environment_texture->bindings, 1, prefiltered_specular_cubemap->getBackend());
-	driver->bindTexture(environment_texture->bindings, 2, diffuse_irradiance_cubemap->getBackend());
+	driver->bindTexture(environment_texture->bindings, 0, baked_brdf.get()->gpu_data);
+	driver->bindTexture(environment_texture->bindings, 1, prefiltered_specular_cubemap.get()->gpu_data);
+	driver->bindTexture(environment_texture->bindings, 2, diffuse_irradiance_cubemap.get()->gpu_data);
 
 	environment_textures.push_back(environment_texture);
 	return environment_texture;

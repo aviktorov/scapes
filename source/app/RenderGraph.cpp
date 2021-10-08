@@ -41,7 +41,7 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 
 	initRenderPasses();
 	initSSAOKernel();
-	initSSRData(resources->getBlueNoiseTexture());
+	initSSRData(resources->getBlueNoiseTexture().get());
 	initTransient(width, height);
 
 	quad = resources->getFullscreenQuad();
@@ -383,7 +383,7 @@ void RenderGraph::initSSRData(const Texture *blue_noise)
 	ssr_data.bindings = driver->createBindSet();
 
 	driver->bindUniformBuffer(ssr_data.bindings, 0, ssr_data.gpu_data);
-	driver->bindTexture(ssr_data.bindings, 1, blue_noise->getBackend());
+	driver->bindTexture(ssr_data.bindings, 1, blue_noise->gpu_data);
 }
 
 void RenderGraph::shutdownSSRData()

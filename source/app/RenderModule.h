@@ -2,11 +2,12 @@
 
 #include <game/World.h>
 #include <render/backend/Driver.h>
+#include <common/ResourceManager.h>
 
 #include <glm/mat4x4.hpp>
 
 class Mesh;
-class Texture;
+struct Texture;
 class Shader;
 
 namespace ecs::render
@@ -14,18 +15,18 @@ namespace ecs::render
 	// Resources
 	struct EnvironmentTexture
 	{
-		const ::Texture *baked_brdf {nullptr};
-		const ::Texture *prefiltered_specular_cubemap {nullptr};
-		const ::Texture *diffuse_irradiance_cubemap {nullptr};
+		resources::ResourceHandle<::Texture> baked_brdf;
+		resources::ResourceHandle<::Texture> prefiltered_specular_cubemap;
+		resources::ResourceHandle<::Texture> diffuse_irradiance_cubemap;
 		::render::backend::BindSet *bindings {nullptr};
 	};
 
 	struct RenderMaterialData
 	{
-		const ::Texture *albedo {nullptr};
-		const ::Texture *normal {nullptr};
-		const ::Texture *roughness {nullptr};
-		const ::Texture *metalness {nullptr};
+		resources::ResourceHandle<::Texture> albedo;
+		resources::ResourceHandle<::Texture> normal;
+		resources::ResourceHandle<::Texture> roughness;
+		resources::ResourceHandle<::Texture> metalness;
 		::render::backend::UniformBuffer *parameters {nullptr};
 		::render::backend::BindSet *bindings {nullptr};
 	};

@@ -9,7 +9,8 @@
 
 /*
  */
-Texture *RenderUtils::createTexture2D(
+resources::ResourceHandle<Texture> RenderUtils::createTexture2D(
+	resources::ResourceManager *resource_manager,
 	render::backend::Driver *driver,
 	render::backend::Format format,
 	uint32_t width,
@@ -19,43 +20,45 @@ Texture *RenderUtils::createTexture2D(
 	const Shader *fragment_shader
 )
 {
-	Texture *result = new Texture(driver);
-	result->create2D(format, width, height, mips);
+	resources::ResourceHandle<Texture> result = resource_manager->create<Texture>();
+	resources::ResourcePipeline<Texture>::create2D(result, driver, format, width, height, mips);
 
 	Texture2DRenderer renderer(driver);
-	renderer.init(result);
+	renderer.init(result.get());
 	renderer.render(vertex_shader, fragment_shader);
 
 	return result;
 }
 
-Texture *RenderUtils::createTextureCube(
+resources::ResourceHandle<Texture> RenderUtils::createTextureCube(
+	resources::ResourceManager *resource_manager,
 	render::backend::Driver *driver,
 	render::backend::Format format,
 	uint32_t size,
 	uint32_t mips,
 	const Shader *vertex_shader,
 	const Shader *fragment_shader,
-	const Texture *input
+	resources::ResourceHandle<Texture> input
 )
 {
-	Texture *result = new Texture(driver);
-	result->createCube(format, size, mips);
+	resources::ResourceHandle<Texture> result = resource_manager->create<Texture>();
+	resources::ResourcePipeline<Texture>::createCube(result, driver, format, size, mips);
 
 	CubemapRenderer renderer(driver);
-	renderer.init(result, 0);
-	renderer.render(vertex_shader, fragment_shader, input);
+	renderer.init(result.get(), 0);
+	renderer.render(vertex_shader, fragment_shader, input.get());
 
 	return result;
 }
 
 /*
  */
-Texture *RenderUtils::hdriToCube(
+resources::ResourceHandle<Texture> RenderUtils::hdriToCube(
+	resources::ResourceManager *resource_manager,
 	render::backend::Driver *driver,
 	render::backend::Format format,
 	uint32_t size,
-	const Texture *hdri,
+	resources::ResourceHandle<Texture> hdri,
 	const Shader *vertex_shader,
 	const Shader *hdri_fragment_shader,
 	const Shader *prefilter_fragment_shader
@@ -63,15 +66,15 @@ Texture *RenderUtils::hdriToCube(
 {
 	uint32_t mips = static_cast<int>(std::floor(std::log2(size)) + 1);
 
-	Texture *temp = new Texture(driver);
-	temp->createCube(format, size, 1);
+	resources::ResourceHandle<Texture> temp = resource_manager->create<Texture>();
+	resources::ResourcePipeline<Texture>::createCube(temp, driver, format, size, 1);
 
-	Texture *result = new Texture(driver);
-	result->createCube(format, size, mips);
+	resources::ResourceHandle<Texture> result = resource_manager->create<Texture>();
+	resources::ResourcePipeline<Texture>::createCube(result, driver, format, size, mips);
 
 	CubemapRenderer renderer(driver);
-	renderer.init(temp, 0);
-	renderer.render(vertex_shader, hdri_fragment_shader, hdri);
+	renderer.init(temp.get(), 0);
+	renderer.render(vertex_shader, hdri_fragment_shader, hdri.get());
 
 	for (uint32_t mip = 0; mip < mips; ++mip)
 	{
@@ -81,11 +84,11 @@ Texture *RenderUtils::hdriToCube(
 		const uint8_t *data = reinterpret_cast<const uint8_t *>(&roughness);
 
 		CubemapRenderer mip_renderer(driver);
-		mip_renderer.init(result, mip);
-		mip_renderer.render(vertex_shader, prefilter_fragment_shader, temp, size, data);
+		mip_renderer.init(result.get(), mip);
+		mip_renderer.render(vertex_shader, prefilter_fragment_shader, temp.get(), size, data);
 	}
 
-	delete temp;
+	resource_manager->destroy(temp, driver);
 
 	return result;
 }

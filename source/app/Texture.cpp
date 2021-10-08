@@ -39,56 +39,51 @@ static render::backend::Format deduceFormat(size_t pixelSize, int channels)
 
 /*
  */
-Texture::~Texture()
+void resources::ResourcePipeline<Texture>::destroy(ResourceHandle<Texture> handle, render::backend::Driver *driver)
 {
-	clearGPUData();
-	clearCPUData();
+	Texture *texture = handle.get();
+	driver->destroyTexture(texture->gpu_data);
+
+	// TODO: use subresource pools
+	delete[] texture->cpu_data;
+
+	texture = {};
 }
 
 /*
  */
-void Texture::create2D(render::backend::Format f, int w, int h, int mips)
+void resources::ResourcePipeline<Texture>::create2D(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int width, int height, int mip_levels)
 {
-	width = w;
-	height = h;
-	mip_levels = mips;
-	layers = 1;
-	format = f;
+	Texture *result = handle.get();
 
-	texture = driver->createTexture2D(w, h, mips, format);
+	result->format = format;
+	result->width = width;
+	result->height = height;
+	result->mip_levels = mip_levels;
+	result->layers = 1;
+	result->gpu_data = driver->createTexture2D(width, height, mip_levels, format);
+}
+
+void resources::ResourcePipeline<Texture>::createCube(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int size, int mip_levels)
+{
+	Texture *result = handle.get();
+
+	result->format = format;
+	result->width = size;
+	result->height = size;
+	result->mip_levels = mip_levels;
+	result->layers = 6;
+	result->gpu_data = driver->createTextureCube(size, mip_levels, format);
 }
 
 /*
  */
-void Texture::createCube(render::backend::Format f, int size, int mips)
+bool resources::ResourcePipeline<Texture>::import(ResourceHandle<Texture> handle, const URI &uri, render::backend::Driver *driver)
 {
-	width = size;
-	height = size;
-	mip_levels = mips;
-	layers = 6;
-	format = f;
-
-	texture = driver->createTextureCube(size, mips, format);
-}
-
-/*
- */
-void Texture::setSamplerWrapMode(render::backend::SamplerWrapMode mode)
-{
-	if (!texture)
-		return;
-
-	driver->setTextureSamplerWrapMode(texture, mode);
-}
-
-/*
- */
-bool Texture::import(const char *path)
-{
-	FILE *file = fopen(path, "rb");
+	FILE *file = fopen(uri, "rb");
 	if (!file)
 	{
-		std::cerr << "Texture::import(): can't open \"" << path << "\" file" << std::endl;
+		std::cerr << "Texture::import(): can't open \"" << uri << "\" file" << std::endl;
 		return false;
 	}
 
@@ -100,13 +95,13 @@ bool Texture::import(const char *path)
 	fread(data, sizeof(uint8_t), size, file);
 	fclose(file);
 
-	bool result = importFromMemory(data, size);
+	bool result = importFromMemory(handle, data, size, driver);
 	delete[] data;
 
 	return result;
 }
 
-bool Texture::importFromMemory(const uint8_t *data, size_t size)
+bool resources::ResourcePipeline<Texture>::importFromMemory(ResourceHandle<Texture> handle, const uint8_t *data, size_t size, render::backend::Driver *driver)
 {
 	if (stbi_info_from_memory(data, static_cast<int>(size), nullptr, nullptr, nullptr) == 0)
 	{
@@ -118,6 +113,8 @@ bool Texture::importFromMemory(const uint8_t *data, size_t size)
 	size_t pixel_size = 0;
 	int channels = 0;
 	int default_value = 0;
+	int width = 0;
+	int height = 0;
 
 	if (stbi_is_hdr_from_memory(data, static_cast<int>(size)))
 	{
@@ -138,9 +135,6 @@ bool Texture::importFromMemory(const uint8_t *data, size_t size)
 		return false;
 	}
 
-	layers = 1;
-	mip_levels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
-
 	bool convert = false;
 	if (channels == 3)
 	{
@@ -149,21 +143,20 @@ bool Texture::importFromMemory(const uint8_t *data, size_t size)
 	}
 
 	size_t image_size = width * height * channels * pixel_size;
-	if (pixels != nullptr)
-		delete[] pixels;
 
-	pixels = new unsigned char[image_size];
+	// TODO: use subresource pools
+	uint8_t *pixels = new uint8_t[image_size];
 
 	// As most hardware doesn't support rgb textures, convert it to rgba
 	if (convert)
 	{
-		size_t numPixels = width * height;
+		size_t num_pixels = width * height;
 		size_t stride = pixel_size * 3;
 
 		unsigned char *d = pixels;
 		unsigned char *s = reinterpret_cast<unsigned char *>(stb_pixels);
 
-		for (size_t i = 0; i < numPixels; i++)
+		for (size_t i = 0; i < num_pixels; i++)
 		{
 			memcpy(d, s, stride);
 			s += stride;
@@ -179,29 +172,17 @@ bool Texture::importFromMemory(const uint8_t *data, size_t size)
 	stbi_image_free(stb_pixels);
 	stb_pixels = nullptr;
 
-	format = deduceFormat(pixel_size, channels);
+	Texture *result = handle.get();
+	result->width = width;
+	result->height = height;
+	result->mip_levels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
+	result->layers = 1;
+	result->format = deduceFormat(pixel_size, channels);
 
-	// Upload CPU data to GPU
-	clearGPUData();
+	result->cpu_data = pixels;
+	result->gpu_data = driver->createTexture2D(result->width, result->height, result->mip_levels, result->format, result->cpu_data);
 
-	texture = driver->createTexture2D(width, height, mip_levels, format, pixels);
-	driver->generateTexture2DMipmaps(texture);
-
-	// TODO: should we clear CPU data after uploading it to the GPU?
+	driver->generateTexture2DMipmaps(result->gpu_data);
 
 	return true;
-}
-
-void Texture::clearGPUData()
-{
-	driver->destroyTexture(texture);
-	texture = nullptr;
-}
-
-void Texture::clearCPUData()
-{
-	delete[] pixels;
-	pixels = nullptr;
-
-	width = height = 0;
 }

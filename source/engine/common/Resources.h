@@ -16,97 +16,155 @@ namespace resources::impl
 			stride = type_size;
 			stride += sizeof(timestamp_t);
 			stride += sizeof(generation_t);
+
+			generation_stride = type_size;
+			generation_stride += sizeof(timestamp_t);
 		}
 
 		virtual ~ResourcePool()
 		{
 			for (auto &page : pages)
+			{
+				assert(page.free_elements_mask == INITIAL_FREE_MASK);
 				delete page.memory;
+			}
 
 			pages.clear();
-			resource_map.clear();
 
 			stride = 0;
 			type_size = 0;
 			type_alignment = 0;
 		}
 
-		void *get(const ResourceID &id) const
+		void *allocate()
 		{
-			auto it = resource_map.find(id);
-			if (it != resource_map.end())
-				return it->second;
-
-			return nullptr;
-		}
-
-		void *allocate(const ResourceID &id)
-		{
-			assert(get(id) == nullptr);
 			size_t last_page = pages.size() - 1;
 
-			Page page;
-			if (pages.size() == 0 || pages[last_page].isFull())
+			// TODO: optimize this by adding free list for non-full pages
+			//       and iterate over them instead of doing full linear search
+			Page *page = nullptr;
+			for (size_t i = 0; i < pages.size(); ++i)
 			{
-				page.memory = malloc(stride * ELEMENTS_IN_PAGE);
-				memset(page.memory, 0, stride * ELEMENTS_IN_PAGE);
-				page.num_elements = ELEMENTS_IN_PAGE;
-				page.allocated_elements = 0;
-
-				pages.push_back(page);
+				if (!pages[i].isFull())
+				{
+					page = &pages[i];
+					break;
+				}
 			}
-			else
-				page = pages[last_page];
 
-			assert(page.memory);
-			assert(page.allocated_elements < page.num_elements);
+			if (page == nullptr)
+			{
+				Page new_page;
+				new_page.memory = malloc(stride * ELEMENTS_IN_PAGE);
+				memset(new_page.memory, 0, stride * ELEMENTS_IN_PAGE);
+				new_page.free_elements_mask = INITIAL_FREE_MASK;
 
-			void *memory = reinterpret_cast<uint8_t*>(page.memory) + page.allocated_elements++;
-			resource_map.insert({id, memory});
+				pages.push_back(new_page);
+				page = &pages[pages.size() - 1];
+			}
+
+			assert(page->memory);
+			assert(!page->isFull());
+
+			void *memory = nullptr;
+
+			for (int i = 0; i < ELEMENTS_IN_PAGE; ++i)
+			{
+				uint64_t mask = static_cast<uint64_t>(1) << i;
+				if (mask & page->free_elements_mask)
+				{
+					memory = reinterpret_cast<uint8_t*>(page->memory) + stride * i;
+					page->free_elements_mask &= ~mask;
+					break;
+				}
+			}
+
+			assert(memory);
+
+			timestamp_t *generation = reinterpret_cast<timestamp_t*>(reinterpret_cast<uint8_t*>(memory) + generation_stride);
+			(*generation)++;
 
 			return memory;
 		}
 
+		void deallocate(const void *memory)
+		{
+			size_t page_memory = reinterpret_cast<size_t>(memory);
+
+			// TODO: optimize this by adding binary search tree for all pages
+			//       and search in that binary tree instead of doing full linear search
+			for (size_t i = 0; i < pages.size(); ++i)
+			{
+				Page &page = pages[i];
+
+				size_t page_start = reinterpret_cast<size_t>(page.memory);
+				size_t page_end = page_start + ELEMENTS_IN_PAGE * stride;
+
+				if (page_memory >= page_start && page_memory < page_end)
+				{
+					assert((page_memory - page_start) % stride == 0);
+					size_t element_index = (page_memory - page_start) / stride;
+
+					page.free_elements_mask |= static_cast<uint64_t>(1) << element_index;
+					break;
+				}
+			}
+		}
+
 	private:
+		enum : uint64_t
+		{
+			INITIAL_FREE_MASK = 0xFFFFFFFFFFFFFFFF,
+			ELEMENTS_IN_PAGE = 64,
+		};
+
 		struct Page
 		{
 			void *memory {nullptr};
-			size_t num_elements {0};
-			size_t allocated_elements {0};
+			uint64_t free_elements_mask {INITIAL_FREE_MASK};
 
-			SCAPES_INLINE bool isFull() const { return allocated_elements == num_elements; }
-		};
-
-		enum
-		{
-			ELEMENTS_IN_PAGE = 128,
+			SCAPES_INLINE bool isFull() const { return free_elements_mask == 0; }
 		};
 
 		std::vector<Page> pages;
-		std::map<ResourceID, void*> resource_map;
 
 		size_t type_size {0};
 		size_t type_alignment {0};
+		size_t generation_stride {0};
 		size_t stride {0};
 	};
 
 	class ResourceManager : public resources::ResourceManager
 	{
-	private:
-		void *get(const ResourceID &id, const char *type_name, size_t type_size, size_t type_alignment) final
+	public:
+		ResourceManager()
 		{
-			ResourcePool *pool = fetchPool(type_name, type_size, type_alignment);
-			assert(pool);
 
-			return pool->get(id);
 		}
 
-		void *allocate(const ResourceID &id, const char *type_name, size_t type_size, size_t type_alignment) final
+		~ResourceManager() final
+		{
+			for(auto it : pools)
+				delete it.second;
+
+			pools.clear();
+		}
+
+	private:
+		void *allocate(const char *type_name, size_t type_size, size_t type_alignment) final
 		{
 			ResourcePool *pool = fetchPool(type_name, type_size, type_alignment);
 			assert(pool);
 
-			return pool->allocate(id);
+			return pool->allocate();
+		}
+
+		void deallocate(void *memory, const char *type_name, size_t type_size, size_t type_alignment) final
+		{
+			ResourcePool *pool = fetchPool(type_name, type_size, type_alignment);
+			assert(pool);
+
+			pool->deallocate(memory);
 		}
 
 	private:

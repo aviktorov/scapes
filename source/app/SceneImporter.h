@@ -1,11 +1,13 @@
 #pragma once
 
+#include <common/ResourceManager.h>
+
 #include <map>
 #include <vector>
 
 class ApplicationResources;
 class Mesh;
-class Texture;
+struct Texture;
 
 namespace ecs::render
 {
@@ -31,15 +33,15 @@ public:
 	SceneImporter(render::backend::Driver *driver, game::World *world);
 	~SceneImporter();
 
-	bool importCGLTF(const char *path, const ApplicationResources *resources);
-	bool importAssimp(const char *path, const ApplicationResources *resources);
+	bool importCGLTF(const char *path, ApplicationResources *resources);
+	bool importAssimp(const char *path, ApplicationResources *resources);
 	void clear();
 
 	// TODO: move to resource manager
 	const ecs::render::EnvironmentTexture *fetchEnvironmentTexture(
-		const Texture *baked_brdf,
-		const Texture *prefiltered_specular_cubemap,
-		const Texture *diffuse_irradiance_cubemap
+		resources::ResourceHandle<Texture> baked_brdf,
+		resources::ResourceHandle<Texture> prefiltered_specular_cubemap,
+		resources::ResourceHandle<Texture> diffuse_irradiance_cubemap
 	);
 
 private:

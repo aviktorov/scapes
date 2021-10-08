@@ -47,12 +47,12 @@ void CubemapRenderer::init(
 	// Create framebuffer
 	render::backend::FrameBufferAttachment frame_buffer_attachments[6] =
 	{
-		{ target_texture->getBackend(), target_mip, 0, 1 },
-		{ target_texture->getBackend(), target_mip, 1, 1 },
-		{ target_texture->getBackend(), target_mip, 2, 1 },
-		{ target_texture->getBackend(), target_mip, 3, 1 },
-		{ target_texture->getBackend(), target_mip, 4, 1 },
-		{ target_texture->getBackend(), target_mip, 5, 1 },
+		{ target_texture->gpu_data, target_mip, 0, 1 },
+		{ target_texture->gpu_data, target_mip, 1, 1 },
+		{ target_texture->gpu_data, target_mip, 2, 1 },
+		{ target_texture->gpu_data, target_mip, 3, 1 },
+		{ target_texture->gpu_data, target_mip, 4, 1 },
+		{ target_texture->gpu_data, target_mip, 5, 1 },
 	};
 
 	frame_buffer = driver->createFrameBuffer(6, frame_buffer_attachments);
@@ -67,12 +67,12 @@ void CubemapRenderer::init(
 
 	render::backend::RenderPassAttachment render_pass_attachments[6] =
 	{
-		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
-		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
-		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
-		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
-		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
-		{ target_texture->getFormat(), samples, load_op, store_op, clear_value },
+		{ target_texture->format, samples, load_op, store_op, clear_value },
+		{ target_texture->format, samples, load_op, store_op, clear_value },
+		{ target_texture->format, samples, load_op, store_op, clear_value },
+		{ target_texture->format, samples, load_op, store_op, clear_value },
+		{ target_texture->format, samples, load_op, store_op, clear_value },
+		{ target_texture->format, samples, load_op, store_op, clear_value },
 	};
 
 	uint32_t color_attachments[6] = { 0, 1, 2, 3, 4, 5 };
@@ -165,7 +165,7 @@ void CubemapRenderer::render(
 	const uint8_t *push_constants_data
 )
 {
-	driver->bindTexture(bind_set, 1, input_texture->getBackend());
+	driver->bindTexture(bind_set, 1, input_texture->gpu_data);
 
 	driver->setPushConstants(pipeline_state, push_constants_size, push_constants_data);
 	driver->setBindSet(pipeline_state, 0, bind_set);

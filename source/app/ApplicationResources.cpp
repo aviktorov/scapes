@@ -3,17 +3,14 @@
 
 #include "Texture.h"
 #include "Mesh.h"
+#include "Shader.h"
 
 #include <vector>
 #include <cassert>
+#include <iostream>
 
 namespace config
 {
-	// Meshes
-	static std::vector<const char *> meshes = {
-		"assets/models/SciFiHelmet.fbx",
-	};
-
 	// Shaders
 	static std::vector<const char *> shaders = {
 		"assets/shaders/common/Cubemap.vert",
@@ -56,14 +53,6 @@ namespace config
 	};
 
 	// Textures
-	static std::vector<const char *> textures = {
-		"assets/textures/SciFiHelmet_BaseColor.png",
-		"assets/textures/SciFiHelmet_Normal.png",
-		"assets/textures/SciFiHelmet_AmbientOcclusion.png",
-		"assets/textures/SciFiHelmet_MetallicRoughness.png",
-		"assets/textures/Default_emissive.jpg",
-	};
-
 	static std::vector<const char *> hdrTextures = {
 		"assets/textures/environment/arctic.hdr",
 		"assets/textures/environment/umbrellas.hdr",
@@ -109,29 +98,22 @@ ApplicationResources::~ApplicationResources()
  */
 void ApplicationResources::init()
 {
-	for (int i = 0; i < config::meshes.size(); ++i)
-		resources.loadMesh(i, config::meshes[i]);
-
-	resources.createCubeMesh(config::Meshes::Skybox, 10000.0f);
-
 	for (int i = 0; i < config::shaders.size(); ++i)
-		resources.loadShader(i, config::shaderTypes[i], config::shaders[i]);
-
-	for (int i = 0; i < config::textures.size(); ++i)
-		resources.loadTexture(i, config::textures[i]);
+		loadShader(i, config::shaderTypes[i], config::shaders[i]);
 
 	for (int i = 0; i < config::hdrTextures.size(); ++i)
-		resources.loadTexture(config::Textures::EnvironmentBase + i, config::hdrTextures[i]);
+		hdr_cubemaps.push_back(loadTexture(config::hdrTextures[i]));
 
 	baked_brdf = RenderUtils::createTexture2D(
+		resource_manager,
 		driver,
 		render::backend::Format::R16G16_SFLOAT,
 		512, 512, 1,
-		resources.getShader(config::Shaders::FullscreenQuadVertex),
-		resources.getShader(config::Shaders::BakedBRDFFragment)
+		getShader(config::Shaders::FullscreenQuadVertex),
+		getShader(config::Shaders::BakedBRDFFragment)
 	);
 
-	baked_brdf->setSamplerWrapMode(render::backend::SamplerWrapMode::CLAMP_TO_EDGE);
+	driver->setTextureSamplerWrapMode(baked_brdf.get()->gpu_data, render::backend::SamplerWrapMode::CLAMP_TO_EDGE);
 
 	environment_cubemaps.resize(config::hdrTextures.size());
 	irradiance_cubemaps.resize(config::hdrTextures.size());
@@ -139,31 +121,35 @@ void ApplicationResources::init()
 	for (int i = 0; i < config::hdrTextures.size(); ++i)
 	{
 		environment_cubemaps[i] = RenderUtils::hdriToCube(
+			resource_manager,
 			driver,
 			render::backend::Format::R32G32B32A32_SFLOAT,
 			128,
-			resources.getTexture(config::Textures::EnvironmentBase + i),
-			resources.getShader(config::Shaders::CubemapVertex),
-			resources.getShader(config::Shaders::EquirectangularProjectionFragment),
-			resources.getShader(config::Shaders::PrefilteredSpecularCubemapFragment)
+			hdr_cubemaps[i],
+			getShader(config::Shaders::CubemapVertex),
+			getShader(config::Shaders::EquirectangularProjectionFragment),
+			getShader(config::Shaders::PrefilteredSpecularCubemapFragment)
 		);
 
 		irradiance_cubemaps[i] = RenderUtils::createTextureCube(
+			resource_manager,
 			driver,
 			render::backend::Format::R32G32B32A32_SFLOAT,
 			128,
 			1,
-			resources.getShader(config::Shaders::CubemapVertex),
-			resources.getShader(config::Shaders::DiffuseIrradianceCubemapFragment),
+			getShader(config::Shaders::CubemapVertex),
+			getShader(config::Shaders::DiffuseIrradianceCubemapFragment),
 			environment_cubemaps[i]
 		);
 	}
 
-	blue_noise = new Texture(driver);
-	blue_noise->import(config::blueNoise);
+	blue_noise = resource_manager->import<Texture>(config::blueNoise, driver);
 
 	fullscreen_quad = new Mesh(driver);
 	fullscreen_quad->createQuad(2.0f);
+
+	skybox = new Mesh(driver);
+	skybox->createSkybox(10000.0f);
 
 	default_albedo = generateTexture(driver, 127, 127, 127);
 	default_normal = generateTexture(driver, 127, 127, 255);
@@ -173,25 +159,38 @@ void ApplicationResources::init()
 
 void ApplicationResources::shutdown()
 {
-	resources.clear();
+	for (auto it : meshes)
+		delete it.second;
 
-	delete baked_brdf;
-	baked_brdf = nullptr;
+	for (auto it : shaders)
+		delete it.second;
+
+	for (auto it : loaded_textures)
+		resource_manager->destroy(it, driver);
+
+	meshes.clear();
+	shaders.clear();
+	loaded_textures.clear();
+
+	resource_manager->destroy(baked_brdf, driver);
 
 	for (int i = 0; i < environment_cubemaps.size(); ++i)
-		delete environment_cubemaps[i];
+		resource_manager->destroy(environment_cubemaps[i], driver);
 	
 	for (int i = 0; i < irradiance_cubemaps.size(); ++i)
-		delete irradiance_cubemaps[i];
+		resource_manager->destroy(irradiance_cubemaps[i], driver);
 
+	hdr_cubemaps.clear();
 	environment_cubemaps.clear();
 	irradiance_cubemaps.clear();
 
-	delete blue_noise;
-	blue_noise = nullptr;
+	resource_manager->destroy(blue_noise, driver);
 
 	delete fullscreen_quad;
 	fullscreen_quad = nullptr;
+
+	delete skybox;
+	skybox = nullptr;
 
 	driver->destroyTexture(default_albedo);
 	driver->destroyTexture(default_normal);
@@ -207,5 +206,114 @@ void ApplicationResources::shutdown()
 void ApplicationResources::reloadShaders()
 {
 	for (int i = 0; i < config::shaders.size(); ++i)
-		resources.reloadShader(i);
+		reloadShader(i);
+}
+
+/*
+ */
+Mesh *ApplicationResources::getMesh(int id) const
+{
+	auto it = meshes.find(id);
+	if (it != meshes.end())
+		return it->second;
+
+	return nullptr;
+}
+
+Mesh *ApplicationResources::loadMesh(int id, const char *path)
+{
+	auto it = meshes.find(id);
+	if (it != meshes.end())
+	{
+		std::cerr << "ApplicationResources::loadMesh(): " << id << " is already taken by another mesh" << std::endl;
+		return nullptr;
+	}
+
+	Mesh *mesh = new Mesh(driver);
+	if (!mesh->importAssimp(path))
+		return nullptr;
+
+	meshes.insert(std::make_pair(id, mesh));
+	return mesh;
+}
+
+void ApplicationResources::unloadMesh(int id)
+{
+	auto it = meshes.find(id);
+	if (it == meshes.end())
+		return;
+
+	delete it->second;
+	meshes.erase(it);
+}
+
+/*
+ */
+Shader *ApplicationResources::getShader(int id) const
+{
+	auto it = shaders.find(id);
+	if (it != shaders.end())
+		return it->second;
+
+	return nullptr;
+}
+
+Shader *ApplicationResources::loadShader(int id, render::backend::ShaderType type, const char *path)
+{
+	auto it = shaders.find(id);
+	if (it != shaders.end())
+	{
+		std::cerr << "ApplicationResources::loadShader(): " << id << " is already taken by another shader" << std::endl;
+		return nullptr;
+	}
+
+	Shader *shader = new Shader(driver, compiler);
+	if (!shader->compileFromFile(type, path))
+	{
+		// TODO: log warning
+	}
+
+	shaders.insert(std::make_pair(id, shader));
+	return shader;
+}
+
+bool ApplicationResources::reloadShader(int id)
+{
+	auto it = shaders.find(id);
+	if (it == shaders.end())
+		return false;
+
+	return it->second->reload();
+}
+
+void ApplicationResources::unloadShader(int id)
+{
+	auto it = shaders.find(id);
+	if (it == shaders.end())
+		return;
+
+	delete it->second;
+	shaders.erase(it);
+}
+
+/*
+ */
+resources::ResourceHandle<Texture> ApplicationResources::loadTexture(const resources::URI &uri)
+{
+	resources::ResourceHandle<Texture> texture = resource_manager->import<Texture>(uri, driver);
+	if (!texture.get())
+		return resources::ResourceHandle<Texture>();
+
+	loaded_textures.push_back(texture);
+	return texture;
+}
+
+resources::ResourceHandle<Texture> ApplicationResources::loadTextureFromMemory(const uint8_t *data, size_t size)
+{
+	resources::ResourceHandle<Texture> texture = resource_manager->importFromMemory<Texture>(data, size, driver);
+	if (!texture.get())
+		return resources::ResourceHandle<Texture>();
+
+	loaded_textures.push_back(texture);
+	return texture;
 }

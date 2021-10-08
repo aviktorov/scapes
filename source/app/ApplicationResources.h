@@ -1,15 +1,20 @@
 #pragma once
 
-#include "ResourceManager.h"
+#include <unordered_map>
+#include <render/backend/Driver.h>
+#include <common/ResourceManager.h>
+
+namespace render::shaders
+{
+	class Compiler;
+}
+
+class Mesh;
+class Shader;
+struct Texture;
 
 namespace config
 {
-	enum Meshes
-	{
-		Helmet = 0,
-		Skybox,
-	};
-
 	enum Shaders
 	{
 		CubemapVertex = 0,
@@ -30,55 +35,36 @@ namespace config
 		TonemappingFragment,
 		FinalFragment,
 	};
-
-	enum Textures
-	{
-		Albedo = 0,
-		Normal,
-		AO,
-		Shading,
-		Emission,
-		EnvironmentBase,
-	};
 }
 
 class Mesh;
 class Shader;
-class Texture;
+struct Texture;
 
 /*
  */
 class ApplicationResources
 {
 public:
-	ApplicationResources(render::backend::Driver *driver, render::shaders::Compiler *compiler)
-		: driver(driver), compiler(compiler), resources(driver, compiler) { }
+	ApplicationResources(render::backend::Driver *driver, render::shaders::Compiler *compiler, resources::ResourceManager *resource_manager)
+		: driver(driver), compiler(compiler), resource_manager(resource_manager) { }
 
 	virtual ~ApplicationResources();
 
 	void init();
 	void shutdown();
 
-	inline const Shader *getShader(config::Shaders index) const { return resources.getShader(index); }
+	inline const resources::ResourceHandle<Texture> getBlueNoiseTexture() const { return blue_noise; }
 
-	inline const Texture *getAlbedoTexture() const { return resources.getTexture(config::Textures::Albedo); }
-	inline const Texture *getNormalTexture() const { return resources.getTexture(config::Textures::Normal); }
-	inline const Texture *getAOTexture() const { return resources.getTexture(config::Textures::AO); }
-	inline const Texture *getShadingTexture() const { return resources.getTexture(config::Textures::Shading); }
-	inline const Texture *getEmissionTexture() const { return resources.getTexture(config::Textures::Emission); }
-
-	inline const Texture *getBlueNoiseTexture() const { return blue_noise; }
-
-	inline const Texture *getHDRTexture(int index) const { return resources.getTexture(config::Textures::EnvironmentBase + index); }
-	inline const Texture *getHDREnvironmentCubemap(int index) const { return environment_cubemaps[index]; }
-	inline const Texture *getHDRIrradianceCubemap(int index) const { return irradiance_cubemaps[index]; }
+	inline const resources::ResourceHandle<Texture> getHDRTexture(int index) const { return hdr_cubemaps[index]; }
+	inline const resources::ResourceHandle<Texture> getHDREnvironmentCubemap(int index) const { return environment_cubemaps[index]; }
+	inline const resources::ResourceHandle<Texture> getHDRIrradianceCubemap(int index) const { return irradiance_cubemaps[index]; }
 	const char *getHDRTexturePath(int index) const;
 	size_t getNumHDRTextures() const;
 
-	inline const Texture *getBakedBRDFTexture() const { return baked_brdf; }
+	inline const resources::ResourceHandle<Texture> getBakedBRDFTexture() const { return baked_brdf; }
 
-	inline const Mesh *getMesh() const { return resources.getMesh(config::Meshes::Helmet); }
-	inline const Mesh *getSkybox() const { return resources.getMesh(config::Meshes::Skybox); }
+	inline const Mesh *getSkybox() const { return skybox; }
 	inline const Mesh *getFullscreenQuad() const { return fullscreen_quad; }
 
 	inline render::backend::Texture *getDefaultAlbedo() const { return default_albedo;}
@@ -88,21 +74,40 @@ public:
 
 	void reloadShaders();
 
+	Mesh *getMesh(int id) const;
+	Mesh *loadMesh(int id, const char *path);
+	void unloadMesh(int id);
+
+	Shader *getShader(int id) const;
+	Shader *loadShader(int id, render::backend::ShaderType type, const char *path);
+	bool reloadShader(int id);
+	void unloadShader(int id);
+
+	resources::ResourceHandle<Texture> loadTexture(const resources::URI &uri);
+	resources::ResourceHandle<Texture> loadTextureFromMemory(const uint8_t *data, size_t size);
+
 private:
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
-	ResourceManager resources;
+	resources::ResourceManager *resource_manager {nullptr};
 
 	Mesh *fullscreen_quad {nullptr};
+	Mesh *skybox {nullptr};
 
-	Texture *baked_brdf {nullptr};
-	std::vector<Texture *> environment_cubemaps;
-	std::vector<Texture *> irradiance_cubemaps;
+	resources::ResourceHandle<Texture> baked_brdf;
+	std::vector<resources::ResourceHandle<Texture> > hdr_cubemaps;
+	std::vector<resources::ResourceHandle<Texture> > environment_cubemaps;
+	std::vector<resources::ResourceHandle<Texture> > irradiance_cubemaps;
 
-	Texture *blue_noise {nullptr};
+	resources::ResourceHandle<Texture> blue_noise;
 
 	render::backend::Texture *default_albedo {nullptr};
 	render::backend::Texture *default_normal {nullptr};
 	render::backend::Texture *default_roughness {nullptr};
 	render::backend::Texture *default_metalness {nullptr};
+
+	std::unordered_map<int, Mesh *> meshes;
+	std::unordered_map<int, Shader *> shaders;
+
+	std::vector<resources::ResourceHandle<Texture> > loaded_textures;
 };

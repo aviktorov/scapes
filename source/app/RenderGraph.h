@@ -6,7 +6,7 @@
 class ApplicationResources;
 class Shader;
 class Mesh;
-class Texture;
+struct Texture;
 struct RenderFrame;
 
 class ImGuiRenderer;

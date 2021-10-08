@@ -329,7 +329,9 @@ void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
  */
 void Application::initRenderScene()
 {
-	application_resources = new ApplicationResources(driver, compiler);
+	resource_manager = resources::ResourceManager::create();
+
+	application_resources = new ApplicationResources(driver, compiler, resource_manager);
 	application_resources->init();
 
 	world = game::World::create();
@@ -364,6 +366,9 @@ void Application::shutdownRenderScene()
 	ecs::render::shutdown(world);
 	game::World::destroy(world);
 	world = nullptr;
+
+	resources::ResourceManager::destroy(resource_manager);
+	resource_manager = nullptr;
 }
 
 /*

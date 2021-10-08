@@ -18,6 +18,11 @@ namespace render::backend
 	struct BindSet;
 }
 
+namespace resources
+{
+	class ResourceManager;
+}
+
 struct GLFWwindow;
 class ApplicationFileSystem;
 class ApplicationResources;
@@ -133,6 +138,7 @@ private:
 	SwapChain *swap_chain {nullptr};
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
+	resources::ResourceManager *resource_manager {nullptr};
 	game::World *world {nullptr};
 
 	// TODO: make this better

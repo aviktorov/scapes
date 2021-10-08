@@ -1,8 +1,9 @@
 #pragma once
 
 #include <render/backend/driver.h>
+#include <common/ResourceManager.h>
 
-class Texture;
+struct Texture;
 class Shader;
 
 /*
@@ -10,7 +11,8 @@ class Shader;
 class RenderUtils
 {
 public:
-	static Texture *createTexture2D(
+	static resources::ResourceHandle<Texture> createTexture2D(
+		resources::ResourceManager *resource_manager,
 		render::backend::Driver *driver,
 		render::backend::Format format,
 		uint32_t width,
@@ -20,21 +22,23 @@ public:
 		const Shader *fragment_shader
 	);
 
-	static Texture *createTextureCube(
+	static resources::ResourceHandle<Texture> createTextureCube(
+		resources::ResourceManager *resource_manager,
 		render::backend::Driver *driver,
 		render::backend::Format format,
 		uint32_t size,
 		uint32_t mips,
 		const Shader *vertex_shader,
 		const Shader *fragment_shader,
-		const Texture *input
+		resources::ResourceHandle<Texture> input
 	);
 
-	static Texture *hdriToCube(
+	static resources::ResourceHandle<Texture> hdriToCube(
+		resources::ResourceManager *resource_manager,
 		render::backend::Driver *driver,
 		render::backend::Format format,
 		uint32_t size,
-		const Texture *hdri,
+		resources::ResourceHandle<Texture> hdri,
 		const Shader *vertex_shader,
 		const Shader *hrdi_fragment_shader,
 		const Shader *prefilter_fragment_shader

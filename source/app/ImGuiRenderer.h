@@ -6,7 +6,7 @@
 
 struct RenderFrame;
 class SwapChain;
-class Texture;
+struct Texture;
 class Shader;
 
 struct ImGuiContext;

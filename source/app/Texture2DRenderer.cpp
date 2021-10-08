@@ -23,13 +23,13 @@ void Texture2DRenderer::init(const Texture *target_texture)
 	assert(target_texture != nullptr);
 
 	// Create framebuffer
-	render::backend::FrameBufferAttachment frame_buffer_attachments[1] = { target_texture->getBackend() };
+	render::backend::FrameBufferAttachment frame_buffer_attachments[1] = { target_texture->gpu_data };
 	frame_buffer = driver->createFrameBuffer(1, frame_buffer_attachments);
 
 	// Create render pass
 	render::backend::RenderPassAttachment render_pass_attachments[1] =
 	{
-		{ target_texture->getFormat(), render::backend::Multisample::COUNT_1, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
+		{ target_texture->format, render::backend::Multisample::COUNT_1, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
 	};
 
 	uint32_t color_attachments[1] = { 0 };
@@ -44,8 +44,8 @@ void Texture2DRenderer::init(const Texture *target_texture)
 	command_buffer = driver->createCommandBuffer(render::backend::CommandBufferType::PRIMARY);
 
 	pipeline_state = driver->createPipelineState();
-	driver->setViewport(pipeline_state, 0, 0, target_texture->getWidth(), target_texture->getHeight());
-	driver->setScissor(pipeline_state, 0, 0, target_texture->getWidth(), target_texture->getHeight());
+	driver->setViewport(pipeline_state, 0, 0, target_texture->width, target_texture->height);
+	driver->setScissor(pipeline_state, 0, 0, target_texture->width, target_texture->height);
 }
 
 void Texture2DRenderer::shutdown()

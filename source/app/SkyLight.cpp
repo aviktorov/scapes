@@ -37,15 +37,15 @@ SkyLight::~SkyLight()
 
 void SkyLight::setBakedBRDFTexture(const Texture *brdf_texture)
 {
-	driver->bindTexture(bind_set, 0, brdf_texture->getBackend());
+	driver->bindTexture(bind_set, 0, brdf_texture->gpu_data);
 }
 
 void SkyLight::setEnvironmentCubemap(const Texture *environment_cubemap)
 {
-	driver->bindTexture(bind_set, 1, environment_cubemap->getBackend());
+	driver->bindTexture(bind_set, 1, environment_cubemap->gpu_data);
 }
 
 void SkyLight::setIrradianceCubemap(const Texture *irradiance_cubemap)
 {
-	driver->bindTexture(bind_set, 2, irradiance_cubemap->getBackend());
+	driver->bindTexture(bind_set, 2, irradiance_cubemap->gpu_data);
 }
