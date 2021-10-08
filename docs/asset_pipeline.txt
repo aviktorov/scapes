@@ -1,0 +1,149 @@
+Storage
+    - text / binary data
+    - type (extension, binary header, mime type)
+    - uri (scheme + virtual path)
+    - persistent unique id or link mechanism
+
+Pipeline
+    - import
+        - industry standart importers
+        - custom importers
+    - process
+        - processing graph
+        - intermediate assets (i.e. uncompressed textures aka psd)
+            - basic (one intermediate asset to one runtime asset)
+            - complex (one intermediate asset to multiple runtime assets)
+            - many to one?
+            - many to many?
+        - outputs runtime assets
+    - load
+        - RAM / VRAM
+    - repl
+        - file watcher
+            - check for changes
+            - go through pipeline
+            - reload runtime assets
+
+Runtime
+    - runtime assets
+        - loads runtime assets in the engine runtime
+    - memory
+        - resource pools
+            - per type?
+        - limits
+
+----
+
+AssetPipeline
+    STBTexturePipeline (STB loader + custom processing (rgb -> rgba, flip y)) -> ProprietaryTexture / KTXTexture
+    KTXTexturePipeline (no processing?) -> ProprietaryTexture / KTXTexture
+    IBLTexturePipeline (any texture pipeline + custom shaders (hdri to cube -> cube to irradiance / cube to prefiltered specular)) -> IBLTexture? ProptietaryTexture[] / KTXTexture[]?
+
+    GLTFMeshPipeline (GLTF loader) -> ProprietaryMesh[] + ProprietaryTexture[] + ProprietaryEntity[] + ProprietaryComponent[] + ProprietaryWorld[]
+        - could use existing asset pipelines?
+    FBXMeshPipeline (FBX loader) -> ProprietaryMesh[] + ProprietaryTexture[] + ProprietaryEntity[] + ProprietaryComponent[] + ProprietaryWorld[]
+        - could use existing asset pipelines?
+
+    ShaderPipeline (glsc) -> SPIR-V?
+
+    MaterialPipeline? -> ?
+    WorldPipeline? -> ?
+    PrefabPipeline? -> ?
+
+----
+
+RuntimeAsset
+    IBLTexture?
+    ProprietaryTexture? KTXTexture?
+    ProprietaryMesh (vertex attributes + vertex streams)
+    Shader? SPIR-V?
+
+    ProprietaryEntity?
+    ProprietaryComponent?
+    ProprietaryWorld?
+    ProprietaryMaterial?
+
+Runtime Asset -- то, с чем движок работает во время выполнения, что может отправить железке, с чем может работать логика
+
+Runtime Asset'ы могут иметь связь друг с другом (uri), могут быть сериализованы на диск (lz4 compression, например)
+
+Runtime Asset'ы имеют уникальные идентификаторы, которые можно использовать для хранения на диске и ссылок ("guid://" схема)
+
+У ResourceManager'а есть возможность поместить ресурсы одного типа рядом в пулы aka ResourcePool<T>, но такое нужно использовать как часть реализации RuntimeAsset'а
+
+Итого:
+
+UUID -- класс, который умеет генерить 64-битный уникальный идентификатор, который умеет парсить себя из строки вида "uuid://78435743q89579a7878ef87978978d"
+URI -- класс, по которому система ресурсов может найти нужный ресурс, может иметь поддержку нескольких схем
+SubresourcePool<T> -- шаблонный класс arena allocator, который хранит память под кусок ресурса и информацию о том, какому ресурсу какая память принадлежит
+ResourcePool<T> -- шаблонный класс arena allocator, который хранит память под мета-данные ресурса
+ResourceHandle<T> -- шаблонный класс вокруг ресурса типа T, который хранит сам ресурс и мета-информацию к нему, ресурс менеджер отдаёт только такие хендлы
+
+
+ResourceTraits<T>
+{
+    how many memory pools is required by particular resource
+    memory pool specs (type size, type alignment, page size)
+};
+
+struct Mesh
+{
+    uint32_t num_vertices;
+    Vertex *vertices;
+    uint32_t num_indices;
+    uint32_t *indices;
+    gpu_data_t *gpu_data;
+};
+
+struct ResourceHandle<Mesh>
+{
+    UUID id;
+    struct memory_layout
+    {
+        uint32_t generation;
+        uint32_t mtime;
+        Mesh resource;
+    } *data;
+};
+
+struct MemoryPool<T>
+{
+    map<UUID, void*> memory_map;
+    uint8_t allocated_memory[LARGE_CHUNK];
+    void *head;
+    void *current;
+};
+
+Как в такой структуре делать аллокации из пулов? Пулы не могут привязать данные к памяти без знания идентификатора ресурса. ResourceTraits!
+
+ResourcePipeline<Mesh>::free(ResourceHandle<Mesh> resource)
+{
+    Mesh *mesh = resource.get();
+
+    // free subresource memory
+    SubresourcePool *vertices_pool = resource_manager->getSubresourcePool(TypeTraits<Mesh>::type_specs, TypeTraits<Mesh::Vertex>::type_specs);
+    SubresourcePool *indices_pool = resource_manager->getSubresourcePool(TypeTraits<Mesh>::type_specs. TypeTraits<uint32_t>::type_specs);
+
+    mesh->~Mesh();
+
+    vertices_pool->free(mesh.vertices);
+    indices_pool->free(mesh.indices);
+}
+
+ResourcePipeline<Mesh>::import(const URI &uri, ResourceHandle<Mesh> resource, arguments...)
+{
+    Mesh *mesh = resource.get();
+
+    // parse file
+
+    // allocate subresource memory
+    SubresourcePool *vertices_pool = resource_manager->getSubresourcePool(TypeTraits<Mesh>::type_specs, TypeTraits<Mesh::Vertex>::type_specs);
+    SubresourcePool *indices_pool = resource_manager->getSubresourcePool(TypeTraits<Mesh>::type_specs. TypeTraits<uint32_t>::type_specs);
+
+    mesh.vertices = vertices_pool->allocate<Mesh::Vertex>(num_vertices);
+    mesh.indices = indices_pool->allocate<uint32_t>(num_indices);
+
+    // memcpy
+
+    // upload to gpu
+}
