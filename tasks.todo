@@ -73,13 +73,16 @@ PBR Sandbox:
         ☐ Use some sort of runtime ID for resources in resource pool
             ☐ Persistence is not required
             ☐ Should be unique during application lifetime
-    Stream 69:
+    Stream 70:
         ☐ Migrate existing render resources to new resource manager
             ☐ Migrate shaders
-            ☐ Migrate meshes
             ☐ Migrate ecs::render resources
         ☐ Move all resources under ecs::render namespace
         ☐ Get rid of ApplicationResources
+    Stream 69:
+        ✔ Migrate existing render resources to new resource manager @done (10/16/2021, 2:04:04 AM)
+            ✔ Migrate meshes @done (10/16/2021, 1:54:00 AM)
+        ✔ Get rid of old Light / SkyLight classes @done (10/16/2021, 2:04:18 AM)
     Stream 68:
         ✔ Migrate existing render resources to new resource manager @done (10/9/2021, 2:08:27 AM)
             ✔ Migrate textures @done (10/9/2021, 1:37:15 AM)
