@@ -50,7 +50,6 @@ private:
 
 	// TODO: move to resource manager
 	std::vector<Mesh *> meshes;
-	std::vector<Texture *> textures;
 	std::vector<ecs::render::RenderMaterialData *> materials;
 	std::vector<ecs::render::EnvironmentTexture *> environment_textures;
 };

@@ -409,11 +409,7 @@ void SceneImporter::clear()
 	for (size_t i = 0; i < meshes.size(); ++i)
 		delete meshes[i];
 
-	for (size_t i = 0; i < textures.size(); ++i)
-		delete textures[i];
-
 	meshes.clear();
-	textures.clear();
 }
 
 /*
