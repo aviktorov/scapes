@@ -7,7 +7,6 @@
 
 #include "RenderModule.h"
 #include "SwapChain.h"
-#include "SkyLight.h"
 #include "RenderGraph.h"
 #include "SceneImporter.h"
 
