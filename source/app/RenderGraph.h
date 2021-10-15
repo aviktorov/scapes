@@ -1,11 +1,12 @@
 #pragma once
 
 #include <render/backend/Driver.h>
+#include <common/ResourceManager.h>
 #include <glm/vec4.hpp>
 
 class ApplicationResources;
 class Shader;
-class Mesh;
+struct Mesh;
 struct Texture;
 struct RenderFrame;
 
@@ -207,7 +208,7 @@ private:
 	render::backend::RenderPass *hdr_clear_render_pass {nullptr};
 	render::backend::RenderPass *swap_chain_render_pass {nullptr};
 
-	const Mesh *quad {nullptr};
+	resources::ResourceHandle<Mesh> fullscreen_quad;
 
 	const Shader *gbuffer_pass_vertex {nullptr};
 	const Shader *gbuffer_pass_fragment {nullptr};

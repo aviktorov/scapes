@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <unordered_map>
 #include <render/backend/Driver.h>
 #include <common/ResourceManager.h>
@@ -9,8 +10,11 @@ namespace render::shaders
 	class Compiler;
 }
 
-class Mesh;
+struct aiMesh;
+struct cgltf_mesh;
+
 class Shader;
+struct Mesh;
 struct Texture;
 
 namespace config
@@ -37,8 +41,8 @@ namespace config
 	};
 }
 
-class Mesh;
 class Shader;
+struct Mesh;
 struct Texture;
 
 /*
@@ -54,18 +58,18 @@ public:
 	void init();
 	void shutdown();
 
-	inline const resources::ResourceHandle<Texture> getBlueNoiseTexture() const { return blue_noise; }
+	inline resources::ResourceHandle<Texture> getBlueNoiseTexture() const { return blue_noise; }
 
-	inline const resources::ResourceHandle<Texture> getHDRTexture(int index) const { return hdr_cubemaps[index]; }
-	inline const resources::ResourceHandle<Texture> getHDREnvironmentCubemap(int index) const { return environment_cubemaps[index]; }
-	inline const resources::ResourceHandle<Texture> getHDRIrradianceCubemap(int index) const { return irradiance_cubemaps[index]; }
+	inline resources::ResourceHandle<Texture> getHDRTexture(int index) const { return hdr_cubemaps[index]; }
+	inline resources::ResourceHandle<Texture> getHDREnvironmentCubemap(int index) const { return environment_cubemaps[index]; }
+	inline resources::ResourceHandle<Texture> getHDRIrradianceCubemap(int index) const { return irradiance_cubemaps[index]; }
 	const char *getHDRTexturePath(int index) const;
 	size_t getNumHDRTextures() const;
 
-	inline const resources::ResourceHandle<Texture> getBakedBRDFTexture() const { return baked_brdf; }
+	inline resources::ResourceHandle<Texture> getBakedBRDFTexture() const { return baked_brdf; }
 
-	inline const Mesh *getSkybox() const { return skybox; }
-	inline const Mesh *getFullscreenQuad() const { return fullscreen_quad; }
+	inline resources::ResourceHandle<Mesh> getSkybox() const { return skybox; }
+	inline resources::ResourceHandle<Mesh> getFullscreenQuad() const { return fullscreen_quad; }
 
 	inline render::backend::Texture *getDefaultAlbedo() const { return default_albedo;}
 	inline render::backend::Texture *getDefaultNormal() const { return default_normal;}
@@ -73,10 +77,6 @@ public:
 	inline render::backend::Texture *getDefaultMetalness() const { return default_metalness;}
 
 	void reloadShaders();
-
-	Mesh *getMesh(int id) const;
-	Mesh *loadMesh(int id, const char *path);
-	void unloadMesh(int id);
 
 	Shader *getShader(int id) const;
 	Shader *loadShader(int id, render::backend::ShaderType type, const char *path);
@@ -86,13 +86,17 @@ public:
 	resources::ResourceHandle<Texture> loadTexture(const resources::URI &uri);
 	resources::ResourceHandle<Texture> loadTextureFromMemory(const uint8_t *data, size_t size);
 
+	resources::ResourceHandle<Mesh> loadMesh(const resources::URI &uri);
+	resources::ResourceHandle<Mesh> createMeshFromAssimp(const aiMesh *mesh);
+	resources::ResourceHandle<Mesh> createMeshFromCGLTF(const cgltf_mesh *mesh);
+
 private:
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
 	resources::ResourceManager *resource_manager {nullptr};
 
-	Mesh *fullscreen_quad {nullptr};
-	Mesh *skybox {nullptr};
+	resources::ResourceHandle<Mesh> fullscreen_quad;
+	resources::ResourceHandle<Mesh> skybox;
 
 	resources::ResourceHandle<Texture> baked_brdf;
 	std::vector<resources::ResourceHandle<Texture> > hdr_cubemaps;
@@ -106,8 +110,8 @@ private:
 	render::backend::Texture *default_roughness {nullptr};
 	render::backend::Texture *default_metalness {nullptr};
 
-	std::unordered_map<int, Mesh *> meshes;
 	std::unordered_map<int, Shader *> shaders;
 
 	std::vector<resources::ResourceHandle<Texture> > loaded_textures;
+	std::vector<resources::ResourceHandle<Mesh> > loaded_meshes;
 };

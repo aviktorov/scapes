@@ -6,7 +6,7 @@
 #include <vector>
 
 class ApplicationResources;
-class Mesh;
+struct Mesh;
 struct Texture;
 
 namespace ecs::render
@@ -49,7 +49,6 @@ private:
 	game::World *world {nullptr};
 
 	// TODO: move to resource manager
-	std::vector<Mesh *> meshes;
 	std::vector<ecs::render::RenderMaterialData *> materials;
 	std::vector<ecs::render::EnvironmentTexture *> environment_textures;
 };

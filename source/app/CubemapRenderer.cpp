@@ -1,5 +1,6 @@
 #include "CubemapRenderer.h"
 
+#include "Mesh.h"
 #include "Shader.h"
 #include "Texture.h"
 
@@ -19,7 +20,6 @@ struct CubemapFaceOrientationData
  */
 CubemapRenderer::CubemapRenderer(render::backend::Driver *driver)
 	: driver(driver)
-	, quad(driver)
 {
 }
 
@@ -35,8 +35,6 @@ void CubemapRenderer::init(
 	uint32_t target_mip
 )
 {
-	quad.createQuad(2.0f);
-
 	// Create uniform buffers
 	uint32_t ubo_size = sizeof(CubemapFaceOrientationData);
 	uniform_buffer = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, ubo_size);
@@ -158,6 +156,7 @@ void CubemapRenderer::shutdown()
 /*
  */
 void CubemapRenderer::render(
+	const Mesh *mesh,
 	const Shader *vertex_shader,
 	const Shader *fragment_shader,
 	const Texture *input_texture,
@@ -172,13 +171,13 @@ void CubemapRenderer::render(
 	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader->getBackend());
 	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->getBackend());
 
-	driver->setVertexStream(pipeline_state, 0, quad.getVertexBuffer());
+	driver->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
 
 	driver->resetCommandBuffer(command_buffer);
 	driver->beginCommandBuffer(command_buffer);
 	driver->beginRenderPass(command_buffer, render_pass, frame_buffer);
 
-	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad.getIndexBuffer(), quad.getNumIndices());
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
 
 	driver->endRenderPass(command_buffer);
 	driver->endCommandBuffer(command_buffer);

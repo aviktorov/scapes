@@ -47,37 +47,9 @@ void resources::ResourcePipeline<Texture>::destroy(ResourceHandle<Texture> handl
 	// TODO: use subresource pools
 	delete[] texture->cpu_data;
 
-	texture = {};
+	*texture = {};
 }
 
-/*
- */
-void resources::ResourcePipeline<Texture>::create2D(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int width, int height, int mip_levels)
-{
-	Texture *result = handle.get();
-
-	result->format = format;
-	result->width = width;
-	result->height = height;
-	result->mip_levels = mip_levels;
-	result->layers = 1;
-	result->gpu_data = driver->createTexture2D(width, height, mip_levels, format);
-}
-
-void resources::ResourcePipeline<Texture>::createCube(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int size, int mip_levels)
-{
-	Texture *result = handle.get();
-
-	result->format = format;
-	result->width = size;
-	result->height = size;
-	result->mip_levels = mip_levels;
-	result->layers = 6;
-	result->gpu_data = driver->createTextureCube(size, mip_levels, format);
-}
-
-/*
- */
 bool resources::ResourcePipeline<Texture>::import(ResourceHandle<Texture> handle, const URI &uri, render::backend::Driver *driver)
 {
 	FILE *file = fopen(uri, "rb");
@@ -185,4 +157,30 @@ bool resources::ResourcePipeline<Texture>::importFromMemory(ResourceHandle<Textu
 	driver->generateTexture2DMipmaps(result->gpu_data);
 
 	return true;
+}
+
+/*
+ */
+void resources::ResourcePipeline<Texture>::create2D(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int width, int height, int mip_levels)
+{
+	Texture *result = handle.get();
+
+	result->format = format;
+	result->width = width;
+	result->height = height;
+	result->mip_levels = mip_levels;
+	result->layers = 1;
+	result->gpu_data = driver->createTexture2D(width, height, mip_levels, format);
+}
+
+void resources::ResourcePipeline<Texture>::createCube(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int size, int mip_levels)
+{
+	Texture *result = handle.get();
+
+	result->format = format;
+	result->width = size;
+	result->height = size;
+	result->mip_levels = mip_levels;
+	result->layers = 6;
+	result->gpu_data = driver->createTextureCube(size, mip_levels, format);
 }

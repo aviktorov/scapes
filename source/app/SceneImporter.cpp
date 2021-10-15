@@ -113,16 +113,11 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 	}
 
 	// import meshes
-	meshes.resize(data->meshes_count);
-	std::map<const cgltf_mesh*, Mesh *> mapped_meshes;
+	std::map<const cgltf_mesh*, ResourceHandle<Mesh> > mapped_meshes;
 
 	for (cgltf_size i = 0; i < data->meshes_count; ++i)
 	{
-		// TODO: fetch from resource manager
-		Mesh *mesh = new Mesh(driver);
-		mesh->importCGLTF(data->meshes[i]);
-
-		meshes[i] = mesh;
+		ResourceHandle<Mesh> mesh = resources->createMeshFromCGLTF(&data->meshes[i]);
 		mapped_meshes.insert({&data->meshes[i], mesh});
 	}
 
@@ -202,7 +197,7 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 			auto it = mapped_meshes.find(node->mesh);
 			assert(it != mapped_meshes.end());
 
-			Mesh *mesh = it->second;
+			ResourceHandle<Mesh> mesh = it->second;
 
 			game::Entity entity = game::Entity(world);
 
@@ -262,14 +257,11 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 		dir = std::string(path, strlen(path) - strlen(end));
 	
 	// import meshes
-	meshes.resize(scene->mNumMeshes);
+	std::vector<ResourceHandle<Mesh> > imported_meshes;
 	for (unsigned int i = 0; i < scene->mNumMeshes; ++i)
 	{
-		// TODO: fetch from resource manager
-		Mesh *mesh = new Mesh(driver);
-		mesh->importAssimp(scene->mMeshes[i]);
-
-		meshes[i] = mesh;
+		ResourceHandle<Mesh> mesh = resources->createMeshFromAssimp(scene->mMeshes[i]);
+		imported_meshes.push_back(mesh);
 	}
 
 	// import textures
@@ -348,19 +340,17 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 
 	// import nodes
 	std::function<void(const aiScene*, const aiNode*, const aiMatrix4x4&)> import_node;
-	import_node = [&import_node, this](const aiScene *scene, const aiNode *root, const aiMatrix4x4 &transform) -> void
+	import_node = [&import_node, &imported_meshes, this](const aiScene *scene, const aiNode *root, const aiMatrix4x4 &transform) -> void
 	{
 		for (unsigned int i = 0; i < root->mNumMeshes; ++i)
 		{
 			unsigned int mesh_index = root->mMeshes[i];
 			int32_t material_index = static_cast<int32_t>(scene->mMeshes[mesh_index]->mMaterialIndex);
 
-			Mesh *mesh = meshes[mesh_index];
-
 			game::Entity entity = game::Entity(world);
 
 			entity.addComponent<ecs::render::Transform>(toGlm(transform));
-			entity.addComponent<ecs::render::Renderable>(mesh, materials[material_index]);
+			entity.addComponent<ecs::render::Renderable>(imported_meshes[mesh_index], materials[material_index]);
 		}
 
 		for (unsigned int i = 0; i < root->mNumChildren; ++i)
@@ -405,11 +395,6 @@ void SceneImporter::clear()
 
 	materials.clear();
 	environment_textures.clear();
-
-	for (size_t i = 0; i < meshes.size(); ++i)
-		delete meshes[i];
-
-	meshes.clear();
 }
 
 /*

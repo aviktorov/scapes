@@ -41,16 +41,16 @@ namespace ecs::render
 				const Renderable &renderable = renderables[i];
 				const glm::mat4 &node_transform = transform.transform;
 
-				const Mesh *mesh = renderable.mesh;
+				const Mesh *mesh = renderable.mesh.get();
 				::render::backend::BindSet *material_bindings = renderable.materials->bindings;
 
 				driver->clearVertexStreams(pipeline_state);
-				driver->setVertexStream(pipeline_state, 0, mesh->getVertexBuffer());
+				driver->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
 
 				driver->setBindSet(pipeline_state, material_binding, material_bindings);
 				driver->setPushConstants(pipeline_state, static_cast<uint8_t>(sizeof(glm::mat4)), &node_transform);
 
-				driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->getIndexBuffer(), mesh->getNumIndices());
+				driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
 			}
 		}
 	}
@@ -73,6 +73,7 @@ namespace ecs::render
 			for (uint32_t i = 0; i < num_items; ++i)
 			{
 				const SkyLight &light = skylights[i];
+				const Mesh *mesh = light.mesh.get();
 
 				driver->clearShaders(pipeline_state);
 				driver->setShader(pipeline_state, ::render::backend::ShaderType::VERTEX, light.vertex_shader->getBackend());
@@ -81,9 +82,9 @@ namespace ecs::render
 				driver->setBindSet(pipeline_state, light_binding, light.environment->bindings);
 
 				driver->clearVertexStreams(pipeline_state);
-				driver->setVertexStream(pipeline_state, 0, light.mesh->getVertexBuffer());
+				driver->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
 
-				driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, light.mesh->getIndexBuffer(), light.mesh->getNumIndices());
+				driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
 			}
 		}
 	}

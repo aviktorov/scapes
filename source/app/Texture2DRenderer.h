@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Mesh.h"
 #include <render/backend/Driver.h>
 
 class Shader;
 struct Texture;
+struct Mesh;
 
 /*
  */
@@ -16,7 +16,7 @@ public:
 
 	void init(const Texture *target_texture);
 	void shutdown();
-	void render(const Shader *vertex_shader, const Shader *fragment_shader);
+	void render(const Mesh *mesh, const Shader *vertex_shader, const Shader *fragment_shader);
 
 private:
 	render::backend::Driver *driver {nullptr};
@@ -24,6 +24,4 @@ private:
 	render::backend::CommandBuffer *command_buffer {nullptr};
 	render::backend::RenderPass *render_pass {nullptr};
 	render::backend::FrameBuffer *frame_buffer {nullptr};
-
-	Mesh quad;
 };

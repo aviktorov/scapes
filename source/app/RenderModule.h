@@ -6,7 +6,7 @@
 
 #include <glm/mat4x4.hpp>
 
-class Mesh;
+struct Mesh;
 struct Texture;
 class Shader;
 
@@ -40,14 +40,14 @@ namespace ecs::render
 	struct SkyLight
 	{
 		const EnvironmentTexture *environment {nullptr};
-		const ::Mesh *mesh {nullptr};
+		resources::ResourceHandle<::Mesh> mesh;
 		const ::Shader *vertex_shader {nullptr};
 		const ::Shader *fragment_shader {nullptr};
 	};
 
 	struct Renderable
 	{
-		const ::Mesh *mesh {nullptr};
+		resources::ResourceHandle<::Mesh> mesh;
 		const RenderMaterialData *materials {nullptr};
 	};
 

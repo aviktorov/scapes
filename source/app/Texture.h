@@ -30,12 +30,12 @@ struct TypeTraits<Texture>
 template <>
 struct resources::ResourcePipeline<Texture>
 {
-public:
 	static bool import(ResourceHandle<Texture> handle, const resources::URI &uri, render::backend::Driver *driver);
 	static bool importFromMemory(ResourceHandle<Texture> handle, const uint8_t *data, size_t size, render::backend::Driver *driver);
 
 	static void destroy(ResourceHandle<Texture> handle, render::backend::Driver *driver);
 
+	// TODO: move to render module API helpers
 	static void create2D(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int width, int height, int num_mips);
 	static void createCube(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int size, int num_mips);
 };

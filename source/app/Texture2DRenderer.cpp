@@ -1,5 +1,6 @@
 #include "Texture2DRenderer.h"
 
+#include "Mesh.h"
 #include "Shader.h"
 #include "Texture.h"
 
@@ -7,7 +8,6 @@
  */
 Texture2DRenderer::Texture2DRenderer(render::backend::Driver *driver)
 	: driver(driver)
-	, quad(driver)
 {
 }
 
@@ -40,7 +40,6 @@ void Texture2DRenderer::init(const Texture *target_texture)
 
 	render_pass = driver->createRenderPass(1, render_pass_attachments, render_pass_description);
 
-	quad.createQuad(2.0f);
 	command_buffer = driver->createCommandBuffer(render::backend::CommandBufferType::PRIMARY);
 
 	pipeline_state = driver->createPipelineState();
@@ -66,6 +65,7 @@ void Texture2DRenderer::shutdown()
 /*
  */
 void Texture2DRenderer::render(
+	const Mesh *mesh,
 	const Shader *vertex_shader,
 	const Shader *fragment_shader
 )
@@ -84,9 +84,9 @@ void Texture2DRenderer::render(
 	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->getBackend());
 
 	driver->clearVertexStreams(pipeline_state);
-	driver->setVertexStream(pipeline_state, 0, quad.getVertexBuffer());
+	driver->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
 
-	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad.getIndexBuffer(), quad.getNumIndices());
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
 
 	driver->endRenderPass(command_buffer);
 

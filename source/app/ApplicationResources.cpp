@@ -1,11 +1,10 @@
 #include "ApplicationResources.h"
 #include "RenderUtils.h"
 
-#include "Texture.h"
 #include "Mesh.h"
 #include "Shader.h"
+#include "Texture.h"
 
-#include <vector>
 #include <cassert>
 #include <iostream>
 
@@ -104,11 +103,18 @@ void ApplicationResources::init()
 	for (int i = 0; i < config::hdrTextures.size(); ++i)
 		hdr_cubemaps.push_back(loadTexture(config::hdrTextures[i]));
 
+	fullscreen_quad = resource_manager->create<Mesh>();
+	resources::ResourcePipeline<Mesh>::createQuad(fullscreen_quad, driver, 2.0f);
+
+	skybox = resource_manager->create<Mesh>();
+	resources::ResourcePipeline<Mesh>::createSkybox(skybox, driver, 10000.0f);
+
 	baked_brdf = RenderUtils::createTexture2D(
 		resource_manager,
 		driver,
 		render::backend::Format::R16G16_SFLOAT,
 		512, 512, 1,
+		fullscreen_quad,
 		getShader(config::Shaders::FullscreenQuadVertex),
 		getShader(config::Shaders::BakedBRDFFragment)
 	);
@@ -126,6 +132,7 @@ void ApplicationResources::init()
 			render::backend::Format::R32G32B32A32_SFLOAT,
 			128,
 			hdr_cubemaps[i],
+			fullscreen_quad,
 			getShader(config::Shaders::CubemapVertex),
 			getShader(config::Shaders::EquirectangularProjectionFragment),
 			getShader(config::Shaders::PrefilteredSpecularCubemapFragment)
@@ -137,6 +144,7 @@ void ApplicationResources::init()
 			render::backend::Format::R32G32B32A32_SFLOAT,
 			128,
 			1,
+			fullscreen_quad,
 			getShader(config::Shaders::CubemapVertex),
 			getShader(config::Shaders::DiffuseIrradianceCubemapFragment),
 			environment_cubemaps[i]
@@ -144,12 +152,6 @@ void ApplicationResources::init()
 	}
 
 	blue_noise = resource_manager->import<Texture>(config::blueNoise, driver);
-
-	fullscreen_quad = new Mesh(driver);
-	fullscreen_quad->createQuad(2.0f);
-
-	skybox = new Mesh(driver);
-	skybox->createSkybox(10000.0f);
 
 	default_albedo = generateTexture(driver, 127, 127, 127);
 	default_normal = generateTexture(driver, 127, 127, 255);
@@ -159,18 +161,18 @@ void ApplicationResources::init()
 
 void ApplicationResources::shutdown()
 {
-	for (auto it : meshes)
-		delete it.second;
-
 	for (auto it : shaders)
 		delete it.second;
 
 	for (auto it : loaded_textures)
 		resource_manager->destroy(it, driver);
 
-	meshes.clear();
+	for (auto it : loaded_meshes)
+		resource_manager->destroy(it, driver);
+
 	shaders.clear();
 	loaded_textures.clear();
+	loaded_meshes.clear();
 
 	resource_manager->destroy(baked_brdf, driver);
 
@@ -186,11 +188,8 @@ void ApplicationResources::shutdown()
 
 	resource_manager->destroy(blue_noise, driver);
 
-	delete fullscreen_quad;
-	fullscreen_quad = nullptr;
-
-	delete skybox;
-	skybox = nullptr;
+	resource_manager->destroy(fullscreen_quad, driver);
+	resource_manager->destroy(skybox, driver);
 
 	driver->destroyTexture(default_albedo);
 	driver->destroyTexture(default_normal);
@@ -203,52 +202,14 @@ void ApplicationResources::shutdown()
 	default_metalness = nullptr;
 }
 
+/*
+ */
 void ApplicationResources::reloadShaders()
 {
 	for (int i = 0; i < config::shaders.size(); ++i)
 		reloadShader(i);
 }
 
-/*
- */
-Mesh *ApplicationResources::getMesh(int id) const
-{
-	auto it = meshes.find(id);
-	if (it != meshes.end())
-		return it->second;
-
-	return nullptr;
-}
-
-Mesh *ApplicationResources::loadMesh(int id, const char *path)
-{
-	auto it = meshes.find(id);
-	if (it != meshes.end())
-	{
-		std::cerr << "ApplicationResources::loadMesh(): " << id << " is already taken by another mesh" << std::endl;
-		return nullptr;
-	}
-
-	Mesh *mesh = new Mesh(driver);
-	if (!mesh->importAssimp(path))
-		return nullptr;
-
-	meshes.insert(std::make_pair(id, mesh));
-	return mesh;
-}
-
-void ApplicationResources::unloadMesh(int id)
-{
-	auto it = meshes.find(id);
-	if (it == meshes.end())
-		return;
-
-	delete it->second;
-	meshes.erase(it);
-}
-
-/*
- */
 Shader *ApplicationResources::getShader(int id) const
 {
 	auto it = shaders.find(id);
@@ -316,4 +277,40 @@ resources::ResourceHandle<Texture> ApplicationResources::loadTextureFromMemory(c
 
 	loaded_textures.push_back(texture);
 	return texture;
+}
+
+/*
+ */
+resources::ResourceHandle<Mesh> ApplicationResources::loadMesh(const resources::URI &uri)
+{
+	resources::ResourceHandle<Mesh> result = resource_manager->import<Mesh>(uri, driver);
+	if (!result.get())
+		return resources::ResourceHandle<Mesh>();
+
+	loaded_meshes.push_back(result);
+	return result;
+}
+
+resources::ResourceHandle<Mesh> ApplicationResources::createMeshFromAssimp(const aiMesh *mesh)
+{
+	resources::ResourceHandle<Mesh> result = resource_manager->create<Mesh>();
+	if (!result.get())
+		return resources::ResourceHandle<Mesh>();
+
+	resources::ResourcePipeline<Mesh>::createAssimp(result, driver, mesh);
+
+	loaded_meshes.push_back(result);
+	return result;
+}
+
+resources::ResourceHandle<Mesh> ApplicationResources::createMeshFromCGLTF(const cgltf_mesh *mesh)
+{
+	resources::ResourceHandle<Mesh> result = resource_manager->create<Mesh>();
+	if (!result.get())
+		return resources::ResourceHandle<Mesh>();
+
+	resources::ResourcePipeline<Mesh>::createCGLTF(result, driver, mesh);
+
+	loaded_meshes.push_back(result);
+	return result;
 }

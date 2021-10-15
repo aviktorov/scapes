@@ -5,8 +5,8 @@
 
 /*
  */
-Light::Light(render::backend::Driver *driver, const Shader *vertex, const Shader *fragment)
-	: driver(driver), vertex_shader(vertex), fragment_shader(fragment)
+Light::Light(render::backend::Driver *driver, resources::ResourceHandle<Mesh> mesh, const Shader *vertex, const Shader *fragment)
+	: driver(driver), mesh(mesh), vertex_shader(vertex), fragment_shader(fragment)
 {
 	bind_set = driver->createBindSet();
 }
@@ -16,23 +16,19 @@ Light::~Light()
 	driver->destroyBindSet(bind_set);
 	bind_set = nullptr;
 
-	mesh = nullptr;
 	vertex_shader = nullptr;
 	fragment_shader = nullptr;
 }
 
 /*
  */
-SkyLight::SkyLight(render::backend::Driver *driver, const Shader *vertex, const Shader *fragment)
-	: Light(driver, vertex, fragment)
+SkyLight::SkyLight(render::backend::Driver *driver, resources::ResourceHandle<Mesh> mesh, const Shader *vertex, const Shader *fragment)
+	: Light(driver, mesh, vertex, fragment)
 {
-	mesh = new Mesh(driver);
-	mesh->createQuad(2.0f);
 }
 
 SkyLight::~SkyLight()
 {
-	delete mesh;
 }
 
 void SkyLight::setBakedBRDFTexture(const Texture *brdf_texture)
