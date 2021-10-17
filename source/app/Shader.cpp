@@ -1,84 +1,63 @@
 #include "Shader.h"
 #include <render/shaders/Compiler.h>
 
-#include <fstream>
 #include <iostream>
-#include <vector>
 
 /*
  */
-Shader::~Shader()
+void resources::ResourcePipeline<Shader>::destroy(resources::ResourceHandle<Shader> handle, render::backend::Driver *driver)
 {
-	clear();
+	Shader *shader = handle.get();
+	driver->destroyShader(shader->shader);
+
+	*shader = {};
 }
 
 /*
  */
-bool Shader::compileFromFile(render::backend::ShaderType shader_type, const char *file_path)
+bool resources::ResourcePipeline<Shader>::import(resources::ResourceHandle<Shader> handle, const resources::URI &uri, render::backend::ShaderType type, render::backend::Driver *driver, render::shaders::Compiler *compiler)
 {
-	std::ifstream file(file_path, std::ios::ate | std::ios::binary);
-
-	if (!file.is_open())
+	FILE *file = fopen(uri, "rb");
+	if (!file)
 	{
-		std::cerr << "Shader::compileFromFile(): can't load shader at \"" << file_path << "\"" << std::endl;
+		std::cerr << "Shader::import(): can't open \"" << uri << "\" file" << std::endl;
 		return false;
 	}
 
-	size_t size = static_cast<size_t>(file.tellg());
-	std::vector<char> buffer(size);
+	fseek(file, 0, SEEK_END);
+	size_t size = ftell(file);
+	fseek(file, 0, SEEK_SET);
 
-	file.seekg(0);
-	file.read(buffer.data(), size);
-	file.close();
+	uint8_t *data = new uint8_t[size];
+	fread(data, sizeof(uint8_t), size, file);
+	fclose(file);
 
-	path = file_path;
-	type = shader_type;
+	bool result = importFromMemory(handle, data, size, type, driver, compiler);
+	delete[] data;
 
-	return compile(shader_type, static_cast<uint32_t>(buffer.size()), buffer.data(), file_path);
+	return result;
 }
 
-bool Shader::compileFromMemory(render::backend::ShaderType shader_type, uint32_t size, const char *data)
+bool resources::ResourcePipeline<Shader>::importFromMemory(resources::ResourceHandle<Shader> handle, const uint8_t *data, size_t size, render::backend::ShaderType type, render::backend::Driver *driver, render::shaders::Compiler *compiler)
 {
-	path.clear();
-	type = type;
+	Shader *shader = handle.get();
+	assert(shader);
 
-	return compile(shader_type, size, data, nullptr);
-}
+	shader->type = type;
+	shader->shader = nullptr;
 
-/*
- */
-bool Shader::reload()
-{
-	if (path.empty())
-		return false;
-
-	return compileFromFile(type, path.c_str());
-}
-
-void Shader::clear()
-{
-	driver->destroyShader(shader);
-	shader = nullptr;
-}
-
-/*
- */
-bool Shader::compile(render::backend::ShaderType type, uint32_t size, const char *data, const char *path)
-{
-	driver->destroyShader(shader);
-	shader = nullptr;
-
-	render::shaders::ShaderIL *il = compiler->createShaderIL(static_cast<render::shaders::ShaderType>(type), size, data, path);
+	render::shaders::ShaderIL *il = compiler->createShaderIL(static_cast<render::shaders::ShaderType>(type), size, reinterpret_cast<const char *>(data));
 
 	if (il != nullptr)
-		shader = driver->createShaderFromIL(
+	{
+		shader->shader = driver->createShaderFromIL(
 			static_cast<render::backend::ShaderType>(il->type),
 			static_cast<render::backend::ShaderILType>(il->il_type),
 			il->bytecode_size,
 			il->bytecode_data
 		);
+	}
 
 	compiler->destroyShaderIL(il);
-
-	return shader != nullptr;
+	return shader->shader != nullptr;
 }

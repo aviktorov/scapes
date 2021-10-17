@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
-#include <render/backend/driver.h>
+#include <render/backend/Driver.h>
+#include <common/ResourceManager.h>
 
 namespace render::shaders
 {
@@ -10,29 +10,23 @@ namespace render::shaders
 
 /*
  */
-class Shader
+struct Shader
 {
-public:
-	Shader(render::backend::Driver *driver, render::shaders::Compiler *compiler)
-		: driver(driver), compiler(compiler) { }
-
-	~Shader();
-
-	bool compileFromFile(render::backend::ShaderType type, const char *path);
-	bool compileFromMemory(render::backend::ShaderType type, uint32_t size, const char *data);
-	bool reload();
-	void clear();
-
-	inline render::backend::Shader *getBackend() const { return shader; }
-
-private:
-	bool compile(render::backend::ShaderType type, uint32_t size, const char *data, const char *path);
-
-private:
-	render::backend::Driver *driver {nullptr};
 	render::backend::Shader *shader {nullptr};
 	render::backend::ShaderType type {render::backend::ShaderType::FRAGMENT};
-	render::shaders::Compiler *compiler {nullptr};
+};
 
-	std::string path;
+template <>
+struct TypeTraits<Shader>
+{
+	static constexpr const char *name = "Shader";
+};
+
+template <>
+struct resources::ResourcePipeline<Shader>
+{
+	static bool import(resources::ResourceHandle<Shader> handle, const resources::URI &uri, render::backend::ShaderType type, render::backend::Driver *driver, render::shaders::Compiler *compiler);
+	static bool importFromMemory(resources::ResourceHandle<Shader> handle, const uint8_t *data, size_t size, render::backend::ShaderType type, render::backend::Driver *driver, render::shaders::Compiler *compiler);
+
+	static void destroy(resources::ResourceHandle<Shader> handle, render::backend::Driver *driver);
 };

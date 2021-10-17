@@ -2,12 +2,13 @@
 
 #include <render/shaders/Compiler.h>
 #include <render/backend/Driver.h>
+#include <common/ResourceManager.h>
 #include <map>
 
 struct RenderFrame;
 class SwapChain;
 struct Texture;
-class Shader;
+struct Shader;
 
 struct ImGuiContext;
 struct ImDrawData;
@@ -19,7 +20,7 @@ typedef void* ImTextureID;
 class ImGuiRenderer
 {
 public:
-	ImGuiRenderer(render::backend::Driver *driver, render::shaders::Compiler *compiler);
+	ImGuiRenderer(render::backend::Driver *driver, render::shaders::Compiler *compiler, resources::ResourceManager *resource_manager);
 	virtual ~ImGuiRenderer();
 
 	void init(ImGuiContext *imguiContext);
@@ -36,16 +37,17 @@ private:
 private:
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
-	render::backend::Texture *font_texture {nullptr};
-	render::backend::PipelineState *pipeline_state {nullptr};
-	Shader *vertex_shader {nullptr};
-	Shader *fragment_shader {nullptr};
+	resources::ResourceManager *resource_manager {nullptr};
 
+	resources::ResourceHandle<Texture> font_texture;
+	resources::ResourceHandle<Shader> vertex_shader;
+	resources::ResourceHandle<Shader> fragment_shader;
+
+	render::backend::PipelineState *pipeline_state {nullptr};
 	render::backend::VertexBuffer *vertices {nullptr};
 	render::backend::IndexBuffer *indices {nullptr};
 	size_t index_buffer_size {0};
 	size_t vertex_buffer_size {0};
-	bool flipped {true};
 
 	render::backend::BindSet *font_bind_set {nullptr};
 	std::map<const render::backend::Texture *, render::backend::BindSet *> registered_textures;

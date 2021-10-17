@@ -73,18 +73,17 @@ namespace ecs::render
 			for (uint32_t i = 0; i < num_items; ++i)
 			{
 				const SkyLight &light = skylights[i];
-				const Mesh *mesh = light.mesh.get();
 
 				driver->clearShaders(pipeline_state);
-				driver->setShader(pipeline_state, ::render::backend::ShaderType::VERTEX, light.vertex_shader->getBackend());
-				driver->setShader(pipeline_state, ::render::backend::ShaderType::FRAGMENT, light.fragment_shader->getBackend());
+				driver->setShader(pipeline_state, ::render::backend::ShaderType::VERTEX, light.vertex_shader->shader);
+				driver->setShader(pipeline_state, ::render::backend::ShaderType::FRAGMENT, light.fragment_shader->shader);
 
 				driver->setBindSet(pipeline_state, light_binding, light.environment->bindings);
 
 				driver->clearVertexStreams(pipeline_state);
-				driver->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
+				driver->setVertexStream(pipeline_state, 0, light.mesh->vertex_buffer);
 
-				driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
+				driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, light.mesh->index_buffer, light.mesh->num_indices);
 			}
 		}
 	}

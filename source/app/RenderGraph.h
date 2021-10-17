@@ -5,7 +5,7 @@
 #include <glm/vec4.hpp>
 
 class ApplicationResources;
-class Shader;
+struct Shader;
 struct Mesh;
 struct Texture;
 struct RenderFrame;
@@ -210,16 +210,16 @@ private:
 
 	resources::ResourceHandle<Mesh> fullscreen_quad;
 
-	const Shader *gbuffer_pass_vertex {nullptr};
-	const Shader *gbuffer_pass_fragment {nullptr};
+	resources::ResourceHandle<Shader> gbuffer_pass_vertex;
+	resources::ResourceHandle<Shader> gbuffer_pass_fragment;
 
-	const Shader *fullscreen_quad_vertex {nullptr};
+	resources::ResourceHandle<Shader> fullscreen_quad_vertex;
 
-	const Shader *ssao_pass_fragment {nullptr};
-	const Shader *ssao_blur_pass_fragment {nullptr};
-	const Shader *ssr_trace_pass_fragment {nullptr};
-	const Shader *ssr_resolve_pass_fragment {nullptr};
-	const Shader *temporal_filter_pass_fragment {nullptr};
-	const Shader *composite_pass_fragment {nullptr};
-	const Shader *tonemapping_pass_fragment {nullptr};
+	resources::ResourceHandle<Shader> ssao_pass_fragment;
+	resources::ResourceHandle<Shader> ssao_blur_pass_fragment;
+	resources::ResourceHandle<Shader> ssr_trace_pass_fragment;
+	resources::ResourceHandle<Shader> ssr_resolve_pass_fragment;
+	resources::ResourceHandle<Shader> temporal_filter_pass_fragment;
+	resources::ResourceHandle<Shader> composite_pass_fragment;
+	resources::ResourceHandle<Shader> tonemapping_pass_fragment;
 };

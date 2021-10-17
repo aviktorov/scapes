@@ -13,7 +13,7 @@ namespace render::shaders
 struct aiMesh;
 struct cgltf_mesh;
 
-class Shader;
+struct Shader;
 struct Mesh;
 struct Texture;
 
@@ -41,10 +41,6 @@ namespace config
 	};
 }
 
-class Shader;
-struct Mesh;
-struct Texture;
-
 /*
  */
 class ApplicationResources
@@ -57,6 +53,8 @@ public:
 
 	void init();
 	void shutdown();
+
+	inline resources::ResourceManager *getResourceManager() const { return resource_manager; }
 
 	inline resources::ResourceHandle<Texture> getBlueNoiseTexture() const { return blue_noise; }
 
@@ -76,12 +74,9 @@ public:
 	inline render::backend::Texture *getDefaultRoughness() const { return default_roughness;}
 	inline render::backend::Texture *getDefaultMetalness() const { return default_metalness;}
 
-	void reloadShaders();
-
-	Shader *getShader(int id) const;
-	Shader *loadShader(int id, render::backend::ShaderType type, const char *path);
-	bool reloadShader(int id);
-	void unloadShader(int id);
+	inline resources::ResourceHandle<Shader> getShader(int index) const { return loaded_shaders[index]; }
+	
+	resources::ResourceHandle<Shader> loadShader(const resources::URI &uri, render::backend::ShaderType type);
 
 	resources::ResourceHandle<Texture> loadTexture(const resources::URI &uri);
 	resources::ResourceHandle<Texture> loadTextureFromMemory(const uint8_t *data, size_t size);
@@ -110,8 +105,7 @@ private:
 	render::backend::Texture *default_roughness {nullptr};
 	render::backend::Texture *default_metalness {nullptr};
 
-	std::unordered_map<int, Shader *> shaders;
-
+	std::vector<resources::ResourceHandle<Shader> > loaded_shaders;
 	std::vector<resources::ResourceHandle<Texture> > loaded_textures;
 	std::vector<resources::ResourceHandle<Mesh> > loaded_meshes;
 };

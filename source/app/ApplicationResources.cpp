@@ -98,7 +98,7 @@ ApplicationResources::~ApplicationResources()
 void ApplicationResources::init()
 {
 	for (int i = 0; i < config::shaders.size(); ++i)
-		loadShader(i, config::shaderTypes[i], config::shaders[i]);
+		loadShader(config::shaders[i], config::shaderTypes[i]);
 
 	for (int i = 0; i < config::hdrTextures.size(); ++i)
 		hdr_cubemaps.push_back(loadTexture(config::hdrTextures[i]));
@@ -161,8 +161,8 @@ void ApplicationResources::init()
 
 void ApplicationResources::shutdown()
 {
-	for (auto it : shaders)
-		delete it.second;
+	for (auto it : loaded_shaders)
+		resource_manager->destroy(it, driver);
 
 	for (auto it : loaded_textures)
 		resource_manager->destroy(it, driver);
@@ -170,7 +170,7 @@ void ApplicationResources::shutdown()
 	for (auto it : loaded_meshes)
 		resource_manager->destroy(it, driver);
 
-	shaders.clear();
+	loaded_shaders.clear();
 	loaded_textures.clear();
 	loaded_meshes.clear();
 
@@ -204,57 +204,14 @@ void ApplicationResources::shutdown()
 
 /*
  */
-void ApplicationResources::reloadShaders()
+resources::ResourceHandle<Shader> ApplicationResources::loadShader(const resources::URI &uri, render::backend::ShaderType type)
 {
-	for (int i = 0; i < config::shaders.size(); ++i)
-		reloadShader(i);
-}
+	resources::ResourceHandle<Shader> shader = resource_manager->import<Shader>(uri, type, driver, compiler);
+	if (!shader.get())
+		return resources::ResourceHandle<Shader>();
 
-Shader *ApplicationResources::getShader(int id) const
-{
-	auto it = shaders.find(id);
-	if (it != shaders.end())
-		return it->second;
-
-	return nullptr;
-}
-
-Shader *ApplicationResources::loadShader(int id, render::backend::ShaderType type, const char *path)
-{
-	auto it = shaders.find(id);
-	if (it != shaders.end())
-	{
-		std::cerr << "ApplicationResources::loadShader(): " << id << " is already taken by another shader" << std::endl;
-		return nullptr;
-	}
-
-	Shader *shader = new Shader(driver, compiler);
-	if (!shader->compileFromFile(type, path))
-	{
-		// TODO: log warning
-	}
-
-	shaders.insert(std::make_pair(id, shader));
+	loaded_shaders.push_back(shader);
 	return shader;
-}
-
-bool ApplicationResources::reloadShader(int id)
-{
-	auto it = shaders.find(id);
-	if (it == shaders.end())
-		return false;
-
-	return it->second->reload();
-}
-
-void ApplicationResources::unloadShader(int id)
-{
-	auto it = shaders.find(id);
-	if (it == shaders.end())
-		return;
-
-	delete it->second;
-	shaders.erase(it);
 }
 
 /*

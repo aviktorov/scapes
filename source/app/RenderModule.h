@@ -8,7 +8,7 @@
 
 struct Mesh;
 struct Texture;
-class Shader;
+struct Shader;
 
 namespace ecs::render
 {
@@ -41,8 +41,8 @@ namespace ecs::render
 	{
 		const EnvironmentTexture *environment {nullptr};
 		resources::ResourceHandle<::Mesh> mesh;
-		const ::Shader *vertex_shader {nullptr};
-		const ::Shader *fragment_shader {nullptr};
+		resources::ResourceHandle<::Shader> vertex_shader;
+		resources::ResourceHandle<::Shader> fragment_shader;
 	};
 
 	struct Renderable

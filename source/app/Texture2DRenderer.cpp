@@ -80,8 +80,8 @@ void Texture2DRenderer::render(
 
 	driver->clearBindSets(pipeline_state);
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader->getBackend());
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader->shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->shader);
 
 	driver->clearVertexStreams(pipeline_state);
 	driver->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);

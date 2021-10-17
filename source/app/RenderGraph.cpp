@@ -36,7 +36,7 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	driver->setViewport(pipeline_state, 0, 0, width, height);
 	driver->setScissor(pipeline_state, 0, 0, width, height);
 
-	imgui_renderer = new ImGuiRenderer(driver, compiler);
+	imgui_renderer = new ImGuiRenderer(driver, compiler, resources->getResourceManager());
 	imgui_renderer->init(ImGui::GetCurrentContext());
 
 	initRenderPasses();
@@ -72,19 +72,6 @@ void RenderGraph::shutdown()
 
 	delete imgui_renderer;
 	imgui_renderer = nullptr;
-
-	gbuffer_pass_vertex = nullptr;
-	gbuffer_pass_fragment = nullptr;
-
-	fullscreen_quad_vertex = nullptr;
-
-	ssao_pass_fragment = nullptr;
-	ssao_blur_pass_fragment = nullptr;
-	ssr_trace_pass_fragment = nullptr;
-	ssr_resolve_pass_fragment = nullptr;
-	temporal_filter_pass_fragment = nullptr;
-	composite_pass_fragment = nullptr;
-	tonemapping_pass_fragment = nullptr;
 }
 
 void RenderGraph::initRenderPasses()
@@ -619,8 +606,8 @@ void RenderGraph::renderGBuffer(const game::World *world, render::backend::Comma
 	driver->setBindSet(pipeline_state, 1, camera_bindings);
 
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, gbuffer_pass_vertex->getBackend());
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, gbuffer_pass_fragment->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, gbuffer_pass_vertex->shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, gbuffer_pass_fragment->shader);
 
 	driver->clearVertexStreams(pipeline_state);
 
@@ -631,9 +618,6 @@ void RenderGraph::renderGBuffer(const game::World *world, render::backend::Comma
 
 void RenderGraph::renderSSAO(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings)
 {
-	const Mesh *quad = fullscreen_quad.get();
-	assert(quad);
-
 	driver->beginRenderPass(command_buffer, ssao_render_pass, ssao_noised.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
@@ -643,21 +627,18 @@ void RenderGraph::renderSSAO(const game::World *world, render::backend::CommandB
 	driver->setBindSet(pipeline_state, 2, ssao_kernel.bindings);
 
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->getBackend());
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, ssao_pass_fragment->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, ssao_pass_fragment->shader);
 
 	driver->clearVertexStreams(pipeline_state);
-	driver->setVertexStream(pipeline_state, 0, quad->vertex_buffer);
+	driver->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
 
-	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->index_buffer, quad->num_indices);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, fullscreen_quad->index_buffer, fullscreen_quad->num_indices);
 	driver->endRenderPass(command_buffer);
 }
 
 void RenderGraph::renderSSAOBlur(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings)
 {
-	const Mesh *quad = fullscreen_quad.get();
-	assert(quad);
-
 	driver->beginRenderPass(command_buffer, ssao_render_pass, ssao_blurred.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
@@ -666,21 +647,18 @@ void RenderGraph::renderSSAOBlur(const game::World *world, render::backend::Comm
 	driver->setBindSet(pipeline_state, 1, ssao_noised.bindings);
 
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->getBackend());
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, ssao_blur_pass_fragment->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, ssao_blur_pass_fragment->shader);
 
 	driver->clearVertexStreams(pipeline_state);
-	driver->setVertexStream(pipeline_state, 0, quad->vertex_buffer);
+	driver->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
 
-	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->index_buffer, quad->num_indices);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, fullscreen_quad->index_buffer, fullscreen_quad->num_indices);
 	driver->endRenderPass(command_buffer);
 }
 
 void RenderGraph::renderSSRTrace(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
 {
-	const Mesh *quad = fullscreen_quad.get();
-	assert(quad);
-
 	driver->beginRenderPass(command_buffer, hdr_render_pass, ssr_trace.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
@@ -691,21 +669,18 @@ void RenderGraph::renderSSRTrace(const game::World *world, render::backend::Comm
 	driver->setBindSet(pipeline_state, 3, ssr_data.bindings);
 
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->getBackend());
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, ssr_trace_pass_fragment->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, ssr_trace_pass_fragment->shader);
 
 	driver->clearVertexStreams(pipeline_state);
-	driver->setVertexStream(pipeline_state, 0, quad->vertex_buffer);
+	driver->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
 
-	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->index_buffer, quad->num_indices);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, fullscreen_quad->index_buffer, fullscreen_quad->num_indices);
 	driver->endRenderPass(command_buffer);
 }
 
 void RenderGraph::renderSSRResolve(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
 {
-	const Mesh *quad = fullscreen_quad.get();
-	assert(quad);
-
 	driver->beginRenderPass(command_buffer, ssr_resolve_render_pass, ssr_resolve.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
@@ -718,13 +693,13 @@ void RenderGraph::renderSSRResolve(const game::World *world, render::backend::Co
 	driver->setBindSet(pipeline_state, 5, old_composite.bindings);
 
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->getBackend());
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, ssr_resolve_pass_fragment->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, ssr_resolve_pass_fragment->shader);
 
 	driver->clearVertexStreams(pipeline_state);
-	driver->setVertexStream(pipeline_state, 0, quad->vertex_buffer);
+	driver->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
 
-	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->index_buffer, quad->num_indices);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, fullscreen_quad->index_buffer, fullscreen_quad->num_indices);
 	driver->endRenderPass(command_buffer);
 }
 
@@ -752,9 +727,6 @@ void RenderGraph::renderLBuffer(const game::World *world, render::backend::Comma
 
 void RenderGraph::renderComposite(const game::World *world, render::backend::CommandBuffer *command_buffer)
 {
-	const Mesh *quad = fullscreen_quad.get();
-	assert(quad);
-
 	driver->beginRenderPass(command_buffer, hdr_render_pass, composite_temp.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
@@ -764,15 +736,15 @@ void RenderGraph::renderComposite(const game::World *world, render::backend::Com
 	driver->setBindSet(pipeline_state, 2, ssr.bindings);
 
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->getBackend());
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, composite_pass_fragment->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, composite_pass_fragment->shader);
 
 	// TODO: GI
 
 	driver->clearVertexStreams(pipeline_state);
-	driver->setVertexStream(pipeline_state, 0, quad->vertex_buffer);
+	driver->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
 
-	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->index_buffer, quad->num_indices);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, fullscreen_quad->index_buffer, fullscreen_quad->num_indices);
 	driver->endRenderPass(command_buffer);
 }
 
@@ -785,9 +757,6 @@ void RenderGraph::renderCompositeTemporalFilter(const game::World *world, render
 
 void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, render::backend::CommandBuffer *command_buffer)
 {
-	const Mesh *quad = fullscreen_quad.get();
-	assert(quad);
-
 	driver->beginRenderPass(command_buffer, hdr_render_pass, current.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
@@ -797,21 +766,18 @@ void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer
 	driver->setBindSet(pipeline_state, 2, velocity.bindings);
 
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->getBackend());
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, temporal_filter_pass_fragment->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, temporal_filter_pass_fragment->shader);
 
 	driver->clearVertexStreams(pipeline_state);
-	driver->setVertexStream(pipeline_state, 0, quad->vertex_buffer);
+	driver->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
 
-	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->index_buffer, quad->num_indices);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, fullscreen_quad->index_buffer, fullscreen_quad->num_indices);
 	driver->endRenderPass(command_buffer);
 }
 
 void RenderGraph::renderToSwapChain(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain)
 {
-	const Mesh *quad = fullscreen_quad.get();
-	assert(quad);
-
 	if (swap_chain_render_pass == nullptr)
 		swap_chain_render_pass = driver->createRenderPass(swap_chain, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE, nullptr);
 
@@ -822,13 +788,13 @@ void RenderGraph::renderToSwapChain(const game::World *world, render::backend::C
 	driver->setBindSet(pipeline_state, 0, composite.bindings);
 
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->getBackend());
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, tonemapping_pass_fragment->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, tonemapping_pass_fragment->shader);
 
 	driver->clearVertexStreams(pipeline_state);
-	driver->setVertexStream(pipeline_state, 0, quad->vertex_buffer);
+	driver->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
 
-	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->index_buffer, quad->num_indices);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, fullscreen_quad->index_buffer, fullscreen_quad->num_indices);
 
 	imgui_renderer->render(command_buffer);
 
@@ -837,21 +803,18 @@ void RenderGraph::renderToSwapChain(const game::World *world, render::backend::C
 
 void RenderGraph::prepareOldTexture(const RenderBuffer &old, render::backend::CommandBuffer *command_buffer)
 {
-	const Mesh *quad = fullscreen_quad.get();
-	assert(quad);
-
 	driver->beginRenderPass(command_buffer, hdr_clear_render_pass, old.frame_buffer);
 
 	driver->clearPushConstants(pipeline_state);
 	driver->clearBindSets(pipeline_state);
 
 	driver->clearShaders(pipeline_state);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, fullscreen_quad_vertex->shader);
 
 	driver->clearVertexStreams(pipeline_state);
-	driver->setVertexStream(pipeline_state, 0, quad->vertex_buffer);
+	driver->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
 
-	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, quad->index_buffer, quad->num_indices);
+	driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, fullscreen_quad->index_buffer, fullscreen_quad->num_indices);
 
 	driver->endRenderPass(command_buffer);
 }

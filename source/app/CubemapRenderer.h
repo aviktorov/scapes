@@ -2,7 +2,7 @@
 
 #include <render/backend/driver.h>
 
-class Shader;
+struct Shader;
 struct Mesh;
 struct Texture;
 

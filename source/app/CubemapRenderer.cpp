@@ -168,8 +168,8 @@ void CubemapRenderer::render(
 
 	driver->setPushConstants(pipeline_state, push_constants_size, push_constants_data);
 	driver->setBindSet(pipeline_state, 0, bind_set);
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader->getBackend());
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->getBackend());
+	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader->shader);
+	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->shader);
 
 	driver->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
 

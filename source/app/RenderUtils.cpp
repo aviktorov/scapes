@@ -17,8 +17,8 @@ resources::ResourceHandle<Texture> RenderUtils::createTexture2D(
 	uint32_t height,
 	uint32_t mips,
 	resources::ResourceHandle<Mesh> fullscreen_quad,
-	const Shader *vertex_shader,
-	const Shader *fragment_shader
+	resources::ResourceHandle<Shader> vertex_shader,
+	resources::ResourceHandle<Shader> fragment_shader
 )
 {
 	resources::ResourceHandle<Texture> result = resource_manager->create<Texture>();
@@ -26,7 +26,7 @@ resources::ResourceHandle<Texture> RenderUtils::createTexture2D(
 
 	Texture2DRenderer renderer(driver);
 	renderer.init(result.get());
-	renderer.render(fullscreen_quad.get(), vertex_shader, fragment_shader);
+	renderer.render(fullscreen_quad.get(), vertex_shader.get(), fragment_shader.get());
 
 	return result;
 }
@@ -38,8 +38,8 @@ resources::ResourceHandle<Texture> RenderUtils::createTextureCube(
 	uint32_t size,
 	uint32_t mips,
 	resources::ResourceHandle<Mesh> fullscreen_quad,
-	const Shader *vertex_shader,
-	const Shader *fragment_shader,
+	resources::ResourceHandle<Shader> vertex_shader,
+	resources::ResourceHandle<Shader> fragment_shader,
 	resources::ResourceHandle<Texture> input
 )
 {
@@ -48,7 +48,7 @@ resources::ResourceHandle<Texture> RenderUtils::createTextureCube(
 
 	CubemapRenderer renderer(driver);
 	renderer.init(result.get(), 0);
-	renderer.render(fullscreen_quad.get(), vertex_shader, fragment_shader, input.get());
+	renderer.render(fullscreen_quad.get(), vertex_shader.get(), fragment_shader.get(), input.get());
 
 	return result;
 }
@@ -62,9 +62,9 @@ resources::ResourceHandle<Texture> RenderUtils::hdriToCube(
 	uint32_t size,
 	resources::ResourceHandle<Texture> hdri,
 	resources::ResourceHandle<Mesh> fullscreen_quad,
-	const Shader *vertex_shader,
-	const Shader *hdri_fragment_shader,
-	const Shader *prefilter_fragment_shader
+	resources::ResourceHandle<Shader> vertex_shader,
+	resources::ResourceHandle<Shader> hdri_fragment_shader,
+	resources::ResourceHandle<Shader> prefilter_fragment_shader
 )
 {
 	uint32_t mips = static_cast<int>(std::floor(std::log2(size)) + 1);
@@ -77,7 +77,7 @@ resources::ResourceHandle<Texture> RenderUtils::hdriToCube(
 
 	CubemapRenderer renderer(driver);
 	renderer.init(temp.get(), 0);
-	renderer.render(fullscreen_quad.get(), vertex_shader, hdri_fragment_shader, hdri.get());
+	renderer.render(fullscreen_quad.get(), vertex_shader.get(), hdri_fragment_shader.get(), hdri.get());
 
 	for (uint32_t mip = 0; mip < mips; ++mip)
 	{
@@ -88,7 +88,7 @@ resources::ResourceHandle<Texture> RenderUtils::hdriToCube(
 
 		CubemapRenderer mip_renderer(driver);
 		mip_renderer.init(result.get(), mip);
-		mip_renderer.render(fullscreen_quad.get(), vertex_shader, prefilter_fragment_shader, temp.get(), size, data);
+		mip_renderer.render(fullscreen_quad.get(), vertex_shader.get(), prefilter_fragment_shader.get(), temp.get(), size, data);
 	}
 
 	resource_manager->destroy(temp, driver);
