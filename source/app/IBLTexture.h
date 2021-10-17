@@ -11,6 +11,7 @@ struct Texture;
  */
 struct IBLTexture
 {
+	// TODO: move to skylight
 	resources::ResourceHandle<Texture> baked_brdf;
 
 	// TODO: make it explicit that IBL owns this textures (could be just raw render::backend::Texture pointers?)
