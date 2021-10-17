@@ -36,6 +36,6 @@ struct resources::ResourcePipeline<Texture>
 	static void destroy(ResourceHandle<Texture> handle, render::backend::Driver *driver);
 
 	// TODO: move to render module API helpers
-	static void create2D(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int width, int height, int num_mips);
-	static void createCube(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int size, int num_mips);
+	static void create2D(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int width, int height, int num_mips, const void *data = nullptr, uint32_t num_data_mipmaps = 1);
+	static void createCube(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int size, int num_mips, const void *data = nullptr, uint32_t num_data_mipmaps = 1);
 };

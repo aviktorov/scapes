@@ -161,7 +161,7 @@ bool resources::ResourcePipeline<Texture>::importFromMemory(ResourceHandle<Textu
 
 /*
  */
-void resources::ResourcePipeline<Texture>::create2D(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int width, int height, int mip_levels)
+void resources::ResourcePipeline<Texture>::create2D(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int width, int height, int mip_levels, const void *data, uint32_t num_data_mipmaps)
 {
 	Texture *result = handle.get();
 
@@ -170,10 +170,10 @@ void resources::ResourcePipeline<Texture>::create2D(ResourceHandle<Texture> hand
 	result->height = height;
 	result->mip_levels = mip_levels;
 	result->layers = 1;
-	result->gpu_data = driver->createTexture2D(width, height, mip_levels, format);
+	result->gpu_data = driver->createTexture2D(width, height, mip_levels, format, data, num_data_mipmaps);
 }
 
-void resources::ResourcePipeline<Texture>::createCube(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int size, int mip_levels)
+void resources::ResourcePipeline<Texture>::createCube(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int size, int mip_levels, const void *data, uint32_t num_data_mipmaps)
 {
 	Texture *result = handle.get();
 
@@ -182,5 +182,5 @@ void resources::ResourcePipeline<Texture>::createCube(ResourceHandle<Texture> ha
 	result->height = size;
 	result->mip_levels = mip_levels;
 	result->layers = 6;
-	result->gpu_data = driver->createTextureCube(size, mip_levels, format);
+	result->gpu_data = driver->createTextureCube(size, mip_levels, format, data, num_data_mipmaps);
 }
