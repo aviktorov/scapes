@@ -63,22 +63,24 @@ PBR Sandbox:
         ☐ Directional light & shadows
         ☐ Environment / Reflection probes
         ☐ Area lights
-        ☐ Add FileWatcher for shader auto reloading
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Try entt
         ☐ Data-driven render graph + REPL
+        ☐ Think about component creation / deletion callbacks
+        ☐ Think about component CPU -> GPU sync
+        ☐ Think about resource / component encapsulation
+        ☐ Add naive FileWatcher for resource auto reloading
+        ☐ Rename ApplicationResources to ecs::render::ResourceManager
+    Stream 71:
+        ☐ Profile all resource pipelines
         ☐ Create Common ecs module
             ☐ Move Transform component to CommonModule
             ☐ Add CommonModule as a dependency to RenderModule
-        ☐ Use some sort of runtime ID for resources in resource pool
-            ☐ Persistence is not required
-            ☐ Should be unique during application lifetime
-    Stream 70:
-        ☐ Migrate existing render resources to new resource manager
-            ☐ Migrate shaders
-            ☐ Migrate ecs::render resources
         ☐ Move all resources under ecs::render namespace
-        ☐ Get rid of ApplicationResources
+    Stream 70:
+        ✔ Migrate existing render resources to new resource manager @done (10/18/2021, 12:51:17 AM)
+            ✔ Migrate shaders @done (10/17/2021, 10:50:33 PM)
+            ✔ Migrate ecs::render resources @done (10/18/2021, 12:51:16 AM)
     Stream 69:
         ✔ Migrate existing render resources to new resource manager @done (10/16/2021, 2:04:04 AM)
             ✔ Migrate meshes @done (10/16/2021, 1:54:00 AM)
