@@ -54,6 +54,8 @@ namespace resources
 			return *reinterpret_cast<const timestamp_t *>(data);
 		}
 
+		T *operator->() const { return get(); }
+
 	private:
 		friend class ResourceManager;
 
