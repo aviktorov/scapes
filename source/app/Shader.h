@@ -25,8 +25,6 @@ struct TypeTraits<Shader>
 template <>
 struct resources::ResourcePipeline<Shader>
 {
-	static bool import(resources::ResourceHandle<Shader> handle, const resources::URI &uri, render::backend::ShaderType type, render::backend::Driver *driver, render::shaders::Compiler *compiler);
-	static bool importFromMemory(resources::ResourceHandle<Shader> handle, const uint8_t *data, size_t size, render::backend::ShaderType type, render::backend::Driver *driver, render::shaders::Compiler *compiler);
-
-	static void destroy(resources::ResourceHandle<Shader> handle, render::backend::Driver *driver);
+	static void destroy(resources::ResourceManager *resource_manager, resources::ResourceHandle<Shader> handle, render::backend::Driver *driver);
+	static bool process(resources::ResourceManager *resource_manager, resources::ResourceHandle<Shader> handle, const uint8_t *data, size_t size, render::backend::ShaderType type, render::backend::Driver *driver, render::shaders::Compiler *compiler);
 };

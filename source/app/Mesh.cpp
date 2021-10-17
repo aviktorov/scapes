@@ -48,7 +48,7 @@ static void uploadToGPU(Mesh *mesh, render::backend::Driver *driver)
 
 /*
  */
-void resources::ResourcePipeline<Mesh>::destroy(ResourceHandle<Mesh> handle, render::backend::Driver *driver)
+void resources::ResourcePipeline<Mesh>::destroy(resources::ResourceManager *resource_manager, ResourceHandle<Mesh> handle, render::backend::Driver *driver)
 {
 	Mesh *mesh = handle.get();
 	driver->destroyVertexBuffer(mesh->vertex_buffer);
@@ -61,30 +61,7 @@ void resources::ResourcePipeline<Mesh>::destroy(ResourceHandle<Mesh> handle, ren
 	*mesh = {};
 }
 
-bool resources::ResourcePipeline<Mesh>::import(ResourceHandle<Mesh> handle, const URI &uri, render::backend::Driver *driver)
-{
-	FILE *file = fopen(uri, "rb");
-	if (!file)
-	{
-		std::cerr << "Mesh::import(): can't open \"" << uri << "\" file" << std::endl;
-		return false;
-	}
-
-	fseek(file, 0, SEEK_END);
-	size_t size = ftell(file);
-	fseek(file, 0, SEEK_SET);
-
-	uint8_t *data = new uint8_t[size];
-	fread(data, sizeof(uint8_t), size, file);
-	fclose(file);
-
-	bool result = importFromMemory(handle, data, size, driver);
-	delete[] data;
-
-	return result;
-}
-
-bool resources::ResourcePipeline<Mesh>::importFromMemory(ResourceHandle<Mesh> handle, const uint8_t *data, size_t size, render::backend::Driver *driver)
+bool resources::ResourcePipeline<Mesh>::process(resources::ResourceManager *resource_manager, ResourceHandle<Mesh> handle, const uint8_t *data, size_t size, render::backend::Driver *driver)
 {
 	Assimp::Importer importer;
 
@@ -92,13 +69,13 @@ bool resources::ResourcePipeline<Mesh>::importFromMemory(ResourceHandle<Mesh> ha
 
 	if (!scene)
 	{
-		std::cerr << "Mesh::import(): " << importer.GetErrorString() << std::endl;
+		std::cerr << "Mesh::process(): " << importer.GetErrorString() << std::endl;
 		return false;
 	}
 
 	if (!scene->HasMeshes())
 	{
-		std::cerr << "Mesh::import(): model has no meshes" << std::endl;
+		std::cerr << "Mesh::process(): model has no meshes" << std::endl;
 		return false;
 	}
 

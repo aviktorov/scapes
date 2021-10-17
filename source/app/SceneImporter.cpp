@@ -141,22 +141,15 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 
 
 	// import materials
-	ecs::render::RenderMaterialData *default_material = new ecs::render::RenderMaterialData();
-	default_material->albedo = {};
-	default_material->normal = {};
-	default_material->roughness = {};
-	default_material->metalness = {};
+	std::map<const cgltf_material*, ResourceHandle<RenderMaterial> > mapped_materials;
 
-	default_material->bindings = driver->createBindSet();
-	default_material->parameters = nullptr;
+	ResourceHandle<RenderMaterial> default_material = resources->createRenderMaterial(
+		resources->getDefaultAlbedo(),
+		resources->getDefaultNormal(),
+		resources->getDefaultRoughness(),
+		resources->getDefaultMetalness()
+	);
 
-	driver->bindTexture(default_material->bindings, 0, resources->getDefaultAlbedo());
-	driver->bindTexture(default_material->bindings, 1, resources->getDefaultNormal());
-	driver->bindTexture(default_material->bindings, 2, resources->getDefaultRoughness());
-	driver->bindTexture(default_material->bindings, 3, resources->getDefaultMetalness());
-
-	materials.push_back(default_material);
-	std::map<const cgltf_material*, ecs::render::RenderMaterialData *> mapped_materials;
 	for (cgltf_size i = 0; i < data->materials_count; ++i)
 	{
 		const cgltf_material &material = data->materials[i];
@@ -166,26 +159,20 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 
 		// TODO: metalness / roughness maps
 
-		ecs::render::RenderMaterialData *result = new ecs::render::RenderMaterialData();
-		result->albedo = (base_color_texture) ? mapped_textures[base_color_texture->image] : ResourceHandle<Texture>();
-		result->normal = (normal_texture) ? mapped_textures[normal_texture->image] : ResourceHandle<Texture>();
-		result->roughness = {};
-		result->metalness = {};
+		ResourceHandle<Texture> albedo = resources->getDefaultAlbedo();
+		ResourceHandle<Texture> normal = resources->getDefaultNormal();
+		ResourceHandle<Texture> roughness = resources->getDefaultRoughness();
+		ResourceHandle<Texture> metalness = resources->getDefaultMetalness();
 
-		result->bindings = driver->createBindSet();
-		result->parameters = nullptr;
+		if (base_color_texture)
+			albedo = mapped_textures[base_color_texture->image];
 
-		const Texture *resource_albedo = result->albedo.get();
-		const Texture *resource_normal = result->normal.get();
-		const Texture *resource_roughness = result->roughness.get();
-		const Texture *resource_metalness = result->metalness.get();
+		if (normal_texture)
+			normal = mapped_textures[normal_texture->image];
 
-		driver->bindTexture(result->bindings, 0, (resource_albedo) ? resource_albedo->gpu_data : resources->getDefaultAlbedo());
-		driver->bindTexture(result->bindings, 1, (resource_normal) ? resource_normal->gpu_data : resources->getDefaultNormal());
-		driver->bindTexture(result->bindings, 2, resources->getDefaultRoughness());
-		driver->bindTexture(result->bindings, 3, resources->getDefaultMetalness());
+		ResourceHandle<RenderMaterial> render_material = resources->createRenderMaterial(albedo, normal, roughness, metalness);
 
-		mapped_materials.insert({&material, result});
+		mapped_materials.insert({&material, render_material});
 	}
 
 	// import nodes
@@ -203,7 +190,7 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 
 			auto mat_it = mapped_materials.find(node->mesh->primitives[0].material);
 
-			ecs::render::RenderMaterialData *material = (mat_it != mapped_materials.end()) ? mat_it->second : default_material;
+			ResourceHandle<RenderMaterial> material = (mat_it != mapped_materials.end()) ? mat_it->second : default_material;
 
 			entity.addComponent<ecs::render::Transform>(transform);
 			entity.addComponent<ecs::render::Renderable>(mesh, material);
@@ -280,14 +267,17 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 	}
 
 	// import materials
-	materials.resize(scene->mNumMaterials);
-	auto import_material_texture = [&mapped_textures, &dir, this, resources](const aiMaterial *material, aiTextureType type) -> ResourceHandle<Texture>
+	auto import_material_texture = [&mapped_textures, &dir, this, resources](
+		const aiMaterial *material,
+		aiTextureType type,
+		ResourceHandle<Texture> default_texture
+	) -> ResourceHandle<Texture>
 	{
 		aiString path;
 		material->GetTexture(type, 0, &path);
 
 		if (path.length == 0)
-			return ResourceHandle<Texture>();
+			return default_texture;
 
 		std::stringstream path_builder;
 		path_builder << dir << '/' << path.C_Str();
@@ -306,41 +296,22 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 		return it->second;
 	};
 
+	std::vector<ResourceHandle<RenderMaterial> > imported_materials;
 	for (unsigned int i = 0; i < scene->mNumMaterials; ++i)
 	{
 		const aiMaterial *material = scene->mMaterials[i];
 
-		ecs::render::RenderMaterialData *render_material = new ecs::render::RenderMaterialData();
+		ResourceHandle<Texture> albedo = import_material_texture(material, aiTextureType_DIFFUSE, resources->getDefaultAlbedo());
+		ResourceHandle<Texture> normal = import_material_texture(material, aiTextureType_HEIGHT, resources->getDefaultNormal());
+		ResourceHandle<Texture> roughness = import_material_texture(material, aiTextureType_SHININESS, resources->getDefaultRoughness());
+		ResourceHandle<Texture> metalness = import_material_texture(material, aiTextureType_AMBIENT, resources->getDefaultMetalness());
 
-		render_material->albedo = import_material_texture(material, aiTextureType_DIFFUSE);
-		render_material->normal = import_material_texture(material, aiTextureType_HEIGHT);
-		render_material->roughness = import_material_texture(material, aiTextureType_SHININESS);
-		render_material->metalness = import_material_texture(material, aiTextureType_AMBIENT);
-
-		render_material->bindings = driver->createBindSet();
-		render_material->parameters = nullptr;
-
-		const Texture *resource_albedo = render_material->albedo.get();
-		const Texture *resource_normal = render_material->normal.get();
-		const Texture *resource_roughness = render_material->roughness.get();
-		const Texture *resource_metalness = render_material->metalness.get();
-
-		const render::backend::Texture *albedo = (resource_albedo) ? resource_albedo->gpu_data : resources->getDefaultAlbedo();
-		const render::backend::Texture *normal = (resource_normal) ? resource_normal->gpu_data : resources->getDefaultNormal();
-		const render::backend::Texture *roughness = (resource_roughness) ? resource_roughness->gpu_data : resources->getDefaultRoughness();
-		const render::backend::Texture *metalness = (resource_metalness) ? resource_metalness->gpu_data : resources->getDefaultMetalness();
-
-		driver->bindTexture(render_material->bindings, 0, albedo);
-		driver->bindTexture(render_material->bindings, 1, normal);
-		driver->bindTexture(render_material->bindings, 2, roughness);
-		driver->bindTexture(render_material->bindings, 3, metalness);
-
-		materials[i] = render_material;
+		imported_materials.push_back(resources->createRenderMaterial(albedo, normal, roughness, metalness));
 	}
 
 	// import nodes
 	std::function<void(const aiScene*, const aiNode*, const aiMatrix4x4&)> import_node;
-	import_node = [&import_node, &imported_meshes, this](const aiScene *scene, const aiNode *root, const aiMatrix4x4 &transform) -> void
+	import_node = [&import_node, &imported_meshes, &imported_materials, this](const aiScene *scene, const aiNode *root, const aiMatrix4x4 &transform) -> void
 	{
 		for (unsigned int i = 0; i < root->mNumMeshes; ++i)
 		{
@@ -350,7 +321,7 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 			game::Entity entity = game::Entity(world);
 
 			entity.addComponent<ecs::render::Transform>(toGlm(transform));
-			entity.addComponent<ecs::render::Renderable>(imported_meshes[mesh_index], materials[material_index]);
+			entity.addComponent<ecs::render::Renderable>(imported_meshes[mesh_index], imported_materials[material_index]);
 		}
 
 		for (unsigned int i = 0; i < root->mNumChildren; ++i)
@@ -374,49 +345,4 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 void SceneImporter::clear()
 {
 	world->clear();
-
-	// TODO: move to resource manager
-	for (size_t i = 0; i < materials.size(); ++i)
-	{
-		ecs::render::RenderMaterialData *material = materials[i];
-
-		driver->destroyBindSet(material->bindings);
-		driver->destroyUniformBuffer(material->parameters);
-		delete material;
-	}
-
-	for (size_t i = 0; i < environment_textures.size(); ++i)
-	{
-		ecs::render::EnvironmentTexture *environment_texture = environment_textures[i];
-
-		driver->destroyBindSet(environment_texture->bindings);
-		delete environment_texture;
-	}
-
-	materials.clear();
-	environment_textures.clear();
-}
-
-/*
- */
-const ecs::render::EnvironmentTexture *SceneImporter::fetchEnvironmentTexture(
-	ResourceHandle<Texture> baked_brdf,
-	ResourceHandle<Texture> prefiltered_specular_cubemap,
-	ResourceHandle<Texture> diffuse_irradiance_cubemap
-)
-{
-	// TODO: don't allocate every time the same resource was requested
-	ecs::render::EnvironmentTexture *environment_texture = new ecs::render::EnvironmentTexture();
-
-	environment_texture->baked_brdf = baked_brdf;
-	environment_texture->prefiltered_specular_cubemap = prefiltered_specular_cubemap;
-	environment_texture->diffuse_irradiance_cubemap = diffuse_irradiance_cubemap;
-	environment_texture->bindings = driver->createBindSet();
-
-	driver->bindTexture(environment_texture->bindings, 0, baked_brdf.get()->gpu_data);
-	driver->bindTexture(environment_texture->bindings, 1, prefiltered_specular_cubemap.get()->gpu_data);
-	driver->bindTexture(environment_texture->bindings, 2, diffuse_irradiance_cubemap.get()->gpu_data);
-
-	environment_textures.push_back(environment_texture);
-	return environment_texture;
 }

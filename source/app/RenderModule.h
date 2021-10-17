@@ -7,30 +7,13 @@
 #include <glm/mat4x4.hpp>
 
 struct Mesh;
-struct Texture;
 struct Shader;
+struct Texture;
+struct IBLTexture;
+struct RenderMaterial;
 
 namespace ecs::render
 {
-	// Resources
-	struct EnvironmentTexture
-	{
-		resources::ResourceHandle<::Texture> baked_brdf;
-		resources::ResourceHandle<::Texture> prefiltered_specular_cubemap;
-		resources::ResourceHandle<::Texture> diffuse_irradiance_cubemap;
-		::render::backend::BindSet *bindings {nullptr};
-	};
-
-	struct RenderMaterialData
-	{
-		resources::ResourceHandle<::Texture> albedo;
-		resources::ResourceHandle<::Texture> normal;
-		resources::ResourceHandle<::Texture> roughness;
-		resources::ResourceHandle<::Texture> metalness;
-		::render::backend::UniformBuffer *parameters {nullptr};
-		::render::backend::BindSet *bindings {nullptr};
-	};
-
 	// Components
 	struct Transform
 	{
@@ -39,7 +22,7 @@ namespace ecs::render
 
 	struct SkyLight
 	{
-		const EnvironmentTexture *environment {nullptr};
+		resources::ResourceHandle<::IBLTexture> ibl_environment;
 		resources::ResourceHandle<::Mesh> mesh;
 		resources::ResourceHandle<::Shader> vertex_shader;
 		resources::ResourceHandle<::Shader> fragment_shader;
@@ -48,7 +31,7 @@ namespace ecs::render
 	struct Renderable
 	{
 		resources::ResourceHandle<::Mesh> mesh;
-		const RenderMaterialData *materials {nullptr};
+		resources::ResourceHandle<::RenderMaterial> material;
 	};
 
 	// TODO: upgrade this into class

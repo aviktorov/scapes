@@ -99,12 +99,12 @@ void Application::update()
 	ImGui::Begin("Material Parameters");
 
 	int oldCurrentEnvironment = application_state.currentEnvironment;
-	if (ImGui::BeginCombo("Choose Your Destiny", application_resources->getHDRTexturePath(application_state.currentEnvironment)))
+	if (ImGui::BeginCombo("Choose Your Destiny", application_resources->getIBLTexturePath(application_state.currentEnvironment)))
 	{
-		for (int i = 0; i < application_resources->getNumHDRTextures(); i++)
+		for (int i = 0; i < application_resources->getNumIBLTextures(); i++)
 		{
 			bool selected = (i == application_state.currentEnvironment);
-			if (ImGui::Selectable(application_resources->getHDRTexturePath(i), &selected))
+			if (ImGui::Selectable(application_resources->getIBLTexturePath(i), &selected))
 			{
 				application_state.currentEnvironment = i;
 				reset_environment = true;
@@ -174,13 +174,7 @@ void Application::update()
 	if (reset_environment)
 	{
 		ecs::render::SkyLight &comp = sky_light.getComponent<ecs::render::SkyLight>();
-
-		const ecs::render::EnvironmentTexture *env = importer->fetchEnvironmentTexture(
-			application_resources->getBakedBRDFTexture(),
-			application_resources->getHDREnvironmentCubemap(application_state.currentEnvironment),
-			application_resources->getHDRIrradianceCubemap(application_state.currentEnvironment)
-		);
-		comp.environment = env;
+		comp.ibl_environment = application_resources->getIBLTexture(application_state.currentEnvironment);
 	}
 }
 
@@ -333,15 +327,9 @@ void Application::initRenderScene()
 	importer = new SceneImporter(driver, world);
 	importer->importCGLTF("assets/scenes/blender_splash/blender_splash.glb", application_resources);
 
-	const ecs::render::EnvironmentTexture *env = importer->fetchEnvironmentTexture(
-		application_resources->getBakedBRDFTexture(),
-		application_resources->getHDREnvironmentCubemap(0),
-		application_resources->getHDRIrradianceCubemap(0)
-	);
-
 	sky_light = game::Entity(world);
 	sky_light.addComponent<ecs::render::SkyLight>(
-		env,
+		application_resources->getIBLTexture(0),
 		application_resources->getFullscreenQuad(),
 		application_resources->getShader(config::Shaders::FullscreenQuadVertex),
 		application_resources->getShader(config::Shaders::SkylightDeferredFragment)

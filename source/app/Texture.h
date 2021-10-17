@@ -30,10 +30,8 @@ struct TypeTraits<Texture>
 template <>
 struct resources::ResourcePipeline<Texture>
 {
-	static bool import(ResourceHandle<Texture> handle, const resources::URI &uri, render::backend::Driver *driver);
-	static bool importFromMemory(ResourceHandle<Texture> handle, const uint8_t *data, size_t size, render::backend::Driver *driver);
-
-	static void destroy(ResourceHandle<Texture> handle, render::backend::Driver *driver);
+	static void destroy(resources::ResourceManager *resource_manager, ResourceHandle<Texture> handle, render::backend::Driver *driver);
+	static bool process(resources::ResourceManager *resource_manager, ResourceHandle<Texture> handle, const uint8_t *data, size_t size, render::backend::Driver *driver);
 
 	// TODO: move to render module API helpers
 	static void create2D(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int width, int height, int num_mips, const void *data = nullptr, uint32_t num_data_mipmaps = 1);

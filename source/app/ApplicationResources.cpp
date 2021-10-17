@@ -1,7 +1,9 @@
 #include "ApplicationResources.h"
 #include "RenderUtils.h"
 
+#include "IBLTexture.h"
 #include "Mesh.h"
+#include "RenderMaterial.h"
 #include "Shader.h"
 #include "Texture.h"
 
@@ -31,7 +33,7 @@ namespace config
 		"assets/shaders/render/Final.frag",
 	};
 
-	static std::vector<render::backend::ShaderType> shaderTypes = {
+	static std::vector<render::backend::ShaderType> shader_types = {
 		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::VERTEX,
 		render::backend::ShaderType::FRAGMENT,
@@ -52,16 +54,16 @@ namespace config
 	};
 
 	// Textures
-	static std::vector<const char *> hdrTextures = {
+	static std::vector<const char *> ibl_textures = {
 		"assets/textures/environment/arctic.hdr",
 		"assets/textures/environment/umbrellas.hdr",
 		"assets/textures/environment/shanghai_bund_4k.hdr",
 	};
 
-	static const char *blueNoise = "assets/textures/blue_noise.png";
+	static const char *blue_noise = "assets/textures/blue_noise.png";
 }
 
-static render::backend::Texture *generateTexture(render::backend::Driver *driver, uint8_t r, uint8_t g, uint8_t b)
+static resources::ResourceHandle<Texture> generateTexture(resources::ResourceManager *resource_manager, render::backend::Driver *driver, uint8_t r, uint8_t g, uint8_t b)
 {
 	uint8_t pixels[16] = {
 		r, g, b, 255,
@@ -70,20 +72,18 @@ static render::backend::Texture *generateTexture(render::backend::Driver *driver
 		r, g, b, 255,
 	};
 
-	return driver->createTexture2D(2, 2, 1, render::backend::Format::R8G8B8A8_UNORM, pixels);
+	resources::ResourceHandle<Texture> result = resource_manager->create<Texture>();
+	resources::ResourcePipeline<Texture>::create2D(result, driver, render::backend::Format::R8G8B8A8_UNORM, 2, 2, 1, pixels);
+
+	return result;
 }
 
 /*
  */
-const char *ApplicationResources::getHDRTexturePath(int index) const
+const char *ApplicationResources::getIBLTexturePath(int index) const
 {
-	assert(index >= 0 && index < config::hdrTextures.size());
-	return config::hdrTextures[index];
-}
-
-size_t ApplicationResources::getNumHDRTextures() const
-{
-	return config::hdrTextures.size();
+	assert(index >= 0 && index < config::ibl_textures.size());
+	return config::ibl_textures[index];
 }
 
 /*
@@ -98,10 +98,7 @@ ApplicationResources::~ApplicationResources()
 void ApplicationResources::init()
 {
 	for (int i = 0; i < config::shaders.size(); ++i)
-		loadShader(config::shaders[i], config::shaderTypes[i]);
-
-	for (int i = 0; i < config::hdrTextures.size(); ++i)
-		hdr_cubemaps.push_back(loadTexture(config::hdrTextures[i]));
+		loadShader(config::shaders[i], config::shader_types[i]);
 
 	fullscreen_quad = resource_manager->create<Mesh>();
 	resources::ResourcePipeline<Mesh>::createQuad(fullscreen_quad, driver, 2.0f);
@@ -121,42 +118,15 @@ void ApplicationResources::init()
 
 	driver->setTextureSamplerWrapMode(baked_brdf.get()->gpu_data, render::backend::SamplerWrapMode::CLAMP_TO_EDGE);
 
-	environment_cubemaps.resize(config::hdrTextures.size());
-	irradiance_cubemaps.resize(config::hdrTextures.size());
+	blue_noise = resource_manager->import<Texture>(config::blue_noise, driver);
 
-	for (int i = 0; i < config::hdrTextures.size(); ++i)
-	{
-		environment_cubemaps[i] = RenderUtils::hdriToCube(
-			resource_manager,
-			driver,
-			render::backend::Format::R32G32B32A32_SFLOAT,
-			128,
-			hdr_cubemaps[i],
-			fullscreen_quad,
-			getShader(config::Shaders::CubemapVertex),
-			getShader(config::Shaders::EquirectangularProjectionFragment),
-			getShader(config::Shaders::PrefilteredSpecularCubemapFragment)
-		);
+	default_albedo = generateTexture(resource_manager, driver, 127, 127, 127);
+	default_normal = generateTexture(resource_manager, driver, 127, 127, 255);
+	default_roughness = generateTexture(resource_manager, driver, 255, 255, 255);
+	default_metalness = generateTexture(resource_manager, driver, 0, 0, 0);
 
-		irradiance_cubemaps[i] = RenderUtils::createTextureCube(
-			resource_manager,
-			driver,
-			render::backend::Format::R32G32B32A32_SFLOAT,
-			128,
-			1,
-			fullscreen_quad,
-			getShader(config::Shaders::CubemapVertex),
-			getShader(config::Shaders::DiffuseIrradianceCubemapFragment),
-			environment_cubemaps[i]
-		);
-	}
-
-	blue_noise = resource_manager->import<Texture>(config::blueNoise, driver);
-
-	default_albedo = generateTexture(driver, 127, 127, 127);
-	default_normal = generateTexture(driver, 127, 127, 255);
-	default_roughness = generateTexture(driver, 255, 255, 255);
-	default_metalness = generateTexture(driver, 0, 0, 0);
+	for (int i = 0; i < config::ibl_textures.size(); ++i)
+		loadIBLTexture(config::ibl_textures[i]);
 }
 
 void ApplicationResources::shutdown()
@@ -167,39 +137,31 @@ void ApplicationResources::shutdown()
 	for (auto it : loaded_textures)
 		resource_manager->destroy(it, driver);
 
+	for (auto it : loaded_ibl_textures)
+		resource_manager->destroy(it, driver);
+
 	for (auto it : loaded_meshes)
+		resource_manager->destroy(it, driver);
+
+	for (auto it : loaded_render_materials)
 		resource_manager->destroy(it, driver);
 
 	loaded_shaders.clear();
 	loaded_textures.clear();
+	loaded_ibl_textures.clear();
 	loaded_meshes.clear();
+	loaded_render_materials.clear();
 
 	resource_manager->destroy(baked_brdf, driver);
-
-	for (int i = 0; i < environment_cubemaps.size(); ++i)
-		resource_manager->destroy(environment_cubemaps[i], driver);
-	
-	for (int i = 0; i < irradiance_cubemaps.size(); ++i)
-		resource_manager->destroy(irradiance_cubemaps[i], driver);
-
-	hdr_cubemaps.clear();
-	environment_cubemaps.clear();
-	irradiance_cubemaps.clear();
-
 	resource_manager->destroy(blue_noise, driver);
 
 	resource_manager->destroy(fullscreen_quad, driver);
 	resource_manager->destroy(skybox, driver);
 
-	driver->destroyTexture(default_albedo);
-	driver->destroyTexture(default_normal);
-	driver->destroyTexture(default_roughness);
-	driver->destroyTexture(default_metalness);
-
-	default_albedo = nullptr;
-	default_normal = nullptr;
-	default_roughness = nullptr;
-	default_metalness = nullptr;
+	resource_manager->destroy(default_albedo, driver);
+	resource_manager->destroy(default_normal, driver);
+	resource_manager->destroy(default_roughness, driver);
+	resource_manager->destroy(default_metalness, driver);
 }
 
 /*
@@ -238,6 +200,29 @@ resources::ResourceHandle<Texture> ApplicationResources::loadTextureFromMemory(c
 
 /*
  */
+resources::ResourceHandle<IBLTexture> ApplicationResources::loadIBLTexture(const resources::URI &uri)
+{
+	resources::ResourcePipeline<IBLTexture>::ImportData import_data = {};
+	import_data.format = render::backend::Format::R32G32B32A32_SFLOAT;
+	import_data.cubemap_size = 128;
+
+	import_data.fullscreen_quad = fullscreen_quad;
+	import_data.baked_brdf = baked_brdf;
+	import_data.cubemap_vertex = getShader(config::Shaders::CubemapVertex);
+	import_data.equirectangular_projection_fragment = getShader(config::Shaders::EquirectangularProjectionFragment);
+	import_data.prefiltered_specular_fragment = getShader(config::Shaders::PrefilteredSpecularCubemapFragment);
+	import_data.diffuse_irradiance_fragment = getShader(config::Shaders::DiffuseIrradianceCubemapFragment);
+
+	resources::ResourceHandle<IBLTexture> ibl_texture = resource_manager->import<IBLTexture>(uri, driver, import_data);
+	if (!ibl_texture.get())
+		return resources::ResourceHandle<IBLTexture>();
+
+	loaded_ibl_textures.push_back(ibl_texture);
+	return ibl_texture;
+}
+
+/*
+ */
 resources::ResourceHandle<Mesh> ApplicationResources::loadMesh(const resources::URI &uri)
 {
 	resources::ResourceHandle<Mesh> result = resource_manager->import<Mesh>(uri, driver);
@@ -269,5 +254,29 @@ resources::ResourceHandle<Mesh> ApplicationResources::createMeshFromCGLTF(const 
 	resources::ResourcePipeline<Mesh>::createCGLTF(result, driver, mesh);
 
 	loaded_meshes.push_back(result);
+	return result;
+}
+
+resources::ResourceHandle<RenderMaterial> ApplicationResources::createRenderMaterial(
+	resources::ResourceHandle<Texture> albedo,
+	resources::ResourceHandle<Texture> normal,
+	resources::ResourceHandle<Texture> roughness,
+	resources::ResourceHandle<Texture> metalness
+)
+{
+	resources::ResourcePipeline<RenderMaterial>::ImportData import_data = {};
+
+	import_data.albedo = albedo;
+	import_data.normal = normal;
+	import_data.roughness = roughness;
+	import_data.metalness = metalness;
+
+	resources::ResourceHandle<RenderMaterial> result = resource_manager->create<RenderMaterial>();
+	if (!result.get())
+		return resources::ResourceHandle<RenderMaterial>();
+
+	resources::ResourcePipeline<RenderMaterial>::create(result, driver, import_data);
+
+	loaded_render_materials.push_back(result);
 	return result;
 }

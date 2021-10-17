@@ -39,7 +39,7 @@ static render::backend::Format deduceFormat(size_t pixelSize, int channels)
 
 /*
  */
-void resources::ResourcePipeline<Texture>::destroy(ResourceHandle<Texture> handle, render::backend::Driver *driver)
+void resources::ResourcePipeline<Texture>::destroy(resources::ResourceManager *resource_manager, ResourceHandle<Texture> handle, render::backend::Driver *driver)
 {
 	Texture *texture = handle.get();
 	driver->destroyTexture(texture->gpu_data);
@@ -50,34 +50,11 @@ void resources::ResourcePipeline<Texture>::destroy(ResourceHandle<Texture> handl
 	*texture = {};
 }
 
-bool resources::ResourcePipeline<Texture>::import(ResourceHandle<Texture> handle, const URI &uri, render::backend::Driver *driver)
-{
-	FILE *file = fopen(uri, "rb");
-	if (!file)
-	{
-		std::cerr << "Texture::import(): can't open \"" << uri << "\" file" << std::endl;
-		return false;
-	}
-
-	fseek(file, 0, SEEK_END);
-	size_t size = ftell(file);
-	fseek(file, 0, SEEK_SET);
-
-	uint8_t *data = new uint8_t[size];
-	fread(data, sizeof(uint8_t), size, file);
-	fclose(file);
-
-	bool result = importFromMemory(handle, data, size, driver);
-	delete[] data;
-
-	return result;
-}
-
-bool resources::ResourcePipeline<Texture>::importFromMemory(ResourceHandle<Texture> handle, const uint8_t *data, size_t size, render::backend::Driver *driver)
+bool resources::ResourcePipeline<Texture>::process(resources::ResourceManager *resource_manager, ResourceHandle<Texture> handle, const uint8_t *data, size_t size, render::backend::Driver *driver)
 {
 	if (stbi_info_from_memory(data, static_cast<int>(size), nullptr, nullptr, nullptr) == 0)
 	{
-		std::cerr << "Texture::importFromMemory(): unsupported image format" << std::endl;
+		std::cerr << "Texture::process(): unsupported image format" << std::endl;
 		return false;
 	}
 
@@ -103,7 +80,7 @@ bool resources::ResourcePipeline<Texture>::importFromMemory(ResourceHandle<Textu
 
 	if (!stb_pixels)
 	{
-		std::cerr << "Texture::importFromMemory(): " << stbi_failure_reason() << std::endl;
+		std::cerr << "Texture::process(): " << stbi_failure_reason() << std::endl;
 		return false;
 	}
 

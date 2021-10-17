@@ -102,8 +102,24 @@ namespace resources
 		ResourceHandle<T> import(const URI &uri, Arguments&&... params)
 		{
 			// TODO: use I/O to load resource into temp memory and provide to resource pipeline
+			FILE *file = fopen(uri, "rb");
+			if (!file)
+			{
+				std::cerr << "ResourceManager::import(): can't open \"" << uri << "\" file" << std::endl;
+				return ResourceHandle<T>();
+			}
+
+			fseek(file, 0, SEEK_END);
+			size_t size = ftell(file);
+			fseek(file, 0, SEEK_SET);
+
+			uint8_t *data = new uint8_t[size];
+			fread(data, sizeof(uint8_t), size, file);
+			fclose(file);
+
 			ResourceHandle<T> resource = create<T>();
-			ResourcePipeline<T>::import(resource, uri, std::forward<Arguments>(params)...);
+			ResourcePipeline<T>::process(this, resource, data, size, std::forward<Arguments>(params)...);
+			delete[] data;
 
 			return resource;
 		}
@@ -112,7 +128,7 @@ namespace resources
 		ResourceHandle<T> importFromMemory(const uint8_t *data, size_t size, Arguments&&... params)
 		{
 			ResourceHandle<T> resource = create<T>();
-			ResourcePipeline<T>::importFromMemory(resource, data, size, std::forward<Arguments>(params)...);
+			ResourcePipeline<T>::process(this, resource, data, size, std::forward<Arguments>(params)...);
 
 			return resource;
 		}
@@ -120,7 +136,7 @@ namespace resources
 		template <typename T, typename... Arguments>
 		void destroy(ResourceHandle<T> resource, Arguments&&... params)
 		{
-			ResourcePipeline<T>::destroy(resource, std::forward<Arguments>(params)...);
+			ResourcePipeline<T>::destroy(this, resource, std::forward<Arguments>(params)...);
 			resource.get()->~T();
 
 			deallocate(resource.get(), TypeTraits<T>::name, sizeof(T), alignof(T));

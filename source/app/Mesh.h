@@ -46,10 +46,8 @@ struct TypeTraits<Mesh>
 template <>
 struct resources::ResourcePipeline<Mesh>
 {
-	static bool import(ResourceHandle<Mesh> handle, const resources::URI &uri, render::backend::Driver *driver);
-	static bool importFromMemory(ResourceHandle<Mesh> handle, const uint8_t *data, size_t size, render::backend::Driver *driver);
-
-	static void destroy(ResourceHandle<Mesh> handle, render::backend::Driver *driver);
+	static void destroy(resources::ResourceManager *resource_manager, ResourceHandle<Mesh> handle, render::backend::Driver *driver);
+	static bool process(resources::ResourceManager *resource_manager, ResourceHandle<Mesh> handle, const uint8_t *data, size_t size, render::backend::Driver *driver);
 
 	// TODO: move to render module API helpers
 	static void createAssimp(ResourceHandle<Mesh> handle, render::backend::Driver *driver, const aiMesh *mesh);

@@ -1,6 +1,10 @@
 #include "RenderModule.h"
+
 #include "Mesh.h"
 #include "Shader.h"
+#include "Texture.h"
+#include "IBLTexture.h"
+#include "RenderMaterial.h"
 
 namespace ecs::render
 {
@@ -42,7 +46,7 @@ namespace ecs::render
 				const glm::mat4 &node_transform = transform.transform;
 
 				const Mesh *mesh = renderable.mesh.get();
-				::render::backend::BindSet *material_bindings = renderable.materials->bindings;
+				::render::backend::BindSet *material_bindings = renderable.material->bindings;
 
 				driver->clearVertexStreams(pipeline_state);
 				driver->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
@@ -78,7 +82,7 @@ namespace ecs::render
 				driver->setShader(pipeline_state, ::render::backend::ShaderType::VERTEX, light.vertex_shader->shader);
 				driver->setShader(pipeline_state, ::render::backend::ShaderType::FRAGMENT, light.fragment_shader->shader);
 
-				driver->setBindSet(pipeline_state, light_binding, light.environment->bindings);
+				driver->setBindSet(pipeline_state, light_binding, light.ibl_environment->bindings);
 
 				driver->clearVertexStreams(pipeline_state);
 				driver->setVertexStream(pipeline_state, 0, light.mesh->vertex_buffer);

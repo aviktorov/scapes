@@ -16,6 +16,8 @@ struct cgltf_mesh;
 struct Shader;
 struct Mesh;
 struct Texture;
+struct IBLTexture;
+struct RenderMaterial;
 
 namespace config
 {
@@ -58,32 +60,39 @@ public:
 
 	inline resources::ResourceHandle<Texture> getBlueNoiseTexture() const { return blue_noise; }
 
-	inline resources::ResourceHandle<Texture> getHDRTexture(int index) const { return hdr_cubemaps[index]; }
-	inline resources::ResourceHandle<Texture> getHDREnvironmentCubemap(int index) const { return environment_cubemaps[index]; }
-	inline resources::ResourceHandle<Texture> getHDRIrradianceCubemap(int index) const { return irradiance_cubemaps[index]; }
-	const char *getHDRTexturePath(int index) const;
-	size_t getNumHDRTextures() const;
+	inline resources::ResourceHandle<IBLTexture> getIBLTexture(int index) const { return loaded_ibl_textures[index]; }
+	inline size_t getNumIBLTextures() const { return loaded_ibl_textures.size(); }
+	const char *getIBLTexturePath(int index) const;
 
 	inline resources::ResourceHandle<Texture> getBakedBRDFTexture() const { return baked_brdf; }
 
 	inline resources::ResourceHandle<Mesh> getSkybox() const { return skybox; }
 	inline resources::ResourceHandle<Mesh> getFullscreenQuad() const { return fullscreen_quad; }
 
-	inline render::backend::Texture *getDefaultAlbedo() const { return default_albedo;}
-	inline render::backend::Texture *getDefaultNormal() const { return default_normal;}
-	inline render::backend::Texture *getDefaultRoughness() const { return default_roughness;}
-	inline render::backend::Texture *getDefaultMetalness() const { return default_metalness;}
+	inline resources::ResourceHandle<Texture> getDefaultAlbedo() const { return default_albedo; }
+	inline resources::ResourceHandle<Texture> getDefaultNormal() const { return default_normal; }
+	inline resources::ResourceHandle<Texture> getDefaultRoughness() const { return default_roughness; }
+	inline resources::ResourceHandle<Texture> getDefaultMetalness() const { return default_metalness; }
 
 	inline resources::ResourceHandle<Shader> getShader(int index) const { return loaded_shaders[index]; }
-	
+
 	resources::ResourceHandle<Shader> loadShader(const resources::URI &uri, render::backend::ShaderType type);
 
 	resources::ResourceHandle<Texture> loadTexture(const resources::URI &uri);
 	resources::ResourceHandle<Texture> loadTextureFromMemory(const uint8_t *data, size_t size);
 
+	resources::ResourceHandle<IBLTexture> loadIBLTexture(const resources::URI &uri);
+
 	resources::ResourceHandle<Mesh> loadMesh(const resources::URI &uri);
 	resources::ResourceHandle<Mesh> createMeshFromAssimp(const aiMesh *mesh);
 	resources::ResourceHandle<Mesh> createMeshFromCGLTF(const cgltf_mesh *mesh);
+
+	resources::ResourceHandle<RenderMaterial> createRenderMaterial(
+		resources::ResourceHandle<Texture> albedo,
+		resources::ResourceHandle<Texture> normal,
+		resources::ResourceHandle<Texture> roughness,
+		resources::ResourceHandle<Texture> metalness
+	);
 
 private:
 	render::backend::Driver *driver {nullptr};
@@ -94,18 +103,16 @@ private:
 	resources::ResourceHandle<Mesh> skybox;
 
 	resources::ResourceHandle<Texture> baked_brdf;
-	std::vector<resources::ResourceHandle<Texture> > hdr_cubemaps;
-	std::vector<resources::ResourceHandle<Texture> > environment_cubemaps;
-	std::vector<resources::ResourceHandle<Texture> > irradiance_cubemaps;
-
 	resources::ResourceHandle<Texture> blue_noise;
 
-	render::backend::Texture *default_albedo {nullptr};
-	render::backend::Texture *default_normal {nullptr};
-	render::backend::Texture *default_roughness {nullptr};
-	render::backend::Texture *default_metalness {nullptr};
+	resources::ResourceHandle<Texture> default_albedo;
+	resources::ResourceHandle<Texture> default_normal;
+	resources::ResourceHandle<Texture> default_roughness;
+	resources::ResourceHandle<Texture> default_metalness;
 
 	std::vector<resources::ResourceHandle<Shader> > loaded_shaders;
 	std::vector<resources::ResourceHandle<Texture> > loaded_textures;
+	std::vector<resources::ResourceHandle<IBLTexture> > loaded_ibl_textures;
 	std::vector<resources::ResourceHandle<Mesh> > loaded_meshes;
+	std::vector<resources::ResourceHandle<RenderMaterial> > loaded_render_materials;
 };
