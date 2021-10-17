@@ -98,12 +98,6 @@ void Application::update()
 	bool reset_environment = false;
 	ImGui::Begin("Material Parameters");
 
-	if (ImGui::Button("Reload Shaders"))
-	{
-		application_resources->reloadShaders();
-		reset_environment = true;
-	}
-
 	int oldCurrentEnvironment = application_state.currentEnvironment;
 	if (ImGui::BeginCombo("Choose Your Destiny", application_resources->getHDRTexturePath(application_state.currentEnvironment)))
 	{
