@@ -1,8 +1,9 @@
 #pragma once
 
+#include <scapes/visual/Fwd.h>
+
 #include <render/backend/Driver.h>
-#include <common/ResourceManager.h>
-#include <glm/vec4.hpp>
+#include <common/Math.h>
 
 class ApplicationResources;
 struct Shader;
@@ -106,15 +107,15 @@ struct RenderBuffer
 class RenderGraph
 {
 public:
-	RenderGraph(render::backend::Driver *driver, render::shaders::Compiler *compiler)
-		: driver(driver), compiler(compiler) { }
+	RenderGraph(render::backend::Driver *driver, scapes::visual::API *visual_api)
+		: driver(driver), visual_api(visual_api) { }
 
 	virtual ~RenderGraph();
 
 	void init(const ApplicationResources *resources, uint32_t width, uint32_t height);
 	void shutdown();
 	void resize(uint32_t width, uint32_t height);
-	void render(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain, const game::World *world, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void render(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
 
 	ImTextureID fetchTextureID(const render::backend::Texture *texture);
 
@@ -147,7 +148,7 @@ private:
 	void initSSAOKernel();
 	void shutdownSSAOKernel();
 
-	void initSSRData(const Texture *blue_noise);
+	void initSSRData(scapes::visual::TextureHandle blue_noise);
 	void shutdownSSRData();
 
 	void initRenderBuffer(RenderBuffer &ssr, render::backend::Format format, uint32_t width, uint32_t height);
@@ -159,24 +160,24 @@ private:
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
-	void renderGBuffer(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
-	void renderSSAO(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
-	void renderSSAOBlur(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings);
-	void renderSSRTrace(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
-	void renderSSRResolve(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
-	void renderSSRTemporalFilter(const game::World *world, render::backend::CommandBuffer *command_buffer);
-	void renderLBuffer(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
-	void renderComposite(const game::World *world, render::backend::CommandBuffer *command_buffer);
-	void renderCompositeTemporalFilter(const game::World *world, render::backend::CommandBuffer *command_buffer);
+	void renderGBuffer(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void renderSSAO(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
+	void renderSSAOBlur(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings);
+	void renderSSRTrace(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void renderSSRResolve(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void renderSSRTemporalFilter(render::backend::CommandBuffer *command_buffer);
+	void renderLBuffer(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
+	void renderComposite(render::backend::CommandBuffer *command_buffer);
+	void renderCompositeTemporalFilter(render::backend::CommandBuffer *command_buffer);
 	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, render::backend::CommandBuffer *command_buffer);
-	void renderToSwapChain(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain);
+	void renderToSwapChain(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain);
 
 	void prepareOldTexture(const RenderBuffer &old, render::backend::CommandBuffer *command_buffer);
 
 private:
 	render::backend::Driver *driver {nullptr};
 	render::backend::PipelineState *pipeline_state {nullptr};
-	render::shaders::Compiler *compiler {nullptr};
+	scapes::visual::API *visual_api {nullptr};
 
 	GBuffer gbuffer;
 
@@ -208,18 +209,18 @@ private:
 	render::backend::RenderPass *hdr_clear_render_pass {nullptr};
 	render::backend::RenderPass *swap_chain_render_pass {nullptr};
 
-	resources::ResourceHandle<Mesh> fullscreen_quad;
+	scapes::visual::MeshHandle fullscreen_quad;
 
-	resources::ResourceHandle<Shader> gbuffer_pass_vertex;
-	resources::ResourceHandle<Shader> gbuffer_pass_fragment;
+	scapes::visual::ShaderHandle gbuffer_pass_vertex;
+	scapes::visual::ShaderHandle gbuffer_pass_fragment;
 
-	resources::ResourceHandle<Shader> fullscreen_quad_vertex;
+	scapes::visual::ShaderHandle fullscreen_quad_vertex;
 
-	resources::ResourceHandle<Shader> ssao_pass_fragment;
-	resources::ResourceHandle<Shader> ssao_blur_pass_fragment;
-	resources::ResourceHandle<Shader> ssr_trace_pass_fragment;
-	resources::ResourceHandle<Shader> ssr_resolve_pass_fragment;
-	resources::ResourceHandle<Shader> temporal_filter_pass_fragment;
-	resources::ResourceHandle<Shader> composite_pass_fragment;
-	resources::ResourceHandle<Shader> tonemapping_pass_fragment;
+	scapes::visual::ShaderHandle ssao_pass_fragment;
+	scapes::visual::ShaderHandle ssao_blur_pass_fragment;
+	scapes::visual::ShaderHandle ssr_trace_pass_fragment;
+	scapes::visual::ShaderHandle ssr_resolve_pass_fragment;
+	scapes::visual::ShaderHandle temporal_filter_pass_fragment;
+	scapes::visual::ShaderHandle composite_pass_fragment;
+	scapes::visual::ShaderHandle tonemapping_pass_fragment;
 };

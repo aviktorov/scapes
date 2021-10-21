@@ -1,10 +1,12 @@
-#include "Texture.h"
+#include <scapes/visual/Resources.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #include <cassert>
 #include <iostream>
+
+using namespace scapes::visual;
 
 /*
  */
@@ -39,9 +41,10 @@ static render::backend::Format deduceFormat(size_t pixelSize, int channels)
 
 /*
  */
-void resources::ResourcePipeline<Texture>::destroy(resources::ResourceManager *resource_manager, ResourceHandle<Texture> handle, render::backend::Driver *driver)
+void ResourcePipeline<resources::Texture>::destroy(ResourceManager *resource_manager, TextureHandle handle, render::backend::Driver *driver)
 {
-	Texture *texture = handle.get();
+	resources::Texture *texture = handle.get();
+
 	driver->destroyTexture(texture->gpu_data);
 
 	// TODO: use subresource pools
@@ -50,7 +53,7 @@ void resources::ResourcePipeline<Texture>::destroy(resources::ResourceManager *r
 	*texture = {};
 }
 
-bool resources::ResourcePipeline<Texture>::process(resources::ResourceManager *resource_manager, ResourceHandle<Texture> handle, const uint8_t *data, size_t size, render::backend::Driver *driver)
+bool ResourcePipeline<resources::Texture>::process(ResourceManager *resource_manager, TextureHandle handle, const uint8_t *data, size_t size, render::backend::Driver *driver)
 {
 	if (stbi_info_from_memory(data, static_cast<int>(size), nullptr, nullptr, nullptr) == 0)
 	{
@@ -121,7 +124,7 @@ bool resources::ResourcePipeline<Texture>::process(resources::ResourceManager *r
 	stbi_image_free(stb_pixels);
 	stb_pixels = nullptr;
 
-	Texture *result = handle.get();
+	resources::Texture *result = handle.get();
 	result->width = width;
 	result->height = height;
 	result->mip_levels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
@@ -134,30 +137,4 @@ bool resources::ResourcePipeline<Texture>::process(resources::ResourceManager *r
 	driver->generateTexture2DMipmaps(result->gpu_data);
 
 	return true;
-}
-
-/*
- */
-void resources::ResourcePipeline<Texture>::create2D(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int width, int height, int mip_levels, const void *data, uint32_t num_data_mipmaps)
-{
-	Texture *result = handle.get();
-
-	result->format = format;
-	result->width = width;
-	result->height = height;
-	result->mip_levels = mip_levels;
-	result->layers = 1;
-	result->gpu_data = driver->createTexture2D(width, height, mip_levels, format, data, num_data_mipmaps);
-}
-
-void resources::ResourcePipeline<Texture>::createCube(ResourceHandle<Texture> handle, render::backend::Driver *driver, render::backend::Format format, int size, int mip_levels, const void *data, uint32_t num_data_mipmaps)
-{
-	Texture *result = handle.get();
-
-	result->format = format;
-	result->width = size;
-	result->height = size;
-	result->mip_levels = mip_levels;
-	result->layers = 6;
-	result->gpu_data = driver->createTextureCube(size, mip_levels, format, data, num_data_mipmaps);
 }

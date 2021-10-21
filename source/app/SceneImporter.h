@@ -1,19 +1,6 @@
 #pragma once
 
-#include <common/ResourceManager.h>
-
-#include <map>
-#include <vector>
-
-class ApplicationResources;
-struct Mesh;
-struct Texture;
-
-namespace ecs::render
-{
-	struct RenderMaterial;
-	struct IBLTexture;
-}
+#include <scapes/visual/Fwd.h>
 
 namespace game
 {
@@ -25,12 +12,17 @@ namespace render::backend
 	class Driver;
 }
 
+class ApplicationResources;
+
+struct cgltf_mesh;
+struct aiMesh;
+
 /*
  */
 class SceneImporter
 {
 public:
-	SceneImporter(render::backend::Driver *driver, game::World *world);
+	SceneImporter(game::World *world, scapes::visual::API *visual_api);
 	~SceneImporter();
 
 	bool importCGLTF(const char *path, ApplicationResources *resources);
@@ -38,6 +30,10 @@ public:
 	void clear();
 
 private:
-	render::backend::Driver *driver {nullptr};
+	scapes::visual::MeshHandle import_cgltf_mesh(const cgltf_mesh *mesh);
+	scapes::visual::MeshHandle import_assimp_mesh(const aiMesh *mesh);
+
+private:
 	game::World *world {nullptr};
+	scapes::visual::API *visual_api {nullptr};
 };

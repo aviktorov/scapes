@@ -1,9 +1,8 @@
 #pragma once
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <GLM/glm.hpp>
-#include <GLM/gtc/matrix_transform.hpp>
+#include <scapes/visual/Fwd.h>
+
+#include <common/Math.h>
 #include <game/World.h>
 
 namespace render::shaders
@@ -18,10 +17,7 @@ namespace render::backend
 	struct BindSet;
 }
 
-namespace resources
-{
-	class ResourceManager;
-}
+class ResourceManager;
 
 struct GLFWwindow;
 class ApplicationFileSystem;
@@ -138,8 +134,9 @@ private:
 	SwapChain *swap_chain {nullptr};
 	render::backend::Driver *driver {nullptr};
 	render::shaders::Compiler *compiler {nullptr};
-	resources::ResourceManager *resource_manager {nullptr};
+	ResourceManager *resource_manager {nullptr};
 	game::World *world {nullptr};
+	scapes::visual::API *visual_api {nullptr};
 
 	// TODO: make this better
 	render::backend::UniformBuffer *camera_buffer {nullptr};

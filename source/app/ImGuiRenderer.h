@@ -1,14 +1,12 @@
 #pragma once
 
-#include <render/shaders/Compiler.h>
+#include <scapes/visual/Fwd.h>
+
 #include <render/backend/Driver.h>
-#include <common/ResourceManager.h>
 #include <map>
 
 struct RenderFrame;
 class SwapChain;
-struct Texture;
-struct Shader;
 
 struct ImGuiContext;
 struct ImDrawData;
@@ -20,7 +18,7 @@ typedef void* ImTextureID;
 class ImGuiRenderer
 {
 public:
-	ImGuiRenderer(render::backend::Driver *driver, render::shaders::Compiler *compiler, resources::ResourceManager *resource_manager);
+	ImGuiRenderer(render::backend::Driver *driver, scapes::visual::API *visual_api);
 	virtual ~ImGuiRenderer();
 
 	void init(ImGuiContext *imguiContext);
@@ -36,12 +34,11 @@ private:
 
 private:
 	render::backend::Driver *driver {nullptr};
-	render::shaders::Compiler *compiler {nullptr};
-	resources::ResourceManager *resource_manager {nullptr};
+	scapes::visual::API *visual_api {nullptr};
 
-	resources::ResourceHandle<Texture> font_texture;
-	resources::ResourceHandle<Shader> vertex_shader;
-	resources::ResourceHandle<Shader> fragment_shader;
+	scapes::visual::TextureHandle font_texture;
+	scapes::visual::ShaderHandle vertex_shader;
+	scapes::visual::ShaderHandle fragment_shader;
 
 	render::backend::PipelineState *pipeline_state {nullptr};
 	render::backend::VertexBuffer *vertices {nullptr};

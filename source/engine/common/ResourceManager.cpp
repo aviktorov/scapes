@@ -1,15 +1,12 @@
-#include "common/Resources.h"
 #include <common/ResourceManager.h>
+#include "common/Resources.h"
 
-namespace resources
+ResourceManager *ResourceManager::create()
 {
-	ResourceManager *ResourceManager::create()
-	{
-		return new impl::ResourceManager();
-	}
+	return new ResourceManagerImpl();
+}
 
-	void ResourceManager::destroy(ResourceManager *resource_manager)
-	{
-		delete resource_manager;
-	}
+void ResourceManager::destroy(ResourceManager *resource_manager)
+{
+	delete resource_manager;
 }

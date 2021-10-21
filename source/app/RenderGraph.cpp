@@ -1,17 +1,14 @@
 #include "RenderGraph.h"
-#include "RenderModule.h"
 #include "ApplicationResources.h"
 
-#include <game/World.h>
+#include "ImGuiRenderer.h"
+
+#include <scapes/visual/API.h>
+#include <scapes/visual/Resources.h>
+
 #include <Tracy.hpp>
 
-#include "ImGuiRenderer.h"
-#include "imgui.h"
-
-#include "Mesh.h"
-#include "SwapChain.h"
-#include "Shader.h"
-#include "Texture.h"
+#include <imgui.h>
 
 #include <cassert>
 
@@ -36,12 +33,12 @@ void RenderGraph::init(const ApplicationResources *resources, uint32_t width, ui
 	driver->setViewport(pipeline_state, 0, 0, width, height);
 	driver->setScissor(pipeline_state, 0, 0, width, height);
 
-	imgui_renderer = new ImGuiRenderer(driver, compiler, resources->getResourceManager());
+	imgui_renderer = new ImGuiRenderer(driver, visual_api);
 	imgui_renderer->init(ImGui::GetCurrentContext());
 
 	initRenderPasses();
 	initSSAOKernel();
-	initSSRData(resources->getBlueNoiseTexture().get());
+	initSSRData(resources->getBlueNoiseTexture());
 	initTransient(width, height);
 
 	fullscreen_quad = resources->getFullscreenQuad();
@@ -354,7 +351,7 @@ void RenderGraph::shutdownSSAOKernel()
 	memset(&ssao_kernel, 0, sizeof(SSAOKernel));
 }
 
-void RenderGraph::initSSRData(const Texture *blue_noise)
+void RenderGraph::initSSRData(scapes::visual::TextureHandle blue_noise)
 {
 	ssr_data.gpu_data = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, sizeof(SSRData::CPUData));
 	ssr_data.cpu_data = reinterpret_cast<SSRData::CPUData *>(driver->map(ssr_data.gpu_data));
@@ -482,7 +479,7 @@ ImTextureID RenderGraph::fetchTextureID(const render::backend::Texture *texture)
 
 /*
  */
-void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain, const game::World *world, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
+void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
 {
 	driver->resetCommandBuffer(command_buffer);
 	driver->beginCommandBuffer(command_buffer);
@@ -502,7 +499,7 @@ void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render:
 		driver->setDepthWrite(pipeline_state, true);
 		driver->setDepthTest(pipeline_state, true);
 
-		renderGBuffer(world, command_buffer, application_bindings, camera_bindings);
+		renderGBuffer(command_buffer, application_bindings, camera_bindings);
 	}
 
 	{
@@ -513,7 +510,7 @@ void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render:
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderSSAO(world, command_buffer, camera_bindings);
+		renderSSAO(command_buffer, camera_bindings);
 	}
 
 	{
@@ -524,13 +521,13 @@ void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render:
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderSSAOBlur(world, command_buffer, application_bindings);
+		renderSSAOBlur(command_buffer, application_bindings);
 	}
 
 	{
 		ZoneScopedN("LBuffer pass");
 
-		renderLBuffer(world, command_buffer, camera_bindings);
+		renderLBuffer(command_buffer, camera_bindings);
 	}
 
 	{
@@ -541,7 +538,7 @@ void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render:
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderSSRTrace(world, command_buffer, application_bindings, camera_bindings);
+		renderSSRTrace(command_buffer, application_bindings, camera_bindings);
 	}
 
 	{
@@ -552,7 +549,7 @@ void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render:
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderSSRResolve(world, command_buffer, application_bindings, camera_bindings);
+		renderSSRResolve(command_buffer, application_bindings, camera_bindings);
 	}
 
 	{
@@ -563,13 +560,13 @@ void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render:
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderSSRTemporalFilter(world, command_buffer);
+		renderSSRTemporalFilter(command_buffer);
 	}
 
 	{
 		ZoneScopedN("Composite pass");
 
-		renderComposite(world, command_buffer);
+		renderComposite(command_buffer);
 	}
 
 	{
@@ -580,13 +577,13 @@ void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render:
 		driver->setDepthWrite(pipeline_state, false);
 		driver->setDepthTest(pipeline_state, false);
 
-		renderCompositeTemporalFilter(world, command_buffer);
+		renderCompositeTemporalFilter(command_buffer);
 	}
 
 	{
 		ZoneScopedN("Tonemapping + ImGui pass");
 
-		renderToSwapChain(world, command_buffer, swap_chain);
+		renderToSwapChain(command_buffer, swap_chain);
 	}
 
 	// Swap temporal filters
@@ -596,7 +593,7 @@ void RenderGraph::render(render::backend::CommandBuffer *command_buffer, render:
 	driver->endCommandBuffer(command_buffer);
 }
 
-void RenderGraph::renderGBuffer(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderGBuffer(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
 {
 	driver->beginRenderPass(command_buffer, gbuffer_render_pass, gbuffer.frame_buffer);
 
@@ -611,12 +608,12 @@ void RenderGraph::renderGBuffer(const game::World *world, render::backend::Comma
 
 	driver->clearVertexStreams(pipeline_state);
 
-	ecs::render::drawRenderables(world, driver, 2, pipeline_state, command_buffer);
+	visual_api->drawRenderables(2, pipeline_state, command_buffer);
 
 	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderSSAO(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderSSAO(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings)
 {
 	driver->beginRenderPass(command_buffer, ssao_render_pass, ssao_noised.frame_buffer);
 
@@ -637,7 +634,7 @@ void RenderGraph::renderSSAO(const game::World *world, render::backend::CommandB
 	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderSSAOBlur(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings)
+void RenderGraph::renderSSAOBlur(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings)
 {
 	driver->beginRenderPass(command_buffer, ssao_render_pass, ssao_blurred.frame_buffer);
 
@@ -657,7 +654,7 @@ void RenderGraph::renderSSAOBlur(const game::World *world, render::backend::Comm
 	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderSSRTrace(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderSSRTrace(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
 {
 	driver->beginRenderPass(command_buffer, hdr_render_pass, ssr_trace.frame_buffer);
 
@@ -679,7 +676,7 @@ void RenderGraph::renderSSRTrace(const game::World *world, render::backend::Comm
 	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderSSRResolve(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderSSRResolve(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings)
 {
 	driver->beginRenderPass(command_buffer, ssr_resolve_render_pass, ssr_resolve.frame_buffer);
 
@@ -703,7 +700,7 @@ void RenderGraph::renderSSRResolve(const game::World *world, render::backend::Co
 	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderSSRTemporalFilter(const game::World *world, render::backend::CommandBuffer *command_buffer)
+void RenderGraph::renderSSRTemporalFilter(render::backend::CommandBuffer *command_buffer)
 {
 	RenderBuffer ssr_resolve_temp { ssr_resolve.resolve, nullptr, ssr_resolve.resolve_bindings };
 	RenderBuffer ssr_velocity_temp { ssr_resolve.velocity, nullptr, ssr_resolve.velocity_bindings };
@@ -711,7 +708,7 @@ void RenderGraph::renderSSRTemporalFilter(const game::World *world, render::back
 	renderTemporalFilter(ssr, old_ssr, ssr_resolve_temp, ssr_velocity_temp, command_buffer);
 }
 
-void RenderGraph::renderLBuffer(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings)
+void RenderGraph::renderLBuffer(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings)
 {
 	driver->beginRenderPass(command_buffer, lbuffer_render_pass, lbuffer.frame_buffer);
 
@@ -720,12 +717,12 @@ void RenderGraph::renderLBuffer(const game::World *world, render::backend::Comma
 	driver->setBindSet(pipeline_state, 0, camera_bindings);
 	driver->setBindSet(pipeline_state, 1, gbuffer.bindings);
 
-	ecs::render::drawSkyLights(world, driver, 2, pipeline_state, command_buffer);
+	visual_api->drawSkyLights(2, pipeline_state, command_buffer);
 
 	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderComposite(const game::World *world, render::backend::CommandBuffer *command_buffer)
+void RenderGraph::renderComposite(render::backend::CommandBuffer *command_buffer)
 {
 	driver->beginRenderPass(command_buffer, hdr_render_pass, composite_temp.frame_buffer);
 
@@ -748,7 +745,7 @@ void RenderGraph::renderComposite(const game::World *world, render::backend::Com
 	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderCompositeTemporalFilter(const game::World *world, render::backend::CommandBuffer *command_buffer)
+void RenderGraph::renderCompositeTemporalFilter(render::backend::CommandBuffer *command_buffer)
 {
 	RenderBuffer gbuffer_velocity { gbuffer.velocity, nullptr, gbuffer.velocity_bindings };
 
@@ -776,7 +773,7 @@ void RenderGraph::renderTemporalFilter(RenderBuffer &current, const RenderBuffer
 	driver->endRenderPass(command_buffer);
 }
 
-void RenderGraph::renderToSwapChain(const game::World *world, render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain)
+void RenderGraph::renderToSwapChain(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain)
 {
 	if (swap_chain_render_pass == nullptr)
 		swap_chain_render_pass = driver->createRenderPass(swap_chain, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE, nullptr);

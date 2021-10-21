@@ -1,13 +1,9 @@
 #include "ImGuiRenderer.h"
 
-#include "SwapChain.h"
-#include "Texture.h"
-#include "Shader.h"
+#include <scapes/visual/API.h>
+#include <scapes/visual/Resources.h>
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <GLM/glm.hpp>
-#include <GLM/gtc/matrix_transform.hpp>
+#include <common/Math.h>
 
 #include "imgui.h"
 #include <string>
@@ -45,8 +41,8 @@ static std::string fragment_shader_source =
 
 /*
  */
-ImGuiRenderer::ImGuiRenderer(render::backend::Driver *driver, render::shaders::Compiler *compiler, resources::ResourceManager *resource_manager)
-	: driver(driver), compiler(compiler), resource_manager(resource_manager)
+ImGuiRenderer::ImGuiRenderer(render::backend::Driver *driver, scapes::visual::API *visual_api)
+	: driver(driver), visual_api(visual_api)
 {
 
 }
@@ -70,26 +66,19 @@ void ImGuiRenderer::init(ImGuiContext *context)
 	ImGuiIO &io = ImGui::GetIO();
 	io.Fonts->GetTexDataAsRGBA32(&pixels, reinterpret_cast<int *>(&width), reinterpret_cast<int *>(&height));
 
-	vertex_shader = resource_manager->importFromMemory<Shader>(
+	vertex_shader = visual_api->loadShaderFromMemory(
 		reinterpret_cast<const uint8_t *>(vertex_shader_source.c_str()),
 		static_cast<uint32_t>(vertex_shader_source.size()),
-		render::backend::ShaderType::VERTEX,
-		driver,
-		compiler
+		render::backend::ShaderType::VERTEX
 	);
 
-	fragment_shader = resource_manager->importFromMemory<Shader>(
+	fragment_shader = visual_api->loadShaderFromMemory(
 		reinterpret_cast<const uint8_t *>(fragment_shader_source.c_str()),
 		static_cast<uint32_t>(fragment_shader_source.size()),
-		render::backend::ShaderType::FRAGMENT,
-		driver,
-		compiler
+		render::backend::ShaderType::FRAGMENT
 	);
 
-	font_texture = resource_manager->create<Texture>();
-	resources::ResourcePipeline<Texture>::create2D(
-		font_texture,
-		driver,
+	font_texture = visual_api->createTexture2D(
 		render::backend::Format::R8G8B8A8_UNORM,
 		width,
 		height,
@@ -98,7 +87,7 @@ void ImGuiRenderer::init(ImGuiContext *context)
 	);
 
 	font_bind_set = driver->createBindSet();
-	driver->bindTexture(font_bind_set, 0, font_texture.get()->gpu_data);
+	driver->bindTexture(font_bind_set, 0, font_texture->gpu_data);
 
 	io.Fonts->TexID = reinterpret_cast<ImTextureID>(font_bind_set);
 	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
@@ -120,10 +109,6 @@ void ImGuiRenderer::shutdown()
 	pipeline_state = nullptr;
 
 	invalidateTextureIDs();
-
-	resource_manager->destroy(font_texture, driver);
-	resource_manager->destroy(vertex_shader, driver);
-	resource_manager->destroy(fragment_shader, driver);
 }
 
 /*

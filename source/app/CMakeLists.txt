@@ -1,13 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
-project(app)
+set(TARGET app)
+
+project(${TARGET})
 
 # ==================================================================================================
 # Variables
 # ==================================================================================================
-if (WIN32)
-	set(SCAPES_PLATFORM windows)
-	set(SCAPES_ABI x64)
-endif()
 
 # ==================================================================================================
 # Sources
@@ -45,34 +43,37 @@ endif()
 # ==================================================================================================
 # Target
 # ==================================================================================================
-add_executable(app
+add_executable(${TARGET}
 	${SOURCES} ${HEADERS}
 	${PROFILER_SOURCES} ${PROFILER_HEADERS}
 )
-set_target_properties(app PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG ${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI})
-set_target_properties(app PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI})
-set_target_properties(app PROPERTIES DEBUG_POSTFIX d)
+set_target_properties(${TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI})
+set_target_properties(${TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI})
+set_target_properties(${TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI})
+set_target_properties(${TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG ${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI})
+
+set_target_properties(${TARGET} PROPERTIES DEBUG_POSTFIX d)
 
 # ==================================================================================================
 # Includes
 # ==================================================================================================
-target_include_directories(app PUBLIC ${API_DIR})
+target_include_directories(${TARGET} PUBLIC ${API_DIR})
 
 # ==================================================================================================
 # Preprocessor
 # ==================================================================================================
-target_compile_definitions(app PUBLIC ${DEFINES} ${PROFILER_DEFINES})
+target_compile_definitions(${TARGET} PUBLIC ${DEFINES} ${PROFILER_DEFINES})
 
 # ==================================================================================================
 # Libraries
 # ==================================================================================================
-target_link_libraries(app PUBLIC glfw3 scapes assimp-vc141-mt IrrXml zlibstatic)
+target_link_libraries(${TARGET} PUBLIC glfw3 foundation visual assimp-vc141-mt IrrXml zlibstatic)
 
 # ==================================================================================================
 # Custom commands
 # ==================================================================================================
 add_custom_command(
-	TARGET app POST_BUILD
+	TARGET ${TARGET} POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy
 		${DIR_THIRDPARTY}/assimp/lib/assimp-vc141-mt.dll
 		${DIR_EXPORT}/${SCAPES_PLATFORM}/${SCAPES_ABI}/assimp-vc141-mt.dll

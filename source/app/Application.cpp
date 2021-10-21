@@ -5,7 +5,9 @@
 #include <render/shaders/Compiler.h>
 #include <render/backend/Driver.h>
 
-#include "RenderModule.h"
+#include <scapes/visual/API.h>
+#include <scapes/visual/Components.h>
+
 #include "SwapChain.h"
 #include "RenderGraph.h"
 #include "SceneImporter.h"
@@ -173,7 +175,7 @@ void Application::update()
 
 	if (reset_environment)
 	{
-		ecs::render::SkyLight &comp = sky_light.getComponent<ecs::render::SkyLight>();
+		scapes::visual::components::SkyLight &comp = sky_light.getComponent<scapes::visual::components::SkyLight>();
 		comp.ibl_environment = application_resources->getIBLTexture(application_state.currentEnvironment);
 	}
 }
@@ -193,7 +195,7 @@ void Application::render()
 	memcpy(camera_gpu_data, &camera_state, sizeof(CameraState));
 	memcpy(application_gpu_data, &application_state, sizeof(ApplicationState));
 	
-	render_graph->render(command_buffer, swap_chain->getBackend(), world, application_bindings, camera_bindings);
+	render_graph->render(command_buffer, swap_chain->getBackend(), application_bindings, camera_bindings);
 
 	driver->submitSyncked(command_buffer, swap_chain->getBackend());
 
@@ -316,19 +318,19 @@ void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
  */
 void Application::initRenderScene()
 {
-	resource_manager = resources::ResourceManager::create();
-
-	application_resources = new ApplicationResources(driver, compiler, resource_manager);
-	application_resources->init();
+	resource_manager = ResourceManager::create();
 
 	world = game::World::create();
-	ecs::render::init(world);
+	visual_api = scapes::visual::API::create(resource_manager, world, driver, compiler);
 
-	importer = new SceneImporter(driver, world);
+	application_resources = new ApplicationResources(driver, visual_api);
+	application_resources->init();
+
+	importer = new SceneImporter(world, visual_api);
 	importer->importCGLTF("assets/scenes/blender_splash/blender_splash.glb", application_resources);
 
 	sky_light = game::Entity(world);
-	sky_light.addComponent<ecs::render::SkyLight>(
+	sky_light.addComponent<scapes::visual::components::SkyLight>(
 		application_resources->getIBLTexture(0),
 		application_resources->getFullscreenQuad(),
 		application_resources->getShader(config::Shaders::FullscreenQuadVertex),
@@ -344,11 +346,13 @@ void Application::shutdownRenderScene()
 	delete importer;
 	importer = nullptr;
 
-	ecs::render::shutdown(world);
+	scapes::visual::API::destroy(visual_api);
+	visual_api = nullptr;
+
 	game::World::destroy(world);
 	world = nullptr;
 
-	resources::ResourceManager::destroy(resource_manager);
+	ResourceManager::destroy(resource_manager);
 	resource_manager = nullptr;
 }
 
@@ -356,7 +360,7 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	render_graph = new RenderGraph(driver, compiler);
+	render_graph = new RenderGraph(driver, visual_api);
 	render_graph->init(application_resources, width, height);
 
 	const uint8_t num_columns = ApplicationState::MAX_TEMPORAL_FRAMES / 4;

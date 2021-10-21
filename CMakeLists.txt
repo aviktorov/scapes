@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-
-project(PBRSandbox VERSION 1.0.0)
+project(scapes VERSION 1.0.0)
 
 # ==================================================================================================
 # Variables
@@ -8,6 +7,11 @@ project(PBRSandbox VERSION 1.0.0)
 set(DIR_THIRDPARTY ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty)
 set(DIR_EXPORT ${CMAKE_CURRENT_SOURCE_DIR}/build)
 set(DIR_ENGINE_API ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+if (WIN32)
+	set(SCAPES_PLATFORM windows)
+	set(SCAPES_ABI x64)
+endif()
 
 # ==================================================================================================
 # General compile flags
@@ -50,4 +54,5 @@ link_directories("3rdparty/spirv-cross/lib")
 # Sub-projects
 # ==================================================================================================
 add_subdirectory(source/engine)
+add_subdirectory(source/scapes/visual)
 add_subdirectory(source/app)
