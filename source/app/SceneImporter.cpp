@@ -191,7 +191,7 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 			entity.addComponent<scapes::visual::components::Renderable>(mesh, material);
 		}
 
-		for (cgltf_size i = 0; node->children_count; ++i)
+		for (cgltf_size i = 0; i < node->children_count; ++i)
 			import_node(node->children[i], transform * getNodeTransform(node->children[i]));
 	};
 
