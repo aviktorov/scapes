@@ -72,16 +72,8 @@ bool ResourcePipeline<resources::Texture>::process(ResourceManager *resource_man
 	void *stb_pixels = nullptr;
 	size_t pixel_size = 0;
 
-	int desired_components = STBI_default;
+	int desired_components = (channels == 3) ? STBI_rgb_alpha : STBI_default;
 	
-	// In case we had 3-channel texture, we ask stb to convert to
-	// 4-channel texture, so we're sure about channel count at this stage
-	if (channels == 3)
-	{
-		desired_components = STBI_rgb_alpha;
-		channels = 4;
-	}
-
 	if (stbi_is_hdr_from_memory(data, static_cast<int>(size)))
 	{
 		ZoneScopedN("ResourcePipeline<Texture>::import_stb_hdr_image");
@@ -102,6 +94,11 @@ bool ResourcePipeline<resources::Texture>::process(ResourceManager *resource_man
 		std::cerr << "ResourcePipeline<Texture>::process(): " << stbi_failure_reason() << std::endl;
 		return false;
 	}
+
+	// In case we had 3-channel texture, we ask stb to convert to
+	// 4-channel texture, so we're sure about channel count at this stage
+	if (channels == 3)
+		channels = 4;
 
 	size_t image_size = width * height * channels * pixel_size;
 
