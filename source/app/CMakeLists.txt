@@ -10,18 +10,6 @@ project(${TARGET})
 # ==================================================================================================
 # Sources
 # ==================================================================================================
-file(GLOB PROFILER_SOURCES
-	${DIR_THIRDPARTY}/tracy/TracyClient.cpp
-)
-
-file(GLOB PROFILER_HEADERS
-	${DIR_THIRDPARTY}/tracy/Tracy.hpp
-)
-
-set(PROFILER_DEFINES
-	TRACY_ENABLE
-)
-
 file(GLOB SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
 	${DIR_THIRDPARTY}/imgui/examples/imgui_impl_glfw.cpp

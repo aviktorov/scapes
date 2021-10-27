@@ -27,6 +27,18 @@ endif()
 # ==================================================================================================
 # Sources
 # ==================================================================================================
+file(GLOB PROFILER_HEADERS
+	${DIR_THIRDPARTY}/tracy/Tracy.hpp
+)
+
+file(GLOB PROFILER_SOURCES
+	${DIR_THIRDPARTY}/tracy/TracyClient.cpp
+)
+
+set(PROFILER_DEFINES
+	TRACY_ENABLE TRACY_EXPORTS
+)
+
 file(GLOB COMMON_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/common/*.cpp
 )
@@ -97,6 +109,7 @@ add_library(
 	${COMMON_SOURCES} ${COMMON_HEADERS}
 	${GAME_SOURCES} ${GAME_HEADERS}
 	${RENDER_SOURCES} ${RENDER_HEADERS}
+	${PROFILER_SOURCES} ${PROFILER_HEADERS}
 )
 
 set_target_properties(${TARGET} PROPERTIES LINK_FLAGS "/ignore:4099")
@@ -126,7 +139,7 @@ target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${DIR_EN
 # ==================================================================================================
 # Preprocessor
 # ==================================================================================================
-target_compile_definitions(${TARGET} PUBLIC SCAPES_SHARED_LIBRARY ${PLATFORM_DEFINES} ${RENDER_DEFINES})
+target_compile_definitions(${TARGET} PUBLIC SCAPES_SHARED_LIBRARY ${PLATFORM_DEFINES} ${RENDER_DEFINES} ${PROFILER_DEFINES})
 target_compile_definitions(${TARGET} PUBLIC $<$<CONFIG:Debug>:${RENDER_DEBUG_DEFINES}>)
 
 # ==================================================================================================
