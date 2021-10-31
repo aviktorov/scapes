@@ -1,22 +1,15 @@
 #pragma once
 
-#include <render/backend/Driver.h>
+#include <scapes/visual/Fwd.h>
 
 namespace scapes::visual
 {
-	namespace resources
-	{
-		struct Shader;
-		struct Mesh;
-		struct Texture;
-	}
-
 	/*
- 	*/
+	 */
 	class Texture2DRenderer
 	{
 	public:
-		Texture2DRenderer(::render::backend::Driver *driver);
+		Texture2DRenderer(foundation::render::Device *device);
 		~Texture2DRenderer();
 
 		void init(const resources::Texture *target_texture);
@@ -29,10 +22,10 @@ namespace scapes::visual
 		);
 
 	private:
-		::render::backend::Driver *driver {nullptr};
-		::render::backend::PipelineState *pipeline_state {nullptr};
-		::render::backend::CommandBuffer *command_buffer {nullptr};
-		::render::backend::RenderPass *render_pass {nullptr};
-		::render::backend::FrameBuffer *frame_buffer {nullptr};
+		foundation::render::Device *device {nullptr};
+		foundation::render::PipelineState *pipeline_state {nullptr};
+		foundation::render::CommandBuffer *command_buffer {nullptr};
+		foundation::render::RenderPass *render_pass {nullptr};
+		foundation::render::FrameBuffer *frame_buffer {nullptr};
 	};
 }

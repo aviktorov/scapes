@@ -1,24 +1,24 @@
 #pragma once
 
 #include <vector>
-#include <render/backend/driver.h>
+#include <scapes/foundation/render/Device.h>
 
 /*
  */
 class SwapChain
 {
 public:
-	SwapChain(render::backend::Driver *driver, void *native_window);
+	SwapChain(scapes::foundation::render::Device *device, void *native_window);
 	virtual ~SwapChain();
 
 	void init();
 	void recreate();
 	void shutdown();
 
-	render::backend::CommandBuffer *acquire();
-	bool present(render::backend::CommandBuffer *command_buffer);
+	scapes::foundation::render::CommandBuffer *acquire();
+	bool present(scapes::foundation::render::CommandBuffer *command_buffer);
 
-	inline render::backend::SwapChain *getBackend() { return swap_chain; }
+	inline scapes::foundation::render::SwapChain *getBackend() { return swap_chain; }
 
 private:
 	void initFrames();
@@ -30,12 +30,12 @@ private:
 		NUM_IN_FLIGHT_FRAMES = 1,
 	};
 
-	render::backend::Driver *driver {nullptr};
-	render::backend::SwapChain *swap_chain {nullptr};
+	scapes::foundation::render::Device *device {nullptr};
+	scapes::foundation::render::SwapChain *swap_chain {nullptr};
 	void *native_window {nullptr};
 
 	uint32_t current_in_flight_frame {0};
-	render::backend::CommandBuffer *command_buffers[NUM_IN_FLIGHT_FRAMES];
+	scapes::foundation::render::CommandBuffer *command_buffers[NUM_IN_FLIGHT_FRAMES];
 
 	uint32_t ubo_size {0};
 	uint32_t width {0};

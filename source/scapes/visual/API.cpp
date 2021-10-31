@@ -1,6 +1,10 @@
 #include "API.h"
-
 #include <RenderUtils.h>
+
+#include <scapes/foundation/game/World.h>
+#include <scapes/foundation/game/Query.h>
+#include <scapes/foundation/render/Device.h>
+#include <scapes/foundation/resources/ResourceManager.h>
 
 #include <algorithm>
 
@@ -8,9 +12,14 @@ namespace scapes::visual
 {
 	/*
 	 */
-	API *API::create(::ResourceManager *resource_manager, ::game::World *world, ::render::backend::Driver *driver, ::render::shaders::Compiler *compiler)
+	API *API::create(
+		foundation::resources::ResourceManager *resource_manager,
+		foundation::game::World *world,
+		foundation::render::Device *device,
+		foundation::shaders::Compiler *compiler
+	)
 	{
-		return new APIImpl(resource_manager, world, driver, compiler);
+		return new APIImpl(resource_manager, world, device, compiler);
 	}
 
 	void API::destroy(API *api)
@@ -20,11 +29,16 @@ namespace scapes::visual
 
 	/*
 	 */
-	APIImpl::APIImpl(::ResourceManager *resource_manager, ::game::World *world, ::render::backend::Driver *driver, ::render::shaders::Compiler *compiler)
-		: resource_manager(resource_manager), world(world), driver(driver), compiler(compiler)
+	APIImpl::APIImpl(
+		foundation::resources::ResourceManager *resource_manager,
+		foundation::game::World *world,
+		foundation::render::Device *device,
+		foundation::shaders::Compiler *compiler
+	)
+		: resource_manager(resource_manager), world(world), device(device), compiler(compiler)
 	{
-		renderable_query = new game::Query<components::Transform, components::Renderable>(world);
-		skylight_query = new game::Query<components::SkyLight>(world);
+		renderable_query = new foundation::game::Query<components::Transform, components::Renderable>(world);
+		skylight_query = new foundation::game::Query<components::SkyLight>(world);
 	}
 
 	APIImpl::~APIImpl()
@@ -33,19 +47,19 @@ namespace scapes::visual
 		delete skylight_query;
 
 		for (TextureHandle handle : managed_textures)
-			resource_manager->destroy(handle, driver);
+			resource_manager->destroy(handle, device);
 
 		for (ShaderHandle handle : managed_shaders)
-			resource_manager->destroy(handle, driver);
+			resource_manager->destroy(handle, device);
 
 		for (MeshHandle handle : managed_meshes)
-			resource_manager->destroy(handle, driver);
+			resource_manager->destroy(handle, device);
 
 		for (RenderMaterialHandle handle : managed_render_materials)
-			resource_manager->destroy(handle, driver);
+			resource_manager->destroy(handle, device);
 
 		for (IBLTextureHandle handle : managed_ibl_textures)
-			resource_manager->destroy(handle, driver);
+			resource_manager->destroy(handle, device);
 
 		managed_textures.clear();
 		managed_shaders.clear();
@@ -56,8 +70,8 @@ namespace scapes::visual
 
 	void APIImpl::drawRenderables(
 		uint8_t material_binding,
-		::render::backend::PipelineState *pipeline_state,
-		::render::backend::CommandBuffer *command_buffer
+		foundation::render::PipelineState *pipeline_state,
+		foundation::render::CommandBuffer *command_buffer
 	)
 	{
 		renderable_query->begin();
@@ -72,25 +86,25 @@ namespace scapes::visual
 			{
 				const components::Transform &transform = transforms[i];
 				const components::Renderable &renderable = renderables[i];
-				const glm::mat4 &node_transform = transform.transform;
+				const foundation::math::mat4 &node_transform = transform.transform;
 
-				::render::backend::BindSet *material_bindings = renderable.material->bindings;
+				foundation::render::BindSet *material_bindings = renderable.material->bindings;
 
-				driver->clearVertexStreams(pipeline_state);
-				driver->setVertexStream(pipeline_state, 0, renderable.mesh->vertex_buffer);
+				device->clearVertexStreams(pipeline_state);
+				device->setVertexStream(pipeline_state, 0, renderable.mesh->vertex_buffer);
 
-				driver->setBindSet(pipeline_state, material_binding, material_bindings);
-				driver->setPushConstants(pipeline_state, static_cast<uint8_t>(sizeof(glm::mat4)), &node_transform);
+				device->setBindSet(pipeline_state, material_binding, material_bindings);
+				device->setPushConstants(pipeline_state, static_cast<uint8_t>(sizeof(foundation::math::mat4)), &node_transform);
 
-				driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, renderable.mesh->index_buffer, renderable.mesh->num_indices);
+				device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, renderable.mesh->index_buffer, renderable.mesh->num_indices);
 			}
 		}
 	}
 
 	void APIImpl::drawSkyLights(
 		uint8_t light_binding,
-		::render::backend::PipelineState *pipeline_state,
-		::render::backend::CommandBuffer *command_buffer
+		foundation::render::PipelineState *pipeline_state,
+		foundation::render::CommandBuffer *command_buffer
 	)
 	{
 		skylight_query->begin();
@@ -104,22 +118,22 @@ namespace scapes::visual
 			{
 				const components::SkyLight &light = skylights[i];
 
-				driver->clearShaders(pipeline_state);
-				driver->setShader(pipeline_state, ::render::backend::ShaderType::VERTEX, light.vertex_shader->shader);
-				driver->setShader(pipeline_state, ::render::backend::ShaderType::FRAGMENT, light.fragment_shader->shader);
+				device->clearShaders(pipeline_state);
+				device->setShader(pipeline_state, foundation::render::ShaderType::VERTEX, light.vertex_shader->shader);
+				device->setShader(pipeline_state, foundation::render::ShaderType::FRAGMENT, light.fragment_shader->shader);
 
-				driver->setBindSet(pipeline_state, light_binding, light.ibl_environment->bindings);
+				device->setBindSet(pipeline_state, light_binding, light.ibl_environment->bindings);
 
-				driver->clearVertexStreams(pipeline_state);
-				driver->setVertexStream(pipeline_state, 0, light.mesh->vertex_buffer);
+				device->clearVertexStreams(pipeline_state);
+				device->setVertexStream(pipeline_state, 0, light.mesh->vertex_buffer);
 
-				driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, light.mesh->index_buffer, light.mesh->num_indices);
+				device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, light.mesh->index_buffer, light.mesh->num_indices);
 			}
 		}
 	}
 
 	TextureHandle APIImpl::createTexture2D(
-		render::backend::Format format,
+		foundation::render::Format format,
 		uint32_t width,
 		uint32_t height,
 		uint32_t num_mips,
@@ -134,7 +148,7 @@ namespace scapes::visual
 		result->height = height;
 		result->mip_levels = num_mips;
 		result->layers = 1;
-		result->gpu_data = driver->createTexture2D(width, height, num_mips, format, data, num_data_mipmaps);
+		result->gpu_data = device->createTexture2D(width, height, num_mips, format, data, num_data_mipmaps);
 
 		managed_textures.push_back(result);
 
@@ -142,7 +156,7 @@ namespace scapes::visual
 	}
 
 	TextureHandle APIImpl::createTexture2D(
-		render::backend::Format format,
+		foundation::render::Format format,
 		uint32_t width,
 		uint32_t height,
 		MeshHandle fullscreen_quad,
@@ -151,13 +165,13 @@ namespace scapes::visual
 	)
 	{
 		TextureHandle result = createTexture2D(format, width, height, 1);
-		RenderUtils::renderTexture2D(driver, result, fullscreen_quad, vertex_shader, fragment_shader);
+		RenderUtils::renderTexture2D(device, result, fullscreen_quad, vertex_shader, fragment_shader);
 
 		return result;
 	}
 
 	TextureHandle APIImpl::createTextureCube(
-		render::backend::Format format,
+		foundation::render::Format format,
 		uint32_t size,
 		uint32_t num_mips,
 		const void *data,
@@ -171,7 +185,7 @@ namespace scapes::visual
 		result->height = size;
 		result->mip_levels = num_mips;
 		result->layers = 6;
-		result->gpu_data = driver->createTextureCube(size, num_mips, format, data, num_data_mipmaps);
+		result->gpu_data = device->createTextureCube(size, num_mips, format, data, num_data_mipmaps);
 
 		managed_textures.push_back(result);
 
@@ -183,7 +197,7 @@ namespace scapes::visual
 		size_t size
 	)
 	{
-		TextureHandle result = resource_manager->importFromMemory<resources::Texture>(data, size, driver);
+		TextureHandle result = resource_manager->importFromMemory<resources::Texture>(data, size, device);
 		if (result.get())
 			managed_textures.push_back(result);
 
@@ -191,10 +205,10 @@ namespace scapes::visual
 	}
 
 	TextureHandle APIImpl::loadTexture(
-		const URI &uri
+		const foundation::io::URI &uri
 	)
 	{
-		TextureHandle result = resource_manager->import<resources::Texture>(uri, driver);
+		TextureHandle result = resource_manager->import<resources::Texture>(uri, device);
 
 		// TODO: add resource to another lookup table in order not to load it twice
 		// and also for future live reloading
@@ -207,10 +221,10 @@ namespace scapes::visual
 	ShaderHandle APIImpl::loadShaderFromMemory(
 		const uint8_t *data,
 		size_t size,
-		render::backend::ShaderType shader_type
+		foundation::render::ShaderType shader_type
 	)
 	{
-		ShaderHandle result = resource_manager->importFromMemory<resources::Shader>(data, size, shader_type, driver, compiler);
+		ShaderHandle result = resource_manager->importFromMemory<resources::Shader>(data, size, shader_type, device, compiler);
 		if (result.get())
 			managed_shaders.push_back(result);
 
@@ -218,11 +232,11 @@ namespace scapes::visual
 	}
 
 	ShaderHandle APIImpl::loadShader(
-		const URI &uri,
-		render::backend::ShaderType shader_type
+		const foundation::io::URI &uri,
+		foundation::render::ShaderType shader_type
 	)
 	{
-		ShaderHandle result = resource_manager->import<resources::Shader>(uri, shader_type, driver, compiler);
+		ShaderHandle result = resource_manager->import<resources::Shader>(uri, shader_type, device, compiler);
 
 		// TODO: add resource to another lookup table in order not to load it twice
 		// and also for future live reloading
@@ -250,7 +264,7 @@ namespace scapes::visual
 
 		memcpy(result->vertices, vertices, sizeof(resources::Mesh::Vertex) * result->num_vertices);
 		memcpy(result->indices, indices, sizeof(uint32_t) * result->num_indices);
-		RenderUtils::uploadToGPU(driver, result);
+		RenderUtils::uploadToGPU(device, result);
 
 		managed_meshes.push_back(result);
 		return result;
@@ -273,15 +287,15 @@ namespace scapes::visual
 
 		float half_size = size * 0.5f;
 
-		result->vertices[0].position = glm::vec3(-half_size, -half_size, 0.0f);
-		result->vertices[1].position = glm::vec3( half_size, -half_size, 0.0f);
-		result->vertices[2].position = glm::vec3( half_size,  half_size, 0.0f);
-		result->vertices[3].position = glm::vec3(-half_size,  half_size, 0.0f);
+		result->vertices[0].position = foundation::math::vec3(-half_size, -half_size, 0.0f);
+		result->vertices[1].position = foundation::math::vec3( half_size, -half_size, 0.0f);
+		result->vertices[2].position = foundation::math::vec3( half_size,  half_size, 0.0f);
+		result->vertices[3].position = foundation::math::vec3(-half_size,  half_size, 0.0f);
 
-		result->vertices[0].uv = glm::vec2(0.0f, 0.0f);
-		result->vertices[1].uv = glm::vec2(1.0f, 0.0f);
-		result->vertices[2].uv = glm::vec2(1.0f, 1.0f);
-		result->vertices[3].uv = glm::vec2(0.0f, 1.0f);
+		result->vertices[0].uv = foundation::math::vec2(0.0f, 0.0f);
+		result->vertices[1].uv = foundation::math::vec2(1.0f, 0.0f);
+		result->vertices[2].uv = foundation::math::vec2(1.0f, 1.0f);
+		result->vertices[3].uv = foundation::math::vec2(0.0f, 1.0f);
 
 		static uint32_t quad_indices[] =
 		{
@@ -289,7 +303,7 @@ namespace scapes::visual
 		};
 
 		memcpy(result->indices, quad_indices, sizeof(uint32_t) * result->num_indices);
-		RenderUtils::uploadToGPU(driver, result);
+		RenderUtils::uploadToGPU(device, result);
 
 		managed_meshes.push_back(result);
 		return result;
@@ -312,14 +326,14 @@ namespace scapes::visual
 
 		float half_size = size * 0.5f;
 
-		result->vertices[0].position = glm::vec3(-half_size, -half_size, -half_size);
-		result->vertices[1].position = glm::vec3( half_size, -half_size, -half_size);
-		result->vertices[2].position = glm::vec3( half_size,  half_size, -half_size);
-		result->vertices[3].position = glm::vec3(-half_size,  half_size, -half_size);
-		result->vertices[4].position = glm::vec3(-half_size, -half_size,  half_size);
-		result->vertices[5].position = glm::vec3( half_size, -half_size,  half_size);
-		result->vertices[6].position = glm::vec3( half_size,  half_size,  half_size);
-		result->vertices[7].position = glm::vec3(-half_size,  half_size,  half_size);
+		result->vertices[0].position = foundation::math::vec3(-half_size, -half_size, -half_size);
+		result->vertices[1].position = foundation::math::vec3( half_size, -half_size, -half_size);
+		result->vertices[2].position = foundation::math::vec3( half_size,  half_size, -half_size);
+		result->vertices[3].position = foundation::math::vec3(-half_size,  half_size, -half_size);
+		result->vertices[4].position = foundation::math::vec3(-half_size, -half_size,  half_size);
+		result->vertices[5].position = foundation::math::vec3( half_size, -half_size,  half_size);
+		result->vertices[6].position = foundation::math::vec3( half_size,  half_size,  half_size);
+		result->vertices[7].position = foundation::math::vec3(-half_size,  half_size,  half_size);
 
 		static uint32_t skybox_indices[] =
 		{
@@ -332,18 +346,18 @@ namespace scapes::visual
 		};
 
 		memcpy(result->indices, skybox_indices, sizeof(uint32_t) * result->num_indices);
-		RenderUtils::uploadToGPU(driver, result);
+		RenderUtils::uploadToGPU(device, result);
 
 		managed_meshes.push_back(result);
 		return result;
 	}
 
 	IBLTextureHandle APIImpl::importIBLTexture(
-		const URI &uri,
+		const foundation::io::URI &uri,
 		const IBLTextureCreateData &create_data
 	)
 	{
-		TextureHandle equirectangular_texture = resource_manager->import<resources::Texture>(uri, driver);
+		TextureHandle equirectangular_texture = resource_manager->import<resources::Texture>(uri, device);
 		if (equirectangular_texture.get() == nullptr)
 			return IBLTextureHandle();
 
@@ -355,7 +369,7 @@ namespace scapes::visual
 		diffuse_irradiance->height = create_data.cubemap_size;
 		diffuse_irradiance->mip_levels = 1;
 		diffuse_irradiance->layers = 6;
-		diffuse_irradiance->gpu_data = driver->createTextureCube(create_data.cubemap_size, 1, create_data.format);
+		diffuse_irradiance->gpu_data = device->createTextureCube(create_data.cubemap_size, 1, create_data.format);
 
 		TextureHandle temp_cubemap = resource_manager->create<resources::Texture>();
 		temp_cubemap->format = create_data.format;
@@ -363,7 +377,7 @@ namespace scapes::visual
 		temp_cubemap->height = create_data.cubemap_size;
 		temp_cubemap->mip_levels = 1;
 		temp_cubemap->layers = 6;
-		temp_cubemap->gpu_data = driver->createTextureCube(create_data.cubemap_size, 1, create_data.format);
+		temp_cubemap->gpu_data = device->createTextureCube(create_data.cubemap_size, 1, create_data.format);
 
 		TextureHandle prefiltered_specular = resource_manager->create<resources::Texture>();
 		prefiltered_specular->format = create_data.format;
@@ -371,10 +385,10 @@ namespace scapes::visual
 		prefiltered_specular->height = create_data.cubemap_size;
 		prefiltered_specular->mip_levels = mips;
 		prefiltered_specular->layers = 6;
-		prefiltered_specular->gpu_data = driver->createTextureCube(create_data.cubemap_size, mips, create_data.format);
+		prefiltered_specular->gpu_data = device->createTextureCube(create_data.cubemap_size, mips, create_data.format);
 
 		RenderUtils::renderHDRIToCube(
-			driver,
+			device,
 			prefiltered_specular,
 			create_data.fullscreen_quad,
 			create_data.cubemap_vertex,
@@ -385,7 +399,7 @@ namespace scapes::visual
 		);
 
 		RenderUtils::renderTextureCube(
-			driver,
+			device,
 			diffuse_irradiance,
 			create_data.fullscreen_quad,
 			create_data.cubemap_vertex,
@@ -393,8 +407,8 @@ namespace scapes::visual
 			prefiltered_specular
 		);
 
-		resource_manager->destroy(equirectangular_texture, driver);
-		resource_manager->destroy(temp_cubemap, driver);
+		resource_manager->destroy(equirectangular_texture, device);
+		resource_manager->destroy(temp_cubemap, device);
 
 		IBLTextureHandle result = resource_manager->create<resources::IBLTexture>();
 
@@ -403,10 +417,10 @@ namespace scapes::visual
 
 		result->baked_brdf = create_data.baked_brdf;
 
-		result->bindings = driver->createBindSet();
-		driver->bindTexture(result->bindings, 0, result->baked_brdf->gpu_data);
-		driver->bindTexture(result->bindings, 1, result->prefiltered_specular_cubemap->gpu_data);
-		driver->bindTexture(result->bindings, 2, result->diffuse_irradiance_cubemap->gpu_data);
+		result->bindings = device->createBindSet();
+		device->bindTexture(result->bindings, 0, result->baked_brdf->gpu_data);
+		device->bindTexture(result->bindings, 1, result->prefiltered_specular_cubemap->gpu_data);
+		device->bindTexture(result->bindings, 2, result->diffuse_irradiance_cubemap->gpu_data);
 
 		managed_ibl_textures.push_back(result);
 		return result;
@@ -426,11 +440,11 @@ namespace scapes::visual
 		result->roughness = roughness;
 		result->metalness = metalness;
 
-		result->bindings = driver->createBindSet();
-		driver->bindTexture(result->bindings, 0, result->albedo->gpu_data);
-		driver->bindTexture(result->bindings, 1, result->normal->gpu_data);
-		driver->bindTexture(result->bindings, 2, result->roughness->gpu_data);
-		driver->bindTexture(result->bindings, 3, result->metalness->gpu_data);
+		result->bindings = device->createBindSet();
+		device->bindTexture(result->bindings, 0, result->albedo->gpu_data);
+		device->bindTexture(result->bindings, 1, result->normal->gpu_data);
+		device->bindTexture(result->bindings, 2, result->roughness->gpu_data);
+		device->bindTexture(result->bindings, 3, result->metalness->gpu_data);
 
 		managed_render_materials.push_back(result);
 		return result;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <scapes/visual/Fwd.h>
-#include <render/backend/Driver.h>
 
 namespace scapes::visual
 {
@@ -11,12 +10,12 @@ namespace scapes::visual
 	{
 	public:
 		static void uploadToGPU(
-			::render::backend::Driver *driver,
+			foundation::render::Device *device,
 			MeshHandle mesh
 		);
 
 		static void RenderUtils::renderTexture2D(
-			::render::backend::Driver *driver,
+			foundation::render::Device *device,
 			TextureHandle result,
 			MeshHandle fullscreen_quad,
 			ShaderHandle vertex_shader,
@@ -24,7 +23,7 @@ namespace scapes::visual
 		);
 
 		static void RenderUtils::renderTextureCube(
-			::render::backend::Driver *driver,
+			foundation::render::Device *device,
 			TextureHandle result,
 			MeshHandle fullscreen_quad,
 			ShaderHandle vertex_shader,
@@ -33,7 +32,7 @@ namespace scapes::visual
 		);
 
 		static void renderHDRIToCube(
-			::render::backend::Driver *driver,
+			foundation::render::Device *device,
 			TextureHandle result,
 			MeshHandle fullscreen_quad,
 			ShaderHandle vertex_shader,

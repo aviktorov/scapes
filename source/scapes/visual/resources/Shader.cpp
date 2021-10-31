@@ -2,19 +2,32 @@
 
 #include <Tracy.hpp>
 
+using namespace scapes;
 using namespace scapes::visual;
 
 /*
  */
-void ResourcePipeline<resources::Shader>::destroy(ResourceManager *resource_manager, ShaderHandle handle, render::backend::Driver *driver)
+void ResourcePipeline<resources::Shader>::destroy(
+	foundation::resources::ResourceManager *resource_manager,
+	ShaderHandle handle,
+	foundation::render::Device *device
+)
 {
 	resources::Shader *shader = handle.get();
-	driver->destroyShader(shader->shader);
+	device->destroyShader(shader->shader);
 
 	*shader = {};
 }
 
-bool ResourcePipeline<resources::Shader>::process(ResourceManager *resource_manager, ShaderHandle handle, const uint8_t *data, size_t size, render::backend::ShaderType type, render::backend::Driver *driver, render::shaders::Compiler *compiler)
+bool ResourcePipeline<resources::Shader>::process(
+	foundation::resources::ResourceManager *resource_manager,
+	ShaderHandle handle,
+	const uint8_t *data,
+	size_t size,
+	foundation::render::ShaderType type,
+	foundation::render::Device *device,
+	foundation::shaders::Compiler *compiler
+)
 {
 	ZoneScopedN("ResourcePipeline<Shader>::process");
 
@@ -24,19 +37,19 @@ bool ResourcePipeline<resources::Shader>::process(ResourceManager *resource_mana
 	shader->type = type;
 	shader->shader = nullptr;
 
-	render::shaders::ShaderIL *il = nullptr;
+	foundation::shaders::ShaderIL *il = nullptr;
 	
 	{
 		ZoneScopedN("ResourcePipeline<Shader>::compile_to_spirv");
-		il = compiler->createShaderIL(static_cast<render::shaders::ShaderType>(type), static_cast<uint32_t>(size), reinterpret_cast<const char *>(data));
+		il = compiler->createShaderIL(static_cast<foundation::shaders::ShaderType>(type), static_cast<uint32_t>(size), reinterpret_cast<const char *>(data));
 	}
 
 	if (il != nullptr)
 	{
 		ZoneScopedN("ResourcePipeline<Shader>::create_from_spirv");
-		shader->shader = driver->createShaderFromIL(
-			static_cast<render::backend::ShaderType>(il->type),
-			static_cast<render::backend::ShaderILType>(il->il_type),
+		shader->shader = device->createShaderFromIL(
+			static_cast<foundation::render::ShaderType>(il->type),
+			static_cast<foundation::render::ShaderILType>(il->il_type),
 			il->bytecode_size,
 			il->bytecode_data
 		);

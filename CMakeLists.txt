@@ -30,7 +30,6 @@ endif()
 include_directories("3rdparty/")
 include_directories("3rdparty/assimp/include")
 include_directories("3rdparty/glfw/include")
-include_directories("3rdparty/glm")
 include_directories("3rdparty/shaderc/include")
 include_directories("3rdparty/stb")
 include_directories("3rdparty/volk")
@@ -53,6 +52,6 @@ link_directories("3rdparty/spirv-cross/lib")
 # ==================================================================================================
 # Sub-projects
 # ==================================================================================================
-add_subdirectory(source/engine)
+add_subdirectory(source/scapes/foundation)
 add_subdirectory(source/scapes/visual)
 add_subdirectory(source/app)

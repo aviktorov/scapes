@@ -1,9 +1,9 @@
 #pragma once
 
-#include <common/IO.h>
+#include <scapes/foundation/io/FileSystem.h>
 #include <string>
 
-class ApplicationStream : public io::IStream
+class ApplicationStream : public scapes::foundation::io::Stream
 {
 public:
 	ApplicationStream(FILE *file);
@@ -12,7 +12,7 @@ public:
 	size_t read(void *data, size_t element_size, size_t element_count) final;
 	size_t write(const void *data, size_t element_size, size_t element_count) final;
 
-	bool seek(uint64_t offset, io::SeekOrigin origin) final;
+	bool seek(uint64_t offset, scapes::foundation::io::SeekOrigin origin) final;
 	uint64_t tell() const final;
 	uint64_t size() const final;
 
@@ -20,14 +20,14 @@ private:
 	FILE *file {nullptr};
 };
 
-class ApplicationFileSystem : public io::IFileSystem
+class ApplicationFileSystem : public scapes::foundation::io::FileSystem
 {
 public:
 	ApplicationFileSystem(const char *root);
 	~ApplicationFileSystem() final;
 
-	io::IStream *open(const char *path, const char *mode) final;
-	bool close(io::IStream *stream) final;
+	scapes::foundation::io::Stream *open(const scapes::foundation::io::URI &uri, const char *mode) final;
+	bool close(scapes::foundation::io::Stream *stream) final;
 
 private:
 	std::string root_path;

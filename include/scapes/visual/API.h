@@ -3,15 +3,11 @@
 #include <scapes/visual/Fwd.h>
 #include <scapes/visual/Resources.h>
 
-// TODO: include foundation forward decls instead
-#include <game/World.h>
-#include <render/backend/Driver.h>
-
 namespace scapes::visual
 {
 	struct IBLTextureCreateData
 	{
-		render::backend::Format format {render::backend::Format::R32G32B32A32_SFLOAT};
+		foundation::render::Format format {foundation::render::Format::R32G32B32A32_SFLOAT};
 		uint32_t cubemap_size {128};
 
 		MeshHandle fullscreen_quad; // TODO: find a way to get rid of fullscreen quad mesh
@@ -25,7 +21,7 @@ namespace scapes::visual
 	class API
 	{
 	public:
-		static SCAPES_API API *create(::ResourceManager *resource_manager, ::game::World *world, ::render::backend::Driver *driver, ::render::shaders::Compiler *compiler);
+		static SCAPES_API API *create(foundation::resources::ResourceManager *resource_manager, foundation::game::World *world, foundation::render::Device *device, foundation::shaders::Compiler *compiler);
 		static SCAPES_API void destroy(API *api);
 
 		virtual ~API() { }
@@ -34,18 +30,18 @@ namespace scapes::visual
 
 		virtual void drawRenderables(
 			uint8_t material_binding,
-			::render::backend::PipelineState *pipeline_state,
-			::render::backend::CommandBuffer *command_buffer
+			foundation::render::PipelineState *pipeline_state,
+			foundation::render::CommandBuffer *command_buffer
 		) = 0;
 
 		virtual void drawSkyLights(
 			uint8_t light_binding,
-			::render::backend::PipelineState *pipeline_state,
-			::render::backend::CommandBuffer *command_buffer
+			foundation::render::PipelineState *pipeline_state,
+			foundation::render::CommandBuffer *command_buffer
 		) = 0;
 
 		virtual TextureHandle createTexture2D(
-			render::backend::Format format,
+			foundation::render::Format format,
 			uint32_t width,
 			uint32_t height,
 			uint32_t num_mips,
@@ -54,7 +50,7 @@ namespace scapes::visual
 		) = 0;
 
 		virtual TextureHandle createTexture2D(
-			render::backend::Format format,
+			foundation::render::Format format,
 			uint32_t width,
 			uint32_t height,
 			MeshHandle fullscreen_quad,
@@ -63,7 +59,7 @@ namespace scapes::visual
 		) = 0;
 
 		virtual TextureHandle createTextureCube(
-			render::backend::Format format,
+			foundation::render::Format format,
 			uint32_t size,
 			uint32_t num_mips,
 			const void *data = nullptr,
@@ -76,18 +72,18 @@ namespace scapes::visual
 		) = 0;
 
 		virtual TextureHandle loadTexture(
-			const URI &uri
+			const foundation::io::URI &uri
 		) = 0;
 
 		virtual ShaderHandle loadShaderFromMemory(
 			const uint8_t *data,
 			size_t size,
-			render::backend::ShaderType shader_type
+			foundation::render::ShaderType shader_type
 		) = 0;
 
 		virtual ShaderHandle loadShader(
-			const URI &uri,
-			render::backend::ShaderType shader_type
+			const foundation::io::URI &uri,
+			foundation::render::ShaderType shader_type
 		) = 0;
 
 		virtual MeshHandle createMesh(
@@ -106,7 +102,7 @@ namespace scapes::visual
 		) = 0;
 
 		virtual IBLTextureHandle importIBLTexture(
-			const URI &uri,
+			const foundation::io::URI &uri,
 			const IBLTextureCreateData &create_data
 		) = 0;
 
@@ -116,10 +112,5 @@ namespace scapes::visual
 			TextureHandle roughness,
 			TextureHandle metalness
 		) = 0;
-
-		/*
-		virtual MeshHandle createMeshFromAssimp(const aiMesh *mesh) = 0;
-		virtual MeshHandle createMeshFromCGLTF(const cgltf_mesh *mesh) = 0;
-		/**/
 	};
 }

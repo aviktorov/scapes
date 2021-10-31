@@ -3,7 +3,7 @@
 #include <scapes/visual/API.h>
 #include <scapes/visual/Resources.h>
 
-#include <common/Math.h>
+#include <scapes/foundation/math/Math.h>
 
 #include "imgui.h"
 #include <string>
@@ -41,8 +41,8 @@ static std::string fragment_shader_source =
 
 /*
  */
-ImGuiRenderer::ImGuiRenderer(render::backend::Driver *driver, scapes::visual::API *visual_api)
-	: driver(driver), visual_api(visual_api)
+ImGuiRenderer::ImGuiRenderer(scapes::foundation::render::Device *device, scapes::visual::API *visual_api)
+	: device(device), visual_api(visual_api)
 {
 
 }
@@ -61,7 +61,7 @@ void ImGuiRenderer::init(ImGuiContext *context)
 	uint32_t width, height;
 	unsigned char *pixels = nullptr;
 
-	pipeline_state = driver->createPipelineState();
+	pipeline_state = device->createPipelineState();
 
 	ImGuiIO &io = ImGui::GetIO();
 	io.Fonts->GetTexDataAsRGBA32(&pixels, reinterpret_cast<int *>(&width), reinterpret_cast<int *>(&height));
@@ -69,25 +69,25 @@ void ImGuiRenderer::init(ImGuiContext *context)
 	vertex_shader = visual_api->loadShaderFromMemory(
 		reinterpret_cast<const uint8_t *>(vertex_shader_source.c_str()),
 		static_cast<uint32_t>(vertex_shader_source.size()),
-		render::backend::ShaderType::VERTEX
+		scapes::foundation::render::ShaderType::VERTEX
 	);
 
 	fragment_shader = visual_api->loadShaderFromMemory(
 		reinterpret_cast<const uint8_t *>(fragment_shader_source.c_str()),
 		static_cast<uint32_t>(fragment_shader_source.size()),
-		render::backend::ShaderType::FRAGMENT
+		scapes::foundation::render::ShaderType::FRAGMENT
 	);
 
 	font_texture = visual_api->createTexture2D(
-		render::backend::Format::R8G8B8A8_UNORM,
+		scapes::foundation::render::Format::R8G8B8A8_UNORM,
 		width,
 		height,
 		1,
 		pixels
 	);
 
-	font_bind_set = driver->createBindSet();
-	driver->bindTexture(font_bind_set, 0, font_texture->gpu_data);
+	font_bind_set = device->createBindSet();
+	device->bindTexture(font_bind_set, 0, font_texture->gpu_data);
 
 	io.Fonts->TexID = reinterpret_cast<ImTextureID>(font_bind_set);
 	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
@@ -96,16 +96,16 @@ void ImGuiRenderer::init(ImGuiContext *context)
 
 void ImGuiRenderer::shutdown()
 {
-	driver->destroyVertexBuffer(vertices);
+	device->destroyVertexBuffer(vertices);
 	vertices = nullptr;
 
-	driver->destroyIndexBuffer(indices);
+	device->destroyIndexBuffer(indices);
 	indices = nullptr;
 
-	driver->destroyBindSet(font_bind_set);
+	device->destroyBindSet(font_bind_set);
 	font_bind_set = nullptr;
 
-	driver->destroyPipelineState(pipeline_state);
+	device->destroyPipelineState(pipeline_state);
 	pipeline_state = nullptr;
 
 	invalidateTextureIDs();
@@ -113,14 +113,14 @@ void ImGuiRenderer::shutdown()
 
 /*
  */
-ImTextureID ImGuiRenderer::fetchTextureID(const render::backend::Texture *texture)
+ImTextureID ImGuiRenderer::fetchTextureID(const scapes::foundation::render::Texture *texture)
 {
 	auto it = registered_textures.find(texture);
 	if (it != registered_textures.end())
 		return it->second;
 
-	render::backend::BindSet *bind_set = driver->createBindSet();
-	driver->bindTexture(bind_set, 0, texture);
+	scapes::foundation::render::BindSet *bind_set = device->createBindSet();
+	device->bindTexture(bind_set, 0, texture);
 
 	registered_textures.insert(std::make_pair(texture, bind_set));
 
@@ -130,7 +130,7 @@ ImTextureID ImGuiRenderer::fetchTextureID(const render::backend::Texture *textur
 void ImGuiRenderer::invalidateTextureIDs()
 {
 	for (auto &it : registered_textures)
-		driver->destroyBindSet(it.second);
+		device->destroyBindSet(it.second);
 
 	registered_textures.clear();
 }
@@ -151,16 +151,16 @@ void ImGuiRenderer::updateBuffers(const ImDrawData *draw_data)
 	static_assert(index_size == 2 || index_size == 4, "Wrong ImDrawIdx size");
 	static_assert(vertex_size == 20, "Wrong ImDrawVert size");
 
-	render::backend::IndexFormat index_format = render::backend::IndexFormat::UINT16;
+	scapes::foundation::render::IndexFormat index_format = scapes::foundation::render::IndexFormat::UINT16;
 	if (index_size == 4)
-		index_format = render::backend::IndexFormat::UINT32;
+		index_format = scapes::foundation::render::IndexFormat::UINT32;
 
 	static const uint8_t num_attributes = 3;
-	static render::backend::VertexAttribute attributes[3] =
+	static scapes::foundation::render::VertexAttribute attributes[3] =
 	{
-		{ render::backend::Format::R32G32_SFLOAT, offsetof(ImDrawVert, pos), },
-		{ render::backend::Format::R32G32_SFLOAT, offsetof(ImDrawVert, uv), },
-		{ render::backend::Format::R8G8B8A8_UNORM, offsetof(ImDrawVert, col), },
+		{ scapes::foundation::render::Format::R32G32_SFLOAT, offsetof(ImDrawVert, pos), },
+		{ scapes::foundation::render::Format::R32G32_SFLOAT, offsetof(ImDrawVert, uv), },
+		{ scapes::foundation::render::Format::R8G8B8A8_UNORM, offsetof(ImDrawVert, col), },
 	};
 
 	// resize index buffer
@@ -168,8 +168,8 @@ void ImGuiRenderer::updateBuffers(const ImDrawData *draw_data)
 	{
 		index_buffer_size = index_size * num_indices;
 
-		driver->destroyIndexBuffer(indices);
-		indices = driver->createIndexBuffer(render::backend::BufferType::DYNAMIC, index_format, num_indices, nullptr);
+		device->destroyIndexBuffer(indices);
+		indices = device->createIndexBuffer(scapes::foundation::render::BufferType::DYNAMIC, index_format, num_indices, nullptr);
 	}
 
 	// resize vertex buffer
@@ -177,12 +177,12 @@ void ImGuiRenderer::updateBuffers(const ImDrawData *draw_data)
 	{
 		vertex_buffer_size = vertex_size * num_vertices;
 
-		driver->destroyVertexBuffer(vertices);
-		vertices = driver->createVertexBuffer(render::backend::BufferType::DYNAMIC, vertex_size, num_vertices, num_attributes, attributes, nullptr);
+		device->destroyVertexBuffer(vertices);
+		vertices = device->createVertexBuffer(scapes::foundation::render::BufferType::DYNAMIC, vertex_size, num_vertices, num_attributes, attributes, nullptr);
 	}
 
-	ImDrawVert *vertex_data = reinterpret_cast<ImDrawVert *>(driver->map(vertices));
-	ImDrawIdx *index_data = reinterpret_cast<ImDrawIdx *>(driver->map(indices));
+	ImDrawVert *vertex_data = reinterpret_cast<ImDrawVert *>(device->map(vertices));
+	ImDrawIdx *index_data = reinterpret_cast<ImDrawIdx *>(device->map(indices));
 
 	for (int i = 0; i < draw_data->CmdListsCount; ++i)
 	{
@@ -193,37 +193,37 @@ void ImGuiRenderer::updateBuffers(const ImDrawData *draw_data)
 		index_data += commands->IdxBuffer.Size;
 	}
 
-	driver->unmap(vertices);
-	driver->unmap(indices);
+	device->unmap(vertices);
+	device->unmap(indices);
 }
 
 void ImGuiRenderer::setupRenderState(const ImDrawData *draw_data)
 {
-	driver->setVertexStream(pipeline_state, 0, vertices);
+	device->setVertexStream(pipeline_state, 0, vertices);
 
-	driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader.get()->shader);
-	driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader.get()->shader);
+	device->setShader(pipeline_state, scapes::foundation::render::ShaderType::VERTEX, vertex_shader.get()->shader);
+	device->setShader(pipeline_state, scapes::foundation::render::ShaderType::FRAGMENT, fragment_shader.get()->shader);
 
 	float L = draw_data->DisplayPos.x;
 	float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
 	float T = draw_data->DisplayPos.y;
 	float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
 
-	if (!driver->isFlipped())
+	if (!device->isFlipped())
 		std::swap(T,B);
 
-	glm::mat4 projection = glm::ortho(L, R, B, T, 0.0f, 1.0f);
+	scapes::foundation::math::mat4 projection = scapes::foundation::math::ortho(L, R, B, T, 0.0f, 1.0f);
 
-	driver->setPushConstants(pipeline_state, sizeof(glm::mat4), &projection);
+	device->setPushConstants(pipeline_state, sizeof(scapes::foundation::math::mat4), &projection);
 
-	driver->setBlending(pipeline_state, true);
-	driver->setBlendFactors(pipeline_state, render::backend::BlendFactor::SRC_ALPHA, render::backend::BlendFactor::ONE_MINUS_SRC_ALPHA);
-	driver->setCullMode(pipeline_state, render::backend::CullMode::NONE);
-	driver->setDepthWrite(pipeline_state, false);
-	driver->setDepthTest(pipeline_state, false);
+	device->setBlending(pipeline_state, true);
+	device->setBlendFactors(pipeline_state, scapes::foundation::render::BlendFactor::SRC_ALPHA, scapes::foundation::render::BlendFactor::ONE_MINUS_SRC_ALPHA);
+	device->setCullMode(pipeline_state, scapes::foundation::render::CullMode::NONE);
+	device->setDepthWrite(pipeline_state, false);
+	device->setDepthTest(pipeline_state, false);
 }
 
-void ImGuiRenderer::render(render::backend::CommandBuffer *command_buffer)
+void ImGuiRenderer::render(scapes::foundation::render::CommandBuffer *command_buffer)
 {
 	const ImDrawData *draw_data = ImGui::GetDrawData();
 	const ImVec2 &clip_offset = draw_data->DisplayPos;
@@ -237,7 +237,7 @@ void ImGuiRenderer::render(render::backend::CommandBuffer *command_buffer)
 	uint32_t index_offset = 0;
 	int32_t vertex_offset = 0;
 
-	driver->setViewport(pipeline_state, 0, 0, static_cast<uint32_t>(fb_size.x), static_cast<uint32_t>(fb_size.y));
+	device->setViewport(pipeline_state, 0, 0, static_cast<uint32_t>(fb_size.x), static_cast<uint32_t>(fb_size.y));
 
 	for (int i = 0; i < draw_data->CmdListsCount; ++i)
 	{
@@ -260,15 +260,15 @@ void ImGuiRenderer::render(render::backend::CommandBuffer *command_buffer)
 				uint32_t base_index = index_offset + command.IdxOffset;
 				int32_t base_vertex = vertex_offset + command.VtxOffset;
 
-				render::backend::BindSet *bind_set = reinterpret_cast<render::backend::BindSet *>(command.TextureId);
-				driver->setBindSet(pipeline_state, 0, bind_set);
+				scapes::foundation::render::BindSet *bind_set = reinterpret_cast<scapes::foundation::render::BindSet *>(command.TextureId);
+				device->setBindSet(pipeline_state, 0, bind_set);
 
 				float x0 = (command.ClipRect.x - clip_offset.x) * clip_scale.x;
 				float y0 = (command.ClipRect.y - clip_offset.y) * clip_scale.y;
 				float x1 = (command.ClipRect.z - clip_offset.x) * clip_scale.x;
 				float y1 = (command.ClipRect.w - clip_offset.y) * clip_scale.y;
 				
-				if (driver->isFlipped())
+				if (device->isFlipped())
 				{
 					y0 = fb_size.y - y0;
 					y1 = fb_size.y - y1;
@@ -281,8 +281,8 @@ void ImGuiRenderer::render(render::backend::CommandBuffer *command_buffer)
 				uint32_t width = static_cast<uint32_t>(x1 - x0);
 				uint32_t height = static_cast<uint32_t>(y1 - y0);
 
-				driver->setScissor(pipeline_state, static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
-				driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, indices, num_indices, base_index, base_vertex, 1, 0);
+				device->setScissor(pipeline_state, static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
+				device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, indices, num_indices, base_index, base_vertex, 1, 0);
 			}
 		}
 

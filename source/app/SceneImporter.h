@@ -2,16 +2,6 @@
 
 #include <scapes/visual/Fwd.h>
 
-namespace game
-{
-	class World;
-}
-
-namespace render::backend
-{
-	class Driver;
-}
-
 class ApplicationResources;
 
 struct cgltf_mesh;
@@ -22,7 +12,7 @@ struct aiMesh;
 class SceneImporter
 {
 public:
-	SceneImporter(game::World *world, scapes::visual::API *visual_api);
+	SceneImporter(scapes::foundation::game::World *world, scapes::visual::API *visual_api);
 	~SceneImporter();
 
 	bool importCGLTF(const char *path, ApplicationResources *resources);
@@ -34,6 +24,6 @@ private:
 	scapes::visual::MeshHandle import_assimp_mesh(const aiMesh *mesh);
 
 private:
-	game::World *world {nullptr};
+	scapes::foundation::game::World *world {nullptr};
 	scapes::visual::API *visual_api {nullptr};
 };

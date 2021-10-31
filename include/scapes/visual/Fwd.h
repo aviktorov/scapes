@@ -1,6 +1,6 @@
 #pragma once
 
-#include <common/ResourceManager.h>
+#include <scapes/foundation/Fwd.h>
 
 namespace scapes::visual
 {
@@ -22,9 +22,9 @@ namespace scapes::visual
 		struct Texture;
 	}
 
-	typedef ::ResourceHandle<resources::IBLTexture> IBLTextureHandle;
-	typedef ::ResourceHandle<resources::Mesh> MeshHandle;
-	typedef ::ResourceHandle<resources::RenderMaterial> RenderMaterialHandle;
-	typedef ::ResourceHandle<resources::Shader> ShaderHandle;
-	typedef ::ResourceHandle<resources::Texture> TextureHandle;
+	typedef foundation::resources::ResourceHandle<resources::IBLTexture> IBLTextureHandle;
+	typedef foundation::resources::ResourceHandle<resources::Mesh> MeshHandle;
+	typedef foundation::resources::ResourceHandle<resources::RenderMaterial> RenderMaterialHandle;
+	typedef foundation::resources::ResourceHandle<resources::Shader> ShaderHandle;
+	typedef foundation::resources::ResourceHandle<resources::Texture> TextureHandle;
 }

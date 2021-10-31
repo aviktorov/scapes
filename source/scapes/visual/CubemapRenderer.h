@@ -1,22 +1,15 @@
 #pragma once
 
-#include <render/backend/Driver.h>
+#include <scapes/visual/Fwd.h>
 
 namespace scapes::visual
 {
-	namespace resources
-	{
-		struct Shader;
-		struct Mesh;
-		struct Texture;
-	}
-
 	/*
 	 */
 	class CubemapRenderer
 	{
 	public:
-		CubemapRenderer(::render::backend::Driver *driver);
+		CubemapRenderer(foundation::render::Device *device);
 		~CubemapRenderer();
 
 		void init(
@@ -36,12 +29,12 @@ namespace scapes::visual
 		);
 
 	private:
-		::render::backend::Driver *driver {nullptr};
-		::render::backend::BindSet *bind_set {nullptr};
-		::render::backend::CommandBuffer *command_buffer {nullptr};
-		::render::backend::FrameBuffer *frame_buffer {nullptr};
-		::render::backend::RenderPass *render_pass {nullptr};
-		::render::backend::UniformBuffer *uniform_buffer {nullptr};
-		::render::backend::PipelineState *pipeline_state {nullptr};
+		foundation::render::Device *device {nullptr};
+		foundation::render::BindSet *bind_set {nullptr};
+		foundation::render::CommandBuffer *command_buffer {nullptr};
+		foundation::render::FrameBuffer *frame_buffer {nullptr};
+		foundation::render::RenderPass *render_pass {nullptr};
+		foundation::render::UniformBuffer *uniform_buffer {nullptr};
+		foundation::render::PipelineState *pipeline_state {nullptr};
 	};
 }

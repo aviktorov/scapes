@@ -1,9 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <unordered_map>
-#include <render/backend/Driver.h>
-#include <common/ResourceManager.h>
+
 #include <scapes/visual/API.h>
 
 namespace render::shaders
@@ -43,8 +41,8 @@ namespace config
 class ApplicationResources
 {
 public:
-	ApplicationResources(render::backend::Driver *driver, scapes::visual::API *visual_api)
-		: driver(driver), visual_api(visual_api) { }
+	ApplicationResources(scapes::foundation::render::Device *device, scapes::visual::API *visual_api)
+		: device(device), visual_api(visual_api) { }
 
 	virtual ~ApplicationResources();
 
@@ -70,7 +68,7 @@ public:
 	inline scapes::visual::ShaderHandle getShader(int index) const { return loaded_shaders[index]; }
 
 private:
-	render::backend::Driver *driver {nullptr};
+	scapes::foundation::render::Device *device {nullptr};
 	scapes::visual::API *visual_api {nullptr};
 
 	scapes::visual::MeshHandle fullscreen_quad;

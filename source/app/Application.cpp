@@ -2,8 +2,8 @@
 #include "ApplicationResources.h"
 #include "IO.h"
 
-#include <render/shaders/Compiler.h>
-#include <render/backend/Driver.h>
+#include <scapes/foundation/shaders/Compiler.h>
+#include <scapes/foundation/render/Device.h>
 
 #include <scapes/visual/API.h>
 #include <scapes/visual/Components.h>
@@ -50,8 +50,8 @@ void Application::update()
 
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-	const glm::vec3 &up = {0.0f, 0.0f, 1.0f};
-	const glm::vec3 &zero = {0.0f, 0.0f, 0.0f};
+	const scapes::foundation::math::vec3 &up = {0.0f, 0.0f, 1.0f};
+	const scapes::foundation::math::vec3 &zero = {0.0f, 0.0f, 0.0f};
 
 	const float viewport_width = static_cast<float>(width);
 	const float viewport_height = static_cast<float>(height);
@@ -59,34 +59,34 @@ void Application::update()
 	const float zNear = 0.1f;
 	const float zFar = 10000.0f;
 
-	glm::vec3 cameraPos;
-	cameraPos.x = static_cast<float>(glm::cos(camera_state.phi) * glm::cos(camera_state.theta) * camera_state.radius);
-	cameraPos.y = static_cast<float>(glm::sin(camera_state.phi) * glm::cos(camera_state.theta) * camera_state.radius);
-	cameraPos.z = static_cast<float>(glm::sin(camera_state.theta) * camera_state.radius);
+	scapes::foundation::math::vec3 cameraPos;
+	cameraPos.x = static_cast<float>(scapes::foundation::math::cos(camera_state.phi) * scapes::foundation::math::cos(camera_state.theta) * camera_state.radius);
+	cameraPos.y = static_cast<float>(scapes::foundation::math::sin(camera_state.phi) * scapes::foundation::math::cos(camera_state.theta) * camera_state.radius);
+	cameraPos.z = static_cast<float>(scapes::foundation::math::sin(camera_state.theta) * camera_state.radius);
 
-	glm::vec4 cameraParams;
+	scapes::foundation::math::vec4 cameraParams;
 	cameraParams.x = zNear;
 	cameraParams.y = zFar;
 	cameraParams.z = 1.0f / zNear;
 	cameraParams.w = 1.0f / zFar;
 
-	camera_state.view = glm::lookAt(cameraPos, zero, up);
-	camera_state.projection = glm::perspective(glm::radians(60.0f), aspect, zNear, zFar);
+	camera_state.view = scapes::foundation::math::lookAt(cameraPos, zero, up);
+	camera_state.projection = scapes::foundation::math::perspective(scapes::foundation::math::radians(60.0f), aspect, zNear, zFar);
 
 	// projection matrix is adjusted for OpenGL so we need to flip it for non-flipped backends :)
-	if (!driver->isFlipped())
+	if (!device->isFlipped())
 		camera_state.projection[1][1] *= -1;
 
 	// TODO: move to render graph
 	// patch projection matrix for temporal supersampling
-	const glm::vec2 &temporalSample = application_state.temporalSamples[application_state.currentTemporalFrame];
+	const scapes::foundation::math::vec2 &temporalSample = application_state.temporalSamples[application_state.currentTemporalFrame];
 	camera_state.projection[2][0] = temporalSample.x / width;
 	camera_state.projection[2][1] = temporalSample.y / height;
 
 	application_state.currentTemporalFrame = (application_state.currentTemporalFrame + 1) % ApplicationState::MAX_TEMPORAL_FRAMES;
 
-	camera_state.iview = glm::inverse(camera_state.view);
-	camera_state.iprojection = glm::inverse(camera_state.projection);
+	camera_state.iview = scapes::foundation::math::inverse(camera_state.view);
+	camera_state.iprojection = scapes::foundation::math::inverse(camera_state.projection);
 	camera_state.cameraPosWS = cameraPos;
 	camera_state.cameraParams = cameraParams;
 	application_state.currentTime = time;
@@ -184,7 +184,7 @@ void Application::update()
  */
 void Application::render()
 {
-	render::backend::CommandBuffer *command_buffer = swap_chain->acquire();
+	scapes::foundation::render::CommandBuffer *command_buffer = swap_chain->acquire();
 
 	if (!command_buffer)
 	{
@@ -197,7 +197,7 @@ void Application::render()
 	
 	render_graph->render(command_buffer, swap_chain->getBackend(), application_bindings, camera_bindings);
 
-	driver->submitSyncked(command_buffer, swap_chain->getBackend());
+	device->submitSyncked(command_buffer, swap_chain->getBackend());
 
 	if (!swap_chain->present(command_buffer) || windowResized)
 	{
@@ -234,7 +234,7 @@ void Application::mainloop()
 		glfwPollEvents();
 	}
 
-	driver->wait();
+	device->wait();
 }
 
 /*
@@ -289,8 +289,8 @@ void Application::onMousePosition(GLFWwindow* window, double mouseX, double mous
 		application->camera_state.phi -= deltaX * application->input_state.rotationSpeed;
 		application->camera_state.theta += deltaY * application->input_state.rotationSpeed;
 
-		application->camera_state.phi = std::fmod(application->camera_state.phi, glm::two_pi<double>());
-		application->camera_state.theta = std::clamp<double>(application->camera_state.theta, -glm::half_pi<double>(), glm::half_pi<double>());
+		application->camera_state.phi = std::fmod(application->camera_state.phi, scapes::foundation::math::two_pi<double>());
+		application->camera_state.theta = std::clamp<double>(application->camera_state.theta, -scapes::foundation::math::half_pi<double>(), scapes::foundation::math::half_pi<double>());
 	}
 
 	application->input_state.lastMouseX = mouseX;
@@ -318,18 +318,18 @@ void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
  */
 void Application::initRenderScene()
 {
-	resource_manager = ResourceManager::create();
+	resource_manager = scapes::foundation::resources::ResourceManager::create();
 
-	world = game::World::create();
-	visual_api = scapes::visual::API::create(resource_manager, world, driver, compiler);
+	world = scapes::foundation::game::World::create();
+	visual_api = scapes::visual::API::create(resource_manager, world, device, compiler);
 
-	application_resources = new ApplicationResources(driver, visual_api);
+	application_resources = new ApplicationResources(device, visual_api);
 	application_resources->init();
 
 	importer = new SceneImporter(world, visual_api);
 	importer->importCGLTF("assets/scenes/blender_splash/blender_splash.glb", application_resources);
 
-	sky_light = game::Entity(world);
+	sky_light = scapes::foundation::game::Entity(world);
 	sky_light.addComponent<scapes::visual::components::SkyLight>(
 		application_resources->getIBLTexture(0),
 		application_resources->getFullscreenQuad(),
@@ -349,10 +349,10 @@ void Application::shutdownRenderScene()
 	scapes::visual::API::destroy(visual_api);
 	visual_api = nullptr;
 
-	game::World::destroy(world);
+	scapes::foundation::game::World::destroy(world);
 	world = nullptr;
 
-	ResourceManager::destroy(resource_manager);
+	scapes::foundation::resources::ResourceManager::destroy(resource_manager);
 	resource_manager = nullptr;
 }
 
@@ -360,7 +360,7 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	render_graph = new RenderGraph(driver, visual_api);
+	render_graph = new RenderGraph(device, visual_api);
 	render_graph->init(application_resources, width, height);
 
 	const uint8_t num_columns = ApplicationState::MAX_TEMPORAL_FRAMES / 4;
@@ -374,7 +374,7 @@ void Application::initRenderers()
 	{
 		for (uint8_t x = 0; x < num_columns; ++x)
 		{
-			glm::vec2 &sample = application_state.temporalSamples[x + y * num_columns];
+			scapes::foundation::math::vec2 &sample = application_state.temporalSamples[x + y * num_columns];
 			sample.x = halton2[x];
 			sample.y = halton3[y];
 
@@ -382,19 +382,19 @@ void Application::initRenderers()
 		}
 	}
 
-	camera_buffer = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, sizeof(CameraState));
-	camera_bindings = driver->createBindSet();
+	camera_buffer = device->createUniformBuffer(scapes::foundation::render::BufferType::DYNAMIC, sizeof(CameraState));
+	camera_bindings = device->createBindSet();
 
-	driver->bindUniformBuffer(camera_bindings, 0, camera_buffer);
+	device->bindUniformBuffer(camera_bindings, 0, camera_buffer);
 
-	camera_gpu_data = driver->map(camera_buffer);
+	camera_gpu_data = device->map(camera_buffer);
 
-	application_buffer = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, sizeof(ApplicationState));
-	application_bindings = driver->createBindSet();
+	application_buffer = device->createUniformBuffer(scapes::foundation::render::BufferType::DYNAMIC, sizeof(ApplicationState));
+	application_bindings = device->createBindSet();
 
-	driver->bindUniformBuffer(application_bindings, 0, application_buffer);
+	device->bindUniformBuffer(application_bindings, 0, application_buffer);
 
-	application_gpu_data = driver->map(application_buffer);
+	application_gpu_data = device->map(application_buffer);
 }
 
 void Application::shutdownRenderers()
@@ -402,20 +402,20 @@ void Application::shutdownRenderers()
 	delete render_graph;
 	render_graph = nullptr;
 
-	driver->unmap(camera_buffer);
-	driver->destroyUniformBuffer(camera_buffer);
+	device->unmap(camera_buffer);
+	device->destroyUniformBuffer(camera_buffer);
 	camera_buffer = nullptr;
 	camera_gpu_data = nullptr;
 
-	driver->destroyBindSet(camera_bindings);
+	device->destroyBindSet(camera_bindings);
 	camera_bindings = nullptr;
 
-	driver->unmap(application_buffer);
-	driver->destroyUniformBuffer(application_buffer);
+	device->unmap(application_buffer);
+	device->destroyUniformBuffer(application_buffer);
 	application_buffer = nullptr;
 	application_gpu_data = nullptr;
 
-	driver->destroyBindSet(application_bindings);
+	device->destroyBindSet(application_bindings);
 	application_bindings = nullptr;
 }
 
@@ -442,16 +442,16 @@ void Application::initDriver()
 {
 	file_system = new ApplicationFileSystem("assets/");
 
-	driver = render::backend::Driver::create("PBR Sandbox", "Scape", render::backend::Api::VULKAN);
-	compiler = render::shaders::Compiler::create(render::shaders::ShaderILType::SPIRV, file_system);
+	device = scapes::foundation::render::Device::create("PBR Sandbox", "Scape", scapes::foundation::render::Api::VULKAN);
+	compiler = scapes::foundation::shaders::Compiler::create(scapes::foundation::shaders::ShaderILType::SPIRV, file_system);
 }
 
 void Application::shutdownDriver()
 {
-	render::backend::Driver::destroy(driver);
-	driver = nullptr;
+	scapes::foundation::render::Device::destroy(device);
+	device = nullptr;
 
-	render::shaders::Compiler::destroy(compiler);
+	scapes::foundation::shaders::Compiler::destroy(compiler);
 	compiler = nullptr;
 
 	delete file_system;
@@ -469,7 +469,7 @@ void Application::initSwapChain()
 #endif
 
 	if (!swap_chain)
-		swap_chain = new SwapChain(driver, nativeWindow);
+		swap_chain = new SwapChain(device, nativeWindow);
 
 	swap_chain->init();
 }
@@ -482,7 +482,7 @@ void Application::shutdownSwapChain()
 
 void Application::recreateSwapChain()
 {
-	driver->wait();
+	device->wait();
 
 	swap_chain->recreate();
 	render_graph->resize(width, height);

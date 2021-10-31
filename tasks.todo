@@ -71,10 +71,10 @@ PBR Sandbox:
         ☐ Think about resource / component encapsulation
         ☐ Add naive FileWatcher for resource auto reloading
     Stream 74:
-        ☐ Add SPIR-V cache that will help to avoid redundant shaderc calls
         ☐ Create scapes::foundation module
-            ☐ Move Transform component from scapes::visual
             ☐ Move existing resources / world / driver / etc under scapes::foundation namespace
+            ☐ Move Transform component from scapes::visual
+        ☐ Add SPIR-V cache that will help to avoid redundant shaderc calls
     Stream 73:
         ✔ Profile all resource pipelines @done (10/28/2021, 1:25:25 AM)
     Stream 72:

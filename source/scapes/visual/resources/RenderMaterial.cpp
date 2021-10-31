@@ -1,13 +1,18 @@
 #include <scapes/visual/Resources.h>
 
+using namespace scapes;
 using namespace scapes::visual;
 
 /*
  */
-void ResourcePipeline<resources::RenderMaterial>::destroy(ResourceManager *resource_manager, RenderMaterialHandle handle, render::backend::Driver *driver)
+void ResourcePipeline<resources::RenderMaterial>::destroy(
+	foundation::resources::ResourceManager *resource_manager,
+	RenderMaterialHandle handle,
+	foundation::render::Device *device
+)
 {
 	resources::RenderMaterial *render_material = handle.get();
 
-	driver->destroyBindSet(render_material->bindings);
+	device->destroyBindSet(render_material->bindings);
 	*render_material = {};
 }

@@ -9,23 +9,29 @@ namespace scapes::visual
 	class APIImpl : public API
 	{
 	public:
-		APIImpl(::ResourceManager *resource_manager, ::game::World *world, ::render::backend::Driver *driver, ::render::shaders::Compiler *compiler);
+		APIImpl(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::game::World *world,
+			foundation::render::Device *device,
+			foundation::shaders::Compiler *compiler
+		);
+
 		~APIImpl();
 
 		void drawRenderables(
 			uint8_t material_binding,
-			::render::backend::PipelineState *pipeline_state,
-			::render::backend::CommandBuffer *command_buffer
+			foundation::render::PipelineState *pipeline_state,
+			foundation::render::CommandBuffer *command_buffer
 		) final;
 
 		void drawSkyLights(
 			uint8_t light_binding,
-			::render::backend::PipelineState *pipeline_state,
-			::render::backend::CommandBuffer *command_buffer
+			foundation::render::PipelineState *pipeline_state,
+			foundation::render::CommandBuffer *command_buffer
 		) final;
 
 		TextureHandle createTexture2D(
-			render::backend::Format format,
+			foundation::render::Format format,
 			uint32_t width,
 			uint32_t height,
 			uint32_t num_mips,
@@ -34,7 +40,7 @@ namespace scapes::visual
 		) final;
 
 		TextureHandle createTexture2D(
-			render::backend::Format format,
+			foundation::render::Format format,
 			uint32_t width,
 			uint32_t height,
 			MeshHandle fullscreen_quad,
@@ -43,7 +49,7 @@ namespace scapes::visual
 		) final;
 
 		TextureHandle createTextureCube(
-			render::backend::Format format,
+			foundation::render::Format format,
 			uint32_t size,
 			uint32_t num_mips,
 			const void *data = nullptr,
@@ -56,18 +62,18 @@ namespace scapes::visual
 		) final;
 
 		TextureHandle loadTexture(
-			const URI &uri
+			const foundation::io::URI &uri
 		) final;
 
 		ShaderHandle loadShaderFromMemory(
 			const uint8_t *data,
 			size_t size,
-			render::backend::ShaderType shader_type
+			foundation::render::ShaderType shader_type
 		) final;
 
 		ShaderHandle loadShader(
-			const URI &uri,
-			render::backend::ShaderType shader_type
+			const foundation::io::URI &uri,
+			foundation::render::ShaderType shader_type
 		) final;
 
 		MeshHandle createMesh(
@@ -86,7 +92,7 @@ namespace scapes::visual
 		) final;
 
 		IBLTextureHandle importIBLTexture(
-			const URI &uri,
+			const foundation::io::URI &uri,
 			const IBLTextureCreateData &create_data
 		) final;
 
@@ -98,10 +104,10 @@ namespace scapes::visual
 		) final;
 
 	private:
-		::ResourceManager *resource_manager {nullptr};
-		::game::World *world {nullptr};
-		::render::backend::Driver *driver {nullptr};
-		::render::shaders::Compiler *compiler {nullptr};
+		foundation::resources::ResourceManager *resource_manager {nullptr};
+		foundation::game::World *world {nullptr};
+		foundation::render::Device *device {nullptr};
+		foundation::shaders::Compiler *compiler {nullptr};
 
 		std::vector<TextureHandle> managed_textures;
 		std::vector<ShaderHandle> managed_shaders;
@@ -109,7 +115,7 @@ namespace scapes::visual
 		std::vector<RenderMaterialHandle> managed_render_materials;
 		std::vector<IBLTextureHandle> managed_ibl_textures;
 
-		::game::Query<components::Transform, components::Renderable> *renderable_query {nullptr};
-		::game::Query<components::SkyLight> *skylight_query {nullptr};
+		foundation::game::Query<components::Transform, components::Renderable> *renderable_query {nullptr};
+		foundation::game::Query<components::SkyLight> *skylight_query {nullptr};
 	};
 }

@@ -2,31 +2,16 @@
 
 #include <scapes/visual/Fwd.h>
 
-#include <common/Math.h>
-#include <game/World.h>
-
-namespace render::shaders
-{
-	class Compiler;
-}
-
-namespace render::backend
-{
-	class Driver;
-	struct UniformBuffer;
-	struct BindSet;
-}
-
-class ResourceManager;
+#include <scapes/foundation/math/Math.h>
+#include <scapes/foundation/game/World.h>
+#include <scapes/foundation/game/Entity.h>
 
 struct GLFWwindow;
 class ApplicationFileSystem;
 class ApplicationResources;
 class RenderGraph;
-class Renderer;
 class ImGuiRenderer;
 class SceneImporter;
-class SkyLight;
 class SwapChain;
 
 /*
@@ -47,26 +32,26 @@ struct ApplicationState
 	// CPU state (not included in UBO)
 	int currentTemporalFrame {0};
 	int currentEnvironment {0};
-	glm::vec2 temporalSamples[MAX_TEMPORAL_FRAMES];
+	scapes::foundation::math::vec2 temporalSamples[MAX_TEMPORAL_FRAMES];
 	bool firstFrame {true};
 };
 
 struct CameraState
 {
 	// Render state (synchronized with UBO)
-	glm::mat4 view;
-	glm::mat4 iview;
-	glm::mat4 projection;
-	glm::mat4 iprojection;
-	glm::mat4 viewOld;
-	glm::vec4 cameraParams;
-	glm::vec3 cameraPosWS;
+	scapes::foundation::math::mat4 view;
+	scapes::foundation::math::mat4 iview;
+	scapes::foundation::math::mat4 projection;
+	scapes::foundation::math::mat4 iprojection;
+	scapes::foundation::math::mat4 viewOld;
+	scapes::foundation::math::vec4 cameraParams;
+	scapes::foundation::math::vec3 cameraPosWS;
 
 	// CPU state (not included in UBO)
 	double phi {0.0f};
 	double theta {0.0f};
 	double radius {2.0f};
-	glm::vec3 target;
+	scapes::foundation::math::vec3 target;
 };
 
 struct InputState
@@ -122,7 +107,7 @@ private:
 	uint32_t height {0};
 
 	SceneImporter *importer {nullptr};
-	game::Entity sky_light;
+	scapes::foundation::game::Entity sky_light;
 
 	RenderGraph *render_graph {nullptr};
 	ApplicationResources *application_resources {nullptr};
@@ -132,18 +117,18 @@ private:
 	InputState input_state;
 
 	SwapChain *swap_chain {nullptr};
-	render::backend::Driver *driver {nullptr};
-	render::shaders::Compiler *compiler {nullptr};
-	ResourceManager *resource_manager {nullptr};
-	game::World *world {nullptr};
+	scapes::foundation::render::Device *device {nullptr};
+	scapes::foundation::shaders::Compiler *compiler {nullptr};
+	scapes::foundation::game::World *world {nullptr};
+	scapes::foundation::resources::ResourceManager *resource_manager {nullptr};
 	scapes::visual::API *visual_api {nullptr};
 
 	// TODO: make this better
-	render::backend::UniformBuffer *camera_buffer {nullptr};
-	render::backend::BindSet *camera_bindings {nullptr};
+	scapes::foundation::render::UniformBuffer *camera_buffer {nullptr};
+	scapes::foundation::render::BindSet *camera_bindings {nullptr};
 	void *camera_gpu_data {nullptr};
 
-	render::backend::UniformBuffer *application_buffer {nullptr};
-	render::backend::BindSet *application_bindings {nullptr};
+	scapes::foundation::render::UniformBuffer *application_buffer {nullptr};
+	scapes::foundation::render::BindSet *application_bindings {nullptr};
 	void *application_gpu_data {nullptr};
 };

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <scapes/visual/Fwd.h>
+#include <scapes/foundation/math/Math.h>
+#include <scapes/foundation/resources/ResourceManager.h>
 
-#include <render/backend/Driver.h>
-#include <common/Math.h>
+#include <scapes/visual/Fwd.h>
 
 class ApplicationResources;
 struct Shader;
@@ -26,22 +26,22 @@ namespace render::shaders
 
 struct GBuffer
 {
-	render::backend::Texture *base_color {nullptr};     // rgba8, rga - albedo for dielectrics, f0 for conductors, a - unused
-	render::backend::Texture *shading {nullptr};        // rg8,   r - roughness, g - metalness
-	render::backend::Texture *normal {nullptr};         // rg16f, packed normal without z
-	render::backend::Texture *depth {nullptr};          // d32f,  linear depth
-	render::backend::Texture *velocity {nullptr};       // rg16f, uv motion vector
-	render::backend::FrameBuffer *frame_buffer {nullptr};
-	render::backend::BindSet *bindings {nullptr};
-	render::backend::BindSet *velocity_bindings {nullptr};
+	scapes::foundation::render::Texture *base_color {nullptr};     // rgba8, rga - albedo for dielectrics, f0 for conductors, a - unused
+	scapes::foundation::render::Texture *shading {nullptr};        // rg8,   r - roughness, g - metalness
+	scapes::foundation::render::Texture *normal {nullptr};         // rg16f, packed normal without z
+	scapes::foundation::render::Texture *depth {nullptr};          // d32f,  linear depth
+	scapes::foundation::render::Texture *velocity {nullptr};       // rg16f, uv motion vector
+	scapes::foundation::render::FrameBuffer *frame_buffer {nullptr};
+	scapes::foundation::render::BindSet *bindings {nullptr};
+	scapes::foundation::render::BindSet *velocity_bindings {nullptr};
 };
 
 struct LBuffer
 {
-	render::backend::Texture *diffuse {nullptr};        // rgb16f, hdr linear color
-	render::backend::Texture *specular {nullptr};       // rga16f, hdr linear color
-	render::backend::FrameBuffer *frame_buffer {nullptr};
-	render::backend::BindSet *bindings {nullptr};
+	scapes::foundation::render::Texture *diffuse {nullptr};        // rgb16f, hdr linear color
+	scapes::foundation::render::Texture *specular {nullptr};       // rga16f, hdr linear color
+	scapes::foundation::render::FrameBuffer *frame_buffer {nullptr};
+	scapes::foundation::render::BindSet *bindings {nullptr};
 };
 
 struct SSAOKernel
@@ -58,13 +58,13 @@ struct SSAOKernel
 		float radius {1.0f};
 		float intensity {1.0f};
 		float alignment[1]; // we need 16 byte alignment
-		glm::vec4 samples[MAX_SAMPLES];
+		scapes::foundation::math::vec4 samples[MAX_SAMPLES];
 	};
 
 	CPUData *cpu_data {nullptr};
-	render::backend::UniformBuffer *gpu_data {nullptr};
-	render::backend::Texture *noise_texture {nullptr}; // rg16f, random basis rotation in screen-space
-	render::backend::BindSet *bindings {nullptr};
+	scapes::foundation::render::UniformBuffer *gpu_data {nullptr};
+	scapes::foundation::render::Texture *noise_texture {nullptr}; // rg16f, random basis rotation in screen-space
+	scapes::foundation::render::BindSet *bindings {nullptr};
 };
 
 struct SSRData
@@ -79,17 +79,17 @@ struct SSRData
 	};
 
 	CPUData *cpu_data {nullptr};
-	render::backend::UniformBuffer *gpu_data {nullptr};
-	render::backend::BindSet *bindings {nullptr};
+	scapes::foundation::render::UniformBuffer *gpu_data {nullptr};
+	scapes::foundation::render::BindSet *bindings {nullptr};
 };
 
 struct SSRResolve
 {
-	render::backend::Texture *resolve {nullptr};   // rgba16f, hdr indirect specular linear color
-	render::backend::Texture *velocity {nullptr};  // rg16f, reprojected reflected surface motion vectors
-	render::backend::BindSet *resolve_bindings {nullptr};
-	render::backend::BindSet *velocity_bindings {nullptr};
-	render::backend::FrameBuffer *frame_buffer {nullptr};
+	scapes::foundation::render::Texture *resolve {nullptr};   // rgba16f, hdr indirect specular linear color
+	scapes::foundation::render::Texture *velocity {nullptr};  // rg16f, reprojected reflected surface motion vectors
+	scapes::foundation::render::BindSet *resolve_bindings {nullptr};
+	scapes::foundation::render::BindSet *velocity_bindings {nullptr};
+	scapes::foundation::render::FrameBuffer *frame_buffer {nullptr};
 };
 
 // SSAO, r8, ao factor
@@ -97,9 +97,9 @@ struct SSRResolve
 // Composite, rgba16f, hdr linear color
 struct RenderBuffer
 {
-	render::backend::Texture *texture {nullptr};
-	render::backend::FrameBuffer *frame_buffer {nullptr};
-	render::backend::BindSet *bindings {nullptr};
+	scapes::foundation::render::Texture *texture {nullptr};
+	scapes::foundation::render::FrameBuffer *frame_buffer {nullptr};
+	scapes::foundation::render::BindSet *bindings {nullptr};
 };
 
 /*
@@ -107,17 +107,22 @@ struct RenderBuffer
 class RenderGraph
 {
 public:
-	RenderGraph(render::backend::Driver *driver, scapes::visual::API *visual_api)
-		: driver(driver), visual_api(visual_api) { }
+	RenderGraph(scapes::foundation::render::Device *device, scapes::visual::API *visual_api)
+		: device(device), visual_api(visual_api) { }
 
 	virtual ~RenderGraph();
 
 	void init(const ApplicationResources *resources, uint32_t width, uint32_t height);
 	void shutdown();
 	void resize(uint32_t width, uint32_t height);
-	void render(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
+	void render(
+		scapes::foundation::render::CommandBuffer *command_buffer,
+		scapes::foundation::render::SwapChain *swap_chain,
+		scapes::foundation::render::BindSet *application_bindings,
+		scapes::foundation::render::BindSet *camera_bindings
+	);
 
-	ImTextureID fetchTextureID(const render::backend::Texture *texture);
+	ImTextureID fetchTextureID(const scapes::foundation::render::Texture *texture);
 
 	const GBuffer &getGBuffer() const { return gbuffer; }
 	const LBuffer &getLBuffer() const { return lbuffer; }
@@ -151,7 +156,7 @@ private:
 	void initSSRData(scapes::visual::TextureHandle blue_noise);
 	void shutdownSSRData();
 
-	void initRenderBuffer(RenderBuffer &ssr, render::backend::Format format, uint32_t width, uint32_t height);
+	void initRenderBuffer(RenderBuffer &ssr, scapes::foundation::render::Format format, uint32_t width, uint32_t height);
 	void shutdownRenderBuffer(RenderBuffer &ssr);
 
 	void initSSRResolve(SSRResolve &ssr, uint32_t width, uint32_t height);
@@ -160,23 +165,72 @@ private:
 	void initLBuffer(uint32_t width, uint32_t height);
 	void shutdownLBuffer();
 
-	void renderGBuffer(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
-	void renderSSAO(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
-	void renderSSAOBlur(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings);
-	void renderSSRTrace(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
-	void renderSSRResolve(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *application_bindings, render::backend::BindSet *camera_bindings);
-	void renderSSRTemporalFilter(render::backend::CommandBuffer *command_buffer);
-	void renderLBuffer(render::backend::CommandBuffer *command_buffer, render::backend::BindSet *camera_bindings);
-	void renderComposite(render::backend::CommandBuffer *command_buffer);
-	void renderCompositeTemporalFilter(render::backend::CommandBuffer *command_buffer);
-	void renderTemporalFilter(RenderBuffer &current, const RenderBuffer &old, const RenderBuffer &temp, const RenderBuffer &velocity, render::backend::CommandBuffer *command_buffer);
-	void renderToSwapChain(render::backend::CommandBuffer *command_buffer, render::backend::SwapChain *swap_chain);
+	void renderGBuffer(
+		scapes::foundation::render::CommandBuffer *command_buffer,
+		scapes::foundation::render::BindSet *application_bindings,
+		scapes::foundation::render::BindSet *camera_bindings
+	);
 
-	void prepareOldTexture(const RenderBuffer &old, render::backend::CommandBuffer *command_buffer);
+	void renderSSAO(
+		scapes::foundation::render::CommandBuffer *command_buffer,
+		scapes::foundation::render::BindSet *camera_bindings
+	);
+
+	void renderSSAOBlur(
+		scapes::foundation::render::CommandBuffer *command_buffer,
+		scapes::foundation::render::BindSet *application_bindings
+	);
+
+	void renderSSRTrace(
+		scapes::foundation::render::CommandBuffer *command_buffer,
+		scapes::foundation::render::BindSet *application_bindings,
+		scapes::foundation::render::BindSet *camera_bindings
+	);
+
+	void renderSSRResolve(
+		scapes::foundation::render::CommandBuffer *command_buffer,
+		scapes::foundation::render::BindSet *application_bindings,
+		scapes::foundation::render::BindSet *camera_bindings
+	);
+
+	void renderSSRTemporalFilter(
+		scapes::foundation::render::CommandBuffer *command_buffer
+	);
+
+	void renderLBuffer(
+		scapes::foundation::render::CommandBuffer *command_buffer,
+		scapes::foundation::render::BindSet *camera_bindings
+	);
+
+	void renderComposite(
+		scapes::foundation::render::CommandBuffer *command_buffer
+	);
+
+	void renderCompositeTemporalFilter(
+		scapes::foundation::render::CommandBuffer *command_buffer
+	);
+
+	void renderTemporalFilter(
+		RenderBuffer &current,
+		const RenderBuffer &old,
+		const RenderBuffer &temp,
+		const RenderBuffer &velocity,
+		scapes::foundation::render::CommandBuffer *command_buffer
+	);
+
+	void renderToSwapChain(
+		scapes::foundation::render::CommandBuffer *command_buffer,
+		scapes::foundation::render::SwapChain *swap_chain
+	);
+
+	void prepareOldTexture(
+		const RenderBuffer &old,
+		scapes::foundation::render::CommandBuffer *command_buffer
+	);
 
 private:
-	render::backend::Driver *driver {nullptr};
-	render::backend::PipelineState *pipeline_state {nullptr};
+	scapes::foundation::render::Device *device {nullptr};
+	scapes::foundation::render::PipelineState *pipeline_state {nullptr};
 	scapes::visual::API *visual_api {nullptr};
 
 	GBuffer gbuffer;
@@ -201,13 +255,13 @@ private:
 
 	ImGuiRenderer *imgui_renderer {nullptr};
 
-	render::backend::RenderPass *gbuffer_render_pass {nullptr};
-	render::backend::RenderPass *lbuffer_render_pass {nullptr};
-	render::backend::RenderPass *ssr_resolve_render_pass {nullptr};
-	render::backend::RenderPass *ssao_render_pass {nullptr};
-	render::backend::RenderPass *hdr_render_pass {nullptr};
-	render::backend::RenderPass *hdr_clear_render_pass {nullptr};
-	render::backend::RenderPass *swap_chain_render_pass {nullptr};
+	scapes::foundation::render::RenderPass *gbuffer_render_pass {nullptr};
+	scapes::foundation::render::RenderPass *lbuffer_render_pass {nullptr};
+	scapes::foundation::render::RenderPass *ssr_resolve_render_pass {nullptr};
+	scapes::foundation::render::RenderPass *ssao_render_pass {nullptr};
+	scapes::foundation::render::RenderPass *hdr_render_pass {nullptr};
+	scapes::foundation::render::RenderPass *hdr_clear_render_pass {nullptr};
+	scapes::foundation::render::RenderPass *swap_chain_render_pass {nullptr};
 
 	scapes::visual::MeshHandle fullscreen_quad;
 

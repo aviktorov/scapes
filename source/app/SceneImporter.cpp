@@ -5,9 +5,9 @@
 #include <scapes/visual/Resources.h>
 #include <scapes/visual/Components.h>
 
-#include <game/World.h>
-
-#include <common/Math.h>
+#include <scapes/foundation/game/World.h>
+#include <scapes/foundation/game/Entity.h>
+#include <scapes/foundation/math/Math.h>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -22,11 +22,13 @@
 #include <functional>
 #include <map>
 
+using namespace scapes;
+
 /*
  */
-static glm::mat4 toGlm(const aiMatrix4x4 &transform)
+static foundation::math::mat4 toMat4(const aiMatrix4x4 &transform)
 {
-	glm::mat4 result;
+	foundation::math::mat4 result;
 
 	result[0].x = transform.a1; result[1].x = transform.a2; result[2].x = transform.a3; result[3].x = transform.a4;
 	result[0].y = transform.b1; result[1].y = transform.b2; result[2].y = transform.b3; result[3].y = transform.b4;
@@ -36,19 +38,19 @@ static glm::mat4 toGlm(const aiMatrix4x4 &transform)
 	return result;
 }
 
-static glm::vec3 toGlmVec3(const cgltf_float transform[3])
+static foundation::math::vec3 toVec3(const cgltf_float transform[3])
 {
-	return glm::vec3(transform[0], transform[1], transform[2]);
+	return foundation::math::vec3(transform[0], transform[1], transform[2]);
 }
 
-static glm::quat toGlmQuat(const cgltf_float transform[4])
+static foundation::math::quat toQuat(const cgltf_float transform[4])
 {
-	return glm::quat(transform[3], transform[0], transform[1], transform[2]);
+	return foundation::math::quat(transform[3], transform[0], transform[1], transform[2]);
 }
 
-static glm::mat4 toGlmMat4(const cgltf_float transform[16])
+static foundation::math::mat4 toMat4(const cgltf_float transform[16])
 {
-	return glm::mat4(
+	return foundation::math::mat4(
 		transform[0], transform[1], transform[2], transform[3],
 		transform[4], transform[5], transform[6], transform[7],
 		transform[8], transform[9], transform[10], transform[11],
@@ -56,28 +58,28 @@ static glm::mat4 toGlmMat4(const cgltf_float transform[16])
 	);
 }
 
-static glm::mat4 getNodeTransform(const cgltf_node *node)
+static foundation::math::mat4 getNodeTransform(const cgltf_node *node)
 {
 	if (node->has_matrix)
-		return toGlmMat4(node->matrix);
+		return toMat4(node->matrix);
 
-	glm::mat4 result = glm::mat4(1.0f);
+	foundation::math::mat4 result = foundation::math::mat4(1.0f);
 
 	if (node->has_translation)
-		result = glm::translate(glm::mat4(1.0f), toGlmVec3(node->translation));
+		result = foundation::math::translate(foundation::math::mat4(1.0f), toVec3(node->translation));
 
 	if (node->has_rotation)
-		result = result * glm::mat4(toGlmQuat(node->rotation));
+		result = result * foundation::math::mat4(toQuat(node->rotation));
 
 	if (node->has_scale)
-		result = result * glm::scale(glm::mat4(1.0f), toGlmVec3(node->scale));
+		result = result * foundation::math::scale(foundation::math::mat4(1.0f), toVec3(node->scale));
 
 	return result;
 };
 
 /*
  */
-SceneImporter::SceneImporter(game::World *world, scapes::visual::API *visual_api)
+SceneImporter::SceneImporter(foundation::game::World *world, visual::API *visual_api)
 	: world(world), visual_api(visual_api)
 {
 }
@@ -109,16 +111,16 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 	}
 
 	// import meshes
-	std::map<const cgltf_mesh*, scapes::visual::MeshHandle > mapped_meshes;
+	std::map<const cgltf_mesh*, visual::MeshHandle > mapped_meshes;
 
 	for (cgltf_size i = 0; i < data->meshes_count; ++i)
 	{
-		scapes::visual::MeshHandle mesh = import_cgltf_mesh(&data->meshes[i]);
+		visual::MeshHandle mesh = import_cgltf_mesh(&data->meshes[i]);
 		mapped_meshes.insert({&data->meshes[i], mesh});
 	}
 
 	// import images
-	std::map<const cgltf_image *, scapes::visual::TextureHandle > mapped_textures;
+	std::map<const cgltf_image *, visual::TextureHandle > mapped_textures;
 	for (cgltf_size i = 0; i < data->images_count; ++i)
 	{
 		const cgltf_image &image = data->images[i];
@@ -129,16 +131,16 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 		assert(data);
 		assert(size);
 
-		scapes::visual::TextureHandle texture = visual_api->loadTextureFromMemory(data, size);
+		visual::TextureHandle texture = visual_api->loadTextureFromMemory(data, size);
 
 		mapped_textures.insert({&image, texture});
 	}
 
 
 	// import materials
-	std::map<const cgltf_material*, scapes::visual::RenderMaterialHandle > mapped_materials;
+	std::map<const cgltf_material*, visual::RenderMaterialHandle > mapped_materials;
 
-	scapes::visual::RenderMaterialHandle default_material = visual_api->createRenderMaterial(
+	visual::RenderMaterialHandle default_material = visual_api->createRenderMaterial(
 		resources->getDefaultAlbedo(),
 		resources->getDefaultNormal(),
 		resources->getDefaultRoughness(),
@@ -154,10 +156,10 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 
 		// TODO: metalness / roughness maps
 
-		scapes::visual::TextureHandle albedo = resources->getDefaultAlbedo();
-		scapes::visual::TextureHandle normal = resources->getDefaultNormal();
-		scapes::visual::TextureHandle roughness = resources->getDefaultRoughness();
-		scapes::visual::TextureHandle metalness = resources->getDefaultMetalness();
+		visual::TextureHandle albedo = resources->getDefaultAlbedo();
+		visual::TextureHandle normal = resources->getDefaultNormal();
+		visual::TextureHandle roughness = resources->getDefaultRoughness();
+		visual::TextureHandle metalness = resources->getDefaultMetalness();
 
 		if (base_color_texture)
 			albedo = mapped_textures[base_color_texture->image];
@@ -165,30 +167,30 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 		if (normal_texture)
 			normal = mapped_textures[normal_texture->image];
 
-		scapes::visual::RenderMaterialHandle render_material = visual_api->createRenderMaterial(albedo, normal, roughness, metalness);
+		visual::RenderMaterialHandle render_material = visual_api->createRenderMaterial(albedo, normal, roughness, metalness);
 
 		mapped_materials.insert({&material, render_material});
 	}
 
 	// import nodes
-	std::function<void(const cgltf_node*, const glm::mat4&)> import_node;
-	import_node = [&import_node, &mapped_materials, &mapped_meshes, this, default_material](const cgltf_node *node, const glm::mat4 &transform) -> void
+	std::function<void(const cgltf_node*, const foundation::math::mat4&)> import_node;
+	import_node = [&import_node, &mapped_materials, &mapped_meshes, this, default_material](const cgltf_node *node, const foundation::math::mat4 &transform) -> void
 	{
 		if (node->mesh)
 		{
 			auto it = mapped_meshes.find(node->mesh);
 			assert(it != mapped_meshes.end());
 
-			scapes::visual::MeshHandle mesh = it->second;
+			visual::MeshHandle mesh = it->second;
 
-			game::Entity entity = game::Entity(world);
+			foundation::game::Entity entity = foundation::game::Entity(world);
 
 			auto mat_it = mapped_materials.find(node->mesh->primitives[0].material);
 
-			scapes::visual::RenderMaterialHandle material = (mat_it != mapped_materials.end()) ? mat_it->second : default_material;
+			visual::RenderMaterialHandle material = (mat_it != mapped_materials.end()) ? mat_it->second : default_material;
 
-			entity.addComponent<scapes::visual::components::Transform>(transform);
-			entity.addComponent<scapes::visual::components::Renderable>(mesh, material);
+			entity.addComponent<visual::components::Transform>(transform);
+			entity.addComponent<visual::components::Renderable>(mesh, material);
 		}
 
 		for (cgltf_size i = 0; i < node->children_count; ++i)
@@ -239,15 +241,15 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 		dir = std::string(path, strlen(path) - strlen(end));
 	
 	// import meshes
-	std::vector<scapes::visual::MeshHandle > imported_meshes;
+	std::vector<visual::MeshHandle > imported_meshes;
 	for (unsigned int i = 0; i < scene->mNumMeshes; ++i)
 	{
-		scapes::visual::MeshHandle mesh = import_assimp_mesh(scene->mMeshes[i]);
+		visual::MeshHandle mesh = import_assimp_mesh(scene->mMeshes[i]);
 		imported_meshes.push_back(mesh);
 	}
 
 	// import textures
-	std::map<std::string, scapes::visual::TextureHandle > mapped_textures;
+	std::map<std::string, visual::TextureHandle > mapped_textures;
 	for (unsigned int i = 0; i < scene->mNumTextures; ++i)
 	{
 		// TODO: fetch from resource manager
@@ -256,7 +258,7 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 		path_builder << dir << '/' << scene->mTextures[i]->mFilename.C_Str();
 		const std::string &texture_path = path_builder.str();
 
-		scapes::visual::TextureHandle texture = visual_api->loadTexture(texture_path.c_str());
+		visual::TextureHandle texture = visual_api->loadTexture(texture_path.c_str());
 
 		mapped_textures.insert({texture_path, texture});
 	}
@@ -265,8 +267,8 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 	auto import_material_texture = [&mapped_textures, &dir, this, resources](
 		const aiMaterial *material,
 		aiTextureType type,
-		scapes::visual::TextureHandle default_texture
-	) -> scapes::visual::TextureHandle
+		visual::TextureHandle default_texture
+	) -> visual::TextureHandle
 	{
 		aiString path;
 		material->GetTexture(type, 0, &path);
@@ -282,7 +284,7 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 		auto it = mapped_textures.find(texture_path);
 		if (it == mapped_textures.end())
 		{
-			scapes::visual::TextureHandle texture = visual_api->loadTexture(texture_path.c_str());
+			visual::TextureHandle texture = visual_api->loadTexture(texture_path.c_str());
 
 			mapped_textures.insert({texture_path, texture});
 			return texture;
@@ -291,15 +293,15 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 		return it->second;
 	};
 
-	std::vector<scapes::visual::RenderMaterialHandle > imported_materials;
+	std::vector<visual::RenderMaterialHandle > imported_materials;
 	for (unsigned int i = 0; i < scene->mNumMaterials; ++i)
 	{
 		const aiMaterial *material = scene->mMaterials[i];
 
-		scapes::visual::TextureHandle albedo = import_material_texture(material, aiTextureType_DIFFUSE, resources->getDefaultAlbedo());
-		scapes::visual::TextureHandle normal = import_material_texture(material, aiTextureType_HEIGHT, resources->getDefaultNormal());
-		scapes::visual::TextureHandle roughness = import_material_texture(material, aiTextureType_SHININESS, resources->getDefaultRoughness());
-		scapes::visual::TextureHandle metalness = import_material_texture(material, aiTextureType_AMBIENT, resources->getDefaultMetalness());
+		visual::TextureHandle albedo = import_material_texture(material, aiTextureType_DIFFUSE, resources->getDefaultAlbedo());
+		visual::TextureHandle normal = import_material_texture(material, aiTextureType_HEIGHT, resources->getDefaultNormal());
+		visual::TextureHandle roughness = import_material_texture(material, aiTextureType_SHININESS, resources->getDefaultRoughness());
+		visual::TextureHandle metalness = import_material_texture(material, aiTextureType_AMBIENT, resources->getDefaultMetalness());
 
 		imported_materials.push_back(visual_api->createRenderMaterial(albedo, normal, roughness, metalness));
 	}
@@ -313,10 +315,10 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 			unsigned int mesh_index = root->mMeshes[i];
 			int32_t material_index = static_cast<int32_t>(scene->mMeshes[mesh_index]->mMaterialIndex);
 
-			game::Entity entity = game::Entity(world);
+			foundation::game::Entity entity = foundation::game::Entity(world);
 
-			entity.addComponent<scapes::visual::components::Transform>(toGlm(transform));
-			entity.addComponent<scapes::visual::components::Renderable>(imported_meshes[mesh_index], imported_materials[material_index]);
+			entity.addComponent<visual::components::Transform>(toMat4(transform));
+			entity.addComponent<visual::components::Renderable>(imported_meshes[mesh_index], imported_materials[material_index]);
 		}
 
 		for (unsigned int i = 0; i < root->mNumChildren; ++i)
@@ -344,7 +346,7 @@ void SceneImporter::clear()
 
 /*
  */
-scapes::visual::MeshHandle SceneImporter::import_cgltf_mesh(const cgltf_mesh *mesh)
+visual::MeshHandle SceneImporter::import_cgltf_mesh(const cgltf_mesh *mesh)
 {
 	assert(mesh);
 	assert(mesh->primitives_count == 1);
@@ -374,17 +376,17 @@ scapes::visual::MeshHandle SceneImporter::import_cgltf_mesh(const cgltf_mesh *me
 	assert(cgltf_indices && cgltf_positions && cgltf_normals);
 	assert(cgltf_positions->count == cgltf_normals->count);
 
-	scapes::visual::resources::Mesh::Vertex *vertices = nullptr;
+	visual::resources::Mesh::Vertex *vertices = nullptr;
 	uint32_t *indices = nullptr;
 
 	uint32_t num_vertices = static_cast<uint32_t>(cgltf_positions->count);
 	uint32_t num_indices = static_cast<uint32_t>(cgltf_indices->count);
 
 	// TODO: use subresource pools
-	vertices = new scapes::visual::resources::Mesh::Vertex[num_vertices];
+	vertices = new visual::resources::Mesh::Vertex[num_vertices];
 	indices = new uint32_t[num_indices];
 
-	memset(vertices, 0, sizeof(scapes::visual::resources::Mesh::Vertex) * num_vertices);
+	memset(vertices, 0, sizeof(visual::resources::Mesh::Vertex) * num_vertices);
 	memset(indices, 0, sizeof(uint32_t) * num_indices);
 
 	for (cgltf_size i = 0; i < cgltf_positions->count; i++)
@@ -410,7 +412,7 @@ scapes::visual::MeshHandle SceneImporter::import_cgltf_mesh(const cgltf_mesh *me
 	}
 
 	for (cgltf_size i = 0; i < cgltf_positions->count; i++)
-		vertices[i].binormal = glm::cross(vertices[i].normal, glm::vec3(vertices[i].tangent));
+		vertices[i].binormal = foundation::math::cross(vertices[i].normal, foundation::math::vec3(vertices[i].tangent));
 
 	if (cgltf_uv)
 	{
@@ -438,7 +440,7 @@ scapes::visual::MeshHandle SceneImporter::import_cgltf_mesh(const cgltf_mesh *me
 		assert(success);
 	}
 
-	scapes::visual::MeshHandle result = visual_api->createMesh(num_vertices, vertices, num_indices, indices);
+	visual::MeshHandle result = visual_api->createMesh(num_vertices, vertices, num_indices, indices);
 
 	delete[] vertices;
 	delete[] indices;
@@ -446,64 +448,64 @@ scapes::visual::MeshHandle SceneImporter::import_cgltf_mesh(const cgltf_mesh *me
 	return result;
 }
 
-scapes::visual::MeshHandle SceneImporter::import_assimp_mesh(const aiMesh *mesh)
+visual::MeshHandle SceneImporter::import_assimp_mesh(const aiMesh *mesh)
 {
 	assert(mesh != nullptr);
 
-	scapes::visual::resources::Mesh::Vertex *vertices = nullptr;
+	visual::resources::Mesh::Vertex *vertices = nullptr;
 	uint32_t *indices;
 
 	uint32_t num_vertices = mesh->mNumVertices;
 	uint32_t num_indices = mesh->mNumFaces * 3;
 
 	// TODO: use subresource pools
-	vertices = new scapes::visual::resources::Mesh::Vertex[num_vertices];
+	vertices = new visual::resources::Mesh::Vertex[num_vertices];
 	indices = new uint32_t[num_indices];
 
 	aiVector3D *meshVertices = mesh->mVertices;
 
 	for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-		vertices[i].position = glm::vec3(meshVertices[i].x, meshVertices[i].y, meshVertices[i].z);
+		vertices[i].position = foundation::math::vec3(meshVertices[i].x, meshVertices[i].y, meshVertices[i].z);
 
 	aiVector3D *meshTangents = mesh->mTangents;
 	if (meshTangents)
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-			vertices[i].tangent = glm::vec4(meshTangents[i].x, meshTangents[i].y, meshTangents[i].z, 0.0f);
+			vertices[i].tangent = foundation::math::vec4(meshTangents[i].x, meshTangents[i].y, meshTangents[i].z, 0.0f);
 	else
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-			vertices[i].tangent = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+			vertices[i].tangent = foundation::math::vec4(0.0f, 0.0f, 0.0f, 0.0f);
 
 	aiVector3D *meshBinormals = mesh->mBitangents;
 	if (meshBinormals)
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-			vertices[i].binormal = glm::vec3(meshBinormals[i].x, meshBinormals[i].y, meshBinormals[i].z);
+			vertices[i].binormal = foundation::math::vec3(meshBinormals[i].x, meshBinormals[i].y, meshBinormals[i].z);
 	else
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-			vertices[i].binormal = glm::vec3(0.0f, 0.0f, 0.0f);
+			vertices[i].binormal = foundation::math::vec3(0.0f, 0.0f, 0.0f);
 
 	aiVector3D *meshNormals = mesh->mNormals;
 	if (meshNormals)
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-			vertices[i].normal = glm::vec3(meshNormals[i].x, meshNormals[i].y, meshNormals[i].z);
+			vertices[i].normal = foundation::math::vec3(meshNormals[i].x, meshNormals[i].y, meshNormals[i].z);
 	else
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-			vertices[i].normal = glm::vec3(0.0f, 0.0f, 0.0f);
+			vertices[i].normal = foundation::math::vec3(0.0f, 0.0f, 0.0f);
 
 	aiVector3D *meshUVs = mesh->mTextureCoords[0];
 	if (meshUVs)
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-			vertices[i].uv = glm::vec2(meshUVs[i].x, 1.0f - meshUVs[i].y);
+			vertices[i].uv = foundation::math::vec2(meshUVs[i].x, 1.0f - meshUVs[i].y);
 	else
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-			vertices[i].uv = glm::vec2(0.0f, 0.0f);
+			vertices[i].uv = foundation::math::vec2(0.0f, 0.0f);
 
 	aiColor4D *meshColors = mesh->mColors[0];
 	if (meshColors)
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-			vertices[i].color = glm::vec4(meshColors[i].r, meshColors[i].g, meshColors[i].b, meshColors[i].a);
+			vertices[i].color = foundation::math::vec4(meshColors[i].r, meshColors[i].g, meshColors[i].b, meshColors[i].a);
 	else
 		for (unsigned int i = 0; i < mesh->mNumVertices; i++)
-			vertices[i].color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+			vertices[i].color = foundation::math::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	aiFace *meshFaces = mesh->mFaces;
 	unsigned int index = 0;
@@ -511,7 +513,7 @@ scapes::visual::MeshHandle SceneImporter::import_assimp_mesh(const aiMesh *mesh)
 		for (unsigned int faceIndex = 0; faceIndex < meshFaces[i].mNumIndices; faceIndex++)
 			indices[index++] = meshFaces[i].mIndices[faceIndex];
 
-	scapes::visual::MeshHandle result = visual_api->createMesh(num_vertices, vertices, num_indices, indices);
+	visual::MeshHandle result = visual_api->createMesh(num_vertices, vertices, num_indices, indices);
 
 	delete[] vertices;
 	delete[] indices;

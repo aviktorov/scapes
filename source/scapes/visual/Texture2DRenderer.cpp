@@ -2,12 +2,14 @@
 
 #include <scapes/visual/Resources.h>
 
+using namespace scapes::foundation;
+
 namespace scapes::visual
 {
 	/*
 	 */
-	Texture2DRenderer::Texture2DRenderer(render::backend::Driver *driver)
-		: driver(driver)
+	Texture2DRenderer::Texture2DRenderer(render::Device *device)
+		: device(device)
 	{
 	}
 
@@ -23,42 +25,42 @@ namespace scapes::visual
 		assert(target_texture != nullptr);
 
 		// Create framebuffer
-		render::backend::FrameBufferAttachment frame_buffer_attachments[1] = { target_texture->gpu_data };
-		frame_buffer = driver->createFrameBuffer(1, frame_buffer_attachments);
+		render::FrameBufferAttachment frame_buffer_attachments[1] = { target_texture->gpu_data };
+		frame_buffer = device->createFrameBuffer(1, frame_buffer_attachments);
 
 		// Create render pass
-		render::backend::RenderPassAttachment render_pass_attachments[1] =
+		render::RenderPassAttachment render_pass_attachments[1] =
 		{
-			{ target_texture->format, render::backend::Multisample::COUNT_1, render::backend::RenderPassLoadOp::DONT_CARE, render::backend::RenderPassStoreOp::STORE },
+			{ target_texture->format, render::Multisample::COUNT_1, render::RenderPassLoadOp::DONT_CARE, render::RenderPassStoreOp::STORE },
 		};
 
 		uint32_t color_attachments[1] = { 0 };
 
-		render::backend::RenderPassDescription render_pass_description = {};
+		render::RenderPassDescription render_pass_description = {};
 		render_pass_description.num_color_attachments = 1;
 		render_pass_description.color_attachments = color_attachments;
 
-		render_pass = driver->createRenderPass(1, render_pass_attachments, render_pass_description);
+		render_pass = device->createRenderPass(1, render_pass_attachments, render_pass_description);
 
-		command_buffer = driver->createCommandBuffer(render::backend::CommandBufferType::PRIMARY);
+		command_buffer = device->createCommandBuffer(render::CommandBufferType::PRIMARY);
 
-		pipeline_state = driver->createPipelineState();
-		driver->setViewport(pipeline_state, 0, 0, target_texture->width, target_texture->height);
-		driver->setScissor(pipeline_state, 0, 0, target_texture->width, target_texture->height);
+		pipeline_state = device->createPipelineState();
+		device->setViewport(pipeline_state, 0, 0, target_texture->width, target_texture->height);
+		device->setScissor(pipeline_state, 0, 0, target_texture->width, target_texture->height);
 	}
 
 	void Texture2DRenderer::shutdown()
 	{
-		driver->destroyFrameBuffer(frame_buffer);
+		device->destroyFrameBuffer(frame_buffer);
 		frame_buffer = nullptr;
 
-		driver->destroyRenderPass(render_pass);
+		device->destroyRenderPass(render_pass);
 		render_pass = nullptr;
 
-		driver->destroyCommandBuffer(command_buffer);
+		device->destroyCommandBuffer(command_buffer);
 		command_buffer = nullptr;
 
-		driver->destroyPipelineState(pipeline_state);
+		device->destroyPipelineState(pipeline_state);
 		pipeline_state = nullptr;
 	}
 
@@ -73,25 +75,25 @@ namespace scapes::visual
 		assert(vertex_shader != nullptr);
 		assert(fragment_shader != nullptr);
 
-		driver->resetCommandBuffer(command_buffer);
-		driver->beginCommandBuffer(command_buffer);
+		device->resetCommandBuffer(command_buffer);
+		device->beginCommandBuffer(command_buffer);
 
-		driver->beginRenderPass(command_buffer, render_pass, frame_buffer);
+		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
 
-		driver->clearBindSets(pipeline_state);
-		driver->clearShaders(pipeline_state);
-		driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader->shader);
-		driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->shader);
+		device->clearBindSets(pipeline_state);
+		device->clearShaders(pipeline_state);
+		device->setShader(pipeline_state, render::ShaderType::VERTEX, vertex_shader->shader);
+		device->setShader(pipeline_state, render::ShaderType::FRAGMENT, fragment_shader->shader);
 
-		driver->clearVertexStreams(pipeline_state);
-		driver->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
+		device->clearVertexStreams(pipeline_state);
+		device->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
 
-		driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
+		device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
 
-		driver->endRenderPass(command_buffer);
+		device->endRenderPass(command_buffer);
 
-		driver->endCommandBuffer(command_buffer);
-		driver->submit(command_buffer);
-		driver->wait(1, &command_buffer);
+		device->endCommandBuffer(command_buffer);
+		device->submit(command_buffer);
+		device->wait(1, &command_buffer);
 	}
 }

@@ -1,7 +1,8 @@
 #pragma once
 
-#include <common/Math.h>
-#include <common/Type.h>
+#include <scapes/foundation/math/Math.h>
+#include <scapes/foundation/TypeTraits.h>
+
 #include <scapes/visual/Fwd.h>
 
 namespace scapes::visual::components
@@ -11,7 +12,7 @@ namespace scapes::visual::components
 	 */
 	struct Transform
 	{
-		glm::mat4 transform;
+		foundation::math::mat4 transform;
 	};
 
 	template<>

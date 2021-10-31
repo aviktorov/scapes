@@ -1,9 +1,11 @@
 #include "CubemapRenderer.h"
 
 #include <scapes/visual/Resources.h>
-#include <common/Math.h>
+#include <scapes/foundation/math/Math.h>
 
 #include <algorithm>
+
+using namespace scapes::foundation;
 
 namespace scapes::visual
 {
@@ -11,13 +13,13 @@ namespace scapes::visual
 	 */
 	struct CubemapFaceOrientationData
 	{
-		glm::mat4 faces[6];
+		math::mat4 faces[6];
 	};
 
 	/*
 	 */
-	CubemapRenderer::CubemapRenderer(render::backend::Driver *driver)
-		: driver(driver)
+	CubemapRenderer::CubemapRenderer(render::Device *device)
+		: device(device)
 	{
 	}
 
@@ -35,13 +37,13 @@ namespace scapes::visual
 	{
 		// Create uniform buffers
 		uint32_t ubo_size = sizeof(CubemapFaceOrientationData);
-		uniform_buffer = driver->createUniformBuffer(render::backend::BufferType::DYNAMIC, ubo_size);
+		uniform_buffer = device->createUniformBuffer(render::BufferType::DYNAMIC, ubo_size);
 
 		// Create bind set
-		bind_set = driver->createBindSet();
+		bind_set = device->createBindSet();
 
 		// Create framebuffer
-		render::backend::FrameBufferAttachment frame_buffer_attachments[6] =
+		render::FrameBufferAttachment frame_buffer_attachments[6] =
 		{
 			{ target_texture->gpu_data, target_mip, 0, 1 },
 			{ target_texture->gpu_data, target_mip, 1, 1 },
@@ -51,17 +53,17 @@ namespace scapes::visual
 			{ target_texture->gpu_data, target_mip, 5, 1 },
 		};
 
-		frame_buffer = driver->createFrameBuffer(6, frame_buffer_attachments);
+		frame_buffer = device->createFrameBuffer(6, frame_buffer_attachments);
 
 		// Create render pass
-		render::backend::RenderPassClearValue clear_value;
+		render::RenderPassClearValue clear_value;
 		clear_value.as_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-		render::backend::Multisample samples = render::backend::Multisample::COUNT_1;
-		render::backend::RenderPassLoadOp load_op = render::backend::RenderPassLoadOp::CLEAR;
-		render::backend::RenderPassStoreOp store_op = render::backend::RenderPassStoreOp::STORE;
+		render::Multisample samples = render::Multisample::COUNT_1;
+		render::RenderPassLoadOp load_op = render::RenderPassLoadOp::CLEAR;
+		render::RenderPassStoreOp store_op = render::RenderPassStoreOp::STORE;
 
-		render::backend::RenderPassAttachment render_pass_attachments[6] =
+		render::RenderPassAttachment render_pass_attachments[6] =
 		{
 			{ target_texture->format, samples, load_op, store_op, clear_value },
 			{ target_texture->format, samples, load_op, store_op, clear_value },
@@ -73,84 +75,84 @@ namespace scapes::visual
 
 		uint32_t color_attachments[6] = { 0, 1, 2, 3, 4, 5 };
 
-		render::backend::RenderPassDescription render_pass_description = {};
+		render::RenderPassDescription render_pass_description = {};
 		render_pass_description.num_color_attachments = 6;
 		render_pass_description.color_attachments = color_attachments;
 
-		render_pass = driver->createRenderPass(6, render_pass_attachments, render_pass_description);
+		render_pass = device->createRenderPass(6, render_pass_attachments, render_pass_description);
 
 		// Create command buffer
-		command_buffer = driver->createCommandBuffer(render::backend::CommandBufferType::PRIMARY);
+		command_buffer = device->createCommandBuffer(render::CommandBufferType::PRIMARY);
 
 		// Create pipeline state
 		uint32_t target_width = std::max<uint32_t>(1, target_texture->width << target_mip);
 		uint32_t target_height = std::max<uint32_t>(1, target_texture->height << target_mip);
 
-		pipeline_state = driver->createPipelineState();
-		driver->setViewport(pipeline_state, 0, 0, target_width, target_height);
-		driver->setScissor(pipeline_state, 0, 0, target_width, target_height);
+		pipeline_state = device->createPipelineState();
+		device->setViewport(pipeline_state, 0, 0, target_width, target_height);
+		device->setScissor(pipeline_state, 0, 0, target_width, target_height);
 
 		// Fill uniform buffer
-		CubemapFaceOrientationData *ubo = reinterpret_cast<CubemapFaceOrientationData *>(driver->map(uniform_buffer));
+		CubemapFaceOrientationData *ubo = reinterpret_cast<CubemapFaceOrientationData *>(device->map(uniform_buffer));
 
-		const glm::mat4 &translateZ = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		const math::mat4 &translateZ = math::translate(math::mat4(1.0f), math::vec3(0.0f, 0.0f, 1.0f));
 
-		const glm::vec3 faceDirs[6] =
+		const math::vec3 faceDirs[6] =
 		{
-			glm::vec3( 1.0f,  0.0f,  0.0f),
-			glm::vec3(-1.0f,  0.0f,  0.0f),
-			glm::vec3( 0.0f,  1.0f,  0.0f),
-			glm::vec3( 0.0f, -1.0f,  0.0f),
-			glm::vec3( 0.0f,  0.0f,  1.0f),
-			glm::vec3( 0.0f,  0.0f, -1.0f),
+			math::vec3( 1.0f,  0.0f,  0.0f),
+			math::vec3(-1.0f,  0.0f,  0.0f),
+			math::vec3( 0.0f,  1.0f,  0.0f),
+			math::vec3( 0.0f, -1.0f,  0.0f),
+			math::vec3( 0.0f,  0.0f,  1.0f),
+			math::vec3( 0.0f,  0.0f, -1.0f),
 		};
 
-		const glm::vec3 faceUps[6] = {
-			glm::vec3( 0.0f,  0.0f, -1.0f),
-			glm::vec3( 0.0f,  0.0f,  1.0f),
-			glm::vec3(-1.0f,  0.0f,  0.0f),
-			glm::vec3(-1.0f,  0.0f,  0.0f),
-			glm::vec3( 0.0f, -1.0f,  0.0f),
-			glm::vec3( 0.0f, -1.0f,  0.0f),
+		const math::vec3 faceUps[6] = {
+			math::vec3( 0.0f,  0.0f, -1.0f),
+			math::vec3( 0.0f,  0.0f,  1.0f),
+			math::vec3(-1.0f,  0.0f,  0.0f),
+			math::vec3(-1.0f,  0.0f,  0.0f),
+			math::vec3( 0.0f, -1.0f,  0.0f),
+			math::vec3( 0.0f, -1.0f,  0.0f),
 		};
 
 		// TODO: get rid of this mess
-		const glm::mat4 faceRotations[6] = {
-			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
-			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)),
-			glm::mat4(1.0f),
-			glm::mat4(1.0f),
-			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
-			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+		const math::mat4 faceRotations[6] = {
+			math::rotate(math::mat4(1.0f), math::radians(180.0f), math::vec3(0.0f, 1.0f, 0.0f)),
+			math::rotate(math::mat4(1.0f), math::radians(180.0f), math::vec3(0.0f, 1.0f, 0.0f)),
+			math::mat4(1.0f),
+			math::mat4(1.0f),
+			math::rotate(math::mat4(1.0f), math::radians(-90.0f), math::vec3(0.0f, 0.0f, 1.0f)),
+			math::rotate(math::mat4(1.0f), math::radians(-90.0f), math::vec3(0.0f, 0.0f, 1.0f)),
 		};
 
 		for (int i = 0; i < 6; i++)
-			ubo->faces[i] = faceRotations[i] * glm::lookAtRH(glm::vec3(0.0f), faceDirs[i], faceUps[i]) * translateZ;
+			ubo->faces[i] = faceRotations[i] * math::lookAtRH(math::vec3(0.0f), faceDirs[i], faceUps[i]) * translateZ;
 
-		driver->unmap(uniform_buffer);
+		device->unmap(uniform_buffer);
 
 		// Bind data to descriptor set
-		driver->bindUniformBuffer(bind_set, 0, uniform_buffer);
+		device->bindUniformBuffer(bind_set, 0, uniform_buffer);
 	}
 
 	void CubemapRenderer::shutdown()
 	{
-		driver->destroyUniformBuffer(uniform_buffer);
+		device->destroyUniformBuffer(uniform_buffer);
 		uniform_buffer = nullptr;
 
-		driver->destroyFrameBuffer(frame_buffer);
+		device->destroyFrameBuffer(frame_buffer);
 		frame_buffer = nullptr;
 
-		driver->destroyRenderPass(render_pass);
+		device->destroyRenderPass(render_pass);
 		render_pass = nullptr;
 
-		driver->destroyCommandBuffer(command_buffer);
+		device->destroyCommandBuffer(command_buffer);
 		command_buffer = nullptr;
 
-		driver->destroyBindSet(bind_set);
+		device->destroyBindSet(bind_set);
 		bind_set = nullptr;
 
-		driver->destroyPipelineState(pipeline_state);
+		device->destroyPipelineState(pipeline_state);
 		pipeline_state = nullptr;
 	}
 
@@ -165,25 +167,25 @@ namespace scapes::visual
 		const uint8_t *push_constants_data
 	)
 	{
-		driver->bindTexture(bind_set, 1, input_texture->gpu_data);
+		device->bindTexture(bind_set, 1, input_texture->gpu_data);
 
-		driver->setPushConstants(pipeline_state, push_constants_size, push_constants_data);
-		driver->setBindSet(pipeline_state, 0, bind_set);
-		driver->setShader(pipeline_state, render::backend::ShaderType::VERTEX, vertex_shader->shader);
-		driver->setShader(pipeline_state, render::backend::ShaderType::FRAGMENT, fragment_shader->shader);
+		device->setPushConstants(pipeline_state, push_constants_size, push_constants_data);
+		device->setBindSet(pipeline_state, 0, bind_set);
+		device->setShader(pipeline_state, render::ShaderType::VERTEX, vertex_shader->shader);
+		device->setShader(pipeline_state, render::ShaderType::FRAGMENT, fragment_shader->shader);
 
-		driver->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
+		device->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
 
-		driver->resetCommandBuffer(command_buffer);
-		driver->beginCommandBuffer(command_buffer);
-		driver->beginRenderPass(command_buffer, render_pass, frame_buffer);
+		device->resetCommandBuffer(command_buffer);
+		device->beginCommandBuffer(command_buffer);
+		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
 
-		driver->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
+		device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
 
-		driver->endRenderPass(command_buffer);
-		driver->endCommandBuffer(command_buffer);
+		device->endRenderPass(command_buffer);
+		device->endCommandBuffer(command_buffer);
 
-		driver->submit(command_buffer);
-		driver->wait(1, &command_buffer);
+		device->submit(command_buffer);
+		device->wait(1, &command_buffer);
 	}
 }

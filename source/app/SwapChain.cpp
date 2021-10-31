@@ -2,8 +2,8 @@
 
 /*
  */
-SwapChain::SwapChain(render::backend::Driver *driver, void *native_window)
-	: driver(driver)
+SwapChain::SwapChain(scapes::foundation::render::Device *device, void *native_window)
+	: device(device)
 	, native_window(native_window)
 {
 }
@@ -17,42 +17,42 @@ SwapChain::~SwapChain()
  */
 void SwapChain::init()
 {
-	swap_chain = driver->createSwapChain(native_window);
+	swap_chain = device->createSwapChain(native_window);
 
 	initFrames();
 }
 
 void SwapChain::recreate()
 {
-	driver->destroySwapChain(swap_chain);
-	swap_chain = driver->createSwapChain(native_window);
+	device->destroySwapChain(swap_chain);
+	swap_chain = device->createSwapChain(native_window);
 }
 
 void SwapChain::shutdown()
 {
 	shutdownFrames();
 
-	driver->destroySwapChain(swap_chain);
+	device->destroySwapChain(swap_chain);
 	swap_chain = nullptr;
 }
 
 /*
  */
-render::backend::CommandBuffer *SwapChain::acquire()
+scapes::foundation::render::CommandBuffer *SwapChain::acquire()
 {
 	uint32_t image_index = 0;
-	if (!driver->acquire(swap_chain, &image_index))
+	if (!device->acquire(swap_chain, &image_index))
 		return nullptr;
 
-	render::backend::CommandBuffer *command_buffer = command_buffers[current_in_flight_frame];
-	driver->wait(1, &command_buffer);
+	scapes::foundation::render::CommandBuffer *command_buffer = command_buffers[current_in_flight_frame];
+	device->wait(1, &command_buffer);
 
 	return command_buffer;
 }
 
-bool SwapChain::present(render::backend::CommandBuffer *command_buffer)
+bool SwapChain::present(scapes::foundation::render::CommandBuffer *command_buffer)
 {
-	bool result = driver->present(swap_chain, 1, &command_buffer);
+	bool result = device->present(swap_chain, 1, &command_buffer);
 	current_in_flight_frame = (current_in_flight_frame + 1) % NUM_IN_FLIGHT_FRAMES;
 
 	return result;
@@ -63,14 +63,14 @@ bool SwapChain::present(render::backend::CommandBuffer *command_buffer)
 void SwapChain::initFrames()
 {
 	for (int i = 0; i < NUM_IN_FLIGHT_FRAMES; i++)
-		command_buffers[i] = driver->createCommandBuffer(render::backend::CommandBufferType::PRIMARY);
+		command_buffers[i] = device->createCommandBuffer(scapes::foundation::render::CommandBufferType::PRIMARY);
 }
 
 void SwapChain::shutdownFrames()
 {
 	for (int i = 0; i < NUM_IN_FLIGHT_FRAMES; i++)
 	{
-		driver->destroyCommandBuffer(command_buffers[i]);
+		device->destroyCommandBuffer(command_buffers[i]);
 		command_buffers[i] = nullptr;
 	}
 }

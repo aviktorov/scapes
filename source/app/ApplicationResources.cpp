@@ -29,24 +29,24 @@ namespace config
 		"assets/shaders/render/Final.frag",
 	};
 
-	static std::vector<render::backend::ShaderType> shader_types = {
-		render::backend::ShaderType::VERTEX,
-		render::backend::ShaderType::VERTEX,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::VERTEX,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
-		render::backend::ShaderType::FRAGMENT,
+	static std::vector<scapes::foundation::render::ShaderType> shader_types = {
+		scapes::foundation::render::ShaderType::VERTEX,
+		scapes::foundation::render::ShaderType::VERTEX,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::VERTEX,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
 	};
 
 	// Textures
@@ -68,7 +68,7 @@ static scapes::visual::TextureHandle generateTexture(scapes::visual::API *visual
 		r, g, b, 255,
 	};
 
-	return visual_api->createTexture2D(render::backend::Format::R8G8B8A8_UNORM, 2, 2, 1, pixels);
+	return visual_api->createTexture2D(scapes::foundation::render::Format::R8G8B8A8_UNORM, 2, 2, 1, pixels);
 }
 
 /*
@@ -101,7 +101,7 @@ void ApplicationResources::init()
 	skybox = visual_api->createMeshSkybox(10000.0f);
 
 	baked_brdf = visual_api->createTexture2D(
-		render::backend::Format::R16G16_SFLOAT,
+		scapes::foundation::render::Format::R16G16_SFLOAT,
 		512,
 		512,
 		fullscreen_quad,
@@ -109,7 +109,7 @@ void ApplicationResources::init()
 		getShader(config::Shaders::BakedBRDFFragment)
 	);
 
-	driver->setTextureSamplerWrapMode(baked_brdf->gpu_data, render::backend::SamplerWrapMode::CLAMP_TO_EDGE);
+	device->setTextureSamplerWrapMode(baked_brdf->gpu_data, scapes::foundation::render::SamplerWrapMode::CLAMP_TO_EDGE);
 
 	blue_noise = visual_api->loadTexture(config::blue_noise);
 
@@ -119,7 +119,7 @@ void ApplicationResources::init()
 	default_metalness = generateTexture(visual_api, 0, 0, 0);
 
 	scapes::visual::IBLTextureCreateData create_data = {};
-	create_data.format = render::backend::Format::R32G32B32A32_SFLOAT;
+	create_data.format = scapes::foundation::render::Format::R32G32B32A32_SFLOAT;
 	create_data.cubemap_size = 128;
 
 	create_data.fullscreen_quad = fullscreen_quad;

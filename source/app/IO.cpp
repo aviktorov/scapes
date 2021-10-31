@@ -32,7 +32,7 @@ size_t ApplicationStream::write(const void *data, size_t element_size, size_t el
 	return fwrite(data, element_size, element_count, file);
 }
 
-bool ApplicationStream::seek(uint64_t offset, io::SeekOrigin origin)
+bool ApplicationStream::seek(uint64_t offset, scapes::foundation::io::SeekOrigin origin)
 {
 	assert(file);
 	return (fseek(file, static_cast<long>(offset), static_cast<int>(origin)) == 0);
@@ -73,10 +73,10 @@ ApplicationFileSystem::~ApplicationFileSystem()
 
 }
 
-io::IStream *ApplicationFileSystem::open(const char *path, const char *mode)
+scapes::foundation::io::Stream *ApplicationFileSystem::open(const scapes::foundation::io::URI &uri, const char *mode)
 {
-	const char *offset = strstr(path, root_path.c_str());
-	std::string resolved_path = (offset != path) ? root_path + path : path;
+	const char *offset = strstr(uri, root_path.c_str());
+	std::string resolved_path = (offset != uri) ? root_path + uri : uri;
 
 	FILE *file = nullptr;
 	fopen_s(&file, resolved_path.c_str(), mode);
@@ -86,7 +86,7 @@ io::IStream *ApplicationFileSystem::open(const char *path, const char *mode)
 	return new ApplicationStream(file);
 }
 
-bool ApplicationFileSystem::close(io::IStream *stream)
+bool ApplicationFileSystem::close(scapes::foundation::io::Stream *stream)
 {
 	assert(stream);
 	delete stream;

@@ -1,11 +1,12 @@
 #pragma once
 
-#include <common/Math.h>
-#include <common/Type.h>
-#include <scapes/visual/Fwd.h>
+#include <scapes/foundation/TypeTraits.h>
+#include <scapes/foundation/math/Math.h>
+#include <scapes/foundation/render/Device.h>
+#include <scapes/foundation/resources/ResourceManager.h>
+#include <scapes/foundation/shaders/Compiler.h>
 
-#include <render/backend/Driver.h>
-#include <render/shaders/Compiler.h>
+#include <scapes/visual/Fwd.h>
 
 namespace scapes::visual::resources
 {
@@ -19,7 +20,8 @@ namespace scapes::visual::resources
 		// TODO: make it explicit that IBL owns this textures (could be just raw render::backend::Texture pointers?)
 		TextureHandle prefiltered_specular_cubemap;
 		TextureHandle diffuse_irradiance_cubemap;
-		render::backend::BindSet *bindings {nullptr};
+
+		foundation::render::BindSet *bindings {nullptr};
 	};
 
 	template <>
@@ -31,7 +33,7 @@ namespace scapes::visual::resources
 	template <>
 	struct ::ResourcePipeline<IBLTexture>
 	{
-		static SCAPES_API void destroy(::ResourceManager *resource_manager, IBLTextureHandle handle, render::backend::Driver *driver);
+		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, IBLTextureHandle handle, foundation::render::Device *device);
 	};
 
 	/*
@@ -40,12 +42,12 @@ namespace scapes::visual::resources
 	{
 		struct Vertex
 		{
-			glm::vec3 position;
-			glm::vec4 tangent;
-			glm::vec3 binormal;
-			glm::vec3 normal;
-			glm::vec4 color;
-			glm::vec2 uv;
+			foundation::math::vec3 position;
+			foundation::math::vec4 tangent;
+			foundation::math::vec3 binormal;
+			foundation::math::vec3 normal;
+			foundation::math::vec4 color;
+			foundation::math::vec2 uv;
 		};
 
 		uint32_t num_vertices {0};
@@ -54,8 +56,8 @@ namespace scapes::visual::resources
 		uint32_t num_indices {0};
 		uint32_t *indices {nullptr};
 
-		render::backend::VertexBuffer *vertex_buffer {nullptr};
-		render::backend::IndexBuffer *index_buffer {nullptr};
+		foundation::render::VertexBuffer *vertex_buffer {nullptr};
+		foundation::render::IndexBuffer *index_buffer {nullptr};
 	};
 
 	template <>
@@ -67,7 +69,7 @@ namespace scapes::visual::resources
 	template <>
 	struct ::ResourcePipeline<Mesh>
 	{
-		static SCAPES_API void destroy(::ResourceManager *resource_manager, MeshHandle handle, render::backend::Driver *driver);
+		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, MeshHandle handle, foundation::render::Device *device);
 	};
 
 	/*
@@ -78,7 +80,7 @@ namespace scapes::visual::resources
 		TextureHandle normal;
 		TextureHandle roughness;
 		TextureHandle metalness;
-		::render::backend::BindSet *bindings {nullptr};
+		foundation::render::BindSet *bindings {nullptr};
 	};
 
 	template <>
@@ -90,15 +92,15 @@ namespace scapes::visual::resources
 	template <>
 	struct ::ResourcePipeline<RenderMaterial>
 	{
-		static SCAPES_API void destroy(::ResourceManager *resource_manager, RenderMaterialHandle handle, render::backend::Driver *driver);
+		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, RenderMaterialHandle handle, foundation::render::Device *device);
 	};
 
 	/*
 	 */
 	struct Shader
 	{
-		render::backend::Shader *shader {nullptr};
-		render::backend::ShaderType type {render::backend::ShaderType::FRAGMENT};
+		foundation::render::Shader *shader {nullptr};
+		foundation::render::ShaderType type {foundation::render::ShaderType::FRAGMENT};
 	};
 
 	template <>
@@ -110,8 +112,8 @@ namespace scapes::visual::resources
 	template <>
 	struct ::ResourcePipeline<Shader>
 	{
-		static SCAPES_API void destroy(::ResourceManager *resource_manager, ShaderHandle handle, render::backend::Driver *driver);
-		static SCAPES_API bool process(::ResourceManager *resource_manager, ShaderHandle handle, const uint8_t *data, size_t size, render::backend::ShaderType type, render::backend::Driver *driver, render::shaders::Compiler *compiler);
+		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, ShaderHandle handle, foundation::render::Device *device);
+		static SCAPES_API bool process(foundation::resources::ResourceManager *resource_manager, ShaderHandle handle, const uint8_t *data, size_t size, foundation::render::ShaderType type, foundation::render::Device *device, foundation::shaders::Compiler *compiler);
 	};
 
 	/*
@@ -122,10 +124,10 @@ namespace scapes::visual::resources
 		uint32_t height {0};
 		uint32_t mip_levels {0};
 		uint32_t layers {0};
-		render::backend::Format format {render::backend::Format::UNDEFINED};
+		foundation::render::Format format {foundation::render::Format::UNDEFINED};
 
 		unsigned char *cpu_data {nullptr};
-		render::backend::Texture *gpu_data {nullptr};
+		foundation::render::Texture *gpu_data {nullptr};
 	};
 
 	template <>
@@ -137,7 +139,7 @@ namespace scapes::visual::resources
 	template <>
 	struct ::ResourcePipeline<Texture>
 	{
-		static SCAPES_API void destroy(::ResourceManager *resource_manager, TextureHandle handle, render::backend::Driver *driver);
-		static SCAPES_API bool process(::ResourceManager *resource_manager, TextureHandle handle, const uint8_t *data, size_t size, render::backend::Driver *driver);
+		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, TextureHandle handle, foundation::render::Device *device);
+		static SCAPES_API bool process(foundation::resources::ResourceManager *resource_manager, TextureHandle handle, const uint8_t *data, size_t size, foundation::render::Device *device);
 	};
 }
