@@ -9,6 +9,11 @@ namespace scapes::foundation
 {
 	class Log;
 
+	namespace components
+	{
+		struct Transform;
+	}
+
 	namespace game
 	{
 		struct EntityID;

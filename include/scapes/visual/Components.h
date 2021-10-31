@@ -7,20 +7,6 @@
 
 namespace scapes::visual::components
 {
-	// TODO: move to foundation components
-	/*
-	 */
-	struct Transform
-	{
-		foundation::math::mat4 transform;
-	};
-
-	template<>
-	struct ::TypeTraits<Transform>
-	{
-		static constexpr const char *name = "scapes::visual::components::Transform";
-	};
-
 	/*
 	 */
 	struct SkyLight

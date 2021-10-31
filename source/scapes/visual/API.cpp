@@ -37,7 +37,7 @@ namespace scapes::visual
 	)
 		: resource_manager(resource_manager), world(world), device(device), compiler(compiler)
 	{
-		renderable_query = new foundation::game::Query<components::Transform, components::Renderable>(world);
+		renderable_query = new foundation::game::Query<foundation::components::Transform, components::Renderable>(world);
 		skylight_query = new foundation::game::Query<components::SkyLight>(world);
 	}
 
@@ -79,12 +79,12 @@ namespace scapes::visual
 		while (renderable_query->next())
 		{
 			uint32_t num_items = renderable_query->getNumComponents();
-			components::Transform *transforms = renderable_query->getComponents<components::Transform>(0);
+			foundation::components::Transform *transforms = renderable_query->getComponents<foundation::components::Transform>(0);
 			components::Renderable *renderables = renderable_query->getComponents<components::Renderable>(1);
 
 			for (uint32_t i = 0; i < num_items; ++i)
 			{
-				const components::Transform &transform = transforms[i];
+				const foundation::components::Transform &transform = transforms[i];
 				const components::Renderable &renderable = renderables[i];
 				const foundation::math::mat4 &node_transform = transform.transform;
 

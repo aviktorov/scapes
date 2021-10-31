@@ -5,6 +5,7 @@
 #include <scapes/visual/Resources.h>
 #include <scapes/visual/Components.h>
 
+#include <scapes/foundation/components/Components.h>
 #include <scapes/foundation/game/World.h>
 #include <scapes/foundation/game/Entity.h>
 #include <scapes/foundation/math/Math.h>
@@ -189,7 +190,7 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 
 			visual::RenderMaterialHandle material = (mat_it != mapped_materials.end()) ? mat_it->second : default_material;
 
-			entity.addComponent<visual::components::Transform>(transform);
+			entity.addComponent<foundation::components::Transform>(transform);
 			entity.addComponent<visual::components::Renderable>(mesh, material);
 		}
 
@@ -317,7 +318,7 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 
 			foundation::game::Entity entity = foundation::game::Entity(world);
 
-			entity.addComponent<visual::components::Transform>(toMat4(transform));
+			entity.addComponent<foundation::components::Transform>(toMat4(transform));
 			entity.addComponent<visual::components::Renderable>(imported_meshes[mesh_index], imported_materials[material_index]);
 		}
 

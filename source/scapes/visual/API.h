@@ -1,3 +1,5 @@
+#include <scapes/foundation/components/Components.h>
+
 #include <scapes/visual/API.h>
 #include <scapes/visual/Components.h>
 #include <scapes/visual/Resources.h>
@@ -115,7 +117,7 @@ namespace scapes::visual
 		std::vector<RenderMaterialHandle> managed_render_materials;
 		std::vector<IBLTextureHandle> managed_ibl_textures;
 
-		foundation::game::Query<components::Transform, components::Renderable> *renderable_query {nullptr};
+		foundation::game::Query<foundation::components::Transform, components::Renderable> *renderable_query {nullptr};
 		foundation::game::Query<components::SkyLight> *skylight_query {nullptr};
 	};
 }
