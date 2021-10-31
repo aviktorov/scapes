@@ -1,6 +1,7 @@
 #pragma once
 
 #include <scapes/foundation/shaders/Compiler.h>
+#include <shaderc/shaderc.h>
 
 namespace scapes::foundation::shaders::spirv
 {
@@ -11,8 +12,8 @@ namespace scapes::foundation::shaders::spirv
 	class Compiler : public shaders::Compiler
 	{
 	public:
-		Compiler(io::FileSystem *file_system)
-			: file_system(file_system) {}
+		Compiler(io::FileSystem *file_system);
+		~Compiler() final;
 
 		shaders::ShaderIL *createShaderIL(
 			ShaderType type,
@@ -25,5 +26,7 @@ namespace scapes::foundation::shaders::spirv
 
 	private:
 		io::FileSystem *file_system {nullptr};
+		shaderc_compiler_t compiler {nullptr};
+		shaderc_compile_options_t options {nullptr};
 	};
 }

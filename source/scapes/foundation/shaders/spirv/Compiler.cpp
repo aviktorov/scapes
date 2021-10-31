@@ -1,7 +1,8 @@
 #include "shaders/spirv/Compiler.h"
 
 #include <scapes/foundation/io/FileSystem.h>
-#include <shaderc/shaderc.h>
+
+#include <Tracy.hpp>
 
 #include <iostream>
 #include <cassert>
@@ -47,6 +48,7 @@ namespace scapes::foundation::shaders::spirv
 			size_t include_depth
 		)
 		{
+			ZoneScopedN("includeResolver");
 			io::FileSystem *file_system = reinterpret_cast<io::FileSystem *>(user_data);
 
 			shaderc_include_result *result = new shaderc_include_result();
@@ -102,10 +104,27 @@ namespace scapes::foundation::shaders::spirv
 
 		static void includeResultReleaser(void *userData, shaderc_include_result *result)
 		{
+			ZoneScopedN("includeResultReleaser");
+
 			delete result->source_name;
 			delete result->content;
 			delete result;
 		}
+	}
+
+	Compiler::Compiler(io::FileSystem *file_system)
+		: file_system(file_system)
+	{
+		compiler = shaderc_compiler_initialize();
+		options = shaderc_compile_options_initialize();
+
+		shaderc_compile_options_set_include_callbacks(options, shaderc::includeResolver, shaderc::includeResultReleaser, file_system);
+	}
+
+	Compiler::~Compiler()
+	{
+		shaderc_compile_options_release(options);
+		shaderc_compiler_release(compiler);
 	}
 
 	shaders::ShaderIL *Compiler::createShaderIL(
@@ -117,22 +136,40 @@ namespace scapes::foundation::shaders::spirv
 	{
 		const char *path = (uri) ? uri : "memory";
 
-		// convert GLSL/HLSL code to SPIR-V bytecode
-		shaderc_compiler_t compiler = shaderc_compiler_initialize();
-		shaderc_compile_options_t options = shaderc_compile_options_initialize();
+		// preprocess shader
+		shaderc_compilation_result_t preprocess_result = nullptr;
+		{
+			ZoneScopedN("shaders::spirv::Compiler::preprocess");
+			preprocess_result = shaderc_compile_into_preprocessed_text(
+				compiler,
+				data, size,
+				shaderc_glsl_infer_from_source,
+				path,
+				"main",
+				options
+			);
+		}
 
-		// set compile options
-		shaderc_compile_options_set_include_callbacks(options, shaderc::includeResolver, shaderc::includeResultReleaser, file_system);
+		size_t code_length = shaderc_result_get_length(preprocess_result);
+		const char *code_data = shaderc_result_get_bytes(preprocess_result);
 
-		// compile shader
-		shaderc_compilation_result_t compilation_result = shaderc_compile_into_spv(
-			compiler,
-			data, size,
-			shaderc_glsl_infer_from_source,
-			path,
-			"main",
-			options
-		);
+		// TODO: calc hash and check cache
+
+		// compile preprocessed shader
+		shaderc_compilation_result_t compilation_result = nullptr;
+		{
+			ZoneScopedN("shaders::spirv::Compiler::compile");
+			compilation_result = shaderc_compile_into_spv(
+				compiler,
+				code_data, code_length,
+				shaderc_glsl_infer_from_source,
+				path,
+				"main",
+				options
+			);
+		}
+
+		shaderc_result_release(preprocess_result);
 
 		if (shaderc_result_get_compilation_status(compilation_result) != shaderc_compilation_status_success)
 		{
@@ -140,8 +177,6 @@ namespace scapes::foundation::shaders::spirv
 			std::cerr << "\t" << shaderc_result_get_error_message(compilation_result);
 
 			shaderc_result_release(compilation_result);
-			shaderc_compile_options_release(options);
-			shaderc_compiler_release(compiler);
 
 			return nullptr;
 		}
@@ -159,8 +194,6 @@ namespace scapes::foundation::shaders::spirv
 		memcpy(result->bytecode_data, bytecode_data, bytecode_size);
 
 		shaderc_result_release(compilation_result);
-		shaderc_compile_options_release(options);
-		shaderc_compiler_release(compiler);
 
 		return result;
 	}
