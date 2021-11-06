@@ -1,11 +1,9 @@
 #include "shaders/spirv/Compiler.h"
 
+#include <scapes/foundation/Log.h>
 #include <scapes/foundation/io/FileSystem.h>
 
 #include <Tracy.hpp>
-
-#include <iostream>
-#include <cassert>
 
 namespace scapes::foundation::shaders::spirv
 {
@@ -25,8 +23,6 @@ namespace scapes::foundation::shaders::spirv
 				// Compute pipeline
 				case ShaderType::COMPUTE: return shaderc_compute_shader;
 
-// TODO: get rid of this (probably update shaderc?)
-#if NV_EXTENSIONS
 				// Raytrace pipeline
 				case ShaderType::RAY_GENERATION: return shaderc_raygen_shader;
 				case ShaderType::INTERSECTION: return shaderc_intersection_shader;
@@ -34,7 +30,6 @@ namespace scapes::foundation::shaders::spirv
 				case ShaderType::CLOSEST_HIT: return shaderc_closesthit_shader;
 				case ShaderType::MISS: return shaderc_miss_shader;
 				case ShaderType::CALLABLE: return shaderc_callable_shader;
-#endif
 			}
 
 			return shaderc_glsl_infer_from_source;
@@ -79,7 +74,7 @@ namespace scapes::foundation::shaders::spirv
 
 			if (!file)
 			{
-				std::cerr << "shaderc::include_resolver(): can't load include at \"" << target_path << "\"" << std::endl;
+				Log::error("shaderc::include_resolver(): can't load include at \"%s\"\n", target_path);
 				return result;
 			}
 
@@ -113,12 +108,15 @@ namespace scapes::foundation::shaders::spirv
 	}
 
 	Compiler::Compiler(io::FileSystem *file_system)
-		: file_system(file_system)
+		: file_system(file_system), cache(ShaderILType::SPIRV)
 	{
 		compiler = shaderc_compiler_initialize();
 		options = shaderc_compile_options_initialize();
 
 		shaderc_compile_options_set_include_callbacks(options, shaderc::includeResolver, shaderc::includeResultReleaser, file_system);
+		shaderc_compile_options_set_target_env(options, shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_0);
+
+		cache.load(file_system, "spirv.cache");
 	}
 
 	Compiler::~Compiler()
@@ -143,7 +141,7 @@ namespace scapes::foundation::shaders::spirv
 			preprocess_result = shaderc_compile_into_preprocessed_text(
 				compiler,
 				data, size,
-				shaderc_glsl_infer_from_source,
+				shaderc::getShaderKind(type),
 				path,
 				"main",
 				options
@@ -153,7 +151,19 @@ namespace scapes::foundation::shaders::spirv
 		size_t code_length = shaderc_result_get_length(preprocess_result);
 		const char *code_data = shaderc_result_get_bytes(preprocess_result);
 
-		// TODO: calc hash and check cache
+		// check cache
+		uint64_t hash = 0;
+		{
+			ZoneScopedN("shaders::spirv::Compiler::check hash");
+			hash = cache.getHash(type, code_data, code_length);
+
+			ShaderIL *cache_entry = cache.get(hash);
+			if (cache_entry)
+			{
+				shaderc_result_release(preprocess_result);
+				return cache_entry;
+			}
+		}
 
 		// compile preprocessed shader
 		shaderc_compilation_result_t compilation_result = nullptr;
@@ -162,7 +172,7 @@ namespace scapes::foundation::shaders::spirv
 			compilation_result = shaderc_compile_into_spv(
 				compiler,
 				code_data, code_length,
-				shaderc_glsl_infer_from_source,
+				shaderc::getShaderKind(type),
 				path,
 				"main",
 				options
@@ -173,8 +183,8 @@ namespace scapes::foundation::shaders::spirv
 
 		if (shaderc_result_get_compilation_status(compilation_result) != shaderc_compilation_status_success)
 		{
-			std::cerr << "Compiler::createShaderIL(): can't compile shader at \"" << path << "\"" << std::endl;
-			std::cerr << "\t" << shaderc_result_get_error_message(compilation_result);
+			Log::error("Compiler::createShaderIL(): can't compile shader at \"%s\"\n", path);
+			Log::error("\t%s\n", shaderc_result_get_error_message(compilation_result));
 
 			shaderc_result_release(compilation_result);
 
@@ -182,33 +192,21 @@ namespace scapes::foundation::shaders::spirv
 		}
 
 		size_t bytecode_size = shaderc_result_get_length(compilation_result);
-		const uint32_t *bytecode_data = reinterpret_cast<const uint32_t*>(shaderc_result_get_bytes(compilation_result));
+		const uint8_t *bytecode_data = reinterpret_cast<const uint8_t*>(shaderc_result_get_bytes(compilation_result));
 
-		// Copy bytecode to ShaderIL
-		ShaderIL *result = new ShaderIL();
-		result->bytecode_size = bytecode_size;
-		result->bytecode_data = new uint32_t[bytecode_size];
-		result->type = type;
-		result->il_type = ShaderILType::SPIRV;
-
-		memcpy(result->bytecode_data, bytecode_data, bytecode_size);
+		ShaderIL *result = cache.insert(hash, type, bytecode_data, bytecode_size);
+		cache.flush(file_system, "spirv.cache");
 
 		shaderc_result_release(compilation_result);
 
 		return result;
 	}
 
-	void Compiler::destroyShaderIL(shaders::ShaderIL *il)
+	void Compiler::releaseShaderIL(shaders::ShaderIL *il)
 	{
 		if (il == nullptr)
 			return;
 
-		ShaderIL *spirv_shader_il = static_cast<ShaderIL *>(il);
-
-		delete[] spirv_shader_il->bytecode_data;
-		spirv_shader_il->bytecode_data = nullptr;
-		spirv_shader_il->bytecode_size = 0;
-
-		delete spirv_shader_il;
+		// do nothing, because we're using shader cache
 	}
 }

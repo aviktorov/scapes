@@ -60,6 +60,6 @@ namespace scapes::foundation::shaders
 			const io::URI &uri = nullptr
 		) = 0;
 
-		virtual void destroyShaderIL(ShaderIL *il) = 0;
+		virtual void releaseShaderIL(ShaderIL *il) = 0;
 	};
 }

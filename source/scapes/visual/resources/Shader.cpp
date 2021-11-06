@@ -55,6 +55,6 @@ bool ResourcePipeline<resources::Shader>::process(
 		);
 	}
 
-	compiler->destroyShaderIL(il);
+	compiler->releaseShaderIL(il);
 	return shader->shader != nullptr;
 }
