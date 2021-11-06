@@ -25,3 +25,6 @@
 *.out
 *.app
 imgui.ini
+
+# Scapes specific
+assets/spirv.cache
