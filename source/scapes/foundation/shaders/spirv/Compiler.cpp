@@ -3,7 +3,7 @@
 #include <scapes/foundation/Log.h>
 #include <scapes/foundation/io/FileSystem.h>
 
-#include <Tracy.hpp>
+#include <scapes/foundation/Profiler.h>
 
 namespace scapes::foundation::shaders::spirv
 {
@@ -43,7 +43,7 @@ namespace scapes::foundation::shaders::spirv
 			size_t include_depth
 		)
 		{
-			ZoneScopedN("includeResolver");
+			SCAPES_PROFILER_SCOPED_N("includeResolver");
 			io::FileSystem *file_system = reinterpret_cast<io::FileSystem *>(user_data);
 
 			shaderc_include_result *result = new shaderc_include_result();
@@ -99,7 +99,7 @@ namespace scapes::foundation::shaders::spirv
 
 		static void includeResultReleaser(void *userData, shaderc_include_result *result)
 		{
-			ZoneScopedN("includeResultReleaser");
+			SCAPES_PROFILER_SCOPED_N("includeResultReleaser");
 
 			delete result->source_name;
 			delete result->content;
@@ -137,7 +137,7 @@ namespace scapes::foundation::shaders::spirv
 		// preprocess shader
 		shaderc_compilation_result_t preprocess_result = nullptr;
 		{
-			ZoneScopedN("shaders::spirv::Compiler::preprocess");
+			SCAPES_PROFILER_SCOPED_N("shaders::spirv::Compiler::preprocess");
 			preprocess_result = shaderc_compile_into_preprocessed_text(
 				compiler,
 				data, size,
@@ -154,7 +154,7 @@ namespace scapes::foundation::shaders::spirv
 		// check cache
 		uint64_t hash = 0;
 		{
-			ZoneScopedN("shaders::spirv::Compiler::check hash");
+			SCAPES_PROFILER_SCOPED_N("shaders::spirv::Compiler::check hash");
 			hash = cache.getHash(type, code_data, code_length);
 
 			ShaderIL *cache_entry = cache.get(hash);
@@ -168,7 +168,7 @@ namespace scapes::foundation::shaders::spirv
 		// compile preprocessed shader
 		shaderc_compilation_result_t compilation_result = nullptr;
 		{
-			ZoneScopedN("shaders::spirv::Compiler::compile");
+			SCAPES_PROFILER_SCOPED_N("shaders::spirv::Compiler::compile");
 			compilation_result = shaderc_compile_into_spv(
 				compiler,
 				code_data, code_length,

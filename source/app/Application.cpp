@@ -462,7 +462,7 @@ void Application::shutdownDriver()
  */
 void Application::initSwapChain()
 {
-#if defined(SCAPES_PLATFORM_WIN32)
+#if defined(GLFW_EXPOSE_NATIVE_WIN32)
 	void *nativeWindow = glfwGetWin32Window(window);
 #else
 	void *nativeWindow = nullptr;

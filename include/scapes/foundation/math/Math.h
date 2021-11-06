@@ -8,6 +8,6 @@
 
 namespace scapes::foundation
 {
-	// all your base are belong to us
+	// All your base are belong to us
 	namespace math = glm;
 }

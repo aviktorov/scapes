@@ -28,11 +28,11 @@ endif()
 # Sources
 # ==================================================================================================
 file(GLOB PROFILER_HEADERS
-	${DIR_THIRDPARTY}/tracy/Tracy.hpp
+	${DIR_API}/scapes/3rdparty/tracy/Tracy.hpp
 )
 
 file(GLOB PROFILER_SOURCES
-	${DIR_THIRDPARTY}/tracy/TracyClient.cpp
+	${DIR_API}/scapes/3rdparty/tracy/TracyClient.cpp
 )
 
 set(PROFILER_DEFINES
@@ -150,13 +150,13 @@ set_target_properties(${TARGET} PROPERTIES DEBUG_POSTFIX d)
 # ==================================================================================================
 # Includes
 # ==================================================================================================
-target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${DIR_ENGINE_API})
+target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${DIR_API})
 
 # ==================================================================================================
 # Preprocessor
 # ==================================================================================================
-target_compile_definitions(${TARGET} PUBLIC SCAPES_SHARED_LIBRARY ${PLATFORM_DEFINES} ${RENDER_DEFINES} ${PROFILER_DEFINES})
-target_compile_definitions(${TARGET} PUBLIC $<$<CONFIG:Debug>:${RENDER_DEBUG_DEFINES}>)
+target_compile_definitions(${TARGET} PRIVATE SCAPES_SHARED_LIBRARY SCAPES_PROFILER_ENABLED ${PLATFORM_DEFINES} ${RENDER_DEFINES} ${PROFILER_DEFINES})
+target_compile_definitions(${TARGET} PRIVATE $<$<CONFIG:Debug>:${RENDER_DEBUG_DEFINES}>)
 
 # ==================================================================================================
 # Libraries

@@ -56,12 +56,12 @@ set_target_properties(${TARGET} PROPERTIES DEBUG_POSTFIX d)
 # ==================================================================================================
 # Includes
 # ==================================================================================================
-target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${DIR_ENGINE_API})
+target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${DIR_API})
 
 # ==================================================================================================
 # Preprocessor
 # ==================================================================================================
-target_compile_definitions(${TARGET} PUBLIC SCAPES_SHARED_LIBRARY)
+target_compile_definitions(${TARGET} PRIVATE SCAPES_SHARED_LIBRARY SCAPES_PROFILER_ENABLED)
 
 # ==================================================================================================
 # Libraries

@@ -25,6 +25,7 @@ file(GLOB HEADERS
 if (WIN32)
 	set (DEFINES
 		GLFW_EXPOSE_NATIVE_WIN32
+		SCAPES_PROFILER_ENABLED
 	)
 endif()
 
@@ -50,7 +51,7 @@ target_include_directories(${TARGET} PUBLIC ${API_DIR})
 # ==================================================================================================
 # Preprocessor
 # ==================================================================================================
-target_compile_definitions(${TARGET} PUBLIC ${DEFINES} ${PROFILER_DEFINES})
+target_compile_definitions(${TARGET} PRIVATE ${DEFINES} ${PROFILER_DEFINES})
 
 # ==================================================================================================
 # Libraries

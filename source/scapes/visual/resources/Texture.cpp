@@ -3,7 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <Tracy.hpp>
+#include <scapes/foundation/Profiler.h>
 
 #include <cassert>
 #include <iostream>
@@ -68,7 +68,7 @@ bool ResourcePipeline<resources::Texture>::process(
 	foundation::render::Device *device
 )
 {
-	ZoneScopedN("ResourcePipeline<Texture>::process");
+	SCAPES_PROFILER_SCOPED_N("ResourcePipeline<Texture>::process");
 
 	int width = 0;
 	int height = 0;
@@ -87,14 +87,14 @@ bool ResourcePipeline<resources::Texture>::process(
 	
 	if (stbi_is_hdr_from_memory(data, static_cast<int>(size)))
 	{
-		ZoneScopedN("ResourcePipeline<Texture>::import_stb_hdr_image");
+		SCAPES_PROFILER_SCOPED_N("ResourcePipeline<Texture>::import_stb_hdr_image");
 
 		stb_pixels = stbi_loadf_from_memory(data, static_cast<int>(size), &width, &height, &channels, desired_components);
 		pixel_size = sizeof(float);
 	}
 	else
 	{
-		ZoneScopedN("ResourcePipeline<Texture>::import_stb_regular_image");
+		SCAPES_PROFILER_SCOPED_N("ResourcePipeline<Texture>::import_stb_regular_image");
 
 		stb_pixels = stbi_load_from_memory(data, static_cast<int>(size), &width, &height, &channels, desired_components);
 		pixel_size = sizeof(stbi_uc);
@@ -121,13 +121,13 @@ bool ResourcePipeline<resources::Texture>::process(
 	result->format = deduceFormat(pixel_size, channels);
 
 	{
-		ZoneScopedN("ResourcePipeline<Texture>::upload_to_gpu");
+		SCAPES_PROFILER_SCOPED_N("ResourcePipeline<Texture>::upload_to_gpu");
 		result->cpu_data = reinterpret_cast<unsigned char*>(stb_pixels);
 		result->gpu_data = device->createTexture2D(result->width, result->height, result->mip_levels, result->format, result->cpu_data);
 	}
 
 	{
-		ZoneScopedN("ResourcePipeline<Texture>::generate_2d_mipmaps");
+		SCAPES_PROFILER_SCOPED_N("ResourcePipeline<Texture>::generate_2d_mipmaps");
 		device->generateTexture2DMipmaps(result->gpu_data);
 	}
 

@@ -8,7 +8,7 @@
 #include "render/vulkan/RenderPassBuilder.h"
 #include "render/vulkan/Utils.h"
 
-#include <Tracy.hpp>
+#include <scapes/foundation/Profiler.h>
 
 #include <algorithm>
 #include <cassert>
@@ -2056,7 +2056,7 @@ namespace scapes::foundation::render::vulkan
 		uint32_t base_instance
 	)
 	{
-		ZoneScoped;
+		SCAPES_PROFILER_SCOPED;
 
 		if (command_buffer == nullptr)
 			return;
@@ -2073,7 +2073,7 @@ namespace scapes::foundation::render::vulkan
 
 		flush(pipeline_state);
 
-		ZoneNamedN(actual_draw_call, "Actual draw call", true);
+		SCAPES_PROFILER_NAMED_N(actual_draw_call, "Actual draw call");
 
 		VkPipeline pipeline = vk_pipeline_state->pipeline;
 		VkPipelineLayout pipeline_layout = vk_pipeline_state->pipeline_layout;
