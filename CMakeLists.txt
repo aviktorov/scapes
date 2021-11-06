@@ -6,7 +6,7 @@ project(scapes VERSION 1.0.0)
 # ==================================================================================================
 set(DIR_THIRDPARTY ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty)
 set(DIR_EXPORT ${CMAKE_CURRENT_SOURCE_DIR}/build)
-set(DIR_ENGINE_API ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(DIR_API ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 if (WIN32)
 	set(SCAPES_PLATFORM windows)
@@ -37,7 +37,6 @@ include_directories("3rdparty/vma")
 include_directories("3rdparty/vulkan")
 include_directories("3rdparty/imgui")
 include_directories("3rdparty/imgui/examples")
-include_directories("3rdparty/tracy")
 include_directories("3rdparty/flecs")
 include_directories("3rdparty/cgltf")
 
