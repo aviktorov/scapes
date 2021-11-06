@@ -1,5 +1,4 @@
 #version 450
-#pragma shader_stage(vertex)
 
 // Input
 layout(location = 0) in vec3 inPosition;

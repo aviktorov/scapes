@@ -11,8 +11,7 @@
 /*
  */
 static std::string vertex_shader_source =
-"#version 450 core\n"
-"#pragma shader_stage(vertex)\n"
+"#version 450\n"
 "layout(location = 0) in vec2 aPos;\n"
 "layout(location = 1) in vec2 aUV;\n"
 "layout(location = 2) in vec4 aColor;\n"
@@ -29,8 +28,7 @@ static std::string vertex_shader_source =
 "}\n";
 
 static std::string fragment_shader_source = 
-"#version 450 core\n"
-"#pragma shader_stage(fragment)\n"
+"#version 450\n"
 "layout(location = 0) out vec4 fColor;\n"
 "layout(set=0, binding=0) uniform sampler2D sTexture;\n"
 "layout(location = 0) in struct { vec4 Color; vec2 UV; } In;\n"

@@ -1,5 +1,4 @@
 #version 450
-#pragma shader_stage(fragment)
 
 #include <shaders/common/Common.h>
 

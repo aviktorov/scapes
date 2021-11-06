@@ -1,5 +1,4 @@
 #version 450
-#pragma shader_stage(fragment)
 
 #define APPLICATION_STATE_SET 0
 #include <shaders/common/ApplicationState.h>

@@ -1,5 +1,4 @@
 #version 450
-#pragma shader_stage(fragment)
 
 #define SSAO_SET 1
 #include <shaders/deferred/SSAO.h>
