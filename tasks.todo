@@ -71,6 +71,8 @@ PBR Sandbox:
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
     Stream 77:
+        ☐ Add camera component, get rid of CameraState struct
+        ☐ Get rid of ApplicationState struct
         ☐ Figure out how to pass camera / renderable / skylight data to a particular render pass
             ☐ Think about having different render pass types
             ☐ Think about having a single component for entity gpu data
