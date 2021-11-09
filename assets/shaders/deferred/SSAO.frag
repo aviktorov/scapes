@@ -58,7 +58,7 @@ void main()
 
 	mat3 TBN = mat3(tangentVS, binormalVS, normalVS);
 
-	float occlusion = getOcclusion(originVS, TBN, ssaoKernel.radius, 3.0f, ssaoKernel.numSamples);
+	float occlusion = getOcclusion(originVS, TBN, ssaoKernel.radius, 0.01f, ssaoKernel.numSamples);
 
 	outSSAO = 1.0f - occlusion / ssaoKernel.numSamples;
 	outSSAO = pow(outSSAO, ssaoKernel.intensity);
