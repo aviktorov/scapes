@@ -68,10 +68,14 @@ PBR Sandbox:
         ☐ Area lights
         ☐ Directional light & shadows
         ☐ First person camera (WASD controls & mouse aim)
-    Stream 76:
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
-        ☐ Data-driven render graph
+    Stream 77:
+        ☐ Figure out how to pass camera / renderable / skylight data to a particular render pass
+            ☐ Think about having different render pass types
+            ☐ Think about having a single component for entity gpu data
+    Stream 76:
+        ✔ Sketch first json draft for data-driven render graph @done (11/10/2021, 3:59:57 AM)
     Stream 75:
         ✔ Alias Tracy into foundation::profiler namespace @done (11/7/2021, 12:07:21 AM)
         ✔ Add SPIR-V cache that will help to avoid redundant shaderc calls @done (11/6/2021, 10:47:42 PM)
