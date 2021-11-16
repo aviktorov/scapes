@@ -1,72 +1,79 @@
 {
-	"resources":
+	"groups":
 	[
 		{
-			"name": "Camera Params",
-			"type": "UniformBuffer",
+			"name" : "Camera",
 			"parameters":
 			[
-
-			]
-		},
-		{
-			"name": "Debug Params",
-			"type": "UniformBuffer",
-			"parameters":
-			[
-
+				{ "name": "Camera::View", "type": "mat4", "value": [mat4_identity] },
+				{ "name": "Camera::ViewInverse", "type": "mat4", "value": [mat4_identity] },
+				{ "name": "Camera::Projection", "type": "mat4", "value": [mat4_identity] },
+				{ "name": "Camera::ProjectionInverse", "type": "mat4", "value": [mat4_identity] },
 			]
 		},
 
-		{ "name": "GBuffer BaseColor", "type": "Texture", "format": "R8B8G8A8_UNORM" },
-		{ "name": "GBuffer Normal", "type": "Texture", "format": "R16G16B16A16_SFLOAT" },
-		{ "name": "GBuffer Shading", "type": "Texture", "format": "R8G8B8A8_UNORM" },
-		{ "name": "GBuffer Depth", "type": "Texture", "format": "D24_UNORM" },
-		{ "name": "GBuffer Velocity", "type": "Texture", "format": "R16G16_SFLOAT" },
-
-		{ "name": "SSAO Noised", "type": "Texture", "format": "R8_UNORM" },
-		{ "name": "SSAO", "type": "Texture", "format": "R8_UNORM" },
-
-		{ "name": "LBuffer Diffuse", "type": "Texture", "format": "R16G16B16A16_SFLOAT" },
-		{ "name": "LBuffer Specular", "type": "Texture", "format": "R16G16B16A16_SFLOAT" },
-
-		{ "name": "SSR Trace", "type": "Texture", "format": "R8G8B8A8_UNORM" },
-		{ "name": "SSR Resolve", "type": "Texture", "format": "R16G16B16A16_SFLOAT" },
-		{ "name": "SSR Velocity", "type": "Texture", "format": "R16G16_SFLOAT" },
-		{ "name": "SSR", "type": "Texture", "format": "R16G16B16A16_SFLOAT" },
-
-		{ "name": "Composite HDR Color", "type": "Texture", "format": "R16G16B16A16_SFLOAT" },
-		{ "name": "HDR Color", "type": "Texture", "format": "R16G16B16A16_SFLOAT" },
-		{ "name": "LDR Color", "type": "Screen" },
-
-		{ "name": "Old HDR Color", "type": "Texture", "format": "R16G16B16A16_SFLOAT" },
-		{ "name": "Old SSR", "type": "Texture", "format": "R16G16B16A16_SFLOAT" },
-
-		{ "name": "SSAO NoiseTexture", "type":"Texture", "format": "R16G16_SFLOAT" },
-		{ "name": "SSR NoiseTexture", "type":"Texture", "format": "R8G8B8A8_UNORM" },
 		{
-			"name": "SSR Params",
-			"type": "UniformBuffer",
+			"name" : "Debug",
 			"parameters":
 			[
-				{ "name": "Step", "type":"Parameter", "format": "float", "default": 1.0 }
+				{ "name": "Debug::LerpUserMaterials", "type": "float", "value": 0.0 },
+				{ "name": "Debug::UserMetalness", "type": "float", "value": 0.0 },
+				{ "name": "Debug::UserRoughness", "type": "float", "value": 0.0 }		
 			]
 		},
+
 		{
-			"name": "SSAO Params",
-			"type": "UniformBuffer",
+			"name" : "SSAO",
 			"parameters":
 			[
-				{ "name": "Samples", "type":"Parameter", "format": "uint32", "default":32 },
-				{ "name": "Radius", "type":"Parameter", "format": "float", "default":1.0 }
+				{ "name": "SSAO::Samples", "type": "uint32", "value": 32 },
+				{ "name": "SSAO::Radius", "type": "float", "value": 1.0 },
+				{ "name": "SSAO::OffsetVectors", "type": "vec2", "count":128, "value":
+					[
+						{ 0.0, 0.0 },
+						{ 0.0, 0.0 },
+						{ 0.0, 0.0 },
+						{ 0.0, 0.0 },
+						...
+					]
+				}
 			]
 		}
+	],
+	"textures":
+	[
+		{ "name": "GBuffer BaseColor", "type": "RenderBuffer", "format": "R8B8G8A8_UNORM" },
+		{ "name": "GBuffer Normal", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
+		{ "name": "GBuffer Shading", "type": "RenderBuffer","format": "R8G8B8A8_UNORM" },
+		{ "name": "GBuffer Depth", "type": "RenderBuffer","format": "D24_UNORM" },
+		{ "name": "GBuffer Velocity", "type": "RenderBuffer","format": "R16G16_SFLOAT" },
+
+		{ "name": "SSAO Noised", "type": "RenderBuffer","format": "R8_UNORM" },
+		{ "name": "SSAO", "type": "RenderBuffer","format": "R8_UNORM" },
+
+		{ "name": "LBuffer Diffuse", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
+		{ "name": "LBuffer Specular", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
+
+		{ "name": "SSR Trace", "type": "RenderBuffer","format": "R8G8B8A8_UNORM" },
+		{ "name": "SSR Resolve", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
+		{ "name": "SSR Velocity", "type": "RenderBuffer","format": "R16G16_SFLOAT" },
+		{ "name": "SSR", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
+
+		{ "name": "Composite HDR Color", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
+		{ "name": "HDR Color", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
+		{ "name": "LDR Color", "type": "Screen" },
+
+		{ "name": "Old HDR Color", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
+		{ "name": "Old SSR", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
+
+		{ "name": "SSAO::NoiseTexture", "type":"Texture" },
+		{ "name": "SSR::NoiseTexture", "type":"Texture" }
 	],
 
 	"passes" :
 	[
 		{
-			"type": "Renderable",
+			"type": "Geometry",
 			"name": "GBuffer",
 			"inputs":
 			[
@@ -77,23 +84,25 @@
 			"fragment_shader": "path/to/shader.frag"
 		},
 		{
-			"type": "FullscreenQuad",
+			"type": "Post",
 			"name": "SSAO",
 
 			"inputs":
-			[
-				["Camera Params"],
-				["SSAO Params", "SSAO NoiseTexture"],
-				["GBuffer Normal", "GBuffer Depth"]
-			],
+			{
+				"groups": ["Camera", "Debug"],
+				"textures": ["GBuffer Normal", "GBuffer Depth", "SSAO NoiseTexture"]
+			},
 			"outputs": ["SSAO Noised"],
 			"fragment_shader": "path/to/shader.frag"
 		},
 		{
-			"type": "FullscreenQuad",
+			"type": "Post",
 			"name": "SSAO Blur",
 			"inputs": ["SSAO Noised"],
-			"outputs": ["SSAO"],
+			"outputs":
+			[
+				{ "name": "SSAO", "read": "CLEAR", "clear_value": [....], "store": "STORE" }
+			],
 			"fragment_shader": "path/to/shader.frag"
 		},
 		{
@@ -109,7 +118,7 @@
 			"fragment_shader": "path/to/shader.frag"
 		},
 		{
-			"type": "FullscreenQuad",
+			"type": "Post",
 			"name": "SSR Trace",
 			"inputs":
 			[
@@ -120,7 +129,7 @@
 			"fragment_shader": "path/to/shader.frag"
 		},
 		{
-			"type": "FullscreenQuad",
+			"type": "Post",
 			"name": "SSR Resolve",
 			"inputs":
 			[
@@ -133,7 +142,7 @@
 			"fragment_shader": "path/to/shader.frag"
 		},
 		{
-			"type": "FullscreenQuad",
+			"type": "Post",
 			"name": "SSR Temporal Filter",
 			"inputs":
 			[
@@ -145,7 +154,7 @@
 			"fragment_shader": "path/to/shader.frag"
 		},
 		{
-			"type": "FullscreenQuad",
+			"type": "Post",
 			"name": "Composite",
 			"inputs":
 			[
@@ -157,7 +166,7 @@
 			"fragment_shader": "path/to/shader.frag"
 		},
 		{
-			"type": "FullscreenQuad",
+			"type": "MyCustomPassType",
 			"name": "Composite Temporal Filter",
 			"inputs": [
 				["Old HDR Color"],
@@ -168,7 +177,7 @@
 			"fragment_shader": "path/to/shader.frag"
 		},
 		{
-			"type": "FullscreenQuad",
+			"type": "Post",
 			"name": "Tonemapping + ImGui",
 			"inputs": ["HDR Color"],
 			"outputs": ["LDR Color"],
