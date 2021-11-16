@@ -13,37 +13,28 @@
 		namespace profiler = tracy;
 	}
 
-	#define SCAPES_CONCAT(x,y) TracyConcatIndirect(x,y)
+	#define SCAPES_CONCAT_INDIRECT(x,y) x##y
+	#define SCAPES_CONCAT(x,y) SCAPES_CONCAT_INDIRECT(x,y)
 
-	#define SCAPES_PROFILER_ZONE_NC(varname, name, color, active) \
-		static constexpr scapes::foundation::profiler::SourceLocationData SCAPES_CONCAT(__scapes_profiler_source_location, __LINE__) \
+	#define SCAPES_PROFILER_SCOPED_NC(name, color, active) \
+		static constexpr scapes::foundation::profiler::SourceLocationData SCAPES_CONCAT(__scapes_source_line_, __LINE__) \
 		{ \
 			name, \
 			__FUNCTION__, __FILE__, (uint32_t)__LINE__, \
 			color \
 		}; \
-		scapes::foundation::profiler::ScopedZone varname( \
-			&SCAPES_CONCAT(__scapes_profiler_source_location, __LINE__), \
+		scapes::foundation::profiler::ScopedZone SCAPES_CONCAT(__scapes_scoped_zone_, __LINE__)( \
+			&SCAPES_CONCAT(__scapes_source_line_, __LINE__), \
 			active \
 		);
 
-	#define SCAPES_PROFILER_NAMED(zone) SCAPES_PROFILER_ZONE_NC(zone, nullptr, 0, true)
-	#define SCAPES_PROFILER_NAMED_N(zone, name) SCAPES_PROFILER_ZONE_NC(zone, name, 0, true)
-	#define SCAPES_PROFILER_NAMED_C(zone, color) SCAPES_PROFILER_ZONE_NC(zone, nullptr, color, true)
-	#define SCAPES_PROFILER_NAMED_NC(zone, name, color) SCAPES_PROFILER_ZONE_NC(zone, name, color, true)
-
-	#define SCAPES_PROFILER_SCOPED SCAPES_PROFILER_NAMED(___scapes_scoped_zone)
-	#define SCAPES_PROFILER_SCOPED_N(name) SCAPES_PROFILER_NAMED_N(___scapes_scoped_zone, name)
-	#define SCAPES_PROFILER_SCOPED_C(color) SCAPES_PROFILER_NAMED_C(___scapes_scoped_zone, color)
-	#define SCAPES_PROFILER_SCOPED_NC(name, color) SCAPES_PROFILER_NAMED_NC(___scapes_scoped_zone, name, color)
+	#define SCAPES_PROFILER() SCAPES_PROFILER_SCOPED_NC(nullptr, 0, true)
+	#define SCAPES_PROFILER_N(name) SCAPES_PROFILER_SCOPED_NC(name, 0, true)
+	#define SCAPES_PROFILER_C(color) SCAPES_PROFILER_SCOPED_NC(nullptr, color, true)
+	#define SCAPES_PROFILER_NC(name, color) SCAPES_PROFILER_SCOPED_NC(name, color, true)
 #else
-	#define SCAPES_PROFILER_SCOPED
-	#define SCAPES_PROFILER_SCOPED_N(name)
-	#define SCAPES_PROFILER_SCOPED_C(color)
-	#define SCAPES_PROFILER_SCOPED_NC(name, color)
-
-	#define SCAPES_PROFILER_NAMED(zone)
-	#define SCAPES_PROFILER_NAMED_N(zone, name)
-	#define SCAPES_PROFILER_NAMED_C(zone, color)
-	#define SCAPES_PROFILER_NAMED_NC(zone, name, color)
+	#define SCAPES_PROFILER()
+	#define SCAPES_PROFILER_N(name)
+	#define SCAPES_PROFILER_C(color)
+	#define SCAPES_PROFILER_NC(name, color)
 #endif

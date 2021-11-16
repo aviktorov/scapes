@@ -2056,7 +2056,7 @@ namespace scapes::foundation::render::vulkan
 		uint32_t base_instance
 	)
 	{
-		SCAPES_PROFILER_SCOPED;
+		SCAPES_PROFILER();
 
 		if (command_buffer == nullptr)
 			return;
@@ -2073,7 +2073,7 @@ namespace scapes::foundation::render::vulkan
 
 		flush(pipeline_state);
 
-		SCAPES_PROFILER_NAMED_N(actual_draw_call, "Actual draw call");
+		SCAPES_PROFILER_N("Actual draw call");
 
 		VkPipeline pipeline = vk_pipeline_state->pipeline;
 		VkPipelineLayout pipeline_layout = vk_pipeline_state->pipeline_layout;

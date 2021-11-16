@@ -483,6 +483,8 @@ ImTextureID RenderGraph::fetchTextureID(const foundation::render::Texture *textu
  */
 void RenderGraph::render(foundation::render::CommandBuffer *command_buffer, foundation::render::SwapChain *swap_chain, foundation::render::BindSet *application_bindings, foundation::render::BindSet *camera_bindings)
 {
+	SCAPES_PROFILER();
+
 	device->resetCommandBuffer(command_buffer);
 	device->beginCommandBuffer(command_buffer);
 
@@ -494,7 +496,7 @@ void RenderGraph::render(foundation::render::CommandBuffer *command_buffer, foun
 	}
 
 	{
-		SCAPES_PROFILER_SCOPED_N("GBuffer pass");
+		SCAPES_PROFILER_N("GBuffer pass");
 
 		device->setBlending(pipeline_state, false);
 		device->setCullMode(pipeline_state, foundation::render::CullMode::BACK);
@@ -505,7 +507,7 @@ void RenderGraph::render(foundation::render::CommandBuffer *command_buffer, foun
 	}
 
 	{
-		SCAPES_PROFILER_SCOPED_N("SSAO");
+		SCAPES_PROFILER_N("SSAO");
 
 		device->setBlending(pipeline_state, false);
 		device->setCullMode(pipeline_state, foundation::render::CullMode::NONE);
@@ -516,7 +518,7 @@ void RenderGraph::render(foundation::render::CommandBuffer *command_buffer, foun
 	}
 
 	{
-		SCAPES_PROFILER_SCOPED_N("SSAO Blur");
+		SCAPES_PROFILER_N("SSAO Blur");
 
 		device->setBlending(pipeline_state, false);
 		device->setCullMode(pipeline_state, foundation::render::CullMode::NONE);
@@ -527,13 +529,13 @@ void RenderGraph::render(foundation::render::CommandBuffer *command_buffer, foun
 	}
 
 	{
-		SCAPES_PROFILER_SCOPED_N("LBuffer pass");
+		SCAPES_PROFILER_N("LBuffer pass");
 
 		renderLBuffer(command_buffer, camera_bindings);
 	}
 
 	{
-		SCAPES_PROFILER_SCOPED_N("SSR Trace");
+		SCAPES_PROFILER_N("SSR Trace");
 
 		device->setBlending(pipeline_state, false);
 		device->setCullMode(pipeline_state, foundation::render::CullMode::NONE);
@@ -544,7 +546,7 @@ void RenderGraph::render(foundation::render::CommandBuffer *command_buffer, foun
 	}
 
 	{
-		SCAPES_PROFILER_SCOPED_N("SSR Resolve");
+		SCAPES_PROFILER_N("SSR Resolve");
 
 		device->setBlending(pipeline_state, false);
 		device->setCullMode(pipeline_state, foundation::render::CullMode::NONE);
@@ -555,7 +557,7 @@ void RenderGraph::render(foundation::render::CommandBuffer *command_buffer, foun
 	}
 
 	{
-		SCAPES_PROFILER_SCOPED_N("SSR Temporal Filter");
+		SCAPES_PROFILER_N("SSR Temporal Filter");
 
 		device->setBlending(pipeline_state, false);
 		device->setCullMode(pipeline_state, foundation::render::CullMode::NONE);
@@ -566,13 +568,13 @@ void RenderGraph::render(foundation::render::CommandBuffer *command_buffer, foun
 	}
 
 	{
-		SCAPES_PROFILER_SCOPED_N("Composite pass");
+		SCAPES_PROFILER_N("Composite pass");
 
 		renderComposite(command_buffer);
 	}
 
 	{
-		SCAPES_PROFILER_SCOPED_N("Composite Temporal Filter");
+		SCAPES_PROFILER_N("Composite Temporal Filter");
 
 		device->setBlending(pipeline_state, false);
 		device->setCullMode(pipeline_state, foundation::render::CullMode::NONE);
@@ -583,7 +585,7 @@ void RenderGraph::render(foundation::render::CommandBuffer *command_buffer, foun
 	}
 
 	{
-		SCAPES_PROFILER_SCOPED_N("Tonemapping + ImGui pass");
+		SCAPES_PROFILER_N("Tonemapping + ImGui pass");
 
 		renderToSwapChain(command_buffer, swap_chain);
 	}

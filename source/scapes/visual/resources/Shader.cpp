@@ -29,7 +29,7 @@ bool ResourcePipeline<resources::Shader>::process(
 	foundation::shaders::Compiler *compiler
 )
 {
-	SCAPES_PROFILER_SCOPED_N("ResourcePipeline<Shader>::process");
+	SCAPES_PROFILER();
 
 	resources::Shader *shader = handle.get();
 	assert(shader);
@@ -40,13 +40,13 @@ bool ResourcePipeline<resources::Shader>::process(
 	foundation::shaders::ShaderIL *il = nullptr;
 	
 	{
-		SCAPES_PROFILER_SCOPED_N("ResourcePipeline<Shader>::compile_to_spirv");
+		SCAPES_PROFILER_N("ResourcePipeline<Shader>::compile_to_spirv");
 		il = compiler->createShaderIL(static_cast<foundation::shaders::ShaderType>(type), static_cast<uint32_t>(size), reinterpret_cast<const char *>(data));
 	}
 
 	if (il != nullptr)
 	{
-		SCAPES_PROFILER_SCOPED_N("ResourcePipeline<Shader>::create_from_spirv");
+		SCAPES_PROFILER_N("ResourcePipeline<Shader>::create_from_spirv");
 		shader->shader = device->createShaderFromIL(
 			static_cast<foundation::render::ShaderType>(il->type),
 			static_cast<foundation::render::ShaderILType>(il->il_type),
