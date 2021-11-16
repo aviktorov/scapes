@@ -70,12 +70,12 @@ PBR Sandbox:
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
-    Stream 77:
         ☐ Add camera component, get rid of CameraState struct
         ☐ Get rid of ApplicationState struct
-        ☐ Figure out how to pass camera / renderable / skylight data to a particular render pass
-            ☐ Think about having different render pass types
-            ☐ Think about having a single component for entity gpu data
+    Stream 77:
+        ✔ Figure out how to pass camera / renderable / skylight data to a particular render pass @done (11/17/2021, 1:34:42 AM)
+            ✔ Think about having different render pass types @done (11/17/2021, 1:34:43 AM)
+            ✔ Think about having a single component for entity gpu data @done (11/17/2021, 1:34:43 AM)
     Stream 76:
         ✔ Sketch first json draft for data-driven render graph @done (11/10/2021, 3:59:57 AM)
     Stream 75:
