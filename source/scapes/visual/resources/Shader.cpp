@@ -1,6 +1,6 @@
 #include <scapes/visual/Resources.h>
 
-#include <scapes/foundation/Profiler.h>
+#include <scapes/foundation/profiler/Profiler.h>
 
 using namespace scapes;
 using namespace scapes::visual;

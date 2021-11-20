@@ -8,7 +8,7 @@
 #include "render/vulkan/RenderPassBuilder.h"
 #include "render/vulkan/Utils.h"
 
-#include <scapes/foundation/Profiler.h>
+#include <scapes/foundation/profiler/Profiler.h>
 
 #include <algorithm>
 #include <cassert>

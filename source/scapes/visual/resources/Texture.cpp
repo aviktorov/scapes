@@ -3,7 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <scapes/foundation/Profiler.h>
+#include <scapes/foundation/profiler/Profiler.h>
 
 #include <cassert>
 #include <iostream>

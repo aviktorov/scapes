@@ -3,7 +3,7 @@
 #include <scapes/foundation/Log.h>
 #include <scapes/foundation/io/FileSystem.h>
 
-#include <scapes/foundation/Profiler.h>
+#include <scapes/foundation/profiler/Profiler.h>
 
 namespace scapes::foundation::shaders::spirv
 {

@@ -6,7 +6,7 @@
 #include <scapes/visual/API.h>
 #include <scapes/visual/Resources.h>
 
-#include <scapes/foundation/Profiler.h>
+#include <scapes/foundation/profiler/Profiler.h>
 
 #include <imgui.h>
 
