@@ -1,6 +1,7 @@
 #pragma once
 
 #include <scapes/foundation/math/Fwd.h>
+#include <scapes/3rdparty/rapidjson/fwd.h>
 
 template<typename T> struct TypeTraits;
 template <typename T> struct ResourcePipeline;
@@ -36,6 +37,7 @@ namespace scapes::foundation
 		class Stream;
 	}
 
+	namespace json = rapidjson;
 	namespace math = glm;
 
 	namespace render
