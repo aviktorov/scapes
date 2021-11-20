@@ -60,6 +60,7 @@ PBR Sandbox:
     Next Up:
         ☐ Temporal Filter Improvements
         ☐ Tone map -> TAA accumulate -> Reverse Tone Map
+        ☐ SSAO Improvements: make it more cache friendly
         ☐ SSR Trace Improvements: trace rays in screen space via DDA
             http://jcgt.org/published/0003/04/04/paper.pdf
         ☐ Animate blue noise for better TAA sampling
@@ -70,8 +71,16 @@ PBR Sandbox:
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
+    Stream 79:
+        ☐ Migrate old render graph to new render graph
         ☐ Add camera component, get rid of CameraState struct
         ☐ Get rid of ApplicationState struct
+    Stream 78:
+        ✔ Implement RenderGraph class @done (11/21/2021, 4:21:15 AM)
+        ✔ Implement basic render pass types @done (11/21/2021, 4:21:16 AM)
+            ✔ RenderPassPost @done (11/21/2021, 4:21:16 AM)
+            ✔ RenderPassGeometry @done (11/21/2021, 4:21:17 AM)
+            ✔ RenderPassSkyLight @done (11/21/2021, 4:21:18 AM)
     Stream 77:
         ✔ Figure out how to pass camera / renderable / skylight data to a particular render pass @done (11/17/2021, 1:34:42 AM)
             ✔ Think about having different render pass types @done (11/17/2021, 1:34:43 AM)
