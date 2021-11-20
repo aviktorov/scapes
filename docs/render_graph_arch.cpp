@@ -25,16 +25,15 @@ render_graph->load("graph.json");
 
 //////////////////////////////////////////////////////////
 
-for (int i = 0; i < max_random_ssao_vectors; ++i)
-	render_graph->setParameter("SSAO::OffsetVectors", i, ssao_vectors[i]);
+render_graph->setParameter("SSAO", "OffsetVectors", max_random_ssao_vectors, ssao_vectors);
 
-render_graph->setParameter("SSAO::Radius", 42.0f);
-render_graph->setParameter("SSAO::Samples", 16);
-render_graph->setParameter("SSAO::Bias", 0.01f);
+render_graph->setParameter("SSAO", "Radius", 42.0f);
+render_graph->setParameter("SSAO", "Samples", 16);
+render_graph->setParameter("SSAO", "Bias", 0.01f);
 
-render_graph->setTexture("SSAO::NoiseTexture", ssao_noise_tex);
+render_graph->setParameter("Camera", "View", ...);
 
-render_graph->setParameter("Camera::View", ...);
+render_graph->setTexture("SSAO NoiseTexture", ssao_noise_tex);
 
 render_graph->setScreenTexture("LDR Color", swap_chain);
 
@@ -101,7 +100,7 @@ public:
 	void shutdown()
 	{
 		for (IRenderPass *pass : render_passes)
-			pass->init(device, world);
+			pass->shutdown();
 
 		destroy_bindsets_for_parameter_groups();
 	}

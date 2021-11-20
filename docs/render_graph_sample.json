@@ -5,10 +5,10 @@
 			"name" : "Camera",
 			"parameters":
 			[
-				{ "name": "Camera::View", "type": "mat4", "value": [mat4_identity] },
-				{ "name": "Camera::ViewInverse", "type": "mat4", "value": [mat4_identity] },
-				{ "name": "Camera::Projection", "type": "mat4", "value": [mat4_identity] },
-				{ "name": "Camera::ProjectionInverse", "type": "mat4", "value": [mat4_identity] },
+				{ "name": "View", "type": "mat4", "value": [mat4_identity] },
+				{ "name": "ViewInverse", "type": "mat4", "value": [mat4_identity] },
+				{ "name": "Projection", "type": "mat4", "value": [mat4_identity] },
+				{ "name": "ProjectionInverse", "type": "mat4", "value": [mat4_identity] },
 			]
 		},
 
@@ -16,9 +16,9 @@
 			"name" : "Debug",
 			"parameters":
 			[
-				{ "name": "Debug::LerpUserMaterials", "type": "float", "value": 0.0 },
-				{ "name": "Debug::UserMetalness", "type": "float", "value": 0.0 },
-				{ "name": "Debug::UserRoughness", "type": "float", "value": 0.0 }		
+				{ "name": "LerpUserMaterials", "type": "float", "value": 0.0 },
+				{ "name": "UserMetalness", "type": "float", "value": 0.0 },
+				{ "name": "UserRoughness", "type": "float", "value": 0.0 }		
 			]
 		},
 
@@ -26,9 +26,9 @@
 			"name" : "SSAO",
 			"parameters":
 			[
-				{ "name": "SSAO::Samples", "type": "uint32", "value": 32 },
-				{ "name": "SSAO::Radius", "type": "float", "value": 1.0 },
-				{ "name": "SSAO::OffsetVectors", "type": "vec2", "count":128, "value":
+				{ "name": "Samples", "type": "uint32", "value": 32 },
+				{ "name": "Radius", "type": "float", "value": 1.0 },
+				{ "name": "OffsetVectors", "type": "vec2", "count":128, "value":
 					[
 						{ 0.0, 0.0 },
 						{ 0.0, 0.0 },
@@ -66,8 +66,8 @@
 		{ "name": "Old HDR Color", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
 		{ "name": "Old SSR", "type": "RenderBuffer","format": "R16G16B16A16_SFLOAT" },
 
-		{ "name": "SSAO::NoiseTexture", "type":"Texture" },
-		{ "name": "SSR::NoiseTexture", "type":"Texture" }
+		{ "name": "SSAO NoiseTexture", "type":"Texture" },
+		{ "name": "SSR NoiseTexture", "type":"Texture" }
 	],
 
 	"passes" :
