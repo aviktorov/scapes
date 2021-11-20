@@ -1969,14 +1969,6 @@ namespace scapes::foundation::render::vulkan
 			}
 		}
 
-		VkViewport viewport = {};
-		viewport.width = static_cast<float>(vk_frame_buffer->sizes.width);
-		viewport.height = static_cast<float>(vk_frame_buffer->sizes.height);
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
-
 		VkRect2D render_area = {};
 		render_area.extent = vk_frame_buffer->sizes;
 		render_area.offset = {0, 0};
@@ -2006,14 +1998,6 @@ namespace scapes::foundation::render::vulkan
 		const RenderPass *vk_render_pass = static_cast<const RenderPass *>(render_pass);
 		const SwapChain *vk_swap_chain = static_cast<const SwapChain *>(swap_chain);
 		VkFramebuffer frame_buffer = vk_swap_chain->frame_buffers[vk_swap_chain->current_image];
-
-		VkViewport viewport = {};
-		viewport.width = static_cast<float>(vk_swap_chain->sizes.width);
-		viewport.height = static_cast<float>(vk_swap_chain->sizes.height);
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.minDepth = 0.0f;
-		viewport.maxDepth = 1.0f;
 
 		VkRect2D render_area = {};
 		render_area.extent = vk_swap_chain->sizes;
