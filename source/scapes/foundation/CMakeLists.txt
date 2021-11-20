@@ -40,10 +40,18 @@ set(PROFILER_DEFINES
 )
 
 file(GLOB COMMON_SOURCES
-	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/../common/*.cpp
 )
 
 file(GLOB COMMON_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/../common/*.h
+)
+
+file(GLOB ROOT_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+)
+
+file(GLOB ROOT_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/*.h
 )
 
@@ -121,6 +129,7 @@ endif()
 add_library(
 	${TARGET} SHARED
 	${COMMON_SOURCES} ${COMMON_HEADERS}
+	${ROOT_SOURCES} ${ROOT_HEADERS}
 	${GAME_SOURCES} ${GAME_HEADERS}
 	${RENDER_SOURCES} ${RENDER_HEADERS}
 	${RESOURCES_SOURCES} ${RESOURCES_HEADERS}
@@ -150,7 +159,7 @@ set_target_properties(${TARGET} PROPERTIES DEBUG_POSTFIX d)
 # ==================================================================================================
 # Includes
 # ==================================================================================================
-target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${DIR_API})
+target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../common/ ${CMAKE_CURRENT_SOURCE_DIR} ${DIR_API})
 
 # ==================================================================================================
 # Preprocessor

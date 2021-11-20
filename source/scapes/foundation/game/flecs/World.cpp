@@ -1,6 +1,6 @@
 #include "World.h"
+#include "HashUtils.h"
 
-#include <HashUtils.h>
 #include <string>
 
 namespace scapes::foundation::game::flecs
@@ -157,7 +157,7 @@ namespace scapes::foundation::game::flecs
 	::flecs::entity_t World::fetchComponentID(const char *type_name, size_t size, size_t alignment) const
 	{
 		uint64_t hash = 0;
-		HashUtils::combine(hash, std::string_view(type_name));
+		common::HashUtils::combine(hash, std::string_view(type_name));
 
 		auto it = registered_components.find(hash);
 		if (it != registered_components.end())

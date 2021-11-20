@@ -88,8 +88,8 @@ namespace scapes::foundation::shaders
 	uint64_t ShaderCache::getHash(ShaderType type, const char *source, size_t length) const
 	{
 		uint64_t hash = 0;
-		HashUtils::combine(hash, type);
-		HashUtils::combine(hash, std::string_view(source, length));
+		common::HashUtils::combine(hash, type);
+		common::HashUtils::combine(hash, std::string_view(source, length));
 
 		return hash;
 	}

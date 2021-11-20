@@ -64,11 +64,11 @@ namespace scapes::foundation::render::vulkan
 		assert(num_layouts == 0 || layouts != nullptr);
 
 		uint64_t hash = 0;
-		HashUtils::combine(hash, push_constants_size);
-		HashUtils::combine(hash, num_layouts);
+		common::HashUtils::combine(hash, push_constants_size);
+		common::HashUtils::combine(hash, num_layouts);
 		
 		for (uint8_t i = 0; i < num_layouts; ++i)
-			HashUtils::combine(hash, layouts[i]);
+			common::HashUtils::combine(hash, layouts[i]);
 
 		return hash;
 	}

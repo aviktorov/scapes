@@ -129,8 +129,8 @@ namespace scapes::foundation::render::vulkan
 		assert(pipeline_state);
 
 		uint64_t hash = 0;
-		HashUtils::combine(hash, layout);
-		HashUtils::combine(hash, pipeline_state->render_pass);
+		common::HashUtils::combine(hash, layout);
+		common::HashUtils::combine(hash, pipeline_state->render_pass);
 
 		for (uint8_t i = 0; i < pipeline_state->num_vertex_streams; ++i)
 		{
@@ -138,13 +138,13 @@ namespace scapes::foundation::render::vulkan
 
 			for (uint8_t j = 0; j < vertex_buffer->num_attributes; ++j)
 			{
-				HashUtils::combine(hash, vertex_buffer->attribute_formats[j]);
-				HashUtils::combine(hash, vertex_buffer->attribute_offsets[j]);
+				common::HashUtils::combine(hash, vertex_buffer->attribute_formats[j]);
+				common::HashUtils::combine(hash, vertex_buffer->attribute_offsets[j]);
 
 			}
 		}
 
-		HashUtils::combine(hash, pipeline_state->primitive_topology);
+		common::HashUtils::combine(hash, pipeline_state->primitive_topology);
 
 		for (uint8_t i = 0; i < static_cast<uint8_t>(ShaderType::MAX); ++i)
 		{
@@ -152,19 +152,19 @@ namespace scapes::foundation::render::vulkan
 			if (module == VK_NULL_HANDLE)
 				continue;
 
-			HashUtils::combine(hash, i);
-			HashUtils::combine(hash, module);
+			common::HashUtils::combine(hash, i);
+			common::HashUtils::combine(hash, module);
 		}
 
-		HashUtils::combine(hash, pipeline_state->num_color_attachments);
-		HashUtils::combine(hash, pipeline_state->max_samples);
-		HashUtils::combine(hash, pipeline_state->cull_mode);
-		HashUtils::combine(hash, pipeline_state->depth_compare_func);
-		HashUtils::combine(hash, pipeline_state->depth_test);
-		HashUtils::combine(hash, pipeline_state->depth_write);
-		HashUtils::combine(hash, pipeline_state->blending);
-		HashUtils::combine(hash, pipeline_state->blend_src_factor);
-		HashUtils::combine(hash, pipeline_state->blend_dst_factor);
+		common::HashUtils::combine(hash, pipeline_state->num_color_attachments);
+		common::HashUtils::combine(hash, pipeline_state->max_samples);
+		common::HashUtils::combine(hash, pipeline_state->cull_mode);
+		common::HashUtils::combine(hash, pipeline_state->depth_compare_func);
+		common::HashUtils::combine(hash, pipeline_state->depth_test);
+		common::HashUtils::combine(hash, pipeline_state->depth_write);
+		common::HashUtils::combine(hash, pipeline_state->blending);
+		common::HashUtils::combine(hash, pipeline_state->blend_src_factor);
+		common::HashUtils::combine(hash, pipeline_state->blend_dst_factor);
 
 		return hash;
 	}

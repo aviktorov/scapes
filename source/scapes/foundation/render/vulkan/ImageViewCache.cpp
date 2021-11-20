@@ -57,14 +57,14 @@ namespace scapes::foundation::render::vulkan
 
 		uint64_t hash = 0;
 
-		HashUtils::combine(hash, texture->image);
-		HashUtils::combine(hash, texture->format);
-		HashUtils::combine(hash, aspect_flags);
-		HashUtils::combine(hash, view_type);
-		HashUtils::combine(hash, base_mip);
-		HashUtils::combine(hash, num_mips);
-		HashUtils::combine(hash, base_layer);
-		HashUtils::combine(hash, num_layers);
+		common::HashUtils::combine(hash, texture->image);
+		common::HashUtils::combine(hash, texture->format);
+		common::HashUtils::combine(hash, aspect_flags);
+		common::HashUtils::combine(hash, view_type);
+		common::HashUtils::combine(hash, base_mip);
+		common::HashUtils::combine(hash, num_mips);
+		common::HashUtils::combine(hash, base_layer);
+		common::HashUtils::combine(hash, num_layers);
 
 		return hash;
 	}

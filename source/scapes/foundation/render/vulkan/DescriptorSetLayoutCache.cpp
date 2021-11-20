@@ -59,9 +59,9 @@ namespace scapes::foundation::render::vulkan
 
 			const VkDescriptorSetLayoutBinding &info = bind_set->bindings[i];
 
-			HashUtils::combine(hash, info.binding);
-			HashUtils::combine(hash, info.descriptorType);
-			HashUtils::combine(hash, info.stageFlags);
+			common::HashUtils::combine(hash, info.binding);
+			common::HashUtils::combine(hash, info.descriptorType);
+			common::HashUtils::combine(hash, info.stageFlags);
 		}
 
 		return hash;

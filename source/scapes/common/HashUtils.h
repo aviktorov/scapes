@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace scapes::foundation
+namespace scapes::common
 {
 	class HashUtils
 	{
