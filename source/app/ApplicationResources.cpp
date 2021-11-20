@@ -1,5 +1,4 @@
 #include "ApplicationResources.h"
-#include "RenderUtils.h"
 
 #include <scapes/visual/Resources.h>
 
