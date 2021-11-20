@@ -1,3 +1,5 @@
+#pragma once
+
 #include <scapes/foundation/components/Components.h>
 
 #include <scapes/visual/API.h>
