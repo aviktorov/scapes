@@ -5,6 +5,7 @@
 namespace scapes::visual
 {
 	class API;
+	class RenderGraph;
 
 	namespace components
 	{
