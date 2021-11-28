@@ -106,20 +106,16 @@ namespace scapes::visual
 		template<typename T>
 		SCAPES_INLINE T getParameterValue(const char *group, const char *name) const
 		{
-			assert(getParameterSize(group, name) == sizeof(T));
-
-			void *data = getParameterValue(group, name, 0);
-			assert(data);
-
-			return reinterpret_cast<T>(*data);
+			const T *data = getParameterValue<T>(group, name, 0);
+			return *data;
 		}
 
 		template<typename T>
 		SCAPES_INLINE const T *getParameterValue(const char *group, const char *name, size_t offset) const
 		{
-			assert(getParameterSize(group, name) < offset * sizeof(T));
+			assert(getParameterSize(group, name) >= offset * sizeof(T));
 
-			void *data = getParameterValue(group, name, offset * sizeof(T));
+			const void *data = getParameterValue(group, name, offset * sizeof(T));
 			assert(data);
 
 			return reinterpret_cast<const T*>(data);
@@ -128,7 +124,7 @@ namespace scapes::visual
 		template<typename T>
 		SCAPES_INLINE bool setParameterValue(const char *group, const char *name, size_t count, const T *value)
 		{
-			assert(getParameterSize(group, name) <= sizeof(T) * count);
+			assert(getParameterSize(group, name) >= sizeof(T) * count);
 
 			return setParameterValue(group, name, 0, sizeof(T) * count, value);
 		}
