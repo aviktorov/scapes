@@ -9,7 +9,6 @@
 struct GLFWwindow;
 class ApplicationFileSystem;
 class ApplicationResources;
-class RenderGraph;
 class ImGuiRenderer;
 class SceneImporter;
 class SwapChain;
@@ -23,13 +22,6 @@ struct ApplicationState
 		MAX_TEMPORAL_FRAMES = 16,
 	};
 
-	// Render state (synchronized with UBO)
-	float lerpUserValues {0.0f};
-	float userMetalness {0.0f};
-	float userRoughness {0.0f};
-	float currentTime {0.0f};
-
-	// CPU state (not included in UBO)
 	int currentTemporalFrame {0};
 	int currentEnvironment {0};
 	scapes::foundation::math::vec2 temporalSamples[MAX_TEMPORAL_FRAMES];
@@ -38,16 +30,6 @@ struct ApplicationState
 
 struct CameraState
 {
-	// Render state (synchronized with UBO)
-	scapes::foundation::math::mat4 view;
-	scapes::foundation::math::mat4 iview;
-	scapes::foundation::math::mat4 projection;
-	scapes::foundation::math::mat4 iprojection;
-	scapes::foundation::math::mat4 viewOld;
-	scapes::foundation::math::vec4 cameraParams;
-	scapes::foundation::math::vec3 cameraPosWS;
-
-	// CPU state (not included in UBO)
 	double phi {0.0f};
 	double theta {0.0f};
 	double radius {2.0f};
@@ -108,11 +90,12 @@ private:
 
 	SceneImporter *importer {nullptr};
 	scapes::foundation::game::Entity sky_light;
+	scapes::foundation::game::Entity camera;
 
-	RenderGraph *render_graph {nullptr};
 	ApplicationResources *application_resources {nullptr};
-	ApplicationState application_state;
 	ApplicationFileSystem *file_system {nullptr};
+
+	ApplicationState application_state;
 	CameraState camera_state;
 	InputState input_state;
 
@@ -121,14 +104,7 @@ private:
 	scapes::foundation::shaders::Compiler *compiler {nullptr};
 	scapes::foundation::game::World *world {nullptr};
 	scapes::foundation::resources::ResourceManager *resource_manager {nullptr};
+
+	scapes::visual::RenderGraph *new_render_graph {nullptr};
 	scapes::visual::API *visual_api {nullptr};
-
-	// TODO: make this better
-	scapes::foundation::render::UniformBuffer *camera_buffer {nullptr};
-	scapes::foundation::render::BindSet *camera_bindings {nullptr};
-	void *camera_gpu_data {nullptr};
-
-	scapes::foundation::render::UniformBuffer *application_buffer {nullptr};
-	scapes::foundation::render::BindSet *application_bindings {nullptr};
-	void *application_gpu_data {nullptr};
 };
