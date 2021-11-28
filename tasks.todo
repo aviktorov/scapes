@@ -71,10 +71,22 @@ PBR Sandbox:
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
-    Stream 79:
+    Stream 80:
         ☐ Migrate old render graph to new render graph
-        ☐ Add camera component, get rid of CameraState struct
-        ☐ Get rid of ApplicationState struct
+            ☐ Migrate lbuffer pass
+            ☐ Migrate ssr trace + ssr resolve passes
+            ☐ Migrate ssr temporal filter pass
+            ☐ Migrate composite pass
+            ☐ Migrate TAA pass
+            ☐ Migrate tonemap pass
+            ☐ Migrate gamma pass
+        ☐ Add camera component
+    Stream 79:
+        ✔ Migrate old render graph to new render graph @done (11/29/2021, 1:53:57 AM)
+            ✔ Migrate gbuffer pass @done (11/29/2021, 1:53:08 AM)
+            ✔ Migrate ssao + ssao blur passes @done (11/29/2021, 1:53:09 AM)
+        ✔ Get rid of gpu related stuff from CameraState struct @done (11/29/2021, 1:53:31 AM)
+        ✔ Get rid of gpu related stuff from ApplicationState struct @done (11/29/2021, 1:53:31 AM)
     Stream 78:
         ✔ Implement RenderGraph class @done (11/21/2021, 4:21:15 AM)
         ✔ Implement basic render pass types @done (11/21/2021, 4:21:16 AM)
