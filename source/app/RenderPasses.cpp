@@ -128,14 +128,14 @@ void RenderPassGraphicsBase::addColorOutput(
 	const char *name,
 	foundation::render::RenderPassLoadOp load_op,
 	foundation::render::RenderPassStoreOp store_op,
-	foundation::render::RenderPassClearValue clear_value
+	foundation::render::RenderPassClearColor clear_value
 )
 {
 	Output output = {};
 	output.texture_name = std::string(name);
 	output.load_op = load_op;
 	output.store_op = store_op;
-	output.clear_value = clear_value;
+	output.clear_value.as_color = clear_value;
 
 	color_outputs.push_back(output);
 }
@@ -164,13 +164,13 @@ void RenderPassGraphicsBase::setDepthStencilOutput(
 	const char *name,
 	foundation::render::RenderPassLoadOp load_op,
 	foundation::render::RenderPassStoreOp store_op,
-	foundation::render::RenderPassClearValue clear_value
+	foundation::render::RenderPassClearDepthStencil clear_value
 )
 {
 	depthstencil_output.texture_name = std::string(name);
 	depthstencil_output.load_op = load_op;
 	depthstencil_output.store_op = store_op;
-	depthstencil_output.clear_value = clear_value;
+	depthstencil_output.clear_value.as_depth_stencil = clear_value;
 
 	has_depthstencil_output = true;
 }

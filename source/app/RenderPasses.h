@@ -37,7 +37,7 @@ public:
 		const char *name,
 		scapes::foundation::render::RenderPassLoadOp load_op,
 		scapes::foundation::render::RenderPassStoreOp store_op,
-		scapes::foundation::render::RenderPassClearValue clear_value
+		scapes::foundation::render::RenderPassClearColor clear_value
 	);
 
 	void removeColorOutput(const char *name);
@@ -47,7 +47,7 @@ public:
 		const char *name,
 		scapes::foundation::render::RenderPassLoadOp load_op,
 		scapes::foundation::render::RenderPassStoreOp store_op,
-		scapes::foundation::render::RenderPassClearValue clear_value
+		scapes::foundation::render::RenderPassClearDepthStencil clear_value
 	);
 	void removeDepthStencilOutput();
 
