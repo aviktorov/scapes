@@ -54,14 +54,27 @@ namespace scapes::visual
 		width = w;
 		height = h;
 
+		bool should_invalidate = false;
+
 		for (auto &[hash, group] : parameter_group_lookup)
-			flushParameterGroup(group);
+		{
+			bool result = flushParameterGroup(group);
+			should_invalidate = should_invalidate || result;
+		}
 
 		for (auto &[hash, texture] : texture_lookup)
-			flushTextureResource(texture);
+		{
+			bool result = flushTextureResource(texture);
+			should_invalidate = should_invalidate || result;
+		}
 
 		for (IRenderPass *pass : passes)
 			pass->init(this);
+
+		if (should_invalidate)
+			for (IRenderPass *pass : passes)
+				pass->invalidate();
+
 	}
 
 	void RenderGraphImpl::shutdown()
@@ -98,10 +111,16 @@ namespace scapes::visual
 		bool should_invalidate = false;
 
 		for (auto &[hash, group] : parameter_group_lookup)
-			should_invalidate = should_invalidate || flushParameterGroup(group);
+		{
+			bool result = flushParameterGroup(group);
+			should_invalidate = should_invalidate || result;
+		}
 
 		for (auto &[hash, texture] : texture_lookup)
-			should_invalidate = should_invalidate || flushTextureResource(texture);
+		{
+			bool result = flushTextureResource(texture);
+			should_invalidate = should_invalidate || result;
+		}
 
 		if (should_invalidate)
 			for (IRenderPass *pass : passes)
@@ -651,7 +670,7 @@ namespace scapes::visual
 				ubo_size += padding;
 
 			ubo_size += static_cast<uint32_t>(parameter->size);
-			current_offset += parameter->size % alignment;
+			current_offset = (current_offset + parameter->size) % alignment;
 		}
 
 		if (group->gpu_resource_size < ubo_size)
@@ -677,7 +696,7 @@ namespace scapes::visual
 			memcpy(ubo_data, parameter->memory, parameter->size);
 
 			ubo_data += parameter->size;
-			current_offset += parameter->size % alignment;
+			current_offset = (current_offset + parameter->size) % alignment;
 		}
 
 		device->unmap(group->gpu_resource);
