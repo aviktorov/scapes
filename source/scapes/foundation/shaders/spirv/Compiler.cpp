@@ -74,7 +74,7 @@ namespace scapes::foundation::shaders::spirv
 
 			if (!file)
 			{
-				Log::error("shaderc::include_resolver(): can't load include at \"%s\"\n", target_path);
+				Log::error("shaderc::include_resolver(): can't load include at \"%s\"\n", target_path.c_str());
 				return result;
 			}
 
