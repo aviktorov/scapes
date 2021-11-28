@@ -1,17 +1,19 @@
 #version 450
 
 // Input
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec2 inUV;
-layout(location = 2) in vec4 inTangent;
-layout(location = 3) in vec3 inBinormal;
-layout(location = 4) in vec3 inNormal;
-layout(location = 5) in vec4 inColor;
+layout(location = 0) in vec3 in_position;
+layout(location = 1) in vec2 in_uv;
+layout(location = 2) in vec4 in_tangent;
+layout(location = 3) in vec3 in_binormal;
+layout(location = 4) in vec3 in_normal;
+layout(location = 5) in vec4 in_color;
 
 // Output
-layout(location = 0) out vec2 outUV;
+layout(location = 0) out vec2 out_uv;
 
-void main() {
-	gl_Position = vec4(inPosition.xyz, 1.0f);
-	outUV = inUV;
+//
+void main()
+{
+	gl_Position = vec4(in_position.xyz, 1.0f);
+	out_uv = in_uv;
 }

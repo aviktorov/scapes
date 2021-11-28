@@ -55,4 +55,22 @@ vec3 importanceSamplingGGX(vec2 Xi, vec3 normal, float roughness)
 	return normalize(direction);
 }
 
+float getLinearDepth(float depth, mat4 iprojection)
+{
+	// TODO: try this
+	// linear_depth = (zNear * zFar) / (zFar + depth * (zNear - zFar));
+	vec4 ndc = vec4(0.0f, 0.0f, depth, 1.0f);
+
+	vec4 positionVS = iprojection * ndc;
+	return positionVS.z / positionVS.w;
+}
+
+vec2 getUV(vec3 positionVS, mat4 projection)
+{
+	vec4 ndc = projection * vec4(positionVS, 1.0f);
+	ndc.xyz /= ndc.w;
+
+	return ndc.xy * 0.5f + vec2(0.5f);
+}
+
 #endif // COMMON_H_
