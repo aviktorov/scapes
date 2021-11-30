@@ -69,18 +69,29 @@ PBR Sandbox:
         ☐ Area lights
         ☐ Directional light & shadows
         ☐ First person camera (WASD controls & mouse aim)
+        ☐ Add camera component
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
+    Stream 81:
+        ☐ Fix swapped textures not being updated in render pass bind sets (this affects all temporal filters)
+        ☐ Add serialization / deserialization to json for all render passes
+            ☐ Serde for RenderPassGraphicsBase
+            ☐ Serde for RenderPassPrepareOld
+            ☐ Serde for RenderPassGeometry
+            ☐ Serde for RenderPassLBuffer
+            ☐ Serde for RenderPassPost
+            ☐ Serde for RenderPassImGui
+        ☐ Migrate existing render graph to json
     Stream 80:
-        ☐ Migrate old render graph to new render graph
-            ☐ Migrate lbuffer pass
-            ☐ Migrate ssr trace + ssr resolve passes
-            ☐ Migrate ssr temporal filter pass
-            ☐ Migrate composite pass
-            ☐ Migrate TAA pass
-            ☐ Migrate tonemap pass
-            ☐ Migrate gamma pass
-        ☐ Add camera component
+        ✔ Migrate old render graph to new render graph @done (11/30/2021, 11:55:07 PM)
+            ✔ Migrate lbuffer pass @done (11/30/2021, 9:23:41 PM)
+            ✔ Migrate ssr trace + ssr resolve passes @done (11/30/2021, 10:14:24 PM)
+            ✔ Migrate ssr temporal filter pass @done (11/30/2021, 10:23:24 PM)
+            ✔ Migrate composite pass @done (11/30/2021, 10:26:07 PM)
+            ✔ Migrate TAA pass @done (11/30/2021, 10:23:25 PM)
+            ✔ Migrate tonemap pass @done (11/30/2021, 11:05:01 PM)
+            ✔ Migrate gamma pass @done (11/30/2021, 11:06:56 PM)
+            ✔ Migrate imgui renderer as another render pass @done (11/30/2021, 11:55:06 PM)
     Stream 79:
         ✔ Migrate old render graph to new render graph @done (11/29/2021, 1:53:57 AM)
             ✔ Migrate gbuffer pass @done (11/29/2021, 1:53:08 AM)
