@@ -20,6 +20,7 @@ namespace scapes::foundation::render::vulkan
 			VkAttachmentStoreOp store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 			VkAttachmentLoadOp stencil_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 			VkAttachmentStoreOp stencil_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+			VkImageLayout initial_layout = VK_IMAGE_LAYOUT_UNDEFINED,
 			VkImageLayout final_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		);
 

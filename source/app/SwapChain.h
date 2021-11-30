@@ -21,10 +21,6 @@ public:
 	inline scapes::foundation::render::SwapChain *getBackend() { return swap_chain; }
 
 private:
-	void initFrames();
-	void shutdownFrames();
-
-private:
 	enum
 	{
 		NUM_IN_FLIGHT_FRAMES = 1,
@@ -37,7 +33,6 @@ private:
 	uint32_t current_in_flight_frame {0};
 	scapes::foundation::render::CommandBuffer *command_buffers[NUM_IN_FLIGHT_FRAMES];
 
-	uint32_t ubo_size {0};
 	uint32_t width {0};
 	uint32_t height {0};
 };

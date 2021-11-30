@@ -5,8 +5,8 @@
 #define RENDER_GRAPH_CAMERA_SET 1
 #include <shaders/render_graph/common/ParameterGroups.h>
 
-#define PBR_MATERIAL_SET 2
-#include <shaders/materials/pbr/MaterialData.h>
+#define RENDER_GRAPH_MATERIAL_TEXTURES_SET 2
+#include <shaders/render_graph/common/MaterialTextures.h>
 
 // Input
 layout(location = 0) in vec2 in_uv;
@@ -32,17 +32,17 @@ void main()
 
 	MaterialTextures material = sampleMaterial(in_uv, tbn);
 
-	if (material.baseColor.a < 0.5f)
+	if (material.basecolor.a < 0.5f)
 		discard;
 
-	material.baseColor.rgb = mix(material.baseColor.rgb, vec3(0.5f, 0.5f, 0.5f), application.override_basecolor);
+	material.basecolor.rgb = mix(material.basecolor.rgb, vec3(0.5f, 0.5f, 0.5f), application.override_basecolor);
 	material.roughness = mix(material.roughness, application.user_roughness, application.override_shading);
 	material.metalness = mix(material.metalness, application.user_metalness, application.override_shading);
 
-	out_gbuffer_basecolor.rgb = material.baseColor.rgb;
+	out_gbuffer_basecolor.rgb = material.basecolor.rgb;
 	out_gbuffer_basecolor.a = 0.0f;
 
-	out_gbuffer_normal = material.normalVS.xyz;
+	out_gbuffer_normal = material.normal_vs.xyz;
 	out_gbuffer_shading = vec2(material.metalness, material.roughness);
 
 	out_gbuffer_velocity = (in_position_old_ndc.xy / in_position_old_ndc.w - in_position_ndc.xy / in_position_ndc.w) * 0.5f;

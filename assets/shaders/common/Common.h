@@ -73,4 +73,16 @@ vec2 getUV(vec3 positionVS, mat4 projection)
 	return ndc.xy * 0.5f + vec2(0.5f);
 }
 
+float whiteNoise(in vec2 pos)
+{
+	return fract(sin(dot(pos.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+// [Jimenez 2014] "Next Generation Post Processing In Call Of Duty Advanced Warfare"
+float interleavedGradientNoise(in vec2 pos, in vec2 random)
+{
+	vec3 magic = vec3(0.06711056f, 0.00583715f, 52.9829189f);
+	return fract(magic.z * fract(dot(pos.xy + random, magic.xy)));
+}
+
 #endif // COMMON_H_

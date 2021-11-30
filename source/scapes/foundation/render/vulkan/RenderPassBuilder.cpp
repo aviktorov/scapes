@@ -19,6 +19,7 @@ namespace scapes::foundation::render::vulkan
 		VkAttachmentStoreOp store_op,
 		VkAttachmentLoadOp stencil_load_op,
 		VkAttachmentStoreOp stencil_store_op,
+		VkImageLayout initial_layout,
 		VkImageLayout final_layout
 	)
 	{
@@ -29,7 +30,7 @@ namespace scapes::foundation::render::vulkan
 		attachment.storeOp = store_op;
 		attachment.stencilLoadOp = stencil_load_op;
 		attachment.stencilStoreOp = stencil_store_op;
-		attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		attachment.initialLayout = initial_layout;
 		attachment.finalLayout = final_layout;
 
 		attachments.push_back(attachment);

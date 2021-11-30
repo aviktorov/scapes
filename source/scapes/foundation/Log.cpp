@@ -12,6 +12,7 @@ namespace scapes::foundation
 		va_start(args, format);
 		vfprintf(stdout, format, args);
 		va_end(args);
+		flushall();
 	}
 
 	void Log::warning(const char *format, ...)

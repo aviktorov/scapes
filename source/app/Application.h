@@ -12,6 +12,8 @@ class ApplicationResources;
 class ImGuiRenderer;
 class SceneImporter;
 class SwapChain;
+class RenderPassImGui;
+class RenderPassPost;
 
 /*
  */
@@ -100,11 +102,15 @@ private:
 	InputState input_state;
 
 	SwapChain *swap_chain {nullptr};
+	RenderPassImGui *imgui_pass {nullptr};
+	RenderPassPost *temporal_aa_pass {nullptr};
+	RenderPassPost *ssr_temporal_filter_pass {nullptr};
+
 	scapes::foundation::render::Device *device {nullptr};
 	scapes::foundation::shaders::Compiler *compiler {nullptr};
 	scapes::foundation::game::World *world {nullptr};
 	scapes::foundation::resources::ResourceManager *resource_manager {nullptr};
 
-	scapes::visual::RenderGraph *new_render_graph {nullptr};
+	scapes::visual::RenderGraph *render_graph {nullptr};
 	scapes::visual::API *visual_api {nullptr};
 };

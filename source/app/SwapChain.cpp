@@ -19,7 +19,8 @@ void SwapChain::init()
 {
 	swap_chain = device->createSwapChain(native_window);
 
-	initFrames();
+	for (int i = 0; i < NUM_IN_FLIGHT_FRAMES; i++)
+		command_buffers[i] = device->createCommandBuffer(scapes::foundation::render::CommandBufferType::PRIMARY);
 }
 
 void SwapChain::recreate()
@@ -30,7 +31,11 @@ void SwapChain::recreate()
 
 void SwapChain::shutdown()
 {
-	shutdownFrames();
+	for (int i = 0; i < NUM_IN_FLIGHT_FRAMES; i++)
+	{
+		device->destroyCommandBuffer(command_buffers[i]);
+		command_buffers[i] = nullptr;
+	}
 
 	device->destroySwapChain(swap_chain);
 	swap_chain = nullptr;
@@ -56,21 +61,4 @@ bool SwapChain::present(scapes::foundation::render::CommandBuffer *command_buffe
 	current_in_flight_frame = (current_in_flight_frame + 1) % NUM_IN_FLIGHT_FRAMES;
 
 	return result;
-}
-
-/*
- */
-void SwapChain::initFrames()
-{
-	for (int i = 0; i < NUM_IN_FLIGHT_FRAMES; i++)
-		command_buffers[i] = device->createCommandBuffer(scapes::foundation::render::CommandBufferType::PRIMARY);
-}
-
-void SwapChain::shutdownFrames()
-{
-	for (int i = 0; i < NUM_IN_FLIGHT_FRAMES; i++)
-	{
-		device->destroyCommandBuffer(command_buffers[i]);
-		command_buffers[i] = nullptr;
-	}
 }

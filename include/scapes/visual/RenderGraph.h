@@ -92,16 +92,23 @@ namespace scapes::visual
 		virtual foundation::render::Format getTextureRenderBufferFormat(const char *name) const = 0;
 		virtual uint32_t getTextureRenderBufferDownscale(const char *name) const = 0;
 
+		virtual bool swapTextureRenderBuffers(const char *name0, const char *name1) = 0;
+
 		virtual TextureHandle getTextureResource(const char *name) const = 0;
 		virtual bool setTextureResource(const char *name, TextureHandle handle) = 0;
 
 		virtual foundation::render::SwapChain *getTextureSwapChain(const char *name) const = 0;
 		virtual bool setTextureSwapChain(const char *name, foundation::render::SwapChain *swap_chain) = 0;
 
+		virtual size_t getNumRenderPasses() const = 0;
+		virtual IRenderPass *getRenderPass(size_t index) const = 0;
+
 		virtual void addRenderPass(IRenderPass *pass) = 0;
 		virtual bool addRenderPass(IRenderPass *pass, size_t index) = 0;
 		virtual bool removeRenderPass(size_t index) = 0;
 		virtual void removeAllRenderPasses() = 0;
+
+		// TODO: add template method addParameter with default value
 
 		template<typename T>
 		SCAPES_INLINE T getParameterValue(const char *group, const char *name) const

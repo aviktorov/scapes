@@ -16,13 +16,13 @@ namespace config
 {
 	enum Shaders
 	{
-		CubemapVertex = 0,
-		FullscreenQuadVertex,
+		FullscreenQuadVertex = 0,
+		CubemapVertex,
 		EquirectangularProjectionFragment,
 		PrefilteredSpecularCubemapFragment,
 		DiffuseIrradianceCubemapFragment,
 		BakedBRDFFragment,
-		SkylightDeferredFragment,
+		LBufferSkylight,
 		GBufferVertex,
 		GBufferFragment,
 		SSAOFragment,
@@ -32,7 +32,9 @@ namespace config
 		CompositeFragment,
 		TemporalFilterFragment,
 		TonemappingFragment,
-		FinalFragment,
+		GammaFragment,
+		ImGuiVertex,
+		ImGuiFragment,
 	};
 }
 

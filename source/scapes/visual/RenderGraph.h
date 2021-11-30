@@ -71,11 +71,16 @@ namespace scapes::visual
 		foundation::render::Format getTextureRenderBufferFormat(const char *name) const final;
 		uint32_t getTextureRenderBufferDownscale(const char *name) const final;
 
+		bool swapTextureRenderBuffers(const char *name0, const char *name1) final;
+
 		TextureHandle getTextureResource(const char *name) const final;
 		bool setTextureResource(const char *name, TextureHandle handle) final;
 
 		foundation::render::SwapChain *getTextureSwapChain(const char *name) const final;
 		bool setTextureSwapChain(const char *name, foundation::render::SwapChain *swap_chain) final;
+
+		SCAPES_INLINE size_t getNumRenderPasses() const final { return passes.size(); }
+		SCAPES_INLINE IRenderPass *getRenderPass(size_t index) const final { return passes[index]; }
 
 		void addRenderPass(IRenderPass *pass) final;
 		bool addRenderPass(IRenderPass *pass, size_t index) final;

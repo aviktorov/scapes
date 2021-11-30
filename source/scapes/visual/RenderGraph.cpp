@@ -123,8 +123,11 @@ namespace scapes::visual
 		}
 
 		if (should_invalidate)
+		{
+			scapes::foundation::Log::message("Invalidation before render\n");
 			for (IRenderPass *pass : passes)
 				pass->invalidate();
+		}
 
 		for (IRenderPass *pass : passes)
 			pass->render(command_buffer);
@@ -506,6 +509,42 @@ namespace scapes::visual
 
 	/*
 	 */
+	bool RenderGraphImpl::swapTextureRenderBuffers(const char *name0, const char *name1)
+	{
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name0));
+
+		auto it = texture_lookup.find(hash);
+		if (it == texture_lookup.end())
+			return false;
+
+		TextureResource *texture0 = it->second;
+		if (texture0->type != TextureType::RENDER_BUFFER)
+			return false;
+
+		hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name1));
+
+		it = texture_lookup.find(hash);
+		if (it == texture_lookup.end())
+			return false;
+
+		TextureResource *texture1 = it->second;
+		if (texture1->type != TextureType::RENDER_BUFFER)
+			return false;
+
+		if (texture0->render_buffer_format != texture1->render_buffer_format)
+			return false;
+
+		if (texture0->render_buffer_downscale != texture1->render_buffer_downscale)
+			return false;
+
+		std::swap(texture0->render_buffer, texture1->render_buffer);
+		return true;
+	}
+
+	/*
+	 */
 	TextureHandle RenderGraphImpl::getTextureResource(const char *name) const
 	{
 		uint64_t hash = 0;
@@ -608,7 +647,10 @@ namespace scapes::visual
 	void RenderGraphImpl::removeAllRenderPasses()
 	{
 		for (IRenderPass *pass : passes)
+		{
 			pass->shutdown();
+			delete pass;
+		}
 
 		passes.clear();
 	}
@@ -655,7 +697,7 @@ namespace scapes::visual
 		assert(group);
 
 		if (!group->dirty)
-			return true;
+			return false;
 
 		bool should_invalidate = false;
 

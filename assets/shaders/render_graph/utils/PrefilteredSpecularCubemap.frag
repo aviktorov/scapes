@@ -1,14 +1,17 @@
 #version 450
 
+// Includes
 #include <shaders/common/Common.h>
 
-layout(push_constant) uniform UserData
+// Bindings
+layout(push_constant) uniform Push
 {
 	float roughness;
 } push;
 
-layout(set = 0, binding = 1) uniform samplerCube texEnvironment;
+layout(set = 0, binding = 1) uniform samplerCube tex_environment;
 
+// 
 layout(location = 0) in vec4 inFacePositionVS[6];
 
 layout(location = 0) out vec4 outPrefilteredSpecular0;
@@ -18,6 +21,7 @@ layout(location = 3) out vec4 outPrefilteredSpecular3;
 layout(location = 4) out vec4 outPrefilteredSpecular4;
 layout(location = 5) out vec4 outPrefilteredSpecular5;
 
+//
 vec3 prefilterSpecularEnvironment(vec3 view, vec3 normal, float roughness)
 {
 	vec3 result = vec3(0.0);
@@ -29,14 +33,14 @@ vec3 prefilterSpecularEnvironment(vec3 view, vec3 normal, float roughness)
 	{
 		vec2 Xi = hammersley(i, samples);
 
-		vec3 halfVector = importanceSamplingGGX(Xi, normal, roughness);
-		vec3 light = -reflect(view, halfVector);
+		vec3 half_vector = importanceSamplingGGX(Xi, normal, roughness);
+		vec3 light = -reflect(view, half_vector);
 
-		float dotNL = max(0.0f, dot(normal, light));
-		vec3 Li = texture(texEnvironment, light).rgb;
+		float dot_NL = max(0.0f, dot(normal, light));
+		vec3 Li = texture(tex_environment, light).rgb;
 
-		result += Li * dotNL;
-		weight += dotNL;
+		result += Li * dot_NL;
+		weight += dot_NL;
 	}
 
 	return result / weight;

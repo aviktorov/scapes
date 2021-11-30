@@ -206,6 +206,7 @@ namespace scapes::foundation::render::vulkan
 					VK_ATTACHMENT_STORE_OP_DONT_CARE,
 					VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 					VK_ATTACHMENT_STORE_OP_DONT_CARE,
+					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
 					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 				)
 				.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
@@ -215,6 +216,14 @@ namespace scapes::foundation::render::vulkan
 			// Create frame objects (semaphores, image views, framebuffers)
 			for (size_t i = 0; i < swap_chain->num_images; i++)
 			{
+				Utils::transitionImageLayout(
+					context,
+					swap_chain->images[i],
+					swap_chain->surface_format.format,
+					VK_IMAGE_LAYOUT_UNDEFINED,
+					VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+				);
+
 				VkSemaphoreCreateInfo semaphore_info = {};
 				semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -719,7 +728,7 @@ namespace scapes::foundation::render::vulkan
 
 		RenderPassBuilder builder;
 		result->render_pass = builder
-			.addAttachment(vk_format, vk_samples, vk_load_op, vk_store_op, vk_load_op, vk_store_op, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+			.addAttachment(vk_format, vk_samples, vk_load_op, vk_store_op, vk_load_op, vk_store_op, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 			.addSubpass(VK_PIPELINE_BIND_POINT_GRAPHICS)
 			.addColorAttachmentReference(0, 0)
 			.build(context->getDevice());

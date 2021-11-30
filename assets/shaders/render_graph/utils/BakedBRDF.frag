@@ -1,18 +1,22 @@
 #version 450
 
+// Includes
 #include <shaders/common/Common.h>
-#include <shaders/materials/pbr/BRDF.h>
+#include <shaders/render_graph/common/BRDF.h>
 
-layout(location = 0) in vec2 inUV;
+// Input
+layout(location = 0) in vec2 in_uv;
 
-layout(location = 0) out vec4 outBRDF;
+// Output
+layout(location = 0) out vec4 out_brdf;
 
-vec2 integrateBRDF(float roughness, float dotNV)
+//
+vec2 integrateBRDF(float roughness, float dot_NV)
 {
 	vec3 view;
-	view.x = sqrt(saturate(1.0f - dotNV * dotNV));
+	view.x = sqrt(saturate(1.0f - dot_NV * dot_NV));
 	view.y = 0.0f;
-	view.z = dotNV;
+	view.z = dot_NV;
 
 	vec3 normal = vec3(0.0f, 0.0f, 1.0f);
 
@@ -24,7 +28,7 @@ vec2 integrateBRDF(float roughness, float dotNV)
 	Surface surface;
 	surface.view = view;
 	surface.normal = normal;
-	surface.dotNV = dotNV;
+	surface.dotNV = dot_NV;
 
 	for (uint i = 0; i < samples; ++i)
 	{
@@ -51,6 +55,6 @@ vec2 integrateBRDF(float roughness, float dotNV)
 
 void main()
 {
-	vec2 bakedBRDF = integrateBRDF(inUV.x, inUV.y);
-	outBRDF = vec4(bakedBRDF.x, bakedBRDF.y, 0.0f, 0.0f);
+	vec2 baked_brdf = integrateBRDF(in_uv.x, in_uv.y);
+	out_brdf = vec4(baked_brdf.x, baked_brdf.y, 0.0f, 0.0f);
 }

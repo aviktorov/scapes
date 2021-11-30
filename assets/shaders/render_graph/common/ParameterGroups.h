@@ -25,15 +25,30 @@ layout(set = RENDER_GRAPH_CAMERA_SET, binding = 0) uniform Camera
 } camera;
 #endif // RENDER_GRAPH_CAMERA_SET
 
-#ifdef RENDER_GRAPH_SSAO_KERNEL_SET
+#ifdef RENDER_GRAPH_SSAO_SET
 #define MAX_SSAO_SAMPLES 64
 
-layout(set = RENDER_GRAPH_SSAO_KERNEL_SET, binding = 0) uniform SSAOKernel {
+layout(set = RENDER_GRAPH_SSAO_SET, binding = 0) uniform SSAO {
 	int num_samples;
 	float radius;
 	float intensity;
 	vec4 samples[MAX_SSAO_SAMPLES];
-} ssao_kernel;
-#endif // RENDER_GRAPH_SSAO_KERNEL_SET
+} ssao;
+#endif // RENDER_GRAPH_SSAO_SET
+
+#ifdef RENDER_GRAPH_SSR_SET
+#define MAX_SSR_SAMPLES 64
+
+layout(set = RENDER_GRAPH_SSR_SET, binding = 0) uniform SSR {
+	float coarse_step;
+	int num_coarse_steps;
+	int num_precision_steps;
+	float facing_threshold;
+	float depth_bypass_threshold;
+	float brdf_bias;
+	float min_step_multiplier;
+	float max_step_multiplier;
+} ssr;
+#endif // RENDER_GRAPH_SSR_SET
 
 #endif // RENDER_GRAPH_PARAMETER_GROUPS_H__

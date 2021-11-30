@@ -9,23 +9,25 @@ namespace config
 {
 	// Shaders
 	static std::vector<const char *> shaders = {
-		"assets/shaders/common/Cubemap.vert",
 		"assets/shaders/common/FullscreenQuad.vert",
-		"assets/shaders/utils/EquirectangularProjection.frag",
-		"assets/shaders/utils/PrefilteredSpecularCubemap.frag",
-		"assets/shaders/utils/DiffuseIrradianceCubemap.frag",
-		"assets/shaders/utils/BakedBRDF.frag",
-		"assets/shaders/deferred/SkylightDeferred.frag",
+		"assets/shaders/render_graph/utils/Cubemap.vert",
+		"assets/shaders/render_graph/utils/EquirectangularProjection.frag",
+		"assets/shaders/render_graph/utils/PrefilteredSpecularCubemap.frag",
+		"assets/shaders/render_graph/utils/DiffuseIrradianceCubemap.frag",
+		"assets/shaders/render_graph/utils/BakedBRDF.frag",
+		"assets/shaders/render_graph/passes/lbuffer/LBufferSkylight.frag",
 		"assets/shaders/render_graph/passes/gbuffer/GBuffer.vert",
 		"assets/shaders/render_graph/passes/gbuffer/GBuffer.frag",
 		"assets/shaders/render_graph/passes/ssao/SSAO.frag",
 		"assets/shaders/render_graph/passes/ssao_blur/SSAOBlur.frag",
-		"assets/shaders/deferred/SSRTrace.frag",
-		"assets/shaders/deferred/SSRResolve.frag",
-		"assets/shaders/deferred/Composite.frag",
-		"assets/shaders/render/TemporalFilter.frag",
-		"assets/shaders/render/Tonemapping.frag",
-		"assets/shaders/render/Final.frag",
+		"assets/shaders/render_graph/passes/ssr_trace/SSRTrace.frag",
+		"assets/shaders/render_graph/passes/ssr_resolve/SSRResolve.frag",
+		"assets/shaders/render_graph/passes/composite/Composite.frag",
+		"assets/shaders/render_graph/passes/temporal_filter/TemporalFilter.frag",
+		"assets/shaders/render_graph/passes/tonemap/Tonemap.frag",
+		"assets/shaders/render_graph/passes/gamma/Gamma.frag",
+		"assets/shaders/render_graph/passes/imgui/ImGui.vert",
+		"assets/shaders/render_graph/passes/imgui/ImGui.frag",
 	};
 
 	static std::vector<scapes::foundation::render::ShaderType> shader_types = {
@@ -45,6 +47,8 @@ namespace config
 		scapes::foundation::render::ShaderType::FRAGMENT,
 		scapes::foundation::render::ShaderType::FRAGMENT,
 		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::foundation::render::ShaderType::VERTEX,
 		scapes::foundation::render::ShaderType::FRAGMENT,
 	};
 

@@ -89,24 +89,24 @@ void Application::update()
 
 	application_state.currentTemporalFrame = (application_state.currentTemporalFrame + 1) % ApplicationState::MAX_TEMPORAL_FRAMES;
 
-	new_render_graph->setParameterValue("Camera", "View", view);
-	new_render_graph->setParameterValue("Camera", "IView", foundation::math::inverse(view));
-	new_render_graph->setParameterValue("Camera", "Projection", projection);
-	new_render_graph->setParameterValue("Camera", "IProjection", foundation::math::inverse(projection));
-	new_render_graph->setParameterValue("Camera", "Parameters", camera_parameters);
-	new_render_graph->setParameterValue("Camera", "PositionWS", camera_position);
+	render_graph->setParameterValue("Camera", "View", view);
+	render_graph->setParameterValue("Camera", "IView", foundation::math::inverse(view));
+	render_graph->setParameterValue("Camera", "Projection", projection);
+	render_graph->setParameterValue("Camera", "IProjection", foundation::math::inverse(projection));
+	render_graph->setParameterValue("Camera", "Parameters", camera_parameters);
+	render_graph->setParameterValue("Camera", "PositionWS", camera_position);
 
-	new_render_graph->setParameterValue("Application", "CurrentTime", time);
+	render_graph->setParameterValue("Application", "Time", time);
 
 	if (application_state.firstFrame)
 	{
-		new_render_graph->setParameterValue<foundation::math::mat4>("Camera", "ViewOld", view);
+		render_graph->setParameterValue<foundation::math::mat4>("Camera", "ViewOld", view);
 		application_state.firstFrame = false;
 	}
 
 	bool reset_environment = false;
-	/*
-	ImGui::Begin("Material Parameters");
+
+	ImGui::Begin("Render Parameters");
 
 	int oldCurrentEnvironment = application_state.currentEnvironment;
 	if (ImGui::BeginCombo("Choose Your Destiny", application_resources->getIBLTexturePath(application_state.currentEnvironment)))
@@ -124,55 +124,74 @@ void Application::update()
 		}
 		ImGui::EndCombo();
 	}
-	/**/
 
-	float override_base_color = new_render_graph->getParameterValue<float>("Application", "OverrideBaseColor");
-	float override_shading = new_render_graph->getParameterValue<float>("Application", "OverrideShading");
-	float user_metalness = new_render_graph->getParameterValue<float>("Application", "UserMetalness");
-	float user_roughness = new_render_graph->getParameterValue<float>("Application", "UserRoughness");
+	//
+	float override_base_color = render_graph->getParameterValue<float>("Application", "OverrideBaseColor");
+	float override_shading = render_graph->getParameterValue<float>("Application", "OverrideShading");
+	float user_metalness = render_graph->getParameterValue<float>("Application", "UserMetalness");
+	float user_roughness = render_graph->getParameterValue<float>("Application", "UserRoughness");
 
-	override_base_color = 0.0f;
-	override_shading = 0.0f;
-	user_metalness = 0.0f;
-	user_roughness = 0.0f;
-
-	/*
 	ImGui::SliderFloat("Override Base Color", &override_base_color, 0.0f, 1.0f);
 	ImGui::SliderFloat("Override Shading", &override_shading, 0.0f, 1.0f);
 	ImGui::SliderFloat("User Metalness", &user_metalness, 0.0f, 1.0f);
 	ImGui::SliderFloat("User Roughness", &user_roughness, 0.0f, 1.0f);
-	/**/
 
-	new_render_graph->setParameterValue("Application", "OverrideBaseColor", override_base_color);
-	new_render_graph->setParameterValue("Application", "OverrideShading", override_shading);
-	new_render_graph->setParameterValue("Application", "UserMetalness", user_metalness);
-	new_render_graph->setParameterValue("Application", "UserRoughness", user_roughness);
+	render_graph->setParameterValue("Application", "OverrideBaseColor", override_base_color);
+	render_graph->setParameterValue("Application", "OverrideShading", override_shading);
+	render_graph->setParameterValue("Application", "UserMetalness", user_metalness);
+	render_graph->setParameterValue("Application", "UserRoughness", user_roughness);
 
-	/*
-	ImGui::SliderFloat("Radius", &render_graph->getSSAOKernel().cpu_data->radius, 0.0f, 100.0f);
-	ImGui::SliderFloat("Intensity", &render_graph->getSSAOKernel().cpu_data->intensity, 0.0f, 100.0f);
-	if (ImGui::SliderInt("Samples", (int*)&render_graph->getSSAOKernel().cpu_data->num_samples, 32, 256))
-	{
-		render_graph->buildSSAOKernel();
-	}
+	//
+	float ssao_radius = render_graph->getParameterValue<float>("SSAO", "Radius");
+	float ssao_intensity = render_graph->getParameterValue<float>("SSAO", "Intensity");
+	int ssao_num_samples = render_graph->getParameterValue<int>("SSAO", "NumSamples");
 
-	ImGui::SliderFloat("SSR Coarse Step Size", &render_graph->getSSRData().cpu_data->coarse_step_size, 0.0f, 200.0f);
-	ImGui::SliderInt("SSR Num Coarse Steps", (int*)&render_graph->getSSRData().cpu_data->num_coarse_steps, 0, 128);
-	ImGui::SliderInt("SSR Num Precision Steps", (int*)&render_graph->getSSRData().cpu_data->num_precision_steps, 0, 128);
-	ImGui::SliderFloat("SSR Facing Threshold", (float*)&render_graph->getSSRData().cpu_data->facing_threshold, 0.0f, 1.0f);
-	ImGui::SliderFloat("SSR Bypass Depth Threshold", (float*)&render_graph->getSSRData().cpu_data->bypass_depth_threshold, 0.0f, 5.0f);
+	ImGui::SliderFloat("SSAO Radius", &ssao_radius, 0.0f, 100.0f);
+	ImGui::SliderFloat("SSAO Intensity", &ssao_intensity, 0.0f, 100.0f);
+	ImGui::SliderInt("SSAO Samples", &ssao_num_samples, 1, 32);
 
+	render_graph->setParameterValue("SSAO", "Radius", ssao_radius);
+	render_graph->setParameterValue("SSAO", "Intensity", ssao_intensity);
+	render_graph->setParameterValue("SSAO", "NumSamples", ssao_num_samples);
+
+	//
+	float ssr_coarse_step = render_graph->getParameterValue<float>("SSR", "CoarseStep");
+	int ssr_num_coarse_steps = render_graph->getParameterValue<int>("SSR", "NumCoarseSteps");
+	int ssr_num_precision_steps = render_graph->getParameterValue<int>("SSR", "NumPrecisionSteps");
+	float ssr_facing_threshold = render_graph->getParameterValue<float>("SSR", "FacingThreshold");
+	float ssr_depth_bypass_threshold = render_graph->getParameterValue<float>("SSR", "DepthBypassThreshold");
+	float ssr_brdf_bias = render_graph->getParameterValue<float>("SSR", "BRDFBias");
+	float ssr_min_step_multiplier = render_graph->getParameterValue<float>("SSR", "MinStepMultiplier");
+	float ssr_max_step_multiplier = render_graph->getParameterValue<float>("SSR", "MaxStepMultiplier");
+
+	ImGui::SliderFloat("SSR Coarse Step", &ssr_coarse_step, 0.0f, 100.0f);
+	ImGui::SliderInt("SSR Num Coarse Steps", &ssr_num_coarse_steps, 0, 128);
+	ImGui::SliderInt("SSR Num Precision Steps", &ssr_num_precision_steps, 0, 16);
+	ImGui::SliderFloat("SSR Facing Threshold", &ssr_facing_threshold, 0.0f, 1.0f);
+	ImGui::SliderFloat("SSR Depth Bypass Threshold", &ssr_depth_bypass_threshold, 0.0f, 5.0f);
+	ImGui::SliderFloat("SSR BRDF Bias", &ssr_brdf_bias, 0.0f, 1.0f);
+	ImGui::SliderFloat("SSR Min Step Multiplier", &ssr_min_step_multiplier, 0.0f, 10.0f);
+	ImGui::SliderFloat("SSR Max Step Multiplier", &ssr_max_step_multiplier, 0.0f, 10.0f);
+
+	render_graph->setParameterValue("SSR", "CoarseStep", ssr_coarse_step);
+	render_graph->setParameterValue("SSR", "NumCoarseSteps", ssr_num_coarse_steps);
+	render_graph->setParameterValue("SSR", "NumPrecisionSteps", ssr_num_precision_steps);
+	render_graph->setParameterValue("SSR", "FacingThreshold", ssr_facing_threshold);
+	render_graph->setParameterValue("SSR", "DepthBypassThreshold", ssr_depth_bypass_threshold);
+	render_graph->setParameterValue("SSR", "BRDFBias", ssr_brdf_bias);
+	render_graph->setParameterValue("SSR", "MinStepMultiplier", ssr_min_step_multiplier);
+	render_graph->setParameterValue("SSR", "MaxStepMultiplier", ssr_max_step_multiplier);
+
+	//
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
 	ImGui::Begin("GBuffer");
-	/**/
 
-	/*
-	ImTextureID base_color_id = render_graph->fetchTextureID(render_graph->getGBuffer().base_color);
-	ImTextureID normal_id = render_graph->fetchTextureID(render_graph->getGBuffer().normal);
-	ImTextureID depth_id = render_graph->fetchTextureID(render_graph->getGBuffer().depth);
-	ImTextureID shading_id = render_graph->fetchTextureID(render_graph->getGBuffer().shading);
+	ImTextureID base_color_id = imgui_pass->fetchTextureID(render_graph->getTextureRenderBuffer("GBufferBaseColor"));
+	ImTextureID normal_id = imgui_pass->fetchTextureID(render_graph->getTextureRenderBuffer("GBufferNormal"));
+	ImTextureID depth_id = imgui_pass->fetchTextureID(render_graph->getTextureRenderBuffer("GBufferDepth"));
+	ImTextureID shading_id = imgui_pass->fetchTextureID(render_graph->getTextureRenderBuffer("GBufferShading"));
 
 	ImGui::BeginGroup();
 		ImGui::Image(base_color_id, ImVec2(256, 256));
@@ -187,10 +206,10 @@ void Application::update()
 
 	ImGui::Begin("LBuffer");
 
-	ImTextureID diffuse_id = render_graph->fetchTextureID(render_graph->getLBuffer().diffuse);
-	ImTextureID specular_id = render_graph->fetchTextureID(render_graph->getLBuffer().specular);
-	ImTextureID ssr_id = render_graph->fetchTextureID(render_graph->getSSRTrace().texture);
-	ImTextureID ssao_blurred_id = render_graph->fetchTextureID(render_graph->getSSAOBlurred().texture);
+	ImTextureID diffuse_id = imgui_pass->fetchTextureID(render_graph->getTextureRenderBuffer("LBufferDiffuse"));
+	ImTextureID specular_id = imgui_pass->fetchTextureID(render_graph->getTextureRenderBuffer("LBufferSpecular"));
+	ImTextureID ssr_id = imgui_pass->fetchTextureID(render_graph->getTextureRenderBuffer("SSRTAA"));
+	ImTextureID ssao_id = imgui_pass->fetchTextureID(render_graph->getTextureRenderBuffer("SSAO"));
 
 	ImGui::BeginGroup();
 		ImGui::Image(diffuse_id, ImVec2(256, 256));
@@ -198,11 +217,10 @@ void Application::update()
 		ImGui::Image(specular_id, ImVec2(256, 256));
 		ImGui::Image(ssr_id, ImVec2(256, 256));
 		ImGui::SameLine();
-		ImGui::Image(ssao_blurred_id, ImVec2(256, 256));
+		ImGui::Image(ssao_id, ImVec2(256, 256));
 	ImGui::EndGroup();
 
 	ImGui::End();
-	/**/
 
 	if (reset_environment)
 	{
@@ -226,7 +244,7 @@ void Application::render()
 	device->resetCommandBuffer(command_buffer);
 	device->beginCommandBuffer(command_buffer);
 
-	new_render_graph->render(command_buffer);
+	render_graph->render(command_buffer);
 
 	device->endCommandBuffer(command_buffer);
 
@@ -241,8 +259,14 @@ void Application::render()
 
 void Application::postRender()
 {
-	const foundation::math::mat4 &view = new_render_graph->getParameterValue<foundation::math::mat4>("Camera", "View");
-	new_render_graph->setParameterValue<foundation::math::mat4>("Camera", "ViewOld", view);
+	const foundation::math::mat4 &view = render_graph->getParameterValue<foundation::math::mat4>("Camera", "View");
+	render_graph->setParameterValue<foundation::math::mat4>("Camera", "ViewOld", view);
+
+	render_graph->swapTextureRenderBuffers("CompositeTAA", "CompositeOld");
+	render_graph->swapTextureRenderBuffers("SSRTAA", "SSROld");
+
+	temporal_aa_pass->invalidateBindings();
+	ssr_temporal_filter_pass->invalidateBindings();
 }
 
 /*
@@ -254,12 +278,12 @@ void Application::mainloop()
 
 	while (!glfwWindowShouldClose(window))
 	{
-		// ImGui_ImplGlfw_NewFrame();
-		// ImGui::NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
 
 		update();
 
-		// ImGui::Render();
+		ImGui::Render();
 
 		render();
 		postRender();
@@ -366,7 +390,7 @@ void Application::initRenderScene()
 		application_resources->getIBLTexture(0),
 		application_resources->getFullscreenQuad(),
 		application_resources->getShader(config::Shaders::FullscreenQuadVertex),
-		application_resources->getShader(config::Shaders::SkylightDeferredFragment)
+		application_resources->getShader(config::Shaders::LBufferSkylight)
 	);
 }
 
@@ -392,52 +416,93 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	new_render_graph = visual::RenderGraph::create(device, world);
+	render_graph = visual::RenderGraph::create(device, world);
 
-	new_render_graph->addParameterGroup("Application");
-	new_render_graph->addParameter("Application", "OverrideBaseColor", sizeof(float));
-	new_render_graph->addParameter("Application", "OverrideShading", sizeof(float));
-	new_render_graph->addParameter("Application", "UserMetalness", sizeof(float));
-	new_render_graph->addParameter("Application", "UserRoughness", sizeof(float));
-	new_render_graph->addParameter("Application", "CurrentTime", sizeof(float));
+	render_graph->addParameterGroup("Application");
+	render_graph->addParameter("Application", "OverrideBaseColor", sizeof(float));
+	render_graph->addParameter("Application", "OverrideShading", sizeof(float));
+	render_graph->addParameter("Application", "UserMetalness", sizeof(float));
+	render_graph->addParameter("Application", "UserRoughness", sizeof(float));
+	render_graph->addParameter("Application", "Time", sizeof(float));
 
-	new_render_graph->addParameterGroup("Camera");
-	new_render_graph->addParameter("Camera", "View", sizeof(foundation::math::mat4));
-	new_render_graph->addParameter("Camera", "IView", sizeof(foundation::math::mat4));
-	new_render_graph->addParameter("Camera", "Projection", sizeof(foundation::math::mat4));
-	new_render_graph->addParameter("Camera", "IProjection", sizeof(foundation::math::mat4));
-	new_render_graph->addParameter("Camera", "ViewOld", sizeof(foundation::math::mat4));
-	new_render_graph->addParameter("Camera", "Parameters", sizeof(foundation::math::vec4));
-	new_render_graph->addParameter("Camera", "PositionWS", sizeof(foundation::math::vec3));
+	render_graph->addParameterGroup("Camera");
+	render_graph->addParameter("Camera", "View", sizeof(foundation::math::mat4));
+	render_graph->addParameter("Camera", "IView", sizeof(foundation::math::mat4));
+	render_graph->addParameter("Camera", "Projection", sizeof(foundation::math::mat4));
+	render_graph->addParameter("Camera", "IProjection", sizeof(foundation::math::mat4));
+	render_graph->addParameter("Camera", "ViewOld", sizeof(foundation::math::mat4));
+	render_graph->addParameter("Camera", "Parameters", sizeof(foundation::math::vec4));
+	render_graph->addParameter("Camera", "PositionWS", sizeof(foundation::math::vec3));
 
-	constexpr uint32_t MAX_SSAO_SAMPLES = 64;
+	constexpr uint32_t MAX_SSAO_SAMPLES = 32;
 
-	new_render_graph->addParameterGroup("SSAOKernel");
-	new_render_graph->addParameter("SSAOKernel", "NumSamples", sizeof(uint32_t));
-	new_render_graph->addParameter("SSAOKernel", "Radius", sizeof(float));
-	new_render_graph->addParameter("SSAOKernel", "Intensity", sizeof(float));
-	new_render_graph->addParameter("SSAOKernel", "Samples", sizeof(foundation::math::vec4) * MAX_SSAO_SAMPLES);
+	render_graph->addParameterGroup("SSAO");
+	render_graph->addParameter("SSAO", "NumSamples", sizeof(uint32_t));
+	render_graph->addParameter("SSAO", "Radius", sizeof(float));
+	render_graph->addParameter("SSAO", "Intensity", sizeof(float));
+	render_graph->addParameter("SSAO", "Samples", sizeof(foundation::math::vec4) * MAX_SSAO_SAMPLES);
 
-	new_render_graph->addTextureRenderBuffer("GBufferBaseColor", foundation::render::Format::R8G8B8A8_UNORM, 1);
-	new_render_graph->addTextureRenderBuffer("GBufferShading", foundation::render::Format::R8G8_UNORM, 1);
-	new_render_graph->addTextureRenderBuffer("GBufferNormal", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-	new_render_graph->addTextureRenderBuffer("GBufferDepth", foundation::render::Format::D32_SFLOAT, 1);
-	new_render_graph->addTextureRenderBuffer("GBufferVelocity", foundation::render::Format::R16G16_SFLOAT, 1);
+	render_graph->addParameterGroup("SSR");
+	render_graph->addParameter("SSR", "CoarseStep", sizeof(float));
+	render_graph->addParameter("SSR", "NumCoarseSteps", sizeof(uint32_t));
+	render_graph->addParameter("SSR", "NumPrecisionSteps", sizeof(uint32_t));
+	render_graph->addParameter("SSR", "FacingThreshold", sizeof(float));
+	render_graph->addParameter("SSR", "DepthBypassThreshold", sizeof(float));
+	render_graph->addParameter("SSR", "BRDFBias", sizeof(float));
+	render_graph->addParameter("SSR", "MinStepMultiplier", sizeof(float));
+	render_graph->addParameter("SSR", "MaxStepMultiplier", sizeof(float));
 
-	new_render_graph->addTextureRenderBuffer("SSAONoised", foundation::render::Format::R8G8B8A8_UNORM, 1);
-	new_render_graph->addTextureRenderBuffer("SSAO", foundation::render::Format::R8G8B8A8_UNORM, 1);
+	render_graph->addTextureRenderBuffer("GBufferBaseColor", foundation::render::Format::R8G8B8A8_UNORM, 1);
+	render_graph->addTextureRenderBuffer("GBufferShading", foundation::render::Format::R8G8_UNORM, 1);
+	render_graph->addTextureRenderBuffer("GBufferNormal", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
+	render_graph->addTextureRenderBuffer("GBufferDepth", foundation::render::Format::D32_SFLOAT, 1);
+	render_graph->addTextureRenderBuffer("GBufferVelocity", foundation::render::Format::R16G16_SFLOAT, 1);
 
-	new_render_graph->addTextureResource("SSAOKernelNoise", visual::TextureHandle());
+	render_graph->addTextureRenderBuffer("SSAORough", foundation::render::Format::R8G8B8A8_UNORM, 1);
+	render_graph->addTextureRenderBuffer("SSAO", foundation::render::Format::R8G8B8A8_UNORM, 1);
 
+	render_graph->addTextureResource("SSAONoise", visual::TextureHandle());
+
+	render_graph->addTextureRenderBuffer("LBufferDiffuse", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
+	render_graph->addTextureRenderBuffer("LBufferSpecular", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
+
+	render_graph->addTextureRenderBuffer("SSRTrace", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
+	render_graph->addTextureRenderBuffer("SSR", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
+	render_graph->addTextureRenderBuffer("SSRVelocity", foundation::render::Format::R16G16_SFLOAT, 1);
+	render_graph->addTextureRenderBuffer("SSRTAA", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
+	render_graph->addTextureRenderBuffer("SSROld", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
+	render_graph->addTextureResource("SSRNoise", visual::TextureHandle());
+
+	render_graph->addTextureRenderBuffer("Composite", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
+	render_graph->addTextureRenderBuffer("CompositeTAA", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
+	render_graph->addTextureRenderBuffer("CompositeOld", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
+
+	render_graph->addTextureRenderBuffer("Color", foundation::render::Format::R8G8B8A8_UNORM, 1);
+
+	render_graph->addTextureSwapChain("Screen", swap_chain->getBackend());
+
+	// Prepare pass
+	RenderPassPrepareOld *prepare_pass = new RenderPassPrepareOld();
+	auto prepare_load_op = foundation::render::RenderPassLoadOp::CLEAR;
+	auto prepare_store_op = foundation::render::RenderPassStoreOp::STORE;
+
+	prepare_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
+
+	prepare_pass->addColorOutput("CompositeOld", prepare_load_op, prepare_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
+	prepare_pass->addColorOutput("SSROld", prepare_load_op, prepare_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
+
+	render_graph->addRenderPass(prepare_pass);
+
+	// GBuffer pass
 	RenderPassGeometry *gbuffer_pass = new RenderPassGeometry();
 	auto gbuffer_load_op = foundation::render::RenderPassLoadOp::CLEAR;
 	auto gbuffer_store_op = foundation::render::RenderPassStoreOp::STORE;
 
-	gbuffer_pass->setDepthStencilOutput("GBufferDepth", gbuffer_load_op, gbuffer_store_op, {1.0f, 0});
 	gbuffer_pass->addColorOutput("GBufferBaseColor", gbuffer_load_op, gbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
 	gbuffer_pass->addColorOutput("GBufferNormal", gbuffer_load_op, gbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
 	gbuffer_pass->addColorOutput("GBufferShading", gbuffer_load_op, gbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
 	gbuffer_pass->addColorOutput("GBufferVelocity", gbuffer_load_op, gbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
+	gbuffer_pass->setDepthStencilOutput("GBufferDepth", gbuffer_load_op, gbuffer_store_op, {1.0f, 0});
 
 	gbuffer_pass->addInputParameterGroup("Application");
 	gbuffer_pass->addInputParameterGroup("Camera");
@@ -446,23 +511,25 @@ void Application::initRenderers()
 	gbuffer_pass->setVertexShader(application_resources->getShader(config::Shaders::GBufferVertex));
 	gbuffer_pass->setFragmentShader(application_resources->getShader(config::Shaders::GBufferFragment));
 
-	new_render_graph->addRenderPass(gbuffer_pass);
+	render_graph->addRenderPass(gbuffer_pass);
 
+	// SSAO pass
 	RenderPassPost *ssao_pass = new RenderPassPost();
 
 	ssao_pass->setFragmentShader(application_resources->getShader(config::Shaders::SSAOFragment));
 	ssao_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
 
-	ssao_pass->addColorOutput("SSAONoised", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
+	ssao_pass->addColorOutput("SSAORough", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
 
 	ssao_pass->addInputParameterGroup("Camera");
-	ssao_pass->addInputParameterGroup("SSAOKernel");
-	ssao_pass->addInputTexture("GBufferDepth");
+	ssao_pass->addInputParameterGroup("SSAO");
 	ssao_pass->addInputTexture("GBufferNormal");
-	ssao_pass->addInputTexture("SSAOKernelNoise");
+	ssao_pass->addInputTexture("GBufferDepth");
+	ssao_pass->addInputTexture("SSAONoise");
 
-	new_render_graph->addRenderPass(ssao_pass);
+	render_graph->addRenderPass(ssao_pass);
 
+	// SSAO Blur pass
 	RenderPassPost *ssao_blur_pass = new RenderPassPost();
 
 	ssao_blur_pass->setFragmentShader(application_resources->getShader(config::Shaders::SSAOBlurFragment));
@@ -470,11 +537,154 @@ void Application::initRenderers()
 
 	ssao_blur_pass->addColorOutput("SSAO", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
 
-	ssao_blur_pass->addInputTexture("SSAONoised");
+	ssao_blur_pass->addInputTexture("SSAORough");
 
-	new_render_graph->addRenderPass(ssao_blur_pass);
+	render_graph->addRenderPass(ssao_blur_pass);
 
-	// setup ssao kernel
+	// LBuffer pass
+	RenderPassLBuffer *lbuffer_pass = new RenderPassLBuffer();
+	auto lbuffer_load_op = foundation::render::RenderPassLoadOp::CLEAR;
+	auto lbuffer_store_op = foundation::render::RenderPassStoreOp::STORE;
+
+	lbuffer_pass->addColorOutput("LBufferDiffuse", lbuffer_load_op, lbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
+	lbuffer_pass->addColorOutput("LBufferSpecular", lbuffer_load_op, lbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
+
+	lbuffer_pass->addInputParameterGroup("Camera");
+	lbuffer_pass->addInputTexture("GBufferBaseColor");
+	lbuffer_pass->addInputTexture("GBufferNormal");
+	lbuffer_pass->addInputTexture("GBufferShading");
+	lbuffer_pass->addInputTexture("GBufferDepth");
+
+	lbuffer_pass->setLightBinding(2);
+
+	render_graph->addRenderPass(lbuffer_pass);
+
+	// SSR Trace pass
+	RenderPassPost *ssr_trace_pass = new RenderPassPost();
+
+	ssr_trace_pass->setFragmentShader(application_resources->getShader(config::Shaders::SSRTraceFragment));
+	ssr_trace_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
+
+	ssr_trace_pass->addColorOutput("SSRTrace", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
+
+	ssr_trace_pass->addInputParameterGroup("Application");
+	ssr_trace_pass->addInputParameterGroup("Camera");
+	ssr_trace_pass->addInputParameterGroup("SSR");
+	ssr_trace_pass->addInputTexture("GBufferNormal");
+	ssr_trace_pass->addInputTexture("GBufferShading");
+	ssr_trace_pass->addInputTexture("GBufferDepth");
+	ssr_trace_pass->addInputTexture("SSRNoise");
+
+	render_graph->addRenderPass(ssr_trace_pass);
+
+	// SSR Resolve pass
+	RenderPassPost *ssr_resolve_pass = new RenderPassPost();
+
+	ssr_resolve_pass->setFragmentShader(application_resources->getShader(config::Shaders::SSRResolveFragment));
+	ssr_resolve_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
+
+	ssr_resolve_pass->addColorOutput("SSR", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
+	ssr_resolve_pass->addColorOutput("SSRVelocity", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
+
+	ssr_resolve_pass->addInputParameterGroup("Application");
+	ssr_resolve_pass->addInputParameterGroup("Camera");
+	ssr_resolve_pass->addInputTexture("GBufferBaseColor");
+	ssr_resolve_pass->addInputTexture("GBufferNormal");
+	ssr_resolve_pass->addInputTexture("GBufferShading");
+	ssr_resolve_pass->addInputTexture("GBufferDepth");
+	ssr_resolve_pass->addInputTexture("SSRTrace");
+	ssr_resolve_pass->addInputTexture("SSRNoise");
+	ssr_resolve_pass->addInputTexture("CompositeOld");
+
+	render_graph->addRenderPass(ssr_resolve_pass);
+
+	// SSR Temporal Filter pass
+	ssr_temporal_filter_pass = new RenderPassPost();
+
+	ssr_temporal_filter_pass->setFragmentShader(application_resources->getShader(config::Shaders::TemporalFilterFragment));
+	ssr_temporal_filter_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
+
+	ssr_temporal_filter_pass->addColorOutput("SSRTAA", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
+
+	ssr_temporal_filter_pass->addInputTexture("SSR");
+	ssr_temporal_filter_pass->addInputTexture("SSRVelocity");
+	ssr_temporal_filter_pass->addInputTexture("SSROld");
+
+	render_graph->addRenderPass(ssr_temporal_filter_pass);
+
+	// Composite pass
+	RenderPassPost *composite_pass = new RenderPassPost();
+
+	composite_pass->setFragmentShader(application_resources->getShader(config::Shaders::CompositeFragment));
+	composite_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
+
+	composite_pass->addColorOutput("Composite", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
+
+	composite_pass->addInputTexture("LBufferDiffuse");
+	composite_pass->addInputTexture("LBufferSpecular");
+	composite_pass->addInputTexture("SSAO");
+	composite_pass->addInputTexture("SSRTAA");
+
+	render_graph->addRenderPass(composite_pass);
+
+	// SSR Temporal Filter pass
+	temporal_aa_pass = new RenderPassPost();
+
+	temporal_aa_pass->setFragmentShader(application_resources->getShader(config::Shaders::TemporalFilterFragment));
+	temporal_aa_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
+
+	temporal_aa_pass->addColorOutput("CompositeTAA", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
+
+	temporal_aa_pass->addInputTexture("Composite");
+	temporal_aa_pass->addInputTexture("GBufferVelocity");
+	temporal_aa_pass->addInputTexture("CompositeOld");
+
+	render_graph->addRenderPass(temporal_aa_pass);
+
+	// Tonemap pass
+	RenderPassPost *tonemap_pass = new RenderPassPost();
+
+	tonemap_pass->setFragmentShader(application_resources->getShader(config::Shaders::TonemappingFragment));
+	tonemap_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
+
+	tonemap_pass->addColorOutput("Color", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
+
+	tonemap_pass->addInputTexture("CompositeTAA");
+
+	render_graph->addRenderPass(tonemap_pass);
+
+	// Gamma pass
+	RenderPassPost *gamma_pass = new RenderPassPost();
+
+	gamma_pass->setFragmentShader(application_resources->getShader(config::Shaders::GammaFragment));
+	gamma_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
+
+	gamma_pass->addColorOutput("Screen", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
+
+	gamma_pass->addInputTexture("Color");
+
+	render_graph->addRenderPass(gamma_pass);
+
+	// ImGui pass
+	imgui_pass = new RenderPassImGui(ImGui::GetCurrentContext());
+
+	imgui_pass->addColorOutput("Screen", foundation::render::RenderPassLoadOp::LOAD, foundation::render::RenderPassStoreOp::STORE, {});
+
+	imgui_pass->setVertexShader(application_resources->getShader(config::Shaders::ImGuiVertex));
+	imgui_pass->setFragmentShader(application_resources->getShader(config::Shaders::ImGuiFragment));
+
+	render_graph->addRenderPass(imgui_pass);
+
+	// TODO: Swap pass
+
+	// setup app specific constants
+	render_graph->setParameterValue("Application", "OverrideBaseColor", 0.0f);
+	render_graph->setParameterValue("Application", "OverrideShading", 0.0f);
+	render_graph->setParameterValue("Application", "UserRoughness", 0.0f);
+	render_graph->setParameterValue("Application", "UserMetalness", 0.0f);
+	render_graph->setParameterValue("Application", "Time", 0.0f);
+
+	// setup ssao
 	uint32_t data[16];
 	for (uint32_t i = 0; i < 16; ++i)
 	{
@@ -486,15 +696,15 @@ void Application::initRenderers()
 
 	constexpr uint32_t SSAO_SAMPLES = 32;
 
-	new_render_graph->setTextureResource("SSAOKernelNoise", ssao_noise);
-	new_render_graph->setParameterValue<uint32_t>("SSAOKernel", "NumSamples", SSAO_SAMPLES);
-	new_render_graph->setParameterValue<float>("SSAOKernel", "Intensity", 1.5f);
-	new_render_graph->setParameterValue<float>("SSAOKernel", "Radius", 100.0f);
+	render_graph->setTextureResource("SSAONoise", ssao_noise);
+	render_graph->setParameterValue("SSAO", "NumSamples", SSAO_SAMPLES);
+	render_graph->setParameterValue("SSAO", "Intensity", 1.5f);
+	render_graph->setParameterValue("SSAO", "Radius", 10.0f);
 
-	foundation::math::vec4 samples[SSAO_SAMPLES];
-	float inum_samples = 1.0f / static_cast<float>(SSAO_SAMPLES);
+	foundation::math::vec4 samples[MAX_SSAO_SAMPLES];
+	float inum_samples = 1.0f / static_cast<float>(MAX_SSAO_SAMPLES);
 
-	for (uint32_t i = 0; i < SSAO_SAMPLES; ++i)
+	for (uint32_t i = 0; i < MAX_SSAO_SAMPLES; ++i)
 	{
 		float scale = i * inum_samples;
 		scale = foundation::math::mix(0.1f, 1.0f, scale * scale);
@@ -511,9 +721,21 @@ void Application::initRenderers()
 		samples[i].w = 1.0f;
 	}
 
-	new_render_graph->setParameterValue<foundation::math::vec4>("SSAOKernel", "Samples", SSAO_SAMPLES, samples);
+	render_graph->setParameterValue<foundation::math::vec4>("SSAO", "Samples", MAX_SSAO_SAMPLES, samples);
 
-	new_render_graph->init(width, height);
+	// setup ssr
+	render_graph->setParameterValue("SSR", "CoarseStep", 0.5f);
+	render_graph->setParameterValue("SSR", "NumCoarseSteps", 100);
+	render_graph->setParameterValue("SSR", "NumPrecisionSteps", 8);
+	render_graph->setParameterValue("SSR", "FacingThreshold", 0.5f);
+	render_graph->setParameterValue("SSR", "DepthBypassThreshold", 0.5f);
+	render_graph->setParameterValue("SSR", "BRDFBias", 0.7f);
+	render_graph->setParameterValue("SSR", "MinStepMultiplier", 0.25f);
+	render_graph->setParameterValue("SSR", "MaxStepMultiplier", 4.0f);
+
+	render_graph->setTextureResource("SSRNoise", application_resources->getBlueNoiseTexture());
+
+	render_graph->init(width, height);
 
 	// setup temporal frames
 	const uint8_t num_columns = ApplicationState::MAX_TEMPORAL_FRAMES / 4;
@@ -537,9 +759,10 @@ void Application::initRenderers()
 
 void Application::shutdownRenderers()
 {
-	// TODO: remove all render passes to avoid memory leak
-	visual::RenderGraph::destroy(new_render_graph);
-	new_render_graph = nullptr;
+	imgui_pass = nullptr;
+
+	visual::RenderGraph::destroy(render_graph);
+	render_graph = nullptr;
 }
 
 /*
@@ -547,16 +770,16 @@ void Application::shutdownRenderers()
 void Application::initImGui()
 {
 	IMGUI_CHECKVERSION();
-	// ImGui::CreateContext();
-	// ImGui::StyleColorsDark();
+	ImGui::CreateContext();
+	ImGui::StyleColorsDark();
 
-	// ImGui_ImplGlfw_InitForVulkan(window, true);
+	ImGui_ImplGlfw_InitForVulkan(window, true);
 }
 
 void Application::shutdownImGui()
 {
-	// ImGui_ImplGlfw_Shutdown();
-	// ImGui::DestroyContext();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 }
 
 /*
@@ -608,6 +831,8 @@ void Application::recreateSwapChain()
 	device->wait();
 
 	swap_chain->recreate();
-	new_render_graph->resize(width, height);
+	render_graph->setTextureSwapChain("Screen", swap_chain->getBackend());
+	imgui_pass->invalidateTextureIDs();
+	render_graph->resize(width, height);
 	application_state.firstFrame = true;
 }
