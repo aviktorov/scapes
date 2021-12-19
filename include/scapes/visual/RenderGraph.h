@@ -4,6 +4,7 @@
 #include <scapes/foundation/TypeTraits.h>
 #include <scapes/foundation/json/Json.h>
 
+#include <scapes/visual/Resources.h>
 #include <scapes/visual/Fwd.h>
 
 namespace scapes::visual
@@ -16,7 +17,7 @@ namespace scapes::visual
 		virtual ~IRenderPass() { }
 
 	public:
-		virtual void init(const RenderGraph *render_graph) = 0;
+		virtual void init() = 0;
 		virtual void shutdown() = 0;
 		virtual void invalidate() = 0;
 
@@ -28,21 +29,12 @@ namespace scapes::visual
 
 	/*
 	 */
-	typedef IRenderPass *(*PFN_createRenderPass)();
+	typedef IRenderPass *(*PFN_createRenderPass)(RenderGraph *render_graph);
 
 	/*
 	 */
 	class RenderGraph
 	{
-	public:
-		enum TextureType
-		{
-			INVALID = 0,
-			RENDER_BUFFER,
-			RESOURCE,
-			SWAP_CHAIN,
-		};
-
 	public:
 		static SCAPES_API RenderGraph *create(foundation::render::Device *device, foundation::game::World *world);
 		static SCAPES_API void destroy(RenderGraph *render_graph);
@@ -68,91 +60,124 @@ namespace scapes::visual
 		virtual bool deserialize(const foundation::json::Document &document) = 0;
 		virtual foundation::json::Document serialize() = 0;
 
-		virtual void addParameterGroup(const char *name) = 0;
-		virtual bool removeParameterGroup(const char *name) = 0;
-		virtual void removeAllParameterGroups() = 0;
+		virtual void setSwapChain(foundation::render::SwapChain *swap_chain) = 0;
+		virtual foundation::render::SwapChain *getSwapChain() = 0;
+		virtual const foundation::render::SwapChain *getSwapChain() const = 0;
 
-		virtual foundation::render::BindSet *getParameterGroupBindings(const char *name) const = 0;
+		virtual bool addGroup(const char *name) = 0;
+		virtual bool removeGroup(const char *name) = 0;
+		virtual void removeAllGroups() = 0;
 
-		virtual bool addParameter(const char *group, const char *name, size_t size) = 0;
-		virtual bool removeParameter(const char *group, const char *name) = 0;
-		virtual void removeAllParameters() = 0;
+		virtual foundation::render::BindSet *getGroupBindings(const char *name) const = 0;
 
-		virtual void addTextureRenderBuffer(const char *name, foundation::render::Format format, uint32_t downscale) = 0;
-		virtual void addTextureResource(const char *name, TextureHandle handle) = 0;
-		virtual void addTextureSwapChain(const char *name, foundation::render::SwapChain *swap_chain) = 0;
+		virtual bool addGroupParameter(const char *group_name, const char *parameter_name, size_t size) = 0;
+		virtual bool removeGroupParameter(const char *group_name, const char *parameter_name) = 0;
+		virtual void removeAllGroupParameters() = 0;
 
-		virtual bool removeTexture(const char *name) = 0;
-		virtual void removeAllTextures() = 0;
+		virtual bool addGroupTexture(const char *group_name, const char *texture_name) = 0;
+		virtual bool removeGroupTexture(const char *group_name, const char *texture_name) = 0;
+		virtual void removeAllGroupTextures() = 0;
 
-		virtual TextureType getTextureType(const char *name) const = 0;
-		virtual foundation::render::Texture *getTexture(const char *name) const = 0;
+		virtual TextureHandle getGroupTexture(const char *group_name, const char *texture_name) const = 0;
+		virtual bool setGroupTexture(const char *group_name, const char *texture_name, TextureHandle handle) = 0;
 
-		virtual foundation::render::Texture *getTextureRenderBuffer(const char *name) const = 0;
-		virtual foundation::render::Format getTextureRenderBufferFormat(const char *name) const = 0;
-		virtual uint32_t getTextureRenderBufferDownscale(const char *name) const = 0;
+		virtual bool addRenderBuffer(const char *name, foundation::render::Format format, uint32_t downscale) = 0;
+		virtual bool removeRenderBuffer(const char *name) = 0;
+		virtual void removeAllRenderBuffers() = 0;
+		virtual bool swapRenderBuffers(const char *name0, const char *name1) = 0;
 
-		virtual bool swapTextureRenderBuffers(const char *name0, const char *name1) = 0;
+		virtual foundation::render::Texture *getRenderBufferTexture(const char *name) const = 0;
+		virtual foundation::render::BindSet *getRenderBufferBindings(const char *name) const = 0;
+		virtual foundation::render::Format getRenderBufferFormat(const char *name) const = 0;
+		virtual uint32_t getRenderBufferDownscale(const char *name) const = 0;
 
-		virtual TextureHandle getTextureResource(const char *name) const = 0;
-		virtual bool setTextureResource(const char *name, TextureHandle handle) = 0;
-
-		virtual foundation::render::SwapChain *getTextureSwapChain(const char *name) const = 0;
-		virtual bool setTextureSwapChain(const char *name, foundation::render::SwapChain *swap_chain) = 0;
+		virtual foundation::render::FrameBuffer *fetchFrameBuffer(uint32_t num_attachments, const char *render_buffer_names[]) = 0;
 
 		virtual size_t getNumRenderPasses() const = 0;
 		virtual IRenderPass *getRenderPass(size_t index) const = 0;
 
-		virtual void addRenderPass(IRenderPass *pass) = 0;
-		virtual bool addRenderPass(IRenderPass *pass, size_t index) = 0;
 		virtual bool removeRenderPass(size_t index) = 0;
+		virtual bool removeRenderPass(IRenderPass *pass) = 0;
 		virtual void removeAllRenderPasses() = 0;
 
-		// TODO: add template method addParameter with default value
+	public:
+		template<typename T>
+		SCAPES_INLINE bool addGroupParameter(const char *group_name, const char *parameter_name, size_t count, const T *value)
+		{
+			bool success = addGroupParameter(group_name, parameter_name, sizeof(T) * count);
+
+			if (success)
+				return setGroupParameter<T>(group_name, parameter_name, 1, &value);
+
+			return success;
+		}
 
 		template<typename T>
-		SCAPES_INLINE T getParameterValue(const char *group, const char *name) const
+		SCAPES_INLINE bool addGroupParameter(const char *group_name, const char *parameter_name, const T &value)
 		{
-			const T *data = getParameterValue<T>(group, name, 0);
+			return addGroupParameter(group_name, parameter_name, 1, &value);
+		}
+
+		template<typename T>
+		SCAPES_INLINE T getGroupParameter(const char *group_name, const char *parameter_name) const
+		{
+			const T *data = getGroupParameter<T>(group_name, parameter_name, 0);
 			return *data;
 		}
 
 		template<typename T>
-		SCAPES_INLINE const T *getParameterValue(const char *group, const char *name, size_t offset) const
+		SCAPES_INLINE const T *getGroupParameter(const char *group_name, const char *parameter_name, size_t offset) const
 		{
-			assert(getParameterSize(group, name) >= offset * sizeof(T));
+			assert(getGroupParameterSize(group_name, parameter_name) >= offset * sizeof(T));
 
-			const void *data = getParameterValue(group, name, offset * sizeof(T));
+			const void *data = getGroupParameter(group_name, parameter_name, offset * sizeof(T));
 			assert(data);
 
 			return reinterpret_cast<const T*>(data);
 		}
 
 		template<typename T>
-		SCAPES_INLINE bool setParameterValue(const char *group, const char *name, size_t count, const T *value)
+		SCAPES_INLINE bool setGroupParameter(const char *group_name, const char *parameter_name, size_t count, const T *value)
 		{
-			assert(getParameterSize(group, name) >= sizeof(T) * count);
+			assert(getGroupParameterSize(group_name, parameter_name) >= sizeof(T) * count);
 
-			return setParameterValue(group, name, 0, sizeof(T) * count, value);
+			return setGroupParameter(group_name, parameter_name, 0, sizeof(T) * count, value);
 		}
 
 		template<typename T>
-		SCAPES_INLINE bool setParameterValue(const char *group, const char *name, const T &value)
+		SCAPES_INLINE bool setGroupParameter(const char *group_name, const char *parameter_name, const T &value)
 		{
-			return setParameterValue<T>(group, name, 1, &value);
+			return setGroupParameter<T>(group_name, parameter_name, 1, &value);
+		}
+
+		SCAPES_INLINE bool addGroupTexture(const char *group_name, const char *texture_name, TextureHandle handle)
+		{
+			bool success = addGroupTexture(group_name, texture_name);
+
+			if (success)
+				return setGroupTexture(group_name, texture_name, handle);
+
+			return success;
 		}
 
 		template<typename T>
-		SCAPES_INLINE bool registerRenderPassType()
+		SCAPES_INLINE T *createRenderPass()
 		{
-			return registerRenderPassType(TypeTraits<T>::name, &T::create);
+			return static_cast<T*>(createRenderPass(TypeTraits<T>::name));
+		}
+
+		template<typename T>
+		SCAPES_INLINE bool registerRenderPass()
+		{
+			return registerRenderPass(TypeTraits<T>::name, &T::create);
 		}
 
 	protected:
-		virtual size_t getParameterSize(const char *group, const char *name) const = 0;
-		virtual const void *getParameterValue(const char *group, const char *name, size_t offset) const = 0;
-		virtual bool setParameterValue(const char *group, const char *name, size_t dst_offset, size_t src_size, const void *src_data) = 0;
-		virtual bool registerRenderPassType(const char *name, PFN_createRenderPass function) = 0;
+		virtual size_t getGroupParameterSize(const char *group_name, const char *parameter_name) const = 0;
+		virtual const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t offset) const = 0;
+		virtual bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_offset, size_t src_size, const void *src_data) = 0;
 
+		virtual bool registerRenderPass(const char *name, PFN_createRenderPass function) = 0;
+		virtual IRenderPass *createRenderPass(const char *name) = 0;
 	};
 }

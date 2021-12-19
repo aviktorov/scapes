@@ -7,11 +7,10 @@
 // Bindings
 #define RENDER_GRAPH_CAMERA_SET 0
 #define RENDER_GRAPH_SSAO_SET 1
-#include <shaders/render_graph/common/ParameterGroups.h>
+#include <shaders/render_graph/common/Groups.h>
 
 layout(set = 2, binding = 0) uniform sampler2D tex_gbuffer_normal;
-layout(set = 2, binding = 1) uniform sampler2D tex_gbuffer_depth;
-layout(set = 2, binding = 2) uniform sampler2D tex_ssao_noise;
+layout(set = 3, binding = 0) uniform sampler2D tex_gbuffer_depth;
 
 // Input
 layout(location = 0) in vec2 in_uv;

@@ -5,14 +5,14 @@
 
 // Bindings
 #define RENDER_GRAPH_CAMERA_SET 0
-#include <shaders/render_graph/common/ParameterGroups.h>
+#include <shaders/render_graph/common/Groups.h>
 
 layout(set = 1, binding = 0) uniform sampler2D tex_gbuffer_basecolor;
-layout(set = 1, binding = 1) uniform sampler2D tex_gbuffer_normal;
-layout(set = 1, binding = 2) uniform sampler2D tex_gbuffer_shading;
-layout(set = 1, binding = 3) uniform sampler2D tex_gbuffer_depth;
+layout(set = 2, binding = 0) uniform sampler2D tex_gbuffer_normal;
+layout(set = 3, binding = 0) uniform sampler2D tex_gbuffer_shading;
+layout(set = 4, binding = 0) uniform sampler2D tex_gbuffer_depth;
 
-#define RENDER_GRAPH_SKYLIGHT_SET 2
+#define RENDER_GRAPH_SKYLIGHT_SET 5
 #include <shaders/render_graph/common/Skylight.h>
 
 // Input

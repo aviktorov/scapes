@@ -1,5 +1,5 @@
-#ifndef RENDER_GRAPH_PARAMETER_GROUPS_H__
-#define RENDER_GRAPH_PARAMETER_GROUPS_H__
+#ifndef RENDER_GRAPH_GROUPS_H__
+#define RENDER_GRAPH_GROUPS_H__
 
 #ifdef RENDER_GRAPH_APPLICATION_SET
 layout(set = RENDER_GRAPH_APPLICATION_SET, binding = 0) uniform Application
@@ -34,6 +34,8 @@ layout(set = RENDER_GRAPH_SSAO_SET, binding = 0) uniform SSAO {
 	float intensity;
 	vec4 samples[MAX_SSAO_SAMPLES];
 } ssao;
+
+layout(set = RENDER_GRAPH_SSAO_SET, binding = 1) uniform sampler2D tex_ssao_noise;
 #endif // RENDER_GRAPH_SSAO_SET
 
 #ifdef RENDER_GRAPH_SSR_SET
@@ -49,6 +51,8 @@ layout(set = RENDER_GRAPH_SSR_SET, binding = 0) uniform SSR {
 	float min_step_multiplier;
 	float max_step_multiplier;
 } ssr;
+
+layout(set = RENDER_GRAPH_SSR_SET, binding = 1) uniform sampler2D tex_ssr_noise;
 #endif // RENDER_GRAPH_SSR_SET
 
-#endif // RENDER_GRAPH_PARAMETER_GROUPS_H__
+#endif // RENDER_GRAPH_GROUPS_H__

@@ -13,32 +13,89 @@ using namespace scapes;
 
 /*
  */
+RenderPassGraphicsBase::RenderPassGraphicsBase()
+{
+
+}
+
 RenderPassGraphicsBase::~RenderPassGraphicsBase()
 {
 	clear();
-
-	removeAllInputParameterGroups();
-	removeAllInputTextures();
-	removeAllColorOutputs();
-	removeDepthStencilOutput();
 }
 
 /*
  */
-void RenderPassGraphicsBase::init(const visual::RenderGraph *graph)
+void RenderPassGraphicsBase::init()
 {
-	render_graph = graph;
+	assert(render_graph);
+
 	device = render_graph->getDevice();
 	world = render_graph->getWorld();
 
 	pipeline_state = device->createPipelineState();
 
-	invalidate();
+	onInit();
 }
 
 void RenderPassGraphicsBase::shutdown()
 {
+	onShutdown();
+
 	clear();
+}
+
+void RenderPassGraphicsBase::render(foundation::render::CommandBuffer *command_buffer)
+{
+	if (!canRender())
+		return;
+
+	// TODO: cache this?
+	device->clearBindSets(pipeline_state);
+
+	uint8_t current_binding = 0;
+	for (size_t i = 0; i < input_groups.size(); ++i)
+	{
+		const char *group_name = input_groups[i].c_str();
+		foundation::render::BindSet *bindings = render_graph->getGroupBindings(group_name);
+		device->setBindSet(pipeline_state, current_binding++, bindings);
+	}
+
+	for (size_t i = 0; i < input_render_buffers.size(); ++i)
+	{
+		const char *texture_name = input_render_buffers[i].c_str();
+		foundation::render::BindSet *bindings = render_graph->getRenderBufferBindings(texture_name);
+		device->setBindSet(pipeline_state, current_binding++, bindings);
+	}
+
+	if (render_pass_swapchain)
+	{
+		foundation::render::SwapChain *swap_chain = render_graph->getSwapChain();
+		assert(swap_chain);
+
+		device->beginRenderPass(command_buffer, render_pass_swapchain, swap_chain);
+		onRender(command_buffer);
+		device->endRenderPass(command_buffer);
+	}
+
+	if (render_pass_offscreen)
+	{
+		// TODO: cache this?
+		const char *render_buffers[32];
+		uint32_t num_render_buffers = 0;
+
+		for (size_t i = 0; i < color_outputs.size(); ++i)
+			render_buffers[num_render_buffers++] = color_outputs[i].texture_name.c_str();
+
+		if (has_depthstencil_output)
+			render_buffers[num_render_buffers++] = depthstencil_output.texture_name.c_str();
+
+		foundation::render::FrameBuffer *frame_buffer = render_graph->fetchFrameBuffer(num_render_buffers, render_buffers);
+		assert(frame_buffer);
+
+		device->beginRenderPass(command_buffer, render_pass_offscreen, frame_buffer);
+		onRender(command_buffer);
+		device->endRenderPass(command_buffer);
+	}
 }
 
 void RenderPassGraphicsBase::invalidate()
@@ -49,61 +106,26 @@ void RenderPassGraphicsBase::invalidate()
 	device->setViewport(pipeline_state, 0, 0, width, height);
 	device->setScissor(pipeline_state, 0, 0, width, height);
 
-	device->destroyFrameBuffer(frame_buffer);
-	frame_buffer = nullptr;
+	device->destroyRenderPass(render_pass_swapchain);
+	render_pass_swapchain = nullptr;
 
-	device->destroyRenderPass(render_pass);
-	render_pass = nullptr;
+	device->destroyRenderPass(render_pass_offscreen);
+	render_pass_offscreen = nullptr;
 
-	swap_chain = (color_outputs.size() == 1) ? render_graph->getTextureSwapChain(color_outputs[0].texture_name.c_str()) : nullptr;
+	createRenderPassSwapChain();
+	createRenderPassOffscreen();
 
-	if (swap_chain)
-		createRenderPassSwapChain();
-	else
-	{
-		createRenderPassOffscreen();
-		createFrameBuffer();
-	}
-
-	invalidateBindings();
-}
-
-void RenderPassGraphicsBase::invalidateBindings()
-{
-	device->destroyBindSet(texture_bindings);
-	texture_bindings = nullptr;
-
-	device->clearBindSets(pipeline_state);
-	uint8_t current_index = 0;
-	for (current_index; current_index < input_groups.size(); ++current_index)
-	{
-		const char *group_name = input_groups[current_index].c_str();
-		foundation::render::BindSet *bindings = render_graph->getParameterGroupBindings(group_name);
-		device->setBindSet(pipeline_state, current_index, bindings);
-	}
-
-	if (input_textures.size() == 0)
-		return;
-
-	texture_bindings = device->createBindSet();
-	for (uint8_t i = 0; i < input_textures.size(); ++i)
-	{
-		const char *texture_name = input_textures[i].c_str();
-		foundation::render::Texture *texture = render_graph->getTexture(texture_name);
-		device->bindTexture(texture_bindings, i, texture);
-	}
-
-	device->setBindSet(pipeline_state, current_index, texture_bindings);
+	onInvalidate();
 }
 
 /*
  */
-void RenderPassGraphicsBase::addInputParameterGroup(const char *name)
+void RenderPassGraphicsBase::addInputGroup(const char *name)
 {
 	input_groups.push_back(std::string(name));
 }
 
-void RenderPassGraphicsBase::removeInputParameterGroup(const char *name)
+void RenderPassGraphicsBase::removeInputGroup(const char *name)
 {
 	const std::string group_name = std::string(name);
 	auto it = std::find(input_groups.begin(), input_groups.end(), group_name);
@@ -113,31 +135,31 @@ void RenderPassGraphicsBase::removeInputParameterGroup(const char *name)
 	input_groups.erase(it);
 }
 
-void RenderPassGraphicsBase::removeAllInputParameterGroups()
+void RenderPassGraphicsBase::removeAllInputGroups()
 {
 	input_groups.clear();
 }
 
 /*
  */
-void RenderPassGraphicsBase::addInputTexture(const char *name)
+void RenderPassGraphicsBase::addInputRenderBuffer(const char *name)
 {
-	input_textures.push_back(std::string(name));
+	input_render_buffers.push_back(std::string(name));
 }
 
-void RenderPassGraphicsBase::removeInputTexture(const char *name)
+void RenderPassGraphicsBase::removeInputRenderBuffer(const char *name)
 {
 	const std::string texture_name = std::string(name);
-	auto it = std::find(input_textures.begin(), input_textures.end(), texture_name);
-	if (it == input_textures.end())
+	auto it = std::find(input_render_buffers.begin(), input_render_buffers.end(), texture_name);
+	if (it == input_render_buffers.end())
 		return;
 
-	input_textures.erase(it);
+	input_render_buffers.erase(it);
 }
 
-void RenderPassGraphicsBase::removeAllInputTextures()
+void RenderPassGraphicsBase::removeAllInputRenderBuffers()
 {
-	input_textures.clear();
+	input_render_buffers.clear();
 }
 
 /*
@@ -149,7 +171,7 @@ void RenderPassGraphicsBase::addColorOutput(
 	foundation::render::RenderPassClearColor clear_value
 )
 {
-	Output output = {};
+	FrameBufferOutput output = {};
 	output.texture_name = std::string(name);
 	output.load_op = load_op;
 	output.store_op = store_op;
@@ -195,32 +217,58 @@ void RenderPassGraphicsBase::setDepthStencilOutput(
 
 void RenderPassGraphicsBase::removeDepthStencilOutput()
 {
+	depthstencil_output = {};
 	has_depthstencil_output = false;
+}
+
+/*
+ */
+void RenderPassGraphicsBase::setSwapChainOutput(
+	foundation::render::RenderPassLoadOp load_op,
+	foundation::render::RenderPassStoreOp store_op,
+	foundation::render::RenderPassClearColor clear_value
+)
+{
+	swapchain_output.load_op = load_op;
+	swapchain_output.store_op = store_op;
+	swapchain_output.clear_value = clear_value;
+
+	has_swapchain_output = true;
+}
+
+void RenderPassGraphicsBase::removeSwapChainOutput()
+{
+	swapchain_output = {};
+	has_swapchain_output = false;
 }
 
 /*
  */
 void RenderPassGraphicsBase::clear()
 {
-	device->destroyRenderPass(render_pass);
-	render_pass = nullptr;
+	device->destroyRenderPass(render_pass_offscreen);
+	render_pass_offscreen = nullptr;
 
-	device->destroyFrameBuffer(frame_buffer);
-	frame_buffer = nullptr;
-
-	swap_chain = nullptr;
-
-	device->destroyBindSet(texture_bindings);
-	texture_bindings = nullptr;
+	device->destroyRenderPass(render_pass_swapchain);
+	render_pass_swapchain = nullptr;
 
 	device->destroyPipelineState(pipeline_state);
 	pipeline_state = nullptr;
+
+	removeAllInputGroups();
+	removeAllInputRenderBuffers();
+	removeAllColorOutputs();
+	removeDepthStencilOutput();
+	removeSwapChainOutput();
 }
 
 /*
  */
 void RenderPassGraphicsBase::createRenderPassOffscreen()
 {
+	if (color_outputs.size() == 0 && !has_depthstencil_output)
+		return;
+
 	foundation::render::RenderPassAttachment attachments[32];
 	uint32_t color_references[32];
 	uint32_t depthstencil_reference = 0;
@@ -235,14 +283,14 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 	for (; num_attachments < color_outputs.size(); ++num_attachments)
 	{
 		foundation::render::RenderPassAttachment &attachment = attachments[num_attachments];
-		const Output &output = color_outputs[num_attachments];
+		const FrameBufferOutput &output = color_outputs[num_attachments];
 		const std::string &texture_name = output.texture_name;
 
 		attachment.clear_value = output.clear_value;
 		attachment.load_op = output.load_op;
 		attachment.store_op = output.store_op;
 		attachment.samples = foundation::render::Multisample::COUNT_1;
-		attachment.format = render_graph->getTextureRenderBufferFormat(texture_name.c_str());
+		attachment.format = render_graph->getRenderBufferFormat(texture_name.c_str());
 
 		color_references[num_attachments] = num_attachments;
 	}
@@ -256,7 +304,7 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 		attachment.load_op = depthstencil_output.load_op;
 		attachment.store_op = depthstencil_output.store_op;
 		attachment.samples = foundation::render::Multisample::COUNT_1;
-		attachment.format = render_graph->getTextureRenderBufferFormat(texture_name.c_str());
+		attachment.format = render_graph->getRenderBufferFormat(texture_name.c_str());
 
 		depthstencil_reference = num_attachments;
 		description.depthstencil_attachment = &depthstencil_reference;
@@ -264,66 +312,34 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 		++num_attachments;
 	}
 
-	render_pass = device->createRenderPass(num_attachments, attachments, description);
+	render_pass_offscreen = device->createRenderPass(num_attachments, attachments, description);
 }
 
 void RenderPassGraphicsBase::createRenderPassSwapChain()
 {
-	if (color_outputs.size() != 1)
+	if (!has_swapchain_output)
 		return;
 
-	const Output &output = color_outputs[0];
+	foundation::render::SwapChain *swap_chain = render_graph->getSwapChain();
+	assert(swap_chain);
 
-	swap_chain = render_graph->getTextureSwapChain(output.texture_name.c_str());
-	if (swap_chain == nullptr)
-		return;
-
-	foundation::render::RenderPassClearColor clear_value = output.clear_value.as_color;
-
-	render_pass = device->createRenderPass(swap_chain, output.load_op, output.store_op, &clear_value);
+	render_pass_swapchain = device->createRenderPass(swap_chain, swapchain_output.load_op, swapchain_output.store_op, &swapchain_output.clear_value);
 }
 
 /*
  */
-void RenderPassGraphicsBase::createFrameBuffer()
+visual::IRenderPass *RenderPassPrepareOld::create(visual::RenderGraph *render_graph)
 {
-	foundation::render::FrameBufferAttachment attachments[32];
-	uint32_t num_attachments = 0;
+	RenderPassPrepareOld *result = new RenderPassPrepareOld();
+	result->setRenderGraph(render_graph);
 
-	for (; num_attachments < color_outputs.size(); ++num_attachments)
-	{
-		foundation::render::FrameBufferAttachment &attachment = attachments[num_attachments];
-		const Output &output = color_outputs[num_attachments];
-		const std::string &texture_name = output.texture_name;
-
-		attachment.texture = render_graph->getTextureRenderBuffer(texture_name.c_str());
-		attachment.base_layer = 0;
-		attachment.base_mip = 0;
-		attachment.num_layers = 1;
-	}
-
-	if (has_depthstencil_output)
-	{
-		foundation::render::FrameBufferAttachment &attachment = attachments[num_attachments];
-		const std::string &texture_name = depthstencil_output.texture_name;
-
-		attachment.texture = render_graph->getTextureRenderBuffer(texture_name.c_str());
-		attachment.base_layer = 0;
-		attachment.base_mip = 0;
-		attachment.num_layers = 1;
-
-		++num_attachments;
-	}
-
-	frame_buffer = device->createFrameBuffer(num_attachments, attachments);
+	return result;
 }
 
 /*
  */
-void RenderPassPrepareOld::init(const visual::RenderGraph *render_graph)
+void RenderPassPrepareOld::onInit()
 {
-	RenderPassGraphicsBase::init(render_graph);
-
 	device->clearShaders(pipeline_state);
 	device->setShader(pipeline_state, fullscreen_quad_vertex_shader->type, fullscreen_quad_vertex_shader->shader);
 
@@ -331,23 +347,13 @@ void RenderPassPrepareOld::init(const visual::RenderGraph *render_graph)
 	device->setVertexStream(pipeline_state, 0, fullscreen_quad_mesh->vertex_buffer);
 }
 
-void RenderPassPrepareOld::invalidate()
+void RenderPassPrepareOld::onInvalidate()
 {
-	RenderPassGraphicsBase::invalidate();
-
 	first_frame = true;
 }
 
-void RenderPassPrepareOld::render(foundation::render::CommandBuffer *command_buffer)
+void RenderPassPrepareOld::onRender(foundation::render::CommandBuffer *command_buffer)
 {
-	if (!first_frame)
-		return;
-
-	if (swap_chain)
-		device->beginRenderPass(command_buffer, render_pass, swap_chain);
-	else
-		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
-
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
 		pipeline_state,
@@ -355,17 +361,23 @@ void RenderPassPrepareOld::render(foundation::render::CommandBuffer *command_buf
 		fullscreen_quad_mesh->num_indices
 	);
 
-	device->endRenderPass(command_buffer);
-
 	first_frame = false;
 }
 
 /*
  */
-void RenderPassGeometry::init(const visual::RenderGraph *render_graph)
+visual::IRenderPass *RenderPassGeometry::create(visual::RenderGraph *render_graph)
 {
-	RenderPassGraphicsBase::init(render_graph);
+	RenderPassGeometry *result = new RenderPassGeometry();
+	result->setRenderGraph(render_graph);
 
+	return result;
+}
+
+/*
+ */
+void RenderPassGeometry::onInit()
+{
 	device->clearShaders(pipeline_state);
 	device->setShader(pipeline_state, vertex_shader->type, vertex_shader->shader);
 	device->setShader(pipeline_state, fragment_shader->type, fragment_shader->shader);
@@ -375,14 +387,8 @@ void RenderPassGeometry::init(const visual::RenderGraph *render_graph)
 	device->setDepthWrite(pipeline_state, true);
 }
 
-void RenderPassGeometry::render(foundation::render::CommandBuffer *command_buffer)
+void RenderPassGeometry::onRender(foundation::render::CommandBuffer *command_buffer)
 {
-
-	if (swap_chain)
-		device->beginRenderPass(command_buffer, render_pass, swap_chain);
-	else
-		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
-
 	auto query = foundation::game::Query<foundation::components::Transform, visual::components::Renderable>(world);
 
 	query.begin();
@@ -410,25 +416,22 @@ void RenderPassGeometry::render(foundation::render::CommandBuffer *command_buffe
 			device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, renderable.mesh->index_buffer, renderable.mesh->num_indices);
 		}
 	}
-
-	device->endRenderPass(command_buffer);
 }
 
 /*
  */
-void RenderPassLBuffer::init(const visual::RenderGraph *render_graph)
+visual::IRenderPass *RenderPassLBuffer::create(visual::RenderGraph *render_graph)
 {
-	RenderPassGraphicsBase::init(render_graph);
+	RenderPassLBuffer *result = new RenderPassLBuffer();
+	result->setRenderGraph(render_graph);
+
+	return result;
 }
 
-void RenderPassLBuffer::render(foundation::render::CommandBuffer *command_buffer)
+/*
+ */
+void RenderPassLBuffer::onRender(foundation::render::CommandBuffer *command_buffer)
 {
-
-	if (swap_chain)
-		device->beginRenderPass(command_buffer, render_pass, swap_chain);
-	else
-		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
-
 	auto query = foundation::game::Query<visual::components::SkyLight>(world);
 
 	query.begin();
@@ -454,16 +457,22 @@ void RenderPassLBuffer::render(foundation::render::CommandBuffer *command_buffer
 			device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, light.mesh->index_buffer, light.mesh->num_indices);
 		}
 	}
-
-	device->endRenderPass(command_buffer);
 }
 
 /*
  */
-void RenderPassPost::init(const visual::RenderGraph *render_graph)
+visual::IRenderPass *RenderPassPost::create(visual::RenderGraph *render_graph)
 {
-	RenderPassGraphicsBase::init(render_graph);
+	RenderPassPost *result = new RenderPassPost();
+	result->setRenderGraph(render_graph);
 
+	return result;
+}
+
+/*
+ */
+void RenderPassPost::onInit()
+{
 	device->clearShaders(pipeline_state);
 	device->setShader(pipeline_state, fullscreen_quad_vertex_shader->type, fullscreen_quad_vertex_shader->shader);
 	device->setShader(pipeline_state, fragment_shader->type, fragment_shader->shader);
@@ -472,43 +481,31 @@ void RenderPassPost::init(const visual::RenderGraph *render_graph)
 	device->setVertexStream(pipeline_state, 0, fullscreen_quad_mesh->vertex_buffer);
 }
 
-void RenderPassPost::render(foundation::render::CommandBuffer *command_buffer)
+void RenderPassPost::onRender(foundation::render::CommandBuffer *command_buffer)
 {
-
-	if (swap_chain)
-		device->beginRenderPass(command_buffer, render_pass, swap_chain);
-	else
-		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
-
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
 		pipeline_state,
 		fullscreen_quad_mesh->index_buffer,
 		fullscreen_quad_mesh->num_indices
 	);
-
-	device->endRenderPass(command_buffer);
-}
-
-
-/*
- */
-RenderPassImGui::RenderPassImGui(ImGuiContext *context)
-	: context(context)
-{
-
-}
-
-RenderPassImGui::~RenderPassImGui()
-{
-	shutdown();
 }
 
 /*
  */
-void RenderPassImGui::init(const visual::RenderGraph *render_graph)
+visual::IRenderPass *RenderPassImGui::create(visual::RenderGraph *render_graph)
 {
-	RenderPassGraphicsBase::init(render_graph);
+	RenderPassImGui *result = new RenderPassImGui();
+	result->setRenderGraph(render_graph);
+
+	return result;
+}
+
+/*
+ */
+void RenderPassImGui::onInit()
+{
+	assert(context);
 
 	uint32_t width, height;
 	unsigned char *pixels = nullptr;
@@ -525,10 +522,8 @@ void RenderPassImGui::init(const visual::RenderGraph *render_graph)
 	io.BackendRendererName = "Scapes";
 }
 
-void RenderPassImGui::shutdown()
+void RenderPassImGui::onShutdown()
 {
-	RenderPassGraphicsBase::shutdown();
-
 	device->destroyVertexBuffer(vertices);
 	vertices = nullptr;
 
@@ -544,9 +539,72 @@ void RenderPassImGui::shutdown()
 	invalidateTextureIDs();
 }
 
-void RenderPassImGui::invalidate()
+void RenderPassImGui::onRender(foundation::render::CommandBuffer *command_buffer)
 {
-	RenderPassGraphicsBase::invalidate();
+	const ImDrawData *draw_data = ImGui::GetDrawData();
+	const ImVec2 &clip_offset = draw_data->DisplayPos;
+	const ImVec2 &clip_scale = draw_data->FramebufferScale;
+
+	ImVec2 fb_size(draw_data->DisplaySize.x * clip_scale.x, draw_data->DisplaySize.y * clip_scale.y); 
+
+	updateBuffers(draw_data);
+	setupRenderState(draw_data);
+
+	uint32_t index_offset = 0;
+	int32_t vertex_offset = 0;
+
+	device->setViewport(pipeline_state, 0, 0, static_cast<uint32_t>(fb_size.x), static_cast<uint32_t>(fb_size.y));
+
+	for (int i = 0; i < draw_data->CmdListsCount; ++i)
+	{
+		const ImDrawList *list = draw_data->CmdLists[i];
+		const ImDrawCmd *commands = list->CmdBuffer.Data;
+
+		for (int j = 0; j < list->CmdBuffer.Size; ++j)
+		{
+			const ImDrawCmd &command = commands[j];
+			if (command.UserCallback)
+			{
+				if (command.UserCallback == ImDrawCallback_ResetRenderState)
+					setupRenderState(draw_data);
+				else
+					command.UserCallback(list, &command);
+			}
+			else
+			{
+				uint32_t num_indices = command.ElemCount;
+				uint32_t base_index = index_offset + command.IdxOffset;
+				int32_t base_vertex = vertex_offset + command.VtxOffset;
+
+				foundation::render::BindSet *bind_set = reinterpret_cast<foundation::render::BindSet *>(command.TextureId);
+				device->setBindSet(pipeline_state, 0, bind_set);
+
+				float x0 = (command.ClipRect.x - clip_offset.x) * clip_scale.x;
+				float y0 = (command.ClipRect.y - clip_offset.y) * clip_scale.y;
+				float x1 = (command.ClipRect.z - clip_offset.x) * clip_scale.x;
+				float y1 = (command.ClipRect.w - clip_offset.y) * clip_scale.y;
+				
+				if (device->isFlipped())
+				{
+					y0 = fb_size.y - y0;
+					y1 = fb_size.y - y1;
+					std::swap(y1, y0);
+				}
+
+				x0 = std::max(0.0f, x0);
+				y0 = std::max(0.0f, y0);
+
+				uint32_t width = static_cast<uint32_t>(x1 - x0);
+				uint32_t height = static_cast<uint32_t>(y1 - y0);
+
+				device->setScissor(pipeline_state, static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
+				device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, indices, num_indices, base_index, base_vertex, 1, 0);
+			}
+		}
+
+		index_offset += list->IdxBuffer.Size;
+		vertex_offset += list->VtxBuffer.Size;
+	}
 }
 
 /*
@@ -659,80 +717,4 @@ void RenderPassImGui::setupRenderState(const ImDrawData *draw_data)
 	device->setCullMode(pipeline_state, foundation::render::CullMode::NONE);
 	device->setDepthWrite(pipeline_state, false);
 	device->setDepthTest(pipeline_state, false);
-}
-
-void RenderPassImGui::render(foundation::render::CommandBuffer *command_buffer)
-{
-
-	if (swap_chain)
-		device->beginRenderPass(command_buffer, render_pass, swap_chain);
-	else
-		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
-
-	const ImDrawData *draw_data = ImGui::GetDrawData();
-	const ImVec2 &clip_offset = draw_data->DisplayPos;
-	const ImVec2 &clip_scale = draw_data->FramebufferScale;
-
-	ImVec2 fb_size(draw_data->DisplaySize.x * clip_scale.x, draw_data->DisplaySize.y * clip_scale.y); 
-
-	updateBuffers(draw_data);
-	setupRenderState(draw_data);
-
-	uint32_t index_offset = 0;
-	int32_t vertex_offset = 0;
-
-	device->setViewport(pipeline_state, 0, 0, static_cast<uint32_t>(fb_size.x), static_cast<uint32_t>(fb_size.y));
-
-	for (int i = 0; i < draw_data->CmdListsCount; ++i)
-	{
-		const ImDrawList *list = draw_data->CmdLists[i];
-		const ImDrawCmd *commands = list->CmdBuffer.Data;
-
-		for (int j = 0; j < list->CmdBuffer.Size; ++j)
-		{
-			const ImDrawCmd &command = commands[j];
-			if (command.UserCallback)
-			{
-				if (command.UserCallback == ImDrawCallback_ResetRenderState)
-					setupRenderState(draw_data);
-				else
-					command.UserCallback(list, &command);
-			}
-			else
-			{
-				uint32_t num_indices = command.ElemCount;
-				uint32_t base_index = index_offset + command.IdxOffset;
-				int32_t base_vertex = vertex_offset + command.VtxOffset;
-
-				foundation::render::BindSet *bind_set = reinterpret_cast<foundation::render::BindSet *>(command.TextureId);
-				device->setBindSet(pipeline_state, 0, bind_set);
-
-				float x0 = (command.ClipRect.x - clip_offset.x) * clip_scale.x;
-				float y0 = (command.ClipRect.y - clip_offset.y) * clip_scale.y;
-				float x1 = (command.ClipRect.z - clip_offset.x) * clip_scale.x;
-				float y1 = (command.ClipRect.w - clip_offset.y) * clip_scale.y;
-				
-				if (device->isFlipped())
-				{
-					y0 = fb_size.y - y0;
-					y1 = fb_size.y - y1;
-					std::swap(y1, y0);
-				}
-
-				x0 = std::max(0.0f, x0);
-				y0 = std::max(0.0f, y0);
-
-				uint32_t width = static_cast<uint32_t>(x1 - x0);
-				uint32_t height = static_cast<uint32_t>(y1 - y0);
-
-				device->setScissor(pipeline_state, static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
-				device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, indices, num_indices, base_index, base_vertex, 1, 0);
-			}
-		}
-
-		index_offset += list->IdxBuffer.Size;
-		vertex_offset += list->VtxBuffer.Size;
-	}
-
-	device->endRenderPass(command_buffer);
 }

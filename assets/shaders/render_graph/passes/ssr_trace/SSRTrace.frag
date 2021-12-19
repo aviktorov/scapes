@@ -8,12 +8,11 @@
 #define RENDER_GRAPH_APPLICATION_SET 0
 #define RENDER_GRAPH_CAMERA_SET 1
 #define RENDER_GRAPH_SSR_SET 2
-#include <shaders/render_graph/common/ParameterGroups.h>
+#include <shaders/render_graph/common/Groups.h>
 
 layout(set = 3, binding = 0) uniform sampler2D tex_gbuffer_normal;
-layout(set = 3, binding = 1) uniform sampler2D tex_gbuffer_shading;
-layout(set = 3, binding = 2) uniform sampler2D tex_gbuffer_depth;
-layout(set = 3, binding = 3) uniform sampler2D tex_ssr_noise;
+layout(set = 4, binding = 0) uniform sampler2D tex_gbuffer_shading;
+layout(set = 5, binding = 0) uniform sampler2D tex_gbuffer_depth;
 
 // Input
 layout(location = 0) in vec2 in_uv;

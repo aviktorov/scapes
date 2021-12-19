@@ -103,8 +103,6 @@ private:
 
 	SwapChain *swap_chain {nullptr};
 	RenderPassImGui *imgui_pass {nullptr};
-	RenderPassPost *temporal_aa_pass {nullptr};
-	RenderPassPost *ssr_temporal_filter_pass {nullptr};
 
 	scapes::foundation::render::Device *device {nullptr};
 	scapes::foundation::shaders::Compiler *compiler {nullptr};

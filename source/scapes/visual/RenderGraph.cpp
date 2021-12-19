@@ -41,10 +41,13 @@ namespace scapes::visual
 	{
 		shutdown();
 
-		removeAllParameterGroups();
-		removeAllParameters();
-		removeAllTextures();
+		removeAllGroups();
+		removeAllGroupParameters();
+		removeAllGroupTextures();
+		removeAllRenderBuffers();
 		removeAllRenderPasses();
+
+		render_pass_type_lookup.clear();
 	}
 
 	/*
@@ -56,20 +59,20 @@ namespace scapes::visual
 
 		bool should_invalidate = false;
 
-		for (auto &[hash, group] : parameter_group_lookup)
+		for (auto &[hash, group] : group_lookup)
 		{
-			bool result = flushParameterGroup(group);
+			bool result = flushGroup(group);
 			should_invalidate = should_invalidate || result;
 		}
 
-		for (auto &[hash, texture] : texture_lookup)
+		for (auto &[hash, render_buffer] : render_buffer_lookup)
 		{
-			bool result = flushTextureResource(texture);
+			bool result = flushRenderBuffer(render_buffer);
 			should_invalidate = should_invalidate || result;
 		}
 
 		for (IRenderPass *pass : passes)
-			pass->init(this);
+			pass->init();
 
 		if (should_invalidate)
 			for (IRenderPass *pass : passes)
@@ -82,11 +85,13 @@ namespace scapes::visual
 		for (IRenderPass *pass : passes)
 			pass->shutdown();
 
-		for (auto &[hash, group] : parameter_group_lookup)
-			invalidateParameterGroup(group);
+		for (auto &[hash, group] : group_lookup)
+			invalidateGroup(group);
 
-		for (auto &[hash, texture] : texture_lookup)
-			invalidateTextureResource(texture);
+		for (auto &[hash, render_buffer] : render_buffer_lookup)
+			invalidateRenderBuffer(render_buffer);
+
+		invalidateFrameBufferCache();
 	}
 
 	/*
@@ -96,11 +101,13 @@ namespace scapes::visual
 		width = w;
 		height = h;
 
-		for (auto &[hash, texture] : texture_lookup)
+		for (auto &[hash, render_buffer] : render_buffer_lookup)
 		{
-			invalidateTextureResource(texture);
-			flushTextureResource(texture);
+			invalidateRenderBuffer(render_buffer);
+			flushRenderBuffer(render_buffer);
 		}
+
+		invalidateFrameBufferCache();
 
 		for (IRenderPass *pass : passes)
 			pass->invalidate();
@@ -110,15 +117,15 @@ namespace scapes::visual
 	{
 		bool should_invalidate = false;
 
-		for (auto &[hash, group] : parameter_group_lookup)
+		for (auto &[hash, group] : group_lookup)
 		{
-			bool result = flushParameterGroup(group);
+			bool result = flushGroup(group);
 			should_invalidate = should_invalidate || result;
 		}
 
-		for (auto &[hash, texture] : texture_lookup)
+		for (auto &[hash, render_buffer] : render_buffer_lookup)
 		{
-			bool result = flushTextureResource(texture);
+			bool result = flushRenderBuffer(render_buffer);
 			should_invalidate = should_invalidate || result;
 		}
 
@@ -163,156 +170,483 @@ namespace scapes::visual
 
 	/*
 	 */
-	void RenderGraphImpl::addParameterGroup(const char *name)
-	{
-		ParameterGroup *group = new ParameterGroup();
-
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		parameter_group_lookup.insert({hash, group});
-	}
-
-	bool RenderGraphImpl::removeParameterGroup(const char *name)
+	bool RenderGraphImpl::addGroup(const char *name)
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(name));
 
-		auto it = parameter_group_lookup.find(hash);
-		if (it == parameter_group_lookup.end())
+		if (group_lookup.find(hash) != group_lookup.end())
 			return false;
 
-		ParameterGroup *group = it->second;
-		parameter_group_lookup.erase(it);
-
-		destroyParameterGroup(group);
+		Group *group = new Group();
+		group_lookup.insert({hash, group});
 
 		return true;
 	}
 
-	void RenderGraphImpl::removeAllParameterGroups()
-	{
-		for (auto &[hash, group] : parameter_group_lookup)
-			destroyParameterGroup(group);
-
-		parameter_group_lookup.clear();
-	}
-
-	foundation::render::BindSet *RenderGraphImpl::getParameterGroupBindings(const char *name) const
+	bool RenderGraphImpl::removeGroup(const char *name)
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(name));
 
-		auto it = parameter_group_lookup.find(hash);
-		if (it == parameter_group_lookup.end())
+		auto it = group_lookup.find(hash);
+		if (it == group_lookup.end())
 			return false;
 
-		const ParameterGroup *group = it->second;
+		Group *group = it->second;
+		group_lookup.erase(it);
+
+		destroyGroup(group);
+
+		return true;
+	}
+
+	void RenderGraphImpl::removeAllGroups()
+	{
+		for (auto &[hash, group] : group_lookup)
+			destroyGroup(group);
+
+		group_lookup.clear();
+	}
+
+	foundation::render::BindSet *RenderGraphImpl::getGroupBindings(const char *name) const
+	{
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name));
+
+		auto it = group_lookup.find(hash);
+		if (it == group_lookup.end())
+			return false;
+
+		const Group *group = it->second;
 		return group->bindings;
 	}
 
 	/*
 	 */
-	bool RenderGraphImpl::addParameter(const char *group_name, const char *parameter_name, size_t size)
+	bool RenderGraphImpl::addGroupParameter(const char *group_name, const char *parameter_name, size_t size)
 	{
 		uint64_t group_hash = 0;
 		common::HashUtils::combine(group_hash, std::string_view(group_name));
 
-		auto it = parameter_group_lookup.find(group_hash);
-		if (it == parameter_group_lookup.end())
+		auto it = group_lookup.find(group_hash);
+		if (it == group_lookup.end())
 			return false;
 
 		uint64_t parameter_hash = group_hash;
 		common::HashUtils::combine(parameter_hash, std::string_view(parameter_name));
 
-		ParameterGroup *group = it->second;
+		if (group_parameter_lookup.find(parameter_hash) != group_parameter_lookup.end())
+			return false;
 
-		Parameter *parameter = new Parameter();
+		Group *group = it->second;
+
+		GroupParameter *parameter = new GroupParameter();
 		parameter->group = group;
 		parameter->size = size;
 		parameter->memory = parameter_allocator.allocate(size);
 
 		group->parameters.push_back(parameter);
-		parameter_lookup.insert({parameter_hash, parameter});
+		group_parameter_lookup.insert({parameter_hash, parameter});
 
-		invalidateParameterGroup(group);
+		invalidateGroup(group);
 
 		return true;
 	}
 
-	bool RenderGraphImpl::removeParameter(const char *group_name, const char *parameter_name)
+	bool RenderGraphImpl::removeGroupParameter(const char *group_name, const char *parameter_name)
 	{
 		uint64_t group_hash = 0;
 		common::HashUtils::combine(group_hash, std::string_view(group_name));
 
-		auto group_it = parameter_group_lookup.find(group_hash);
-		if (group_it == parameter_group_lookup.end())
+		auto group_it = group_lookup.find(group_hash);
+		if (group_it == group_lookup.end())
 			return false;
 
 		uint64_t parameter_hash = group_hash;
 		common::HashUtils::combine(parameter_hash, std::string_view(parameter_name));
 
-		auto parameter_it = parameter_lookup.find(parameter_hash);
-		if (parameter_it == parameter_lookup.end())
+		auto parameter_it = group_parameter_lookup.find(parameter_hash);
+		if (parameter_it == group_parameter_lookup.end())
 			return false;
 
-		ParameterGroup *group = group_it->second;
-		Parameter *parameter = parameter_it->second;
+		Group *group = group_it->second;
+		GroupParameter *parameter = parameter_it->second;
 
-		parameter_lookup.erase(parameter_hash);
+		group_parameter_lookup.erase(parameter_hash);
 
 		auto it = std::find(group->parameters.begin(), group->parameters.end(), parameter);
 		assert(it != group->parameters.end());
 
 		group->parameters.erase(it);
 
-		destroyParameter(parameter);
-		invalidateParameterGroup(group);
+		destroyGroupParameter(parameter);
+		invalidateGroup(group);
 
 		return true;
 	}
 
-	void RenderGraphImpl::removeAllParameters()
+	void RenderGraphImpl::removeAllGroupParameters()
 	{
-		for (auto &[hash, parameter] : parameter_lookup)
-			destroyParameter(parameter);
+		for (auto &[hash, parameter] : group_parameter_lookup)
+			destroyGroupParameter(parameter);
 
-		parameter_lookup.clear();
+		group_parameter_lookup.clear();
 
-		for (auto &[hash, group] : parameter_group_lookup)
+		for (auto &[hash, group] : group_lookup)
 		{
 			group->parameters.clear();
-			invalidateParameterGroup(group);
+			invalidateGroup(group);
 		}
 	}
 
 	/*
 	 */
-	size_t RenderGraphImpl::getParameterSize(const char *group_name, const char *parameter_name) const
+	bool RenderGraphImpl::addGroupTexture(const char *group_name, const char *texture_name)
+	{
+		uint64_t group_hash = 0;
+		common::HashUtils::combine(group_hash, std::string_view(group_name));
+
+		auto it = group_lookup.find(group_hash);
+		if (it == group_lookup.end())
+			return false;
+
+		uint64_t texture_hash = group_hash;
+		common::HashUtils::combine(texture_hash, std::string_view(texture_name));
+
+		if (group_texture_lookup.find(texture_hash) != group_texture_lookup.end())
+			return false;
+
+		Group *group = it->second;
+
+		GroupTexture *texture = new GroupTexture();
+		texture->group = group;
+
+		group->textures.push_back(texture);
+		group_texture_lookup.insert({texture_hash, texture});
+
+		invalidateGroup(group);
+
+		return true;
+	}
+
+	bool RenderGraphImpl::removeGroupTexture(const char *group_name, const char *texture_name)
+	{
+		uint64_t group_hash = 0;
+		common::HashUtils::combine(group_hash, std::string_view(group_name));
+
+		auto group_it = group_lookup.find(group_hash);
+		if (group_it == group_lookup.end())
+			return false;
+
+		uint64_t texture_hash = group_hash;
+		common::HashUtils::combine(texture_hash, std::string_view(texture_name));
+
+		auto texture_it = group_texture_lookup.find(texture_hash);
+		if (texture_it == group_texture_lookup.end())
+			return false;
+
+		Group *group = group_it->second;
+		GroupTexture *texture = texture_it->second;
+
+		group_texture_lookup.erase(texture_hash);
+
+		auto it = std::find(group->textures.begin(), group->textures.end(), texture);
+		assert(it != group->textures.end());
+
+		group->textures.erase(it);
+
+		destroyGroupTexture(texture);
+		invalidateGroup(group);
+
+		return true;
+	}
+
+	void RenderGraphImpl::removeAllGroupTextures()
+	{
+		for (auto &[hash, texture] : group_texture_lookup)
+			destroyGroupTexture(texture);
+
+		group_texture_lookup.clear();
+
+		for (auto &[hash, group] : group_lookup)
+		{
+			group->textures.clear();
+			invalidateGroup(group);
+		}
+	}
+
+	/*
+	 */
+	TextureHandle RenderGraphImpl::getGroupTexture(const char *group_name, const char *texture_name) const
+	{
+		uint64_t group_hash = 0;
+		common::HashUtils::combine(group_hash, std::string_view(group_name));
+
+		auto group_it = group_lookup.find(group_hash);
+		if (group_it == group_lookup.end())
+			return TextureHandle();
+
+		uint64_t texture_hash = group_hash;
+		common::HashUtils::combine(texture_hash, std::string_view(texture_name));
+
+		auto texture_it = group_texture_lookup.find(texture_hash);
+		if (texture_it == group_texture_lookup.end())
+			return TextureHandle();
+
+		GroupTexture *texture = texture_it->second;
+
+		return texture->texture;
+	}
+
+	bool RenderGraphImpl::setGroupTexture(const char *group_name, const char *texture_name, TextureHandle handle)
+	{
+		uint64_t group_hash = 0;
+		common::HashUtils::combine(group_hash, std::string_view(group_name));
+
+		auto group_it = group_lookup.find(group_hash);
+		if (group_it == group_lookup.end())
+			return false;
+
+		uint64_t texture_hash = group_hash;
+		common::HashUtils::combine(texture_hash, std::string_view(texture_name));
+
+		auto texture_it = group_texture_lookup.find(texture_hash);
+		if (texture_it == group_texture_lookup.end())
+			return false;
+
+		GroupTexture *texture = texture_it->second;
+
+		texture->texture = handle;
+		return true;
+	}
+
+	/*
+	 */
+	bool RenderGraphImpl::addRenderBuffer(const char *name, foundation::render::Format format, uint32_t downscale)
+	{
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name));
+
+		if (render_buffer_lookup.find(hash) != render_buffer_lookup.end())
+			return false;
+
+		RenderBuffer *render_buffer = new RenderBuffer();
+
+		render_buffer->format = format;
+		render_buffer->downscale = std::max<uint32_t>(1, downscale);
+		render_buffer->texture = nullptr;
+		render_buffer->bindings = nullptr;
+
+		render_buffer_lookup.insert({hash, render_buffer});
+		return true;
+	}
+
+	bool RenderGraphImpl::removeRenderBuffer(const char *name)
+	{
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name));
+
+		auto it = render_buffer_lookup.find(hash);
+		if (it == render_buffer_lookup.end())
+			return false;
+
+		RenderBuffer *render_buffer = it->second;
+		destroyRenderBuffer(render_buffer);
+
+		render_buffer_lookup.erase(hash);
+		return true;
+	}
+
+	void RenderGraphImpl::removeAllRenderBuffers()
+	{
+		for (auto &[hash, render_buffer] : render_buffer_lookup)
+			destroyRenderBuffer(render_buffer);
+
+		render_buffer_lookup.clear();
+	}
+
+	bool RenderGraphImpl::swapRenderBuffers(const char *name0, const char *name1)
+	{
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name0));
+
+		auto it = render_buffer_lookup.find(hash);
+		if (it == render_buffer_lookup.end())
+			return false;
+
+		RenderBuffer *render_buffer0 = it->second;
+
+		hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name1));
+
+		it = render_buffer_lookup.find(hash);
+		if (it == render_buffer_lookup.end())
+			return false;
+
+		RenderBuffer *render_buffer1 = it->second;
+
+		if (render_buffer0->format != render_buffer1->format)
+			return false;
+
+		if (render_buffer0->downscale != render_buffer1->downscale)
+			return false;
+
+		std::swap(render_buffer0->texture, render_buffer1->texture);
+		std::swap(render_buffer0->bindings, render_buffer1->bindings);
+
+		return true;
+	}
+
+	/*
+	 */
+	foundation::render::Texture *RenderGraphImpl::getRenderBufferTexture(const char *name) const
+	{
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name));
+
+		auto it = render_buffer_lookup.find(hash);
+		if (it == render_buffer_lookup.end())
+			return nullptr;
+
+		RenderBuffer *render_buffer = it->second;
+		return render_buffer->texture;
+	}
+
+	foundation::render::BindSet *RenderGraphImpl::getRenderBufferBindings(const char *name) const
+	{
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name));
+
+		auto it = render_buffer_lookup.find(hash);
+		if (it == render_buffer_lookup.end())
+			return nullptr;
+
+		RenderBuffer *render_buffer = it->second;
+		return render_buffer->bindings;
+	}
+
+	foundation::render::Format RenderGraphImpl::getRenderBufferFormat(const char *name) const
+	{
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name));
+
+		auto it = render_buffer_lookup.find(hash);
+		if (it == render_buffer_lookup.end())
+			return foundation::render::Format::UNDEFINED;
+
+		RenderBuffer *render_buffer = it->second;
+		return render_buffer->format;
+	}
+
+	uint32_t RenderGraphImpl::getRenderBufferDownscale(const char *name) const
+	{
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(name));
+
+		auto it = render_buffer_lookup.find(hash);
+		if (it == render_buffer_lookup.end())
+			return 0;
+
+		RenderBuffer *render_buffer = it->second;
+		return render_buffer->downscale;
+	}
+
+	/*
+	 */
+	foundation::render::FrameBuffer *RenderGraphImpl::fetchFrameBuffer(uint32_t num_attachments, const char *render_buffer_names[])
+	{
+		uint64_t hash = 0;
+
+		foundation::render::FrameBufferAttachment attachments[32];
+
+		for (uint32_t i = 0; i < num_attachments; ++i)
+		{
+			foundation::render::FrameBufferAttachment &attachment = attachments[i];
+			attachment.texture = getRenderBufferTexture(render_buffer_names[i]);
+			attachment.base_layer = 0;
+			attachment.base_mip = 0;
+			attachment.num_layers = 1;
+
+			common::HashUtils::combine(hash, attachment.texture);
+			common::HashUtils::combine(hash, attachment.base_layer);
+			common::HashUtils::combine(hash, attachment.base_mip);
+			common::HashUtils::combine(hash, attachment.num_layers);
+		}
+
+		auto it = framebuffer_cache.find(hash);
+		if (it != framebuffer_cache.end())
+			return it->second;
+
+		foundation::render::FrameBuffer *framebuffer = device->createFrameBuffer(num_attachments, attachments);
+		framebuffer_cache.insert({hash, framebuffer});
+
+		return framebuffer;
+	}
+
+	/*
+	 */
+	bool RenderGraphImpl::removeRenderPass(size_t index)
+	{
+		if (index >= passes.size())
+			return false;
+
+		IRenderPass *pass = passes[index];
+		pass->shutdown();
+		delete pass;
+
+		passes.erase(passes.begin() + index);
+		return true;
+	}
+
+	bool RenderGraphImpl::removeRenderPass(IRenderPass *pass)
+	{
+		auto it = std::find(passes.begin(), passes.end(), pass);
+		if (it == passes.end())
+			return false;
+
+		size_t index = std::distance(passes.begin(), it);
+		return removeRenderPass(index);
+	}
+
+	void RenderGraphImpl::removeAllRenderPasses()
+	{
+		for (IRenderPass *pass : passes)
+		{
+			pass->shutdown();
+			delete pass;
+		}
+
+		passes.clear();
+	}
+
+	/*
+	 */
+	size_t RenderGraphImpl::getGroupParameterSize(const char *group_name, const char *parameter_name) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(group_name));
 		common::HashUtils::combine(hash, std::string_view(parameter_name));
 
-		auto it = parameter_lookup.find(hash);
-		if (it == parameter_lookup.end())
+		auto it = group_parameter_lookup.find(hash);
+		if (it == group_parameter_lookup.end())
 			return 0;
 
-		Parameter *parameter = it->second;
+		GroupParameter *parameter = it->second;
 		return parameter->size;
 	}
 
-	const void *RenderGraphImpl::getParameterValue(const char *group_name, const char *parameter_name, size_t offset) const
+	const void *RenderGraphImpl::getGroupParameter(const char *group_name, const char *parameter_name, size_t offset) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(group_name));
 		common::HashUtils::combine(hash, std::string_view(parameter_name));
 
-		auto it = parameter_lookup.find(hash);
-		if (it == parameter_lookup.end())
+		auto it = group_parameter_lookup.find(hash);
+		if (it == group_parameter_lookup.end())
 			return nullptr;
 
-		Parameter *parameter = it->second;
+		GroupParameter *parameter = it->second;
 		const uint8_t *data = reinterpret_cast<const uint8_t *>(parameter->memory);
 
 		if (offset >= parameter->size)
@@ -321,24 +655,24 @@ namespace scapes::visual
 		return data + offset;
 	}
 
-	bool RenderGraphImpl::setParameterValue(const char *group_name, const char *parameter_name, size_t dst_offset, size_t src_size, const void *src_data)
+	bool RenderGraphImpl::setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_offset, size_t src_size, const void *src_data)
 	{
 		uint64_t group_hash = 0;
 		common::HashUtils::combine(group_hash, std::string_view(group_name));
 
-		auto group_it = parameter_group_lookup.find(group_hash);
-		if (group_it == parameter_group_lookup.end())
+		auto group_it = group_lookup.find(group_hash);
+		if (group_it == group_lookup.end())
 			return false;
 
 		uint64_t parameter_hash = group_hash;
 		common::HashUtils::combine(parameter_hash, std::string_view(parameter_name));
 
-		auto parameter_it = parameter_lookup.find(parameter_hash);
-		if (parameter_it == parameter_lookup.end())
+		auto parameter_it = group_parameter_lookup.find(parameter_hash);
+		if (parameter_it == group_parameter_lookup.end())
 			return false;
 
-		ParameterGroup *group = group_it->second;
-		Parameter *parameter = parameter_it->second;
+		Group *group = group_it->second;
+		GroupParameter *parameter = parameter_it->second;
 		uint8_t *dst_data = reinterpret_cast<uint8_t *>(parameter->memory);
 
 		if (dst_offset >= parameter->size)
@@ -356,343 +690,72 @@ namespace scapes::visual
 
 	/*
 	 */
-	void RenderGraphImpl::addTextureRenderBuffer(const char *name, foundation::render::Format format, uint32_t downscale)
+	bool RenderGraphImpl::registerRenderPass(const char *name, PFN_createRenderPass function)
 	{
-		TextureResource *texture = new TextureResource();
+		uint64_t render_pass_hash = 0;
+		common::HashUtils::combine(render_pass_hash, std::string_view(name));
 
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		texture->type = TextureType::RENDER_BUFFER;
-		texture->render_buffer_format = format;
-		texture->render_buffer_downscale = std::max<uint32_t>(1, downscale);
-
-		texture_lookup.insert({hash, texture});
-	}
-
-	void RenderGraphImpl::addTextureResource(const char *name, TextureHandle handle)
-	{
-		TextureResource *texture = new TextureResource();
-
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		texture->type = TextureType::RESOURCE;
-		texture->resource = handle;
-
-		texture_lookup.insert({hash, texture});
-	}
-
-	void RenderGraphImpl::addTextureSwapChain(const char *name, foundation::render::SwapChain *swap_chain)
-	{
-		TextureResource *texture = new TextureResource();
-
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		texture->type = TextureType::SWAP_CHAIN;
-		texture->swap_chain = swap_chain;
-
-		texture_lookup.insert({hash, texture});
-	}
-
-	/*
-	 */
-	bool RenderGraphImpl::removeTexture(const char *name)
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
+		auto it = render_pass_type_lookup.find(render_pass_hash);
+		if (it != render_pass_type_lookup.end())
 			return false;
 
-		TextureResource *texture = it->second;
-		destroyTextureResource(texture);
-
-		texture_lookup.erase(hash);
+		render_pass_type_lookup.insert({render_pass_hash, function});
 		return true;
 	}
 
-	void RenderGraphImpl::removeAllTextures()
+	IRenderPass *RenderGraphImpl::createRenderPass(const char *name)
 	{
-		for (auto &[hash, texture] : texture_lookup)
-			destroyTextureResource(texture);
+		uint64_t render_pass_hash = 0;
+		common::HashUtils::combine(render_pass_hash, std::string_view(name));
 
-		texture_lookup.clear();
-	}
-
-	/*
-	 */
-	RenderGraph::TextureType RenderGraphImpl::getTextureType(const char *name) const
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
-			return TextureType::INVALID;
-
-		TextureResource *texture = it->second;
-		return texture->type;
-	}
-
-	foundation::render::Texture *RenderGraphImpl::getTexture(const char *name) const
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
+		auto it = render_pass_type_lookup.find(render_pass_hash);
+		if (it == render_pass_type_lookup.end())
 			return nullptr;
 
-		TextureResource *texture = it->second;
-		if (texture->type == TextureType::RENDER_BUFFER)
-			return texture->render_buffer;
+		PFN_createRenderPass function = it->second;
+		assert(function);
 
+		IRenderPass *render_pass = function(this);
+		assert(render_pass);
 
-		if (texture->type == TextureType::RESOURCE)
-			return texture->resource->gpu_data;
-
-		return nullptr;
+		passes.push_back(render_pass);
+		return render_pass;
 	}
 
 	/*
 	 */
-	foundation::render::Texture *RenderGraphImpl::getTextureRenderBuffer(const char *name) const
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
-			return nullptr;
-
-		TextureResource *texture = it->second;
-		if (texture->type != TextureType::RENDER_BUFFER)
-			return nullptr;
-
-		return texture->render_buffer;
-	}
-
-	foundation::render::Format RenderGraphImpl::getTextureRenderBufferFormat(const char *name) const
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
-			return foundation::render::Format::UNDEFINED;
-
-		TextureResource *texture = it->second;
-		if (texture->type != TextureType::RENDER_BUFFER)
-			return foundation::render::Format::UNDEFINED;
-
-		return texture->render_buffer_format;
-	}
-
-	uint32_t RenderGraphImpl::getTextureRenderBufferDownscale(const char *name) const
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
-			return 0;
-
-		TextureResource *texture = it->second;
-		if (texture->type != TextureType::RENDER_BUFFER)
-			return 0;
-
-		return texture->render_buffer_downscale;
-	}
-
-	/*
-	 */
-	bool RenderGraphImpl::swapTextureRenderBuffers(const char *name0, const char *name1)
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name0));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
-			return false;
-
-		TextureResource *texture0 = it->second;
-		if (texture0->type != TextureType::RENDER_BUFFER)
-			return false;
-
-		hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name1));
-
-		it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
-			return false;
-
-		TextureResource *texture1 = it->second;
-		if (texture1->type != TextureType::RENDER_BUFFER)
-			return false;
-
-		if (texture0->render_buffer_format != texture1->render_buffer_format)
-			return false;
-
-		if (texture0->render_buffer_downscale != texture1->render_buffer_downscale)
-			return false;
-
-		std::swap(texture0->render_buffer, texture1->render_buffer);
-		return true;
-	}
-
-	/*
-	 */
-	TextureHandle RenderGraphImpl::getTextureResource(const char *name) const
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
-			return TextureHandle();
-
-		TextureResource *texture = it->second;
-		if (texture->type != TextureType::RESOURCE)
-			return TextureHandle();
-
-		return texture->resource;
-	}
-
-	bool RenderGraphImpl::setTextureResource(const char *name, TextureHandle handle)
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
-			return false;
-
-		TextureResource *texture = it->second;
-		if (texture->type != TextureType::RESOURCE)
-			return false;
-
-		texture->resource = handle;
-		return true;
-	}
-
-	/*
-	 */
-	foundation::render::SwapChain *RenderGraphImpl::getTextureSwapChain(const char *name) const
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
-			return nullptr;
-
-		TextureResource *texture = it->second;
-		if (texture->type != TextureType::SWAP_CHAIN)
-			return nullptr;
-
-		return texture->swap_chain;
-	}
-
-	bool RenderGraphImpl::setTextureSwapChain(const char *name, foundation::render::SwapChain *swap_chain)
-	{
-		uint64_t hash = 0;
-		common::HashUtils::combine(hash, std::string_view(name));
-
-		auto it = texture_lookup.find(hash);
-		if (it == texture_lookup.end())
-			return false;
-
-		TextureResource *texture = it->second;
-		if (texture->type != TextureType::SWAP_CHAIN)
-			return false;
-
-		texture->swap_chain = swap_chain;
-		return true;
-	}
-
-	/*
-	 */
-	void RenderGraphImpl::addRenderPass(IRenderPass *pass)
-	{
-		// TODO: how to init new render pass?
-		passes.push_back(pass);
-	}
-
-	bool RenderGraphImpl::addRenderPass(IRenderPass *pass, size_t index)
-	{
-		if (index >= passes.size())
-			return false;
-
-		// TODO: how to init new render pass?
-		passes.insert(passes.begin() + index, pass);
-
-		return true;
-	}
-
-	bool RenderGraphImpl::removeRenderPass(size_t index)
-	{
-		if (index >= passes.size())
-			return false;
-
-		IRenderPass *pass = passes[index];
-		pass->shutdown();
-
-		passes.erase(passes.begin() + index);
-		return true;
-	}
-
-	void RenderGraphImpl::removeAllRenderPasses()
-	{
-		for (IRenderPass *pass : passes)
-		{
-			pass->shutdown();
-			delete pass;
-		}
-
-		passes.clear();
-	}
-
-	/*
-	 */
-	bool RenderGraphImpl::registerRenderPassType(const char *name, PFN_createRenderPass function)
-	{
-		// TODO:
-		return false;
-	}
-
-	/*
-	 */
-	void RenderGraphImpl::destroyParameterGroup(RenderGraphImpl::ParameterGroup *group)
+	void RenderGraphImpl::destroyGroup(RenderGraphImpl::Group *group)
 	{
 		assert(group);
 
-		invalidateParameterGroup(group);
+		invalidateGroup(group);
 
-		for (Parameter *parameter : group->parameters)
+		for (GroupParameter *parameter : group->parameters)
 			parameter->group = nullptr;
+
+		for (GroupTexture *texture : group->textures)
+			texture->group = nullptr;
 
 		delete group;
 	}
 
-	void RenderGraphImpl::invalidateParameterGroup(RenderGraphImpl::ParameterGroup *group)
+	void RenderGraphImpl::invalidateGroup(RenderGraphImpl::Group *group)
 	{
 		assert(group);
 
 		// TODO: make sure UBO + BindSet recreated only if
 		// current UBO size is not enough to fit all parameters
-		device->destroyUniformBuffer(group->gpu_resource);
+		device->destroyUniformBuffer(group->buffer);
 		device->destroyBindSet(group->bindings);
 
-		group->gpu_resource = nullptr;
+		group->buffer = nullptr;
+		group->buffer_size = 0;
 		group->bindings = nullptr;
 
 		group->dirty = true;
 	}
 
-	bool RenderGraphImpl::flushParameterGroup(RenderGraphImpl::ParameterGroup *group)
+	bool RenderGraphImpl::flushGroup(RenderGraphImpl::Group *group)
 	{
 		assert(group);
 
@@ -705,7 +768,7 @@ namespace scapes::visual
 		uint32_t ubo_size = 0;
 		constexpr uint32_t alignment = 16;
 
-		for (Parameter *parameter : group->parameters)
+		for (GroupParameter *parameter : group->parameters)
 		{
 			uint32_t padding = alignment - current_offset % alignment;
 			if (current_offset > 0 && current_offset + parameter->size > alignment)
@@ -715,41 +778,49 @@ namespace scapes::visual
 			current_offset = (current_offset + parameter->size) % alignment;
 		}
 
-		if (group->gpu_resource_size < ubo_size)
+		if (group->buffer_size < ubo_size)
 		{
-			device->destroyUniformBuffer(group->gpu_resource);
+			device->destroyUniformBuffer(group->buffer);
 			device->destroyBindSet(group->bindings);
 
-			group->gpu_resource_size = ubo_size;
-			group->gpu_resource = device->createUniformBuffer(foundation::render::BufferType::DYNAMIC, ubo_size);
+			group->buffer_size = ubo_size;
+			group->buffer = device->createUniformBuffer(foundation::render::BufferType::DYNAMIC, ubo_size);
 
 			should_invalidate = true;
 		}
 
-		uint8_t *ubo_data = reinterpret_cast<uint8_t *>(device->map(group->gpu_resource));
-
-		current_offset = 0;
-		for (Parameter *parameter : group->parameters)
+		if (group->buffer_size > 0)
 		{
-			size_t padding = alignment - current_offset % alignment;
-			if (current_offset > 0 && current_offset + parameter->size > alignment)
-				ubo_data += padding;
+			uint8_t *ubo_data = reinterpret_cast<uint8_t *>(device->map(group->buffer));
 
-			memcpy(ubo_data, parameter->memory, parameter->size);
+			current_offset = 0;
+			for (GroupParameter *parameter : group->parameters)
+			{
+				size_t padding = alignment - current_offset % alignment;
+				if (current_offset > 0 && current_offset + parameter->size > alignment)
+					ubo_data += padding;
 
-			ubo_data += parameter->size;
-			current_offset = (current_offset + parameter->size) % alignment;
+				memcpy(ubo_data, parameter->memory, parameter->size);
+
+				ubo_data += parameter->size;
+				current_offset = (current_offset + parameter->size) % alignment;
+			}
+
+			device->unmap(group->buffer);
 		}
-
-		device->unmap(group->gpu_resource);
 
 		if (group->bindings == nullptr)
 		{
 			group->bindings = device->createBindSet();
-			device->bindUniformBuffer(group->bindings, 0, group->gpu_resource);
-
 			should_invalidate = true;
 		}
+
+		uint32_t binding = 0;
+		if (group->buffer)
+			device->bindUniformBuffer(group->bindings, binding++, group->buffer);
+
+		for (GroupTexture *texture : group->textures)
+			device->bindTexture(group->bindings, binding++, texture->texture->gpu_data);
 
 		group->dirty = false;
 		return should_invalidate;
@@ -757,7 +828,7 @@ namespace scapes::visual
 
 	/*
 	 */
-	void RenderGraphImpl::destroyParameter(RenderGraphImpl::Parameter *parameter)
+	void RenderGraphImpl::destroyGroupParameter(RenderGraphImpl::GroupParameter *parameter)
 	{
 		assert(parameter);
 
@@ -765,40 +836,62 @@ namespace scapes::visual
 		delete parameter;
 	}
 
-	/*
-	 */
-	void RenderGraphImpl::destroyTextureResource(RenderGraphImpl::TextureResource *texture)
+	void RenderGraphImpl::destroyGroupTexture(RenderGraphImpl::GroupTexture *texture)
 	{
 		assert(texture);
-
-		invalidateTextureResource(texture);
 
 		delete texture;
 	}
 
-	void RenderGraphImpl::invalidateTextureResource(RenderGraphImpl::TextureResource *texture)
+	/*
+	 */
+	void RenderGraphImpl::destroyRenderBuffer(RenderGraphImpl::RenderBuffer *buffer)
 	{
-		assert(texture);
+		assert(buffer);
 
-		device->destroyTexture(texture->render_buffer);
-		texture->render_buffer = nullptr;
+		invalidateRenderBuffer(buffer);
+
+		delete buffer;
 	}
 
-	bool RenderGraphImpl::flushTextureResource(RenderGraphImpl::TextureResource *texture)
+	void RenderGraphImpl::invalidateRenderBuffer(RenderGraphImpl::RenderBuffer *buffer)
+	{
+		assert(buffer);
+
+		device->destroyTexture(buffer->texture);
+		buffer->texture = nullptr;
+
+		device->destroyBindSet(buffer->bindings);
+		buffer->bindings = nullptr;
+	}
+
+	bool RenderGraphImpl::flushRenderBuffer(RenderGraphImpl::RenderBuffer *texture)
 	{
 		assert(texture);
 
-		if (texture->type != TextureType::RENDER_BUFFER)
+		if (texture->texture)
 			return false;
 
-		if (texture->render_buffer)
-			return false;
+		assert(texture->bindings == nullptr);
 
-		foundation::render::Format format = texture->render_buffer_format;
-		uint32_t texture_width = std::max<uint32_t>(1, width / texture->render_buffer_downscale);
-		uint32_t texture_height = std::max<uint32_t>(1, height / texture->render_buffer_downscale);
+		foundation::render::Format format = texture->format;
+		uint32_t texture_width = std::max<uint32_t>(1, width / texture->downscale);
+		uint32_t texture_height = std::max<uint32_t>(1, height / texture->downscale);
 
-		texture->render_buffer = device->createTexture2D(texture_width, texture_height, 1, format);
+		texture->texture = device->createTexture2D(texture_width, texture_height, 1, format);
+		texture->bindings = device->createBindSet();
+
+		device->bindTexture(texture->bindings, 0, texture->texture);
 		return true;
+	}
+
+	/*
+	 */
+	void RenderGraphImpl::invalidateFrameBufferCache()
+	{
+		for (auto &[hash, framebuffer] : framebuffer_cache)
+			device->destroyFrameBuffer(framebuffer);
+
+		framebuffer_cache.clear();
 	}
 }

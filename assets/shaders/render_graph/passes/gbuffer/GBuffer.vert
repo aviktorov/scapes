@@ -3,7 +3,7 @@
 // Bindings
 #define RENDER_GRAPH_APPLICATION_SET 0
 #define RENDER_GRAPH_CAMERA_SET 1
-#include <shaders/render_graph/common/ParameterGroups.h>
+#include <shaders/render_graph/common/Groups.h>
 
 layout(push_constant) uniform Node
 {

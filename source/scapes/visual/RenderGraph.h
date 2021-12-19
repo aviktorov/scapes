@@ -43,111 +43,125 @@ namespace scapes::visual
 		bool deserialize(const foundation::json::Document &document) final;
 		foundation::json::Document serialize() final;
 
-		void addParameterGroup(const char *name) final;
-		bool removeParameterGroup(const char *name) final;
-		void removeAllParameterGroups() final;
+		SCAPES_INLINE void setSwapChain(foundation::render::SwapChain *chain) final { swap_chain = chain; }
+		SCAPES_INLINE foundation::render::SwapChain *getSwapChain() final { return swap_chain; }
+		SCAPES_INLINE const foundation::render::SwapChain *getSwapChain() const final { return swap_chain; }
 
-		foundation::render::BindSet *getParameterGroupBindings(const char *name) const final;
+		bool addGroup(const char *name) final;
+		bool removeGroup(const char *name) final;
+		void removeAllGroups() final;
 
-		bool addParameter(const char *group_name, const char *parameter_name, size_t size) final;
-		bool removeParameter(const char *group_name, const char *parameter_name) final;
-		void removeAllParameters() final;
+		foundation::render::BindSet *getGroupBindings(const char *name) const final;
 
-		size_t getParameterSize(const char *group_name, const char *parameter_name) const final;
-		const void *getParameterValue(const char *group_name, const char *parameter_name, size_t offset) const final;
-		bool setParameterValue(const char *group_name, const char *parameter_name, size_t dst_offset, size_t src_size, const void *src_data) final;
+		bool addGroupParameter(const char *group_name, const char *parameter_name, size_t size) final;
+		bool removeGroupParameter(const char *group_name, const char *parameter_name) final;
+		void removeAllGroupParameters() final;
 
-		void addTextureRenderBuffer(const char *name, foundation::render::Format format, uint32_t downscale) final;
-		void addTextureResource(const char *name, TextureHandle handle) final;
-		void addTextureSwapChain(const char *name, foundation::render::SwapChain *swap_chain) final;
+		bool addGroupTexture(const char *group_name, const char *texture_name) final;
+		bool removeGroupTexture(const char *group_name, const char *texture_name) final;
+		void removeAllGroupTextures() final;
 
-		bool removeTexture(const char *name) final;
-		void removeAllTextures() final;
+		TextureHandle getGroupTexture(const char *group_name, const char *texture_name) const final;
+		bool setGroupTexture(const char *group_name, const char *texture_name, TextureHandle handle) final;
 
-		TextureType getTextureType(const char *name) const final;
-		foundation::render::Texture *getTexture(const char *name) const final;
+		bool addRenderBuffer(const char *name, foundation::render::Format format, uint32_t downscale) final;
+		bool removeRenderBuffer(const char *name) final;
+		void removeAllRenderBuffers() final;
+		bool swapRenderBuffers(const char *name0, const char *name1) final;
 
-		foundation::render::Texture *getTextureRenderBuffer(const char *name) const final;
-		foundation::render::Format getTextureRenderBufferFormat(const char *name) const final;
-		uint32_t getTextureRenderBufferDownscale(const char *name) const final;
+		foundation::render::Texture *getRenderBufferTexture(const char *name) const final;
+		foundation::render::BindSet *getRenderBufferBindings(const char *name) const final;
+		foundation::render::Format getRenderBufferFormat(const char *name) const final;
+		uint32_t getRenderBufferDownscale(const char *name) const final;
 
-		bool swapTextureRenderBuffers(const char *name0, const char *name1) final;
-
-		TextureHandle getTextureResource(const char *name) const final;
-		bool setTextureResource(const char *name, TextureHandle handle) final;
-
-		foundation::render::SwapChain *getTextureSwapChain(const char *name) const final;
-		bool setTextureSwapChain(const char *name, foundation::render::SwapChain *swap_chain) final;
+		foundation::render::FrameBuffer *fetchFrameBuffer(uint32_t num_attachments, const char *render_buffer_names[]) final;
 
 		SCAPES_INLINE size_t getNumRenderPasses() const final { return passes.size(); }
 		SCAPES_INLINE IRenderPass *getRenderPass(size_t index) const final { return passes[index]; }
 
-		void addRenderPass(IRenderPass *pass) final;
-		bool addRenderPass(IRenderPass *pass, size_t index) final;
 		bool removeRenderPass(size_t index) final;
+		bool removeRenderPass(IRenderPass *pass) final;
 		void removeAllRenderPasses() final;
 
-		bool registerRenderPassType(const char *name, PFN_createRenderPass function) final;
-
 	private:
-		struct Parameter;
-		struct ParameterGroup;
-		struct TextureResource;
+		struct Group;
+		struct GroupParameter;
+		struct GroupTexture;
 
-		struct Parameter
+		struct GroupParameter
 		{
-			ParameterGroup *group {nullptr};
+			Group *group {nullptr};
 
 			size_t size {0};
 			void *memory {nullptr};
 		};
 
-		struct ParameterGroup
+		struct GroupTexture
 		{
-			foundation::render::UniformBuffer *gpu_resource {nullptr};
-			uint32_t gpu_resource_size {0};
+			Group *group {nullptr};
+
+			TextureHandle texture;
+		};
+
+		struct Group
+		{
+			foundation::render::UniformBuffer *buffer {nullptr};
+			uint32_t buffer_size {0};
 
 			foundation::render::BindSet *bindings {nullptr};
-			std::vector<Parameter *> parameters;
+			std::vector<GroupParameter *> parameters;
+			std::vector<GroupTexture *> textures;
 			bool dirty {true};
 		};
 
-		struct TextureResource
+		struct RenderBuffer
 		{
-			TextureType type {TextureType::INVALID};
-			foundation::render::Format render_buffer_format {foundation::render::Format::UNDEFINED};
-			uint32_t render_buffer_downscale {1};
-
-			foundation::render::SwapChain *swap_chain;
-			foundation::render::Texture *render_buffer;
-			TextureHandle resource;
-		};
+			foundation::render::Format format {foundation::render::Format::UNDEFINED};
+			foundation::render::Texture *texture {nullptr};
+			foundation::render::BindSet *bindings {nullptr};
+			uint32_t downscale {1};
+	};
 
 	private:
-		void destroyParameterGroup(ParameterGroup *group);
-		void invalidateParameterGroup(ParameterGroup *group);
-		bool flushParameterGroup(ParameterGroup *group);
+		size_t getGroupParameterSize(const char *group_name, const char *parameter_name) const final;
+		const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t offset) const final;
+		bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_offset, size_t src_size, const void *src_data) final;
 
-		void destroyParameter(Parameter *parameter);
+		bool registerRenderPass(const char *name, PFN_createRenderPass function) final;
+		IRenderPass *createRenderPass(const char *name) final;
 
-		void destroyTextureResource(TextureResource *texture);
-		void invalidateTextureResource(TextureResource *texture);
-		bool flushTextureResource(TextureResource *texture);
+	private:
+		void destroyGroup(Group *group);
+		void invalidateGroup(Group *group);
+		bool flushGroup(Group *group);
+
+		void destroyGroupParameter(GroupParameter *parameter);
+		void destroyGroupTexture(GroupTexture *texture);
+
+		void destroyRenderBuffer(RenderBuffer *buffer);
+		void invalidateRenderBuffer(RenderBuffer *buffer);
+		bool flushRenderBuffer(RenderBuffer *buffer);
+
+		void invalidateFrameBufferCache();
 
 	private:
 		uint32_t width {0};
 		uint32_t height {0};
 
-		std::unordered_map<const char *, PFN_createRenderPass> registered_render_pass_types;
+		std::unordered_map<uint64_t, PFN_createRenderPass> render_pass_type_lookup;
 		std::vector<IRenderPass *> passes;
 
 		ParameterAllocator parameter_allocator;
 
-		std::unordered_map<uint64_t, ParameterGroup *> parameter_group_lookup;
-		std::unordered_map<uint64_t, Parameter *> parameter_lookup;
-		std::unordered_map<uint64_t, TextureResource *> texture_lookup;
+		std::unordered_map<uint64_t, Group *> group_lookup;
+		std::unordered_map<uint64_t, GroupParameter *> group_parameter_lookup;
+		std::unordered_map<uint64_t, GroupTexture *> group_texture_lookup;
+		std::unordered_map<uint64_t, RenderBuffer *> render_buffer_lookup;
 
-		scapes::foundation::render::Device *device {nullptr};
-		scapes::foundation::game::World *world {nullptr};
+		std::unordered_map<uint64_t, foundation::render::FrameBuffer *> framebuffer_cache;
+
+		foundation::render::SwapChain *swap_chain {nullptr};
+		foundation::render::Device *device {nullptr};
+		foundation::game::World *world {nullptr};
 	};
 }
