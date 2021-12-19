@@ -1,0 +1,86 @@
+---
+ParameterGroup:
+  name: Camera
+  parameters:
+  - name: View
+    type: mat4
+    value: mat4_identity
+  - name: ViewInverse
+    type: mat4
+    value: mat4_identity
+  - name: Projection
+    type: mat4
+    value: mat4_identity
+  - name: ProjectionInverse
+    type: mat4
+    value: mat4_identity
+
+---
+ParameterGroup:
+  name: Debug
+  parameters:
+  - name: LerpUserMaterials
+    type: float
+    value: 0.0
+  - name: UserMetalness
+    type: float
+    value: 0.0
+  - name: UserRoughness
+    type: float
+    value: 0.0
+  textures:
+  - name: TestTexture
+    path: path/to/texture.png
+
+---
+RenderBuffer:
+  name: GBuffer BaseColor
+  format: R8G8B8A8_UNORM
+
+---
+RenderBuffer:
+  name: GBuffer Normal
+  format: R16G16B16A16_SFLOAT
+
+---
+RenderBuffer:
+  name: GBuffer Shading
+  format: R8G8B8A8_UNORM
+
+---
+RenderBuffer:
+  name: GBuffer Depth
+  format: D24_UNORM
+
+---
+RenderBuffer:
+  name: GBuffer Velocity
+  format: R16G16_SFLOAT
+
+---
+RenderPass:
+  name: GBuffer
+  type: GeometryDeferred
+  inputs: [ Camera ]
+  color_outputs: [ GBuffer BaseColor, GBuffer Normal, GBuffer Shading, GBuffer Velocity ]
+  depthstencil_output: GBuffer Depth
+  vertex_shader: path/to/shader.vert
+  fragment_shader: path/to/shader.frag
+
+---
+RenderPass:
+  name: SSAO
+  type: Post
+  inputs: [ Camera, Debug ]
+  color_outputs: [ SSAO Noised ]
+  vertex_shader: path/to/shader.vert
+  fragment_shader: path/to/shader.frag
+
+---
+RenderPass:
+  name: LBuffer
+  type: LightDeferred
+  inputs: [ Camera ]
+  color_outputs: [ LBuffer Diffuse, LBuffer Specular ]
+  vertex_shader: path/to/shader.vert
+  fragment_shader: path/to/shader.frag
