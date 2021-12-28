@@ -85,6 +85,19 @@ file (GLOB RESOURCES_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/impl/*.h
 )
 
+file (GLOB SERDE_SOURCES
+	${CMAKE_CURRENT_SOURCE_DIR}/serde/*.cpp
+)
+
+file (GLOB SERDE_HEADERS
+	${CMAKE_CURRENT_SOURCE_DIR}/serde/*.h
+)
+
+set(SERDE_DEFINES
+	C4CORE_SHARED C4CORE_EXPORTS
+	RYML_SHARED RYML_EXPORTS
+)
+
 file (GLOB SHADERS_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/shaders/spirv/*.cpp
@@ -133,6 +146,7 @@ add_library(
 	${GAME_SOURCES} ${GAME_HEADERS}
 	${RENDER_SOURCES} ${RENDER_HEADERS}
 	${RESOURCES_SOURCES} ${RESOURCES_HEADERS}
+	${SERDE_SOURCES} ${SERDE_HEADERS}
 	${SHADERS_SOURCES} ${SHADERS_HEADERS}
 	${PROFILER_SOURCES} ${PROFILER_HEADERS}
 )
@@ -164,7 +178,7 @@ target_include_directories(${TARGET} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../commo
 # ==================================================================================================
 # Preprocessor
 # ==================================================================================================
-target_compile_definitions(${TARGET} PRIVATE SCAPES_SHARED_LIBRARY SCAPES_PROFILER_ENABLED ${PLATFORM_DEFINES} ${RENDER_DEFINES} ${PROFILER_DEFINES})
+target_compile_definitions(${TARGET} PRIVATE SCAPES_SHARED_LIBRARY SCAPES_PROFILER_ENABLED ${PLATFORM_DEFINES} ${RENDER_DEFINES} ${PROFILER_DEFINES} ${SERDE_DEFINES})
 target_compile_definitions(${TARGET} PRIVATE $<$<CONFIG:Debug>:${RENDER_DEBUG_DEFINES}>)
 
 # ==================================================================================================

@@ -2,7 +2,7 @@
 
 #include <scapes/3rdparty/rapidjson/document.h>
 
-namespace scapes::foundation
+namespace scapes::foundation::serde
 {
 	// All your base are belong to us
 	namespace json = rapidjson;
