@@ -1,15 +1,224 @@
 #include "RenderGraph.h"
 #include "HashUtils.h"
 
+#include <scapes/foundation/io/FileSystem.h>
+
 #include <algorithm>
+
+enum class GroupParameterType
+{
+	UNDEFINED = 0,
+	FLOAT,
+	INT,
+	UINT,
+	VEC2,
+	VEC3,
+	VEC4,
+	IVEC2,
+	IVEC3,
+	IVEC4,
+	UVEC2,
+	UVEC3,
+	UVEC4,
+	MAT3,
+	MAT4,
+
+	MAX,
+};
+
+union GroupParameterValue
+{
+	float f;
+	int32_t i;
+	uint32_t u;
+	scapes::foundation::math::vec2 v2;
+	scapes::foundation::math::vec3 v3;
+	scapes::foundation::math::vec4 v4;
+	scapes::foundation::math::ivec2 i2;
+	scapes::foundation::math::ivec3 i3;
+	scapes::foundation::math::ivec4 i4;
+	scapes::foundation::math::uvec2 u2;
+	scapes::foundation::math::uvec3 u3;
+	scapes::foundation::math::uvec4 u4;
+	scapes::foundation::math::mat3 m3;
+	scapes::foundation::math::mat4 m4;
+};
+
+static GroupParameterValue parseGroupParameterValue(GroupParameterType type, const scapes::foundation::serde::yaml::NodeRef node)
+{
+	GroupParameterValue ret;
+
+	switch (type)
+	{
+		case GroupParameterType::FLOAT: node >> ret.f; break;
+		case GroupParameterType::INT: node >> ret.i; break;
+		case GroupParameterType::UINT: node >> ret.u; break;
+		case GroupParameterType::VEC2: node >> ret.v2; break;
+		case GroupParameterType::VEC3: node >> ret.v3; break;
+		case GroupParameterType::VEC4: node >> ret.v4; break;
+		case GroupParameterType::IVEC2: node >> ret.i2; break;
+		case GroupParameterType::IVEC3: node >> ret.i3; break;
+		case GroupParameterType::IVEC4: node >> ret.i4; break;
+		case GroupParameterType::UVEC2: node >> ret.u2; break;
+		case GroupParameterType::UVEC3: node >> ret.u3; break;
+		case GroupParameterType::UVEC4: node >> ret.u4; break;
+		case GroupParameterType::MAT3: node >> ret.m3; break;
+		case GroupParameterType::MAT4: node >> ret.m4; break;
+	}
+
+	return ret;
+}
+
+static size_t getGroupParameterTypeSize(GroupParameterType type)
+{
+	static size_t supported_formats[GroupParameterType::MAX] =
+	{
+		0,
+		sizeof(float), sizeof(int32_t), sizeof(uint32_t),
+		sizeof(scapes::foundation::math::vec2), sizeof(scapes::foundation::math::vec3), sizeof(scapes::foundation::math::vec4),
+		sizeof(scapes::foundation::math::ivec2), sizeof(scapes::foundation::math::ivec3), sizeof(scapes::foundation::math::ivec4),
+		sizeof(scapes::foundation::math::uvec2), sizeof(scapes::foundation::math::uvec3), sizeof(scapes::foundation::math::uvec4),
+		sizeof(scapes::foundation::math::mat3), sizeof(scapes::foundation::math::mat4),
+	};
+
+	return supported_formats[static_cast<size_t>(type)];
+}
+
+namespace c4
+{
+	/*
+	 */
+	SCAPES_INLINE bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::render::Format *format)
+	{
+		static const char *supported_formats[scapes::foundation::render::Format::MAX] =
+		{
+			"UNDEFINED",
+
+			"R8_UNORM", "R8_SNORM", "R8_UINT", "R8_SINT",
+			"R8G8_UNORM", "R8G8_SNORM", "R8G8_UINT", "R8G8_SINT",
+			"R8G8B8_UNORM", "R8G8B8_SNORM", "R8G8B8_UINT", "R8G8B8_SINT",
+			"B8G8R8_UNORM", "B8G8R8_SNORM", "B8G8R8_UINT", "B8G8R8_SINT",
+			"R8G8B8A8_UNORM", "R8G8B8A8_SNORM", "R8G8B8A8_UINT", "R8G8B8A8_SINT",
+			"B8G8R8A8_UNORM", "B8G8R8A8_SNORM", "B8G8R8A8_UINT", "B8G8R8A8_SINT",
+
+			"R16_UNORM", "R16_SNORM", "R16_UINT", "R16_SINT", "R16_SFLOAT", "R16G16_UNORM",
+			"R16G16_SNORM", "R16G16_UINT", "R16G16_SINT", "R16G16_SFLOAT",
+			"R16G16B16_UNORM", "R16G16B16_SNORM", "R16G16B16_UINT", "R16G16B16_SINT", "R16G16B16_SFLOAT",
+			"R16G16B16A16_UNORM", "R16G16B16A16_SNORM", "R16G16B16A16_UINT", "R16G16B16A16_SINT", "R16G16B16A16_SFLOAT",
+
+			"R32_UINT", "R32_SINT", "R32_SFLOAT",
+			"R32G32_UINT", "R32G32_SINT", "R32G32_SFLOAT",
+			"R32G32B32_UINT", "R32G32B32_SINT", "R32G32B32_SFLOAT",
+			"R32G32B32A32_UINT", "R32G32B32A32_SINT", "R32G32B32A32_SFLOAT",
+
+			"D16_UNORM", "D16_UNORM_S8_UINT", "D24_UNORM", "D24_UNORM_S8_UINT", "D32_SFLOAT", "D32_SFLOAT_S8_UINT",
+		};
+
+		for (size_t i = 0; i < static_cast<size_t>(scapes::foundation::render::Format::MAX); ++i)
+		{
+			if (buf.compare(supported_formats[i], strlen(supported_formats[i])) == 0)
+			{
+				*format = static_cast<scapes::foundation::render::Format>(i);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/*
+	 */
+	using qualifier = scapes::foundation::math::qualifier;
+
+	template<typename T, qualifier Q> bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::math::vec<2, T, Q> *vec)
+	{
+		size_t ret = scapes::foundation::serde::yaml::unformat(buf, "{},{}", vec->x, vec->y);
+		return ret != ryml::yml::npos;
+	}
+
+	template<typename T, qualifier Q> bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::math::vec<3, T, Q> *vec)
+	{
+		size_t ret = scapes::foundation::serde::yaml::unformat(buf, "{},{},{}", vec->x, vec->y, vec->z);
+		return ret != ryml::yml::npos;
+	}
+
+	template<typename T, qualifier Q> bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::math::vec<4, T, Q> *vec)
+	{
+		size_t ret = scapes::foundation::serde::yaml::unformat(buf, "{},{},{},{}", vec->x, vec->y, vec->z, vec->w);
+		return ret != ryml::yml::npos;
+	}
+
+	SCAPES_INLINE bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::math::mat3 *mat)
+	{
+		scapes::foundation::math::vec3 &c0 = (*mat)[0];
+		scapes::foundation::math::vec3 &c1 = (*mat)[1];
+		scapes::foundation::math::vec3 &c2 = (*mat)[2];
+
+		size_t ret = scapes::foundation::serde::yaml::unformat(
+			buf,
+			"{},{},{},{},{},{},{},{},{}",
+			c0.x, c0.y, c0.z,
+			c1.x, c1.y, c1.z,
+			c2.x, c2.y, c2.z
+		);
+
+		return ret != ryml::yml::npos;
+	}
+
+	SCAPES_INLINE bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::math::mat4 *mat)
+	{
+		scapes::foundation::math::vec4 &c0 = (*mat)[0];
+		scapes::foundation::math::vec4 &c1 = (*mat)[1];
+		scapes::foundation::math::vec4 &c2 = (*mat)[2];
+		scapes::foundation::math::vec4 &c3 = (*mat)[3];
+
+		size_t ret = scapes::foundation::serde::yaml::unformat(
+			buf,
+			"{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
+			c0.x, c0.y, c0.z, c0.w,
+			c1.x, c1.y, c1.z, c1.w,
+			c2.x, c2.y, c2.z, c2.w,
+			c3.x, c3.y, c3.z, c3.w
+		);
+
+		return ret != ryml::yml::npos;
+	}
+
+	/*
+	 */
+	bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, GroupParameterType *type)
+	{
+		static const char *supported_formats[GroupParameterType::MAX] =
+		{
+			"undefined",
+			"float", "int", "uint",
+			"vec2", "vec3", "vec4",
+			"ivec2", "ivec3", "ivec4",
+			"uvec2", "uvec3", "uvec4",
+			"mat3", "mat4",
+		};
+
+		// NOTE: start index is intentionally set to 1 in order to skip check for UNDEFINED type
+		for (size_t i = 1; i < static_cast<size_t>(GroupParameterType::MAX); ++i)
+		{
+			if (buf.compare(supported_formats[i], strlen(supported_formats[i])) == 0)
+			{
+				*type = static_cast<GroupParameterType>(i);
+				return true;
+			}
+		}
+
+		return false;
+	}
+}
 
 namespace scapes::visual
 {
 	/*
 	 */
-	RenderGraph *RenderGraph::create(foundation::render::Device *device, foundation::game::World *world)
+	RenderGraph *RenderGraph::create(foundation::render::Device *device, foundation::game::World *world, foundation::io::FileSystem *file_system, foundation::resources::ResourceManager *resource_manager)
 	{
-		return new RenderGraphImpl(device, world);
+		return new RenderGraphImpl(device, world, file_system, resource_manager);
 	}
 
 	void RenderGraph::destroy(RenderGraph *RenderGraph)
@@ -31,8 +240,8 @@ namespace scapes::visual
 
 	/*
 	 */
-	RenderGraphImpl::RenderGraphImpl(foundation::render::Device *device, foundation::game::World *world)
-		: device(device), world(world)
+	RenderGraphImpl::RenderGraphImpl(foundation::render::Device *device, foundation::game::World *world, foundation::io::FileSystem *file_system, foundation::resources::ResourceManager *resource_manager)
+		: device(device), world(world), file_system(file_system), resource_manager(resource_manager)
 	{
 
 	}
@@ -144,8 +353,27 @@ namespace scapes::visual
 	 */
 	bool RenderGraphImpl::load(const foundation::io::URI &uri)
 	{
-		// TODO: implement
-		return false;
+		foundation::io::Stream *file = file_system->open(uri, "rb");
+		if (!file)
+		{
+			foundation::Log::error("RenderGraph::load(): can't open \"%s\" file\n", uri);
+			return false;
+		}
+
+		file->seek(0, foundation::io::SeekOrigin::END);
+		size_t size = file->tell();
+		file->seek(0, foundation::io::SeekOrigin::SET);
+
+		uint8_t *data = new uint8_t[size];
+		file->read(data, sizeof(uint8_t), size);
+		file_system->close(file);
+
+		foundation::serde::yaml::csubstr yaml(reinterpret_cast<const char *>(data), size);
+		foundation::serde::yaml::Tree &tree = foundation::serde::yaml::parse(yaml);
+		bool result = deserialize(tree);
+		delete[] data;
+
+		return result;
 	}
 
 	bool RenderGraphImpl::save(const foundation::io::URI &uri)
@@ -156,16 +384,206 @@ namespace scapes::visual
 
 	/*
 	 */
-	bool RenderGraphImpl::deserialize(const foundation::json::Document &document)
+	bool RenderGraphImpl::deserialize(const foundation::serde::yaml::Tree &tree)
 	{
-		// TODO: implement
-		return false;
+		// TODO: split this into multiple methods for the sake of readability
+		using namespace foundation::serde;
+
+		const yaml::NodeRef stream = tree.rootref();
+		if (!stream.is_root())
+		{
+			foundation::Log::error("RenderGraph::deserialize(): can't get root node\n");
+			return false;
+		}
+
+		if (!stream.is_stream())
+		{
+			foundation::Log::error("RenderGraph::deserialize(): root node is not a stream\n");
+			return false;
+		}
+
+		if (stream.is_doc())
+		{
+			foundation::Log::error("RenderGraph::deserialize(): root node must not be a document\n");
+			return false;
+		}
+
+		for (const yaml::NodeRef document : stream.children())
+		{
+			if (!document.is_doc())
+			{
+				foundation::Log::error("RenderGraph::deserialize(): child node is not a document\n");
+				return false;
+			}
+
+			for (const yaml::NodeRef child : document.children())
+			{
+				yaml::csubstr child_key = child.key();
+
+				if (child_key.compare("ParameterGroup") == 0)
+				{
+					std::string group_name;
+					std::vector<yaml::NodeRef> parameters;
+					std::vector<yaml::NodeRef> textures;
+
+					for (const yaml::NodeRef group_child : child.children())
+					{
+						yaml::csubstr group_child_key = group_child.key();
+
+						if (group_child_key.compare("name") == 0 && group_child.has_val())
+						{
+							yaml::csubstr group_child_value = group_child.val();
+							group_name = std::string(group_child_value.data(), group_child_value.size());
+						}
+						else if (group_child_key.compare("parameters") == 0)
+						{
+							const yaml::NodeRef parameter_data = group_child.first_child();
+							for (const yaml::NodeRef parameter_container : parameter_data.siblings())
+								parameters.push_back(parameter_container);
+						}
+						else if (group_child_key.compare("textures") == 0)
+						{
+							const yaml::NodeRef texture_data = group_child.first_child();
+							for (const yaml::NodeRef texture_container : texture_data.siblings())
+								textures.push_back(texture_container);
+						}
+					}
+
+					if (!group_name.empty())
+					{
+						addGroup(group_name.c_str());
+
+						for (const yaml::NodeRef parameter : parameters)
+						{
+							std::string parameter_name;
+							size_t parameter_count = 1;
+							GroupParameterType parameter_type = GroupParameterType::UNDEFINED;
+							yaml::NodeRef parameter_value;
+
+							for (const yaml::NodeRef parameter_child : parameter.children())
+							{
+								yaml::csubstr parameter_child_key = parameter_child.key();
+
+								if (parameter_child_key.compare("name") == 0 && parameter_child.has_val())
+								{
+									yaml::csubstr parameter_child_value = parameter_child.val();
+									parameter_name = std::string(parameter_child_value.data(), parameter_child_value.size());
+								}
+								else if (parameter_child_key.compare("type") == 0)
+									parameter_child >> parameter_type;
+								// TODO: check if we already remembered the value
+								else if (parameter_child_key.compare("value") == 0)
+									parameter_value = parameter_child;
+								else if (parameter_child_key.compare("count") == 0)
+									parameter_child >> parameter_count;
+							}
+
+							size_t parameter_type_size = getGroupParameterTypeSize(parameter_type);
+							size_t parameter_size = parameter_type_size * parameter_count;
+
+							if (!parameter_name.empty() && parameter_size > 0)
+							{
+								addGroupParameter(group_name.c_str(), parameter_name.c_str(), parameter_size);
+
+								if (parameter_value.valid())
+								{
+									if (parameter_count == 1)
+									{
+										GroupParameterValue value = parseGroupParameterValue(parameter_type, parameter_value);
+										setGroupParameter(group_name.c_str(), parameter_name.c_str(), 0, parameter_type_size, &value);
+									}
+									else
+									{
+										const yaml::NodeRef value_array = parameter_value.first_child();
+										size_t offset = 0;
+
+										for (const yaml::NodeRef value_child : value_array.siblings())
+										{
+											GroupParameterValue value = parseGroupParameterValue(parameter_type, value_child);
+											setGroupParameter(group_name.c_str(), parameter_name.c_str(), offset, parameter_type_size, &value);
+											offset += parameter_type_size;
+										}
+									}
+								}
+							}
+						}
+
+						for (const yaml::NodeRef texture : textures)
+						{
+							std::string texture_name;
+							std::string texture_path;
+
+							for (const yaml::NodeRef texture_child : texture.children())
+							{
+								yaml::csubstr texture_child_key = texture_child.key();
+
+								if (texture_child_key.compare("name") == 0 && texture_child.has_val())
+								{
+									yaml::csubstr texture_child_value = texture_child.val();
+									texture_name = std::string(texture_child_value.data(), texture_child_value.size());
+								}
+								else if (texture_child_key.compare("path") == 0 && texture_child.has_val())
+								{
+									yaml::csubstr texture_child_value = texture_child.val();
+									texture_path = std::string(texture_child_value.data(), texture_child_value.size());
+								}
+							}
+
+							if (!texture_name.empty())
+							{
+								addGroupTexture(group_name.c_str(), texture_name.c_str());
+
+								if (!texture_path.empty())
+								{
+									// TODO: replace by visual API loadTexture call
+									TextureHandle handle = resource_manager->import<resources::Texture>(texture_path.c_str(), device);
+									setGroupTexture(group_name.c_str(), texture_name.c_str(), handle);
+								}
+							}
+						}
+					}
+				}
+
+				if (child_key.compare("RenderBuffers") == 0)
+				{
+					const yaml::NodeRef renderbuffer_data = child.first_child();
+
+					for (const yaml::NodeRef renderbuffer_container : renderbuffer_data.siblings())
+					{
+						std::string name;
+						foundation::render::Format format = foundation::render::Format::UNDEFINED;
+						uint32_t downscale = 1;
+
+						for (const yaml::NodeRef renderbuffer_child : renderbuffer_container.children())
+						{
+							yaml::csubstr renderbuffer_child_key = renderbuffer_child.key();
+
+							if (renderbuffer_child_key.compare("name") == 0)
+							{
+								yaml::csubstr renderbuffer_child_value = renderbuffer_child.val();
+								name = std::string(renderbuffer_child_value.data(), renderbuffer_child_value.size());
+							}
+							else if (renderbuffer_child_key.compare("format") == 0)
+								renderbuffer_child >> format;
+						}
+
+						if (!name.empty() && format != foundation::render::Format::UNDEFINED)
+							addRenderBuffer(name.c_str(), format, downscale);
+					}
+				}
+
+				if (child_key.compare("RenderPass") == 0)
+					foundation::Log::message("Found RenderPass\n");
+			}
+		}
+
+		return true;
 	}
 
-	foundation::json::Document RenderGraphImpl::serialize()
+	foundation::serde::yaml::Tree RenderGraphImpl::serialize()
 	{
 		// TODO: implement
-		return foundation::json::Document();
+		return foundation::serde::yaml::Tree();
 	}
 
 	/*

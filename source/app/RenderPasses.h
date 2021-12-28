@@ -1,6 +1,5 @@
 #pragma once
 
-#include <scapes/foundation/json/Json.h>
 #include <scapes/foundation/math/Math.h>
 #include <scapes/foundation/render/Device.h>
 
@@ -25,8 +24,8 @@ public:
 	void render(scapes::foundation::render::CommandBuffer *command_buffer) final;
 	void invalidate() final;
 
-	bool deserialize(const scapes::foundation::json::Document &document) override { return false; }
-	scapes::foundation::json::Document serialize() override { return scapes::foundation::json::Document(); }
+	bool deserialize(const scapes::foundation::serde::yaml::Tree &tree) override { return false; }
+	scapes::foundation::serde::yaml::Tree serialize() override { return scapes::foundation::serde::yaml::Tree(); }
 
 	// TODO: manually set bind set index
 	void addInputGroup(const char *name);

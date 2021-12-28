@@ -2,7 +2,7 @@
 
 #include <scapes/Common.h>
 #include <scapes/foundation/TypeTraits.h>
-#include <scapes/foundation/json/Json.h>
+#include <scapes/foundation/serde/Yaml.h>
 
 #include <scapes/visual/Resources.h>
 #include <scapes/visual/Fwd.h>
@@ -23,8 +23,8 @@ namespace scapes::visual
 
 		virtual void render(foundation::render::CommandBuffer *command_buffer) = 0;
 
-		virtual bool deserialize(const foundation::json::Document &document) = 0;
-		virtual foundation::json::Document serialize() = 0;
+		virtual bool deserialize(const foundation::serde::yaml::Tree &tree) = 0;
+		virtual foundation::serde::yaml::Tree serialize() = 0;
 	};
 
 	/*
@@ -36,7 +36,7 @@ namespace scapes::visual
 	class RenderGraph
 	{
 	public:
-		static SCAPES_API RenderGraph *create(foundation::render::Device *device, foundation::game::World *world);
+		static SCAPES_API RenderGraph *create(foundation::render::Device *device, foundation::game::World *world, foundation::io::FileSystem *file_system, foundation::resources::ResourceManager *resource_manager);
 		static SCAPES_API void destroy(RenderGraph *render_graph);
 
 		virtual ~RenderGraph() { }
@@ -57,8 +57,8 @@ namespace scapes::visual
 		virtual bool load(const foundation::io::URI &uri) = 0;
 		virtual bool save(const foundation::io::URI &uri) = 0;
 
-		virtual bool deserialize(const foundation::json::Document &document) = 0;
-		virtual foundation::json::Document serialize() = 0;
+		virtual bool deserialize(const foundation::serde::yaml::Tree &tree) = 0;
+		virtual foundation::serde::yaml::Tree serialize() = 0;
 
 		virtual void setSwapChain(foundation::render::SwapChain *swap_chain) = 0;
 		virtual foundation::render::SwapChain *getSwapChain() = 0;

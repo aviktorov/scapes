@@ -22,7 +22,7 @@ namespace scapes::visual
 	class RenderGraphImpl : public RenderGraph
 	{
 	public:
-		RenderGraphImpl(foundation::render::Device *device, foundation::game::World *world);
+		RenderGraphImpl(foundation::render::Device *device, foundation::game::World *world, foundation::io::FileSystem *file_system, foundation::resources::ResourceManager *resource_manager);
 		~RenderGraphImpl() final;
 
 		SCAPES_INLINE foundation::render::Device *getDevice() const final { return device; }
@@ -40,8 +40,8 @@ namespace scapes::visual
 		bool load(const foundation::io::URI &uri) final;
 		bool save(const foundation::io::URI &uri) final;
 
-		bool deserialize(const foundation::json::Document &document) final;
-		foundation::json::Document serialize() final;
+		bool deserialize(const foundation::serde::yaml::Tree &tree) final;
+		foundation::serde::yaml::Tree serialize() final;
 
 		SCAPES_INLINE void setSwapChain(foundation::render::SwapChain *chain) final { swap_chain = chain; }
 		SCAPES_INLINE foundation::render::SwapChain *getSwapChain() final { return swap_chain; }
@@ -163,5 +163,7 @@ namespace scapes::visual
 		foundation::render::SwapChain *swap_chain {nullptr};
 		foundation::render::Device *device {nullptr};
 		foundation::game::World *world {nullptr};
+		foundation::io::FileSystem *file_system {nullptr};
+		foundation::resources::ResourceManager *resource_manager {nullptr};
 	};
 }
