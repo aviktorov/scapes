@@ -72,16 +72,24 @@ PBR Sandbox:
         ☐ Add camera component
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
+            ☐ Think about having ResourceWatcher<T>
+        ☐ Use FileSystem inside ResourceManager::import<T> call
+    Stream 82:
+        ☐ Clean up RenderGraph::deserialize() method
+        ☐ Migrate all render passes
+            ☐ Deserialization for RenderPassGraphicsBase
+            ☐ Deserialization for RenderPassPrepareOld
+            ☐ Deserialization for RenderPassGeometry
+            ☐ Deserialization for RenderPassLBuffer
+            ☐ Deserialization for RenderPassPost
+            ☐ Deserialization for RenderPassImGui
     Stream 81:
-        ☐ Add serialization / deserialization to json for all render passes
-            ☐ Serde for RenderPassGraphicsBase
-            ☐ Serde for RenderPassPrepareOld
-            ☐ Serde for RenderPassGeometry
-            ☐ Serde for RenderPassLBuffer
-            ☐ Serde for RenderPassPost
-            ☐ Serde for RenderPassImGui
-        ☐ Migrate existing render graph to json
+        ✔ Migrate existing render graph parameters & render buffers to yaml @done (12/29/2021, 3:06:45 AM)
+            ✔ Add file I/O & base deserialization for yaml @done (12/29/2021, 1:44:40 AM)
+            ✔ Deserialization for ParameterGroups @done (12/29/2021, 3:06:44 AM)
+            ✔ Deserialization for RenderBuffers @done (12/29/2021, 12:04:08 AM)
     Offscreen 1:
+        ✔ Check TOML / YAML as JSON alternative for render graph file format @done (12/28/2021, 8:54:48 PM)
         ✔ Fix swapped textures not being updated in render pass bind sets (this affects all temporal filters) @done (12/20/2021, 3:13:33 AM)
             ✔ Add framebuffer cache to render graph @done (12/20/2021, 3:10:18 AM)
             ✔ Move texture resources to parameter groups @done (12/20/2021, 1:24:41 AM)
