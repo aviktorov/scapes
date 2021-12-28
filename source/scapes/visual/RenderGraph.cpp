@@ -1237,8 +1237,13 @@ namespace scapes::visual
 		if (group->buffer)
 			device->bindUniformBuffer(group->bindings, binding++, group->buffer);
 
-		for (GroupTexture *texture : group->textures)
-			device->bindTexture(group->bindings, binding++, texture->texture->gpu_data);
+		for (GroupTexture *group_texture : group->textures)
+		{
+			TextureHandle handle = group_texture->texture;
+			resources::Texture *texture = handle.get();
+
+			device->bindTexture(group->bindings, binding++, (texture) ? texture->gpu_data : nullptr);
+		}
 
 		group->dirty = false;
 		return should_invalidate;
