@@ -413,69 +413,10 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	render_graph = visual::RenderGraph::create(device, world);
-
-	render_graph->addGroup("Application");
-	render_graph->addGroupParameter("Application", "OverrideBaseColor", 1.0f);
-	render_graph->addGroupParameter("Application", "OverrideShading", 0.5f);
-	render_graph->addGroupParameter("Application", "UserMetalness", 0.2f);
-	render_graph->addGroupParameter("Application", "UserRoughness", 0.7f);
-	render_graph->addGroupParameter("Application", "Time", 0.0f);
-
-	render_graph->addGroup("Camera");
-	render_graph->addGroupParameter("Camera", "View", sizeof(foundation::math::mat4));
-	render_graph->addGroupParameter("Camera", "IView", sizeof(foundation::math::mat4));
-	render_graph->addGroupParameter("Camera", "Projection", sizeof(foundation::math::mat4));
-	render_graph->addGroupParameter("Camera", "IProjection", sizeof(foundation::math::mat4));
-	render_graph->addGroupParameter("Camera", "ViewOld", sizeof(foundation::math::mat4));
-	render_graph->addGroupParameter("Camera", "Parameters", sizeof(foundation::math::vec4));
-	render_graph->addGroupParameter("Camera", "PositionWS", sizeof(foundation::math::vec3));
+	render_graph = visual::RenderGraph::create(device, world, file_system, resource_manager);
+	render_graph->load("shaders/render_graph/schema.yaml");
 
 	constexpr uint32_t MAX_SSAO_SAMPLES = 32;
-	constexpr uint32_t SSAO_SAMPLES = 32;
-
-	render_graph->addGroup("SSAO");
-	render_graph->addGroupParameter("SSAO", "NumSamples", SSAO_SAMPLES);
-	render_graph->addGroupParameter("SSAO", "Radius", 10.0f);
-	render_graph->addGroupParameter("SSAO", "Intensity", 1.5f);
-	render_graph->addGroupParameter("SSAO", "Samples", sizeof(foundation::math::vec4) * MAX_SSAO_SAMPLES);
-	render_graph->addGroupTexture("SSAO", "Noise", visual::TextureHandle());
-
-	render_graph->addGroup("SSR");
-	render_graph->addGroupParameter("SSR", "CoarseStep", 0.5f);
-	render_graph->addGroupParameter("SSR", "NumCoarseSteps", 100);
-	render_graph->addGroupParameter("SSR", "NumPrecisionSteps", 8);
-	render_graph->addGroupParameter("SSR", "FacingThreshold", 0.5f);
-	render_graph->addGroupParameter("SSR", "DepthBypassThreshold", 0.5f);
-	render_graph->addGroupParameter("SSR", "BRDFBias", 0.7f);
-	render_graph->addGroupParameter("SSR", "MinStepMultiplier", 0.25f);
-	render_graph->addGroupParameter("SSR", "MaxStepMultiplier", 4.0f);
-	render_graph->addGroupTexture("SSR", "Noise", application_resources->getBlueNoiseTexture());
-
-	render_graph->addRenderBuffer("GBufferBaseColor", foundation::render::Format::R8G8B8A8_UNORM, 1);
-	render_graph->addRenderBuffer("GBufferShading", foundation::render::Format::R8G8_UNORM, 1);
-	render_graph->addRenderBuffer("GBufferNormal", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-	render_graph->addRenderBuffer("GBufferDepth", foundation::render::Format::D32_SFLOAT, 1);
-	render_graph->addRenderBuffer("GBufferVelocity", foundation::render::Format::R16G16_SFLOAT, 1);
-
-	render_graph->addRenderBuffer("SSAORough", foundation::render::Format::R8G8B8A8_UNORM, 1);
-	render_graph->addRenderBuffer("SSAO", foundation::render::Format::R8G8B8A8_UNORM, 1);
-
-
-	render_graph->addRenderBuffer("LBufferDiffuse", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-	render_graph->addRenderBuffer("LBufferSpecular", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-
-	render_graph->addRenderBuffer("SSRTrace", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-	render_graph->addRenderBuffer("SSR", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-	render_graph->addRenderBuffer("SSRVelocity", foundation::render::Format::R16G16_SFLOAT, 1);
-	render_graph->addRenderBuffer("SSRTAA", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-	render_graph->addRenderBuffer("SSROld", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-
-	render_graph->addRenderBuffer("Composite", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-	render_graph->addRenderBuffer("CompositeTAA", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-	render_graph->addRenderBuffer("CompositeOld", foundation::render::Format::R16G16B16A16_SFLOAT, 1);
-
-	render_graph->addRenderBuffer("Color", foundation::render::Format::R8G8B8A8_UNORM, 1);
 
 	render_graph->registerRenderPass<RenderPassPrepareOld>();
 	render_graph->registerRenderPass<RenderPassGeometry>();
@@ -684,6 +625,9 @@ void Application::initRenderers()
 
 	render_graph->setGroupTexture("SSAO", "Noise", ssao_noise);
 	render_graph->setGroupParameter<foundation::math::vec4>("SSAO", "Samples", MAX_SSAO_SAMPLES, samples);
+
+	// setup ssr
+	render_graph->setGroupTexture("SSR", "Noise", application_resources->getBlueNoiseTexture());
 
 	// init render graph
 	render_graph->setSwapChain(swap_chain->getBackend());

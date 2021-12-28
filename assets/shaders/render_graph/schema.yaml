@@ -1,0 +1,111 @@
+---
+ParameterGroup:
+  name: Application
+  parameters:
+  - { name: OverrideBaseColor, type: float, value: 0.2 }
+  - { name: OverrideShading, type: float, value: 0.5 }
+  - { name: UserMetalness, type: float, value: 0.2 }
+  - { name: UserRoughness, type: float, value: 0.7 }
+  - { name: Time, type: float, value: 0.0 }
+
+---
+ParameterGroup:
+  name: Camera
+  parameters:
+  - { name: View, type: mat4 }
+  - { name: IView, type: mat4 }
+  - { name: Projection, type: mat4 }
+  - { name: IProjection, type: mat4 }
+  - { name: ViewOld, type: mat4 }
+  - { name: Parameters, type: vec4 }
+  - { name: PositionWS, type: vec4 }
+
+---
+ParameterGroup:
+  name: SSAO
+  parameters:
+  - { name: NumSamples, type: int, value: 32 }
+  - { name: Radius, type: float, value: 10.0 }
+  - { name: Intensity, type: float, value: 1.5 }
+  - { name: Samples, type: vec4, count: 32 }
+  textures:
+  - { name: Noise }
+
+---
+ParameterGroup:
+  name: SSR
+  parameters:
+  - { name: CoarseStep, type: float, value: 0.5 }
+  - { name: NumCoarseSteps, type: int, value: 100 }
+  - { name: NumPrecisionSteps, type: int, value: 8 }
+  - { name: FacingThreshold, type: float, value: 0.5 }
+  - { name: DepthBypassThreshold, type: float, value: 0.5 }
+  - { name: BRDFBias, type: float, value: 0.7 }
+  - { name: MinStepMultiplier, type: float, value: 0.25 }
+  - { name: MaxStepMultiplier, type: float, value: 4.0 }
+  textures:
+  - { name: Noise }
+
+---
+RenderBuffers:
+- { name: GBufferBaseColor, format: R8G8B8A8_UNORM }
+- { name: GBufferShading, format: R8G8_UNORM }
+- { name: GBufferNormal, format: R16G16B16A16_SFLOAT }
+- { name: GBufferDepth, format: D32_SFLOAT }
+- { name: GBufferVelocity, format: R16G16_SFLOAT }
+
+---
+RenderBuffers:
+- { name: SSAORough, format: R8G8B8A8_UNORM }
+- { name: SSAO, format: R8G8B8A8_UNORM }
+
+---
+RenderBuffers:
+- { name: LBufferDiffuse, format: R16G16B16A16_SFLOAT }
+- { name: LBufferSpecular, format: R16G16B16A16_SFLOAT }
+
+---
+RenderBuffers:
+- { name: SSRTrace, format: R16G16B16A16_SFLOAT }
+- { name: SSR, format: R16G16B16A16_SFLOAT }
+- { name: SSRVelocity, format: R16G16_SFLOAT }
+- { name: SSRTAA, format: R16G16B16A16_SFLOAT }
+- { name: SSROld, format: R16G16B16A16_SFLOAT }
+
+---
+RenderBuffers:
+- { name: Composite, format: R16G16B16A16_SFLOAT }
+- { name: CompositeTAA, format: R16G16B16A16_SFLOAT }
+- { name: CompositeOld, format: R16G16B16A16_SFLOAT }
+
+---
+RenderBuffers:
+- { name: Color, format: R8G8B8A8_UNORM }
+
+---
+RenderPass:
+  name: GBuffer
+  type: GeometryDeferred
+  inputs: [ Camera ]
+  color_outputs: [ GBuffer BaseColor, GBuffer Normal, GBuffer Shading, GBuffer Velocity ]
+  depthstencil_output: GBuffer Depth
+  vertex_shader: path/to/shader.vert
+  fragment_shader: path/to/shader.frag
+
+---
+RenderPass:
+  name: SSAO
+  type: Post
+  inputs: [ Camera, Debug ]
+  color_outputs: [ SSAO Noised ]
+  vertex_shader: path/to/shader.vert
+  fragment_shader: path/to/shader.frag
+
+---
+RenderPass:
+  name: LBuffer
+  type: LightDeferred
+  inputs: [ Camera ]
+  color_outputs: [ LBuffer Diffuse, LBuffer Specular ]
+  vertex_shader: path/to/shader.vert
+  fragment_shader: path/to/shader.frag
