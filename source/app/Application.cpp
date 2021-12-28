@@ -416,11 +416,11 @@ void Application::initRenderers()
 	render_graph = visual::RenderGraph::create(device, world);
 
 	render_graph->addGroup("Application");
-	render_graph->addGroupParameter("Application", "OverrideBaseColor", sizeof(float));
-	render_graph->addGroupParameter("Application", "OverrideShading", sizeof(float));
-	render_graph->addGroupParameter("Application", "UserMetalness", sizeof(float));
-	render_graph->addGroupParameter("Application", "UserRoughness", sizeof(float));
-	render_graph->addGroupParameter("Application", "Time", sizeof(float));
+	render_graph->addGroupParameter("Application", "OverrideBaseColor", 1.0f);
+	render_graph->addGroupParameter("Application", "OverrideShading", 0.5f);
+	render_graph->addGroupParameter("Application", "UserMetalness", 0.2f);
+	render_graph->addGroupParameter("Application", "UserRoughness", 0.7f);
+	render_graph->addGroupParameter("Application", "Time", 0.0f);
 
 	render_graph->addGroup("Camera");
 	render_graph->addGroupParameter("Camera", "View", sizeof(foundation::math::mat4));
@@ -432,24 +432,25 @@ void Application::initRenderers()
 	render_graph->addGroupParameter("Camera", "PositionWS", sizeof(foundation::math::vec3));
 
 	constexpr uint32_t MAX_SSAO_SAMPLES = 32;
+	constexpr uint32_t SSAO_SAMPLES = 32;
 
 	render_graph->addGroup("SSAO");
-	render_graph->addGroupParameter("SSAO", "NumSamples", sizeof(uint32_t));
-	render_graph->addGroupParameter("SSAO", "Radius", sizeof(float));
-	render_graph->addGroupParameter("SSAO", "Intensity", sizeof(float));
+	render_graph->addGroupParameter("SSAO", "NumSamples", SSAO_SAMPLES);
+	render_graph->addGroupParameter("SSAO", "Radius", 10.0f);
+	render_graph->addGroupParameter("SSAO", "Intensity", 1.5f);
 	render_graph->addGroupParameter("SSAO", "Samples", sizeof(foundation::math::vec4) * MAX_SSAO_SAMPLES);
 	render_graph->addGroupTexture("SSAO", "Noise", visual::TextureHandle());
 
 	render_graph->addGroup("SSR");
-	render_graph->addGroupParameter("SSR", "CoarseStep", sizeof(float));
-	render_graph->addGroupParameter("SSR", "NumCoarseSteps", sizeof(uint32_t));
-	render_graph->addGroupParameter("SSR", "NumPrecisionSteps", sizeof(uint32_t));
-	render_graph->addGroupParameter("SSR", "FacingThreshold", sizeof(float));
-	render_graph->addGroupParameter("SSR", "DepthBypassThreshold", sizeof(float));
-	render_graph->addGroupParameter("SSR", "BRDFBias", sizeof(float));
-	render_graph->addGroupParameter("SSR", "MinStepMultiplier", sizeof(float));
-	render_graph->addGroupParameter("SSR", "MaxStepMultiplier", sizeof(float));
-	render_graph->addGroupTexture("SSR", "Noise", visual::TextureHandle());
+	render_graph->addGroupParameter("SSR", "CoarseStep", 0.5f);
+	render_graph->addGroupParameter("SSR", "NumCoarseSteps", 100);
+	render_graph->addGroupParameter("SSR", "NumPrecisionSteps", 8);
+	render_graph->addGroupParameter("SSR", "FacingThreshold", 0.5f);
+	render_graph->addGroupParameter("SSR", "DepthBypassThreshold", 0.5f);
+	render_graph->addGroupParameter("SSR", "BRDFBias", 0.7f);
+	render_graph->addGroupParameter("SSR", "MinStepMultiplier", 0.25f);
+	render_graph->addGroupParameter("SSR", "MaxStepMultiplier", 4.0f);
+	render_graph->addGroupTexture("SSR", "Noise", application_resources->getBlueNoiseTexture());
 
 	render_graph->addRenderBuffer("GBufferBaseColor", foundation::render::Format::R8G8B8A8_UNORM, 1);
 	render_graph->addRenderBuffer("GBufferShading", foundation::render::Format::R8G8_UNORM, 1);
@@ -651,13 +652,6 @@ void Application::initRenderers()
 
 	// TODO: Swap pass
 
-	// setup app specific constants
-	render_graph->setGroupParameter("Application", "OverrideBaseColor", 0.0f);
-	render_graph->setGroupParameter("Application", "OverrideShading", 0.0f);
-	render_graph->setGroupParameter("Application", "UserRoughness", 0.0f);
-	render_graph->setGroupParameter("Application", "UserMetalness", 0.0f);
-	render_graph->setGroupParameter("Application", "Time", 0.0f);
-
 	// setup ssao
 	uint32_t data[16];
 	for (uint32_t i = 0; i < 16; ++i)
@@ -667,13 +661,6 @@ void Application::initRenderers()
 	}
 
 	visual::TextureHandle ssao_noise = visual_api->createTexture2D(foundation::render::Format::R16G16_SFLOAT, 4, 4, 1, data);
-
-	constexpr uint32_t SSAO_SAMPLES = 32;
-
-	render_graph->setGroupTexture("SSAO", "Noise", ssao_noise);
-	render_graph->setGroupParameter("SSAO", "NumSamples", SSAO_SAMPLES);
-	render_graph->setGroupParameter("SSAO", "Intensity", 1.5f);
-	render_graph->setGroupParameter("SSAO", "Radius", 10.0f);
 
 	foundation::math::vec4 samples[MAX_SSAO_SAMPLES];
 	float inum_samples = 1.0f / static_cast<float>(MAX_SSAO_SAMPLES);
@@ -695,19 +682,10 @@ void Application::initRenderers()
 		samples[i].w = 1.0f;
 	}
 
+	render_graph->setGroupTexture("SSAO", "Noise", ssao_noise);
 	render_graph->setGroupParameter<foundation::math::vec4>("SSAO", "Samples", MAX_SSAO_SAMPLES, samples);
 
-	// setup ssr
-	render_graph->setGroupTexture("SSR", "Noise", application_resources->getBlueNoiseTexture());
-	render_graph->setGroupParameter("SSR", "CoarseStep", 0.5f);
-	render_graph->setGroupParameter("SSR", "NumCoarseSteps", 100);
-	render_graph->setGroupParameter("SSR", "NumPrecisionSteps", 8);
-	render_graph->setGroupParameter("SSR", "FacingThreshold", 0.5f);
-	render_graph->setGroupParameter("SSR", "DepthBypassThreshold", 0.5f);
-	render_graph->setGroupParameter("SSR", "BRDFBias", 0.7f);
-	render_graph->setGroupParameter("SSR", "MinStepMultiplier", 0.25f);
-	render_graph->setGroupParameter("SSR", "MaxStepMultiplier", 4.0f);
-
+	// init render graph
 	render_graph->setSwapChain(swap_chain->getBackend());
 	render_graph->init(width, height);
 

@@ -107,7 +107,7 @@ namespace scapes::visual
 			bool success = addGroupParameter(group_name, parameter_name, sizeof(T) * count);
 
 			if (success)
-				return setGroupParameter<T>(group_name, parameter_name, 1, &value);
+				return setGroupParameter<T>(group_name, parameter_name, 1, value);
 
 			return success;
 		}

@@ -26,7 +26,7 @@ layout(set = RENDER_GRAPH_CAMERA_SET, binding = 0) uniform Camera
 #endif // RENDER_GRAPH_CAMERA_SET
 
 #ifdef RENDER_GRAPH_SSAO_SET
-#define MAX_SSAO_SAMPLES 64
+#define MAX_SSAO_SAMPLES 32
 
 layout(set = RENDER_GRAPH_SSAO_SET, binding = 0) uniform SSAO {
 	int num_samples;
