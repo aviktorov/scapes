@@ -68,21 +68,25 @@ PBR Sandbox:
         ☐ Environment / Reflection probes
         ☐ Area lights
         ☐ Directional light & shadows
+    Stream 85:
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Add camera component
+    Stream 84:
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
             ☐ Think about having ResourceWatcher<T>
         ☐ Use FileSystem inside ResourceManager::import<T> call
-    Stream 82:
+    Stream 83:
         ☐ Clean up RenderGraph::deserialize() method
-        ☐ Migrate all render passes
-            ☐ Deserialization for RenderPassGraphicsBase
-            ☐ Deserialization for RenderPassPrepareOld
-            ☐ Deserialization for RenderPassGeometry
-            ☐ Deserialization for RenderPassLBuffer
-            ☐ Deserialization for RenderPassPost
-            ☐ Deserialization for RenderPassImGui
+        ☐ Implement serialization for RenderGraph
+    Stream 82:
+        ✔ Migrate all render passes @done (1/5/2022, 10:13:04 PM)
+            ✔ Deserialization for RenderPassGraphicsBase @done (1/5/2022, 10:13:04 PM)
+            ✔ Deserialization for RenderPassPrepareOld @done (1/5/2022, 10:13:03 PM)
+            ✔ Deserialization for RenderPassGeometry @done (1/5/2022, 10:13:02 PM)
+            ✔ Deserialization for RenderPassLBuffer @done (1/5/2022, 10:13:02 PM)
+            ✔ Deserialization for RenderPassPost @done (1/5/2022, 10:13:02 PM)
+            ✔ Deserialization for RenderPassImGui @done (1/5/2022, 10:13:01 PM)
     Stream 81:
         ✔ Migrate existing render graph parameters & render buffers to yaml @done (12/29/2021, 3:06:45 AM)
             ✔ Add file I/O & base deserialization for yaml @done (12/29/2021, 1:44:40 AM)
