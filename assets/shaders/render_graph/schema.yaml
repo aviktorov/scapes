@@ -44,7 +44,7 @@ ParameterGroup:
   - { name: MinStepMultiplier, type: float, value: 0.25 }
   - { name: MaxStepMultiplier, type: float, value: 4.0 }
   textures:
-  - { name: Noise }
+  - { name: Noise, path: assets/textures/blue_noise.png }
 
 ---
 RenderBuffers:
@@ -84,28 +84,146 @@ RenderBuffers:
 
 ---
 RenderPass:
+  name: Prepare
+  type: RenderPassPrepareOld
+  output_colors:
+  - { name: CompositeOld, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
+  - { name: SSROld, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+
+---
+RenderPass:
   name: GBuffer
-  type: GeometryDeferred
-  inputs: [ Camera ]
-  color_outputs: [ GBuffer BaseColor, GBuffer Normal, GBuffer Shading, GBuffer Velocity ]
-  depthstencil_output: GBuffer Depth
-  vertex_shader: path/to/shader.vert
-  fragment_shader: path/to/shader.frag
+  type: RenderPassGeometry
+  input_groups: [ Application, Camera ]
+  input_material_binding: 2
+  output_colors:
+  - { name: GBufferBaseColor, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
+  - { name: GBufferNormal, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
+  - { name: GBufferShading, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
+  - { name: GBufferVelocity, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
+  output_depthstencil: { name: GBufferDepth, load_op: CLEAR, clear_depthstencil: "1.0, 0" }
+  vertex_shader: assets/shaders/render_graph/passes/gbuffer/GBuffer.vert
+  fragment_shader: assets/shaders/render_graph/passes/gbuffer/GBuffer.frag
 
 ---
 RenderPass:
   name: SSAO
-  type: Post
-  inputs: [ Camera, Debug ]
-  color_outputs: [ SSAO Noised ]
-  vertex_shader: path/to/shader.vert
-  fragment_shader: path/to/shader.frag
+  type: RenderPassPost
+  input_groups: [ Camera, SSAO ]
+  input_renderbuffers: [ GBufferNormal, GBufferDepth ]
+  output_colors:
+  - { name: SSAORough, load_op: DONT_CARE }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+  fragment_shader: assets/shaders/render_graph/passes/ssao/SSAO.frag
 
 ---
 RenderPass:
-  name: LBuffer
-  type: LightDeferred
-  inputs: [ Camera ]
-  color_outputs: [ LBuffer Diffuse, LBuffer Specular ]
-  vertex_shader: path/to/shader.vert
-  fragment_shader: path/to/shader.frag
+  name: SSAO Blur
+  type: RenderPassPost
+  input_renderbuffers: [ SSAORough ]
+  output_colors:
+  - { name: SSAO, load_op: DONT_CARE }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+  fragment_shader: assets/shaders/render_graph/passes/ssao_blur/SSAOBlur.frag
+
+---
+RenderPass:
+  name: LBuffer Skylight
+  type: RenderPassLBuffer
+  input_groups: [ Camera ]
+  input_renderbuffers: [ GBufferBaseColor, GBufferNormal, GBufferShading, GBufferDepth ]
+  input_light_binding: 5
+  output_colors:
+  - { name: LBufferDiffuse, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
+  - { name: LBufferSpecular, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+  fragment_shader: assets/shaders/render_graph/passes/lbuffer/LBufferSkylight.frag
+
+---
+RenderPass:
+  name: SSR Trace
+  type: RenderPassPost
+  input_groups: [ Application, Camera, SSR ]
+  input_renderbuffers: [ GBufferNormal, GBufferShading, GBufferDepth ]
+  output_colors:
+  - { name: SSRTrace, load_op: DONT_CARE }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+  fragment_shader: assets/shaders/render_graph/passes/ssr_trace/SSRTrace.frag
+
+---
+RenderPass:
+  name: SSR Resolve
+  type: RenderPassPost
+  input_groups: [ Application, Camera, SSR ]
+  input_renderbuffers: [ GBufferBaseColor, GBufferNormal, GBufferShading, GBufferDepth, SSRTrace, CompositeOld ]
+  output_colors:
+  - { name: SSR, load_op: DONT_CARE }
+  - { name: SSRVelocity, load_op: DONT_CARE }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+  fragment_shader: assets/shaders/render_graph/passes/ssr_resolve/SSRResolve.frag
+
+---
+RenderPass:
+  name: SSR Temporal Filter
+  type: RenderPassPost
+  input_renderbuffers: [ SSR, SSRVelocity, SSROld ]
+  output_colors:
+  - { name: SSRTAA, load_op: DONT_CARE }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+  fragment_shader: assets/shaders/render_graph/passes/temporal_filter/TemporalFilter.frag
+
+---
+RenderPass:
+  name: Composite
+  type: RenderPassPost
+  input_renderbuffers: [ LBufferDiffuse, LBufferSpecular, SSAO, SSRTAA ]
+  output_colors:
+  - { name: Composite, load_op: DONT_CARE }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+  fragment_shader: assets/shaders/render_graph/passes/composite/Composite.frag
+
+---
+RenderPass:
+  name: AA Temporal Filter
+  type: RenderPassPost
+  input_renderbuffers: [ Composite, GBufferVelocity, CompositeOld ]
+  output_colors:
+  - { name: CompositeTAA, load_op: DONT_CARE }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+  fragment_shader: assets/shaders/render_graph/passes/temporal_filter/TemporalFilter.frag
+
+---
+RenderPass:
+  name: Tonemap
+  type: RenderPassPost
+  input_renderbuffers: [ CompositeTAA ]
+  output_colors:
+  - { name: Color, load_op: DONT_CARE }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+  fragment_shader: assets/shaders/render_graph/passes/tonemap/Tonemap.frag
+
+---
+RenderPass:
+  name: Gamma
+  type: RenderPassPost
+  input_renderbuffers: [ Color ]
+  output_swapchain: { load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
+  vertex_shader: assets/shaders/common/FullscreenQuad.vert
+  fragment_shader: assets/shaders/render_graph/passes/gamma/Gamma.frag
+
+---
+RenderPass:
+  name: ImGui
+  type: RenderPassImGui
+  output_swapchain: { load_op: LOAD }
+  vertex_shader: assets/shaders/render_graph/passes/imgui/ImGui.vert
+  fragment_shader: assets/shaders/render_graph/passes/imgui/ImGui.frag
+
+---
+RenderPass:
+  name: Swap
+  type: RenderPassSwapRenderBuffers
+  pairs:
+  - { src: CompositeTAA, dst: CompositeOld }
+  - { src: SSRTAA, dst: SSROld }

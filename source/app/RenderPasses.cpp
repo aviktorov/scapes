@@ -6,10 +6,82 @@
 #include <scapes/foundation/components/Components.h>
 #include <scapes/visual/Components.h>
 
+#include <scapes/visual/API.h>
+
 #include <imgui.h>
 #include <imgui_internal.h>
 
 using namespace scapes;
+
+namespace c4
+{
+	SCAPES_INLINE bool from_chars(const foundation::serde::yaml::csubstr buf, foundation::render::RenderPassLoadOp *load_op)
+	{
+		static const char *supported_formats[foundation::render::RenderPassLoadOp::MAX] =
+		{
+			"LOAD",
+			"CLEAR",
+			"DONT_CARE",
+		};
+
+		for (size_t i = 0; i < static_cast<size_t>(foundation::render::RenderPassLoadOp::MAX); ++i)
+		{
+			if (buf.compare(supported_formats[i], strlen(supported_formats[i])) == 0)
+			{
+				*load_op = static_cast<foundation::render::RenderPassLoadOp>(i);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	SCAPES_INLINE bool from_chars(const foundation::serde::yaml::csubstr buf, foundation::render::RenderPassStoreOp *store_op)
+	{
+		static const char *supported_formats[foundation::render::RenderPassStoreOp::MAX] =
+		{
+			"STORE",
+			"DONT_CARE",
+		};
+
+		for (size_t i = 0; i < static_cast<size_t>(foundation::render::RenderPassStoreOp::MAX); ++i)
+		{
+			if (buf.compare(supported_formats[i], strlen(supported_formats[i])) == 0)
+			{
+				*store_op = static_cast<foundation::render::RenderPassStoreOp>(i);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	SCAPES_INLINE bool from_chars(const foundation::serde::yaml::csubstr buf, foundation::render::RenderPassClearColor *clear_color)
+	{
+		size_t ret = foundation::serde::yaml::unformat(
+			buf,
+			"{},{},{},{}",
+			clear_color->as_f32[0],
+			clear_color->as_f32[1],
+			clear_color->as_f32[2],
+			clear_color->as_f32[3]
+		);
+
+		return ret != ryml::yml::npos;
+	}
+
+	SCAPES_INLINE bool from_chars(const foundation::serde::yaml::csubstr buf, foundation::render::RenderPassClearDepthStencil *clear_depthstencil)
+	{
+		size_t ret = foundation::serde::yaml::unformat(
+			buf,
+			"{},{}",
+			clear_depthstencil->depth,
+			clear_depthstencil->stencil
+		);
+
+		return ret != ryml::yml::npos;
+	}
+}
 
 /*
  */
@@ -29,10 +101,30 @@ void RenderPassGraphicsBase::init()
 {
 	assert(render_graph);
 
-	device = render_graph->getDevice();
-	world = render_graph->getWorld();
+	visual::API *visual_api = render_graph->getAPI();
+	assert(visual_api);
+
+	device = visual_api->getDevice();
+	world = visual_api->getWorld();
 
 	pipeline_state = device->createPipelineState();
+
+	device->clearShaders(pipeline_state);
+
+	if (vertex_shader.get())
+		device->setShader(pipeline_state, vertex_shader->type, vertex_shader->shader);
+
+	if (tessellation_control_shader.get())
+		device->setShader(pipeline_state, tessellation_control_shader->type, tessellation_control_shader->shader);
+	
+	if (tessellation_evaluation_shader.get())
+		device->setShader(pipeline_state, tessellation_evaluation_shader->type, tessellation_evaluation_shader->shader);
+
+	if (geometry_shader.get())
+		device->setShader(pipeline_state, geometry_shader->type, geometry_shader->shader);
+	
+	if (fragment_shader.get())
+		device->setShader(pipeline_state, fragment_shader->type, fragment_shader->shader);
 
 	onInit();
 }
@@ -116,6 +208,175 @@ void RenderPassGraphicsBase::invalidate()
 	createRenderPassOffscreen();
 
 	onInvalidate();
+}
+
+/*
+ */
+bool RenderPassGraphicsBase::deserialize(const foundation::serde::yaml::NodeRef node)
+{
+	visual::API *visual_api = render_graph->getAPI();
+	assert(visual_api);
+
+	for (const foundation::serde::yaml::NodeRef child : node.children())
+	{
+		foundation::serde::yaml::csubstr child_key = child.key();
+
+		if (child_key.compare("input_groups") == 0)
+		{
+			for (const foundation::serde::yaml::NodeRef input_group : child.children())
+			{
+				foundation::serde::yaml::csubstr value = input_group.val();
+				std::string group_name = std::string(value.data(), value.size());
+
+				addInputGroup(group_name.c_str());
+			}
+		}
+
+		else if (child_key.compare("input_renderbuffers") == 0)
+		{
+			for (const foundation::serde::yaml::NodeRef input_renderbuffer : child.children())
+			{
+				foundation::serde::yaml::csubstr value = input_renderbuffer.val();
+				std::string renderbuffer_name = std::string(value.data(), value.size());
+
+				addInputRenderBuffer(renderbuffer_name.c_str());
+			}
+		}
+
+		else if (child_key.compare("output_colors") == 0)
+		{
+			std::string name;
+			foundation::render::RenderPassLoadOp load_op = foundation::render::RenderPassLoadOp::LOAD;
+			foundation::render::RenderPassStoreOp store_op = foundation::render::RenderPassStoreOp::STORE;
+			foundation::render::RenderPassClearColor clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
+
+			for (const foundation::serde::yaml::NodeRef output_color : child.children())
+			{
+				for (const foundation::serde::yaml::NodeRef output_color_child : output_color.children())
+				{
+					foundation::serde::yaml::csubstr output_color_key = output_color_child.key();
+					if (output_color_key.compare("name") == 0 && output_color_child.has_val())
+					{
+						foundation::serde::yaml::csubstr output_color_value = output_color_child.val();
+						name = std::string(output_color_value.data(), output_color_value.size());
+					}
+
+					else if (output_color_key.compare("load_op") == 0 && output_color_child.has_val())
+						output_color_child >> load_op;
+
+					else if (output_color_key.compare("store_op") == 0 && output_color_child.has_val())
+						output_color_child >> store_op;
+
+					else if (output_color_key.compare("clear_color") == 0 && output_color_child.has_val())
+						output_color_child >> clear_color;
+				}
+
+				if (!name.empty())
+					addColorOutput(name.c_str(), load_op, store_op, clear_color);
+			}
+		}
+
+		else if (child_key.compare("output_depthstencil") == 0)
+		{
+			std::string name;
+			foundation::render::RenderPassLoadOp load_op = foundation::render::RenderPassLoadOp::LOAD;
+			foundation::render::RenderPassStoreOp store_op = foundation::render::RenderPassStoreOp::STORE;
+			foundation::render::RenderPassClearDepthStencil clear_depthstencil = {0.0f, 0};
+
+			for (const foundation::serde::yaml::NodeRef output_depthstencil : child.children())
+			{
+				foundation::serde::yaml::csubstr output_depthstencil_key = output_depthstencil.key();
+				if (output_depthstencil_key.compare("name") == 0 && output_depthstencil.has_val())
+				{
+					foundation::serde::yaml::csubstr output_depthstencil_value = output_depthstencil.val();
+					name = std::string(output_depthstencil_value.data(), output_depthstencil_value.size());
+				}
+
+				else if (output_depthstencil_key.compare("load_op") == 0 && output_depthstencil.has_val())
+					output_depthstencil >> load_op;
+
+				else if (output_depthstencil_key.compare("store_op") == 0 && output_depthstencil.has_val())
+					output_depthstencil >> store_op;
+
+				else if (output_depthstencil_key.compare("clear_depthstencil") == 0 && output_depthstencil.has_val())
+					output_depthstencil >> clear_depthstencil;
+			}
+
+			if (!name.empty())
+				setDepthStencilOutput(name.c_str(), load_op, store_op, clear_depthstencil);
+		}
+
+		else if (child_key.compare("output_swapchain") == 0)
+		{
+			foundation::render::RenderPassLoadOp load_op = foundation::render::RenderPassLoadOp::LOAD;
+			foundation::render::RenderPassStoreOp store_op = foundation::render::RenderPassStoreOp::STORE;
+			foundation::render::RenderPassClearColor clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
+
+			for (const foundation::serde::yaml::NodeRef output_swapchain : child.children())
+			{
+				foundation::serde::yaml::csubstr output_swapchain_key = output_swapchain.key();
+				if (output_swapchain_key.compare("load_op") == 0 && output_swapchain.has_val())
+					output_swapchain >> load_op;
+
+				else if (output_swapchain_key.compare("store_op") == 0 && output_swapchain.has_val())
+					output_swapchain >> store_op;
+
+				else if (output_swapchain_key.compare("clear_color") == 0 && output_swapchain.has_val())
+					output_swapchain >> clear_color;
+			}
+
+			setSwapChainOutput(load_op, store_op, clear_color);
+		}
+
+		else if (child_key.compare("vertex_shader") == 0 && child.has_val())
+		{
+			foundation::serde::yaml::csubstr child_value = child.val();
+			std::string path = std::string(child_value.data(), child_value.size());
+
+			vertex_shader = visual_api->loadShader(path.c_str(), foundation::render::ShaderType::VERTEX);
+		}
+
+		else if (child_key.compare("tessellation_control_shader") == 0 && child.has_val())
+		{
+			foundation::serde::yaml::csubstr child_value = child.val();
+			std::string path = std::string(child_value.data(), child_value.size());
+
+			tessellation_control_shader = visual_api->loadShader(path.c_str(), foundation::render::ShaderType::TESSELLATION_CONTROL);
+		}
+
+		else if (child_key.compare("tessellation_evaluation_shader") == 0 && child.has_val())
+		{
+			foundation::serde::yaml::csubstr child_value = child.val();
+			std::string path = std::string(child_value.data(), child_value.size());
+
+			tessellation_evaluation_shader = visual_api->loadShader(path.c_str(), foundation::render::ShaderType::TESSELLATION_EVALUATION);
+		}
+
+		else if (child_key.compare("geometry_shader") == 0 && child.has_val())
+		{
+			foundation::serde::yaml::csubstr child_value = child.val();
+			std::string path = std::string(child_value.data(), child_value.size());
+
+			geometry_shader = visual_api->loadShader(path.c_str(), foundation::render::ShaderType::GEOMETRY);
+		}
+
+		else if (child_key.compare("fragment_shader") == 0 && child.has_val())
+		{
+			foundation::serde::yaml::csubstr child_value = child.val();
+			std::string path = std::string(child_value.data(), child_value.size());
+
+			fragment_shader = visual_api->loadShader(path.c_str(), foundation::render::ShaderType::FRAGMENT);
+		}
+	}
+
+	bool result = onDeserialize(node);
+
+	return result;
+}
+
+foundation::serde::yaml::NodeRef RenderPassGraphicsBase::serialize()
+{
+	return foundation::serde::yaml::NodeRef();
 }
 
 /*
@@ -340,11 +601,14 @@ visual::IRenderPass *RenderPassPrepareOld::create(visual::RenderGraph *render_gr
  */
 void RenderPassPrepareOld::onInit()
 {
-	device->clearShaders(pipeline_state);
-	device->setShader(pipeline_state, fullscreen_quad_vertex_shader->type, fullscreen_quad_vertex_shader->shader);
+	visual::API *visual_api = render_graph->getAPI();
+	assert(visual_api);
+
+	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
+	assert(fullscreen_quad.get());
 
 	device->clearVertexStreams(pipeline_state);
-	device->setVertexStream(pipeline_state, 0, fullscreen_quad_mesh->vertex_buffer);
+	device->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
 }
 
 void RenderPassPrepareOld::onInvalidate()
@@ -354,11 +618,17 @@ void RenderPassPrepareOld::onInvalidate()
 
 void RenderPassPrepareOld::onRender(foundation::render::CommandBuffer *command_buffer)
 {
+	visual::API *visual_api = render_graph->getAPI();
+	assert(visual_api);
+
+	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
+	assert(fullscreen_quad.get());
+
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
 		pipeline_state,
-		fullscreen_quad_mesh->index_buffer,
-		fullscreen_quad_mesh->num_indices
+		fullscreen_quad->index_buffer,
+		fullscreen_quad->num_indices
 	);
 
 	first_frame = false;
@@ -378,10 +648,6 @@ visual::IRenderPass *RenderPassGeometry::create(visual::RenderGraph *render_grap
  */
 void RenderPassGeometry::onInit()
 {
-	device->clearShaders(pipeline_state);
-	device->setShader(pipeline_state, vertex_shader->type, vertex_shader->shader);
-	device->setShader(pipeline_state, fragment_shader->type, fragment_shader->shader);
-
 	device->setCullMode(pipeline_state, foundation::render::CullMode::BACK);
 	device->setDepthTest(pipeline_state, true);
 	device->setDepthWrite(pipeline_state, true);
@@ -418,6 +684,19 @@ void RenderPassGeometry::onRender(foundation::render::CommandBuffer *command_buf
 	}
 }
 
+bool RenderPassGeometry::onDeserialize(const scapes::foundation::serde::yaml::NodeRef node)
+{
+	for (const foundation::serde::yaml::NodeRef child : node.children())
+	{
+		foundation::serde::yaml::csubstr child_key = child.key();
+
+		if (child_key.compare("input_material_binding") == 0 && child.has_val())
+			child >> material_binding;
+	}
+
+	return true;
+}
+
 /*
  */
 visual::IRenderPass *RenderPassLBuffer::create(visual::RenderGraph *render_graph)
@@ -430,8 +709,26 @@ visual::IRenderPass *RenderPassLBuffer::create(visual::RenderGraph *render_graph
 
 /*
  */
+void RenderPassLBuffer::onInit()
+{
+	visual::API *visual_api = render_graph->getAPI();
+	assert(visual_api);
+
+	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
+	assert(fullscreen_quad.get());
+
+	device->clearVertexStreams(pipeline_state);
+	device->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
+}
+
 void RenderPassLBuffer::onRender(foundation::render::CommandBuffer *command_buffer)
 {
+	visual::API *visual_api = render_graph->getAPI();
+	assert(visual_api);
+
+	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
+	assert(fullscreen_quad.get());
+
 	auto query = foundation::game::Query<visual::components::SkyLight>(world);
 
 	query.begin();
@@ -445,18 +742,28 @@ void RenderPassLBuffer::onRender(foundation::render::CommandBuffer *command_buff
 		{
 			const visual::components::SkyLight &light = skylights[i];
 
-			device->clearShaders(pipeline_state);
-			device->setShader(pipeline_state, light.vertex_shader->type, light.vertex_shader->shader);
-			device->setShader(pipeline_state, light.fragment_shader->type, light.fragment_shader->shader);
-
 			device->setBindSet(pipeline_state, light_binding, light.ibl_environment->bindings);
-
-			device->clearVertexStreams(pipeline_state);
-			device->setVertexStream(pipeline_state, 0, light.mesh->vertex_buffer);
-
-			device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, light.mesh->index_buffer, light.mesh->num_indices);
+			device->drawIndexedPrimitiveInstanced(
+				command_buffer,
+				pipeline_state,
+				fullscreen_quad->index_buffer,
+				fullscreen_quad->num_indices
+			);
 		}
 	}
+}
+
+bool RenderPassLBuffer::onDeserialize(const scapes::foundation::serde::yaml::NodeRef node)
+{
+	for (const foundation::serde::yaml::NodeRef child : node.children())
+	{
+		foundation::serde::yaml::csubstr child_key = child.key();
+
+		if (child_key.compare("input_light_binding") == 0 && child.has_val())
+			child >> light_binding;
+	}
+
+	return true;
 }
 
 /*
@@ -473,21 +780,29 @@ visual::IRenderPass *RenderPassPost::create(visual::RenderGraph *render_graph)
  */
 void RenderPassPost::onInit()
 {
-	device->clearShaders(pipeline_state);
-	device->setShader(pipeline_state, fullscreen_quad_vertex_shader->type, fullscreen_quad_vertex_shader->shader);
-	device->setShader(pipeline_state, fragment_shader->type, fragment_shader->shader);
+	visual::API *visual_api = render_graph->getAPI();
+	assert(visual_api);
+
+	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
+	assert(fullscreen_quad.get());
 
 	device->clearVertexStreams(pipeline_state);
-	device->setVertexStream(pipeline_state, 0, fullscreen_quad_mesh->vertex_buffer);
+	device->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
 }
 
 void RenderPassPost::onRender(foundation::render::CommandBuffer *command_buffer)
 {
+	visual::API *visual_api = render_graph->getAPI();
+	assert(visual_api);
+
+	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
+	assert(fullscreen_quad.get());
+
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
 		pipeline_state,
-		fullscreen_quad_mesh->index_buffer,
-		fullscreen_quad_mesh->num_indices
+		fullscreen_quad->index_buffer,
+		fullscreen_quad->num_indices
 	);
 }
 
@@ -541,11 +856,11 @@ void RenderPassImGui::onShutdown()
 
 void RenderPassImGui::onRender(foundation::render::CommandBuffer *command_buffer)
 {
-	const ImDrawData *draw_data = ImGui::GetDrawData();
-	const ImVec2 &clip_offset = draw_data->DisplayPos;
-	const ImVec2 &clip_scale = draw_data->FramebufferScale;
+	const ImDrawData &draw_data = context->DrawData;
+	const ImVec2 &clip_offset = draw_data.DisplayPos;
+	const ImVec2 &clip_scale = draw_data.FramebufferScale;
 
-	ImVec2 fb_size(draw_data->DisplaySize.x * clip_scale.x, draw_data->DisplaySize.y * clip_scale.y); 
+	ImVec2 fb_size(draw_data.DisplaySize.x * clip_scale.x, draw_data.DisplaySize.y * clip_scale.y); 
 
 	updateBuffers(draw_data);
 	setupRenderState(draw_data);
@@ -555,9 +870,9 @@ void RenderPassImGui::onRender(foundation::render::CommandBuffer *command_buffer
 
 	device->setViewport(pipeline_state, 0, 0, static_cast<uint32_t>(fb_size.x), static_cast<uint32_t>(fb_size.y));
 
-	for (int i = 0; i < draw_data->CmdListsCount; ++i)
+	for (int i = 0; i < draw_data.CmdListsCount; ++i)
 	{
-		const ImDrawList *list = draw_data->CmdLists[i];
+		const ImDrawList *list = draw_data.CmdLists[i];
 		const ImDrawCmd *commands = list->CmdBuffer.Data;
 
 		for (int j = 0; j < list->CmdBuffer.Size; ++j)
@@ -633,10 +948,10 @@ void RenderPassImGui::invalidateTextureIDs()
 
 /*
  */
-void RenderPassImGui::updateBuffers(const ImDrawData *draw_data)
+void RenderPassImGui::updateBuffers(const ImDrawData &draw_data)
 {
-	uint32_t num_indices = draw_data->TotalIdxCount;
-	uint32_t num_vertices = draw_data->TotalVtxCount;
+	uint32_t num_indices = draw_data.TotalIdxCount;
+	uint32_t num_vertices = draw_data.TotalVtxCount;
 
 	if (num_vertices == 0 || num_indices == 0)
 		return;
@@ -680,9 +995,9 @@ void RenderPassImGui::updateBuffers(const ImDrawData *draw_data)
 	ImDrawVert *vertex_data = reinterpret_cast<ImDrawVert *>(device->map(vertices));
 	ImDrawIdx *index_data = reinterpret_cast<ImDrawIdx *>(device->map(indices));
 
-	for (int i = 0; i < draw_data->CmdListsCount; ++i)
+	for (int i = 0; i < draw_data.CmdListsCount; ++i)
 	{
-		const ImDrawList *commands = draw_data->CmdLists[i];
+		const ImDrawList *commands = draw_data.CmdLists[i];
 		memcpy(vertex_data, commands->VtxBuffer.Data, commands->VtxBuffer.Size * vertex_size);
 		memcpy(index_data, commands->IdxBuffer.Data, commands->IdxBuffer.Size * index_size);
 		vertex_data += commands->VtxBuffer.Size;
@@ -693,23 +1008,22 @@ void RenderPassImGui::updateBuffers(const ImDrawData *draw_data)
 	device->unmap(indices);
 }
 
-void RenderPassImGui::setupRenderState(const ImDrawData *draw_data)
+void RenderPassImGui::setupRenderState(const ImDrawData &draw_data)
 {
+	device->clearVertexStreams(pipeline_state);
 	device->setVertexStream(pipeline_state, 0, vertices);
 
-	device->setShader(pipeline_state, foundation::render::ShaderType::VERTEX, vertex_shader.get()->shader);
-	device->setShader(pipeline_state, foundation::render::ShaderType::FRAGMENT, fragment_shader.get()->shader);
-
-	float L = draw_data->DisplayPos.x;
-	float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-	float T = draw_data->DisplayPos.y;
-	float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+	float L = draw_data.DisplayPos.x;
+	float R = draw_data.DisplayPos.x + draw_data.DisplaySize.x;
+	float T = draw_data.DisplayPos.y;
+	float B = draw_data.DisplayPos.y + draw_data.DisplaySize.y;
 
 	if (!device->isFlipped())
 		std::swap(T,B);
 
 	foundation::math::mat4 projection = foundation::math::ortho(L, R, B, T, 0.0f, 1.0f);
 
+	device->clearPushConstants(pipeline_state);
 	device->setPushConstants(pipeline_state, sizeof(foundation::math::mat4), &projection);
 
 	device->setBlending(pipeline_state, true);
@@ -717,4 +1031,118 @@ void RenderPassImGui::setupRenderState(const ImDrawData *draw_data)
 	device->setCullMode(pipeline_state, foundation::render::CullMode::NONE);
 	device->setDepthWrite(pipeline_state, false);
 	device->setDepthTest(pipeline_state, false);
+}
+
+/*
+ */
+visual::IRenderPass *RenderPassSwapRenderBuffers::create(visual::RenderGraph *render_graph)
+{
+	RenderPassSwapRenderBuffers *result = new RenderPassSwapRenderBuffers();
+	result->setRenderGraph(render_graph);
+
+	return result;
+}
+
+/*
+ */
+RenderPassSwapRenderBuffers::RenderPassSwapRenderBuffers()
+{
+
+}
+
+RenderPassSwapRenderBuffers::~RenderPassSwapRenderBuffers()
+{
+	clear();
+}
+
+/*
+ */
+void RenderPassSwapRenderBuffers::init()
+{
+}
+
+void RenderPassSwapRenderBuffers::shutdown()
+{
+	clear();
+}
+
+void RenderPassSwapRenderBuffers::render(foundation::render::CommandBuffer *command_buffer)
+{
+	for (const SwapPair &pair : pairs)
+		render_graph->swapRenderBuffers(pair.src.c_str(), pair.dst.c_str());
+}
+
+void RenderPassSwapRenderBuffers::invalidate()
+{
+}
+
+/*
+ */
+bool RenderPassSwapRenderBuffers::deserialize(const foundation::serde::yaml::NodeRef node)
+{
+	for (const foundation::serde::yaml::NodeRef child : node.children())
+	{
+		foundation::serde::yaml::csubstr child_key = child.key();
+
+		if (child_key.compare("pairs") == 0)
+		{
+			for (const foundation::serde::yaml::NodeRef swap_pair : child.children())
+			{
+				std::string src;
+				std::string dst;
+
+				for (const foundation::serde::yaml::NodeRef swap_pair_child : swap_pair.children())
+				{
+					foundation::serde::yaml::csubstr swap_pair_key = swap_pair_child.key();
+
+					if (swap_pair_key.compare("src") == 0 && swap_pair_child.has_val())
+					{
+						foundation::serde::yaml::csubstr swap_pair_value = swap_pair_child.val();
+						src = std::string(swap_pair_value.data(), swap_pair_value.size());
+					}
+
+					else if (swap_pair_key.compare("dst") == 0 && swap_pair_child.has_val())
+					{
+						foundation::serde::yaml::csubstr swap_pair_value = swap_pair_child.val();
+						dst = std::string(swap_pair_value.data(), swap_pair_value.size());
+					}
+				}
+
+				if (src.empty() || dst.empty())
+					continue;
+
+				addSwapPair(src.c_str(), dst.c_str());
+			}
+		}
+	}
+
+	return true;
+}
+
+foundation::serde::yaml::NodeRef RenderPassSwapRenderBuffers::serialize()
+{
+	return foundation::serde::yaml::NodeRef();
+}
+
+/*
+ */
+void RenderPassSwapRenderBuffers::addSwapPair(const char *src, const char *dst)
+{
+	SwapPair pair;
+	pair.src = std::string(src);
+	pair.dst = std::string(dst);
+
+	pairs.push_back(pair);
+}
+
+void RenderPassSwapRenderBuffers::removeAllSwapPairs()
+{
+	pairs.clear();
+}
+
+/*
+ */
+void RenderPassSwapRenderBuffers::clear()
+{
+	removeAllSwapPairs();
 }

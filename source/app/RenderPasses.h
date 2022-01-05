@@ -24,8 +24,8 @@ public:
 	void render(scapes::foundation::render::CommandBuffer *command_buffer) final;
 	void invalidate() final;
 
-	bool deserialize(const scapes::foundation::serde::yaml::Tree &tree) override { return false; }
-	scapes::foundation::serde::yaml::Tree serialize() override { return scapes::foundation::serde::yaml::Tree(); }
+	bool deserialize(const scapes::foundation::serde::yaml::NodeRef node) override;
+	scapes::foundation::serde::yaml::NodeRef serialize() override;
 
 	// TODO: manually set bind set index
 	void addInputGroup(const char *name);
@@ -66,12 +66,28 @@ public:
 	SCAPES_INLINE scapes::visual::RenderGraph *getRenderGraph() { return render_graph; }
 	SCAPES_INLINE const scapes::visual::RenderGraph *getRenderGraph() const { return render_graph; }
 
+	SCAPES_INLINE void setVertexShader(scapes::visual::ShaderHandle handle) { vertex_shader = handle; }
+	SCAPES_INLINE scapes::visual::ShaderHandle getVertexShader() const { return vertex_shader; }
+
+	SCAPES_INLINE void setTessellationControlShader(scapes::visual::ShaderHandle handle) { tessellation_control_shader = handle; }
+	SCAPES_INLINE scapes::visual::ShaderHandle getTessellationControlShader() const { return tessellation_control_shader; }
+
+	SCAPES_INLINE void setTesselationEvaluationShader(scapes::visual::ShaderHandle handle) { tessellation_evaluation_shader = handle; }
+	SCAPES_INLINE scapes::visual::ShaderHandle getTesselationEvaluationShader() const { return tessellation_evaluation_shader; }
+
+	SCAPES_INLINE void setGeometryShader(scapes::visual::ShaderHandle handle) { geometry_shader = handle; }
+	SCAPES_INLINE scapes::visual::ShaderHandle getGeometryShader() const { return geometry_shader; }
+
+	SCAPES_INLINE void setFragmentShader(scapes::visual::ShaderHandle handle) { fragment_shader = handle; }
+	SCAPES_INLINE scapes::visual::ShaderHandle getFragmentShader() const { return fragment_shader; }
+
 protected:
 	virtual bool canRender() const { return true; }
 	virtual void onRender(scapes::foundation::render::CommandBuffer *command_buffer) {}
 	virtual void onInit() {}
 	virtual void onShutdown() {}
 	virtual void onInvalidate() {};
+	virtual bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) { return true; };
 
 private:
 	void clear();
@@ -111,6 +127,12 @@ protected:
 	scapes::foundation::render::RenderPass *render_pass_swapchain {nullptr};
 	scapes::foundation::render::RenderPass *render_pass_offscreen {nullptr};
 	scapes::foundation::render::PipelineState *pipeline_state {nullptr};
+
+	scapes::visual::ShaderHandle vertex_shader;
+	scapes::visual::ShaderHandle tessellation_control_shader;
+	scapes::visual::ShaderHandle tessellation_evaluation_shader;
+	scapes::visual::ShaderHandle geometry_shader;
+	scapes::visual::ShaderHandle fragment_shader;
 };
 
 /*
@@ -120,16 +142,7 @@ class RenderPassPrepareOld final : public RenderPassGraphicsBase
 public:
 	static scapes::visual::IRenderPass *create(scapes::visual::RenderGraph *render_graph);
 
-	SCAPES_INLINE void setFullscreenQuad(
-		scapes::visual::ShaderHandle vertex_shader,
-		scapes::visual::MeshHandle mesh
-	)
-	{
-		fullscreen_quad_vertex_shader = vertex_shader;
-		fullscreen_quad_mesh = mesh;
-	}
-
-public:
+private:
 	bool canRender() const final { return first_frame; }
 	void onInit() final;
 	void onInvalidate() final;
@@ -137,9 +150,6 @@ public:
 
 private:
 	bool first_frame {true};
-
-	scapes::visual::ShaderHandle fullscreen_quad_vertex_shader;
-	scapes::visual::MeshHandle fullscreen_quad_mesh;
 };
 
 template <>
@@ -156,18 +166,15 @@ public:
 	static scapes::visual::IRenderPass *create(scapes::visual::RenderGraph *render_graph);
 
 public:
-	SCAPES_INLINE void setFragmentShader(scapes::visual::ShaderHandle handle) { fragment_shader = handle; }
-	SCAPES_INLINE void setVertexShader(scapes::visual::ShaderHandle handle) { vertex_shader = handle; }
 	SCAPES_INLINE void setMaterialBinding(uint32_t binding) { material_binding = binding; }
 
 private:
 	void onInit() final;
 	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
+	bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) final;
 
 private:
 	uint32_t material_binding {0};
-	scapes::visual::ShaderHandle vertex_shader;
-	scapes::visual::ShaderHandle fragment_shader;
 };
 
 template <>
@@ -187,7 +194,9 @@ public:
 	SCAPES_INLINE void setLightBinding(uint32_t binding) { light_binding = binding; }
 
 private:
+	void onInit() final;
 	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
+	bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) final;
 
 private:
 	uint32_t light_binding {0};
@@ -206,26 +215,9 @@ class RenderPassPost final : public RenderPassGraphicsBase
 public:
 	static scapes::visual::IRenderPass *create(scapes::visual::RenderGraph *render_graph);
 
-public:
-	SCAPES_INLINE void setFullscreenQuad(
-		scapes::visual::ShaderHandle vertex_shader,
-		scapes::visual::MeshHandle mesh
-	)
-	{
-		fullscreen_quad_vertex_shader = vertex_shader;
-		fullscreen_quad_mesh = mesh;
-	}
-
-	SCAPES_INLINE void setFragmentShader(scapes::visual::ShaderHandle handle) { fragment_shader = handle; }
-
 private:
 	void onInit() final;
 	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
-
-private:
-	scapes::visual::ShaderHandle fullscreen_quad_vertex_shader;
-	scapes::visual::MeshHandle fullscreen_quad_mesh;
-	scapes::visual::ShaderHandle fragment_shader;
 };
 
 template <>
@@ -250,9 +242,6 @@ public:
 	ImTextureID fetchTextureID(const scapes::foundation::render::Texture *texture);
 	void invalidateTextureIDs();
 
-	SCAPES_INLINE void setVertexShader(scapes::visual::ShaderHandle shader) { vertex_shader = shader; }
-	SCAPES_INLINE void setFragmentShader(scapes::visual::ShaderHandle shader) { fragment_shader = shader; }
-
 	SCAPES_INLINE void setImGuiContext(ImGuiContext *c) { context = c; }
 	SCAPES_INLINE const ImGuiContext *getImGuiContext() const { return context; }
 	SCAPES_INLINE ImGuiContext *getImGuiContext() { return context; }
@@ -262,14 +251,11 @@ private:
 	void onShutdown() final;
 	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
 
-	void updateBuffers(const ImDrawData *draw_data);
-	void setupRenderState(const ImDrawData *draw_data);
+	void updateBuffers(const ImDrawData &draw_data);
+	void setupRenderState(const ImDrawData &draw_data);
 
 private:
 	ImGuiContext *context {nullptr};
-
-	scapes::visual::ShaderHandle vertex_shader;
-	scapes::visual::ShaderHandle fragment_shader;
 
 	scapes::foundation::render::Texture *font_texture {nullptr};
 	scapes::foundation::render::VertexBuffer *vertices {nullptr};
@@ -285,4 +271,49 @@ template <>
 struct TypeTraits<RenderPassImGui>
 {
 	static constexpr const char *name = "RenderPassImGui";
+};
+
+/*
+ */
+class RenderPassSwapRenderBuffers : public scapes::visual::IRenderPass
+{
+public:
+	static scapes::visual::IRenderPass *create(scapes::visual::RenderGraph *render_graph);
+
+public:
+	RenderPassSwapRenderBuffers();
+	~RenderPassSwapRenderBuffers() override;
+
+public:
+	void init() final;
+	void shutdown() final;
+	void render(scapes::foundation::render::CommandBuffer *command_buffer) final;
+	void invalidate() final;
+	void clear();
+
+	bool deserialize(const scapes::foundation::serde::yaml::NodeRef node) override;
+	scapes::foundation::serde::yaml::NodeRef serialize() override;
+
+	void addSwapPair(const char *src, const char *dst);
+	void removeAllSwapPairs();
+
+	SCAPES_INLINE void setRenderGraph(scapes::visual::RenderGraph *graph) { render_graph = graph; }
+	SCAPES_INLINE scapes::visual::RenderGraph *getRenderGraph() { return render_graph; }
+	SCAPES_INLINE const scapes::visual::RenderGraph *getRenderGraph() const { return render_graph; }
+
+private:
+	struct SwapPair
+	{
+		std::string src;
+		std::string dst;
+	};
+
+	scapes::visual::RenderGraph *render_graph {nullptr};
+	std::vector<SwapPair> pairs;
+};
+
+template <>
+struct TypeTraits<RenderPassSwapRenderBuffers>
+{
+	static constexpr const char *name = "RenderPassSwapRenderBuffers";
 };

@@ -37,15 +37,11 @@ namespace scapes::visual
 	)
 		: resource_manager(resource_manager), world(world), device(device), compiler(compiler)
 	{
-		renderable_query = new foundation::game::Query<foundation::components::Transform, components::Renderable>(world);
-		skylight_query = new foundation::game::Query<components::SkyLight>(world);
+		fullscreen_quad = createMeshQuad(2.0f);
 	}
 
 	APIImpl::~APIImpl()
 	{
-		delete renderable_query;
-		delete skylight_query;
-
 		for (TextureHandle handle : managed_textures)
 			resource_manager->destroy(handle, device);
 
@@ -66,70 +62,6 @@ namespace scapes::visual
 		managed_meshes.clear();
 		managed_render_materials.clear();
 		managed_ibl_textures.clear();
-	}
-
-	void APIImpl::drawRenderables(
-		uint8_t material_binding,
-		foundation::render::PipelineState *pipeline_state,
-		foundation::render::CommandBuffer *command_buffer
-	)
-	{
-		renderable_query->begin();
-
-		while (renderable_query->next())
-		{
-			uint32_t num_items = renderable_query->getNumComponents();
-			foundation::components::Transform *transforms = renderable_query->getComponents<foundation::components::Transform>(0);
-			components::Renderable *renderables = renderable_query->getComponents<components::Renderable>(1);
-
-			for (uint32_t i = 0; i < num_items; ++i)
-			{
-				const foundation::components::Transform &transform = transforms[i];
-				const components::Renderable &renderable = renderables[i];
-				const foundation::math::mat4 &node_transform = transform.transform;
-
-				foundation::render::BindSet *material_bindings = renderable.material->bindings;
-
-				device->clearVertexStreams(pipeline_state);
-				device->setVertexStream(pipeline_state, 0, renderable.mesh->vertex_buffer);
-
-				device->setBindSet(pipeline_state, material_binding, material_bindings);
-				device->setPushConstants(pipeline_state, static_cast<uint8_t>(sizeof(foundation::math::mat4)), &node_transform);
-
-				device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, renderable.mesh->index_buffer, renderable.mesh->num_indices);
-			}
-		}
-	}
-
-	void APIImpl::drawSkyLights(
-		uint8_t light_binding,
-		foundation::render::PipelineState *pipeline_state,
-		foundation::render::CommandBuffer *command_buffer
-	)
-	{
-		skylight_query->begin();
-
-		while (skylight_query->next())
-		{
-			uint32_t num_items = skylight_query->getNumComponents();
-			components::SkyLight *skylights = skylight_query->getComponents<components::SkyLight>(0);
-
-			for (uint32_t i = 0; i < num_items; ++i)
-			{
-				const components::SkyLight &light = skylights[i];
-
-				device->clearShaders(pipeline_state);
-				device->setShader(pipeline_state, foundation::render::ShaderType::VERTEX, light.vertex_shader->shader);
-				device->setShader(pipeline_state, foundation::render::ShaderType::FRAGMENT, light.fragment_shader->shader);
-
-				device->setBindSet(pipeline_state, light_binding, light.ibl_environment->bindings);
-
-				device->clearVertexStreams(pipeline_state);
-				device->setVertexStream(pipeline_state, 0, light.mesh->vertex_buffer);
-
-				device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, light.mesh->index_buffer, light.mesh->num_indices);
-			}
-		}
 	}
 
 	TextureHandle APIImpl::createTexture2D(
@@ -159,7 +91,6 @@ namespace scapes::visual
 		foundation::render::Format format,
 		uint32_t width,
 		uint32_t height,
-		MeshHandle fullscreen_quad,
 		ShaderHandle vertex_shader,
 		ShaderHandle fragment_shader
 	)
@@ -390,7 +321,7 @@ namespace scapes::visual
 		RenderUtils::renderHDRIToCube(
 			device,
 			prefiltered_specular,
-			create_data.fullscreen_quad,
+			fullscreen_quad,
 			create_data.cubemap_vertex,
 			create_data.equirectangular_projection_fragment,
 			create_data.prefiltered_specular_fragment,
@@ -401,7 +332,7 @@ namespace scapes::visual
 		RenderUtils::renderTextureCube(
 			device,
 			diffuse_irradiance,
-			create_data.fullscreen_quad,
+			fullscreen_quad,
 			create_data.cubemap_vertex,
 			create_data.diffuse_irradiance_fragment,
 			prefiltered_specular

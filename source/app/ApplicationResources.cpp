@@ -15,19 +15,6 @@ namespace config
 		"assets/shaders/render_graph/utils/PrefilteredSpecularCubemap.frag",
 		"assets/shaders/render_graph/utils/DiffuseIrradianceCubemap.frag",
 		"assets/shaders/render_graph/utils/BakedBRDF.frag",
-		"assets/shaders/render_graph/passes/lbuffer/LBufferSkylight.frag",
-		"assets/shaders/render_graph/passes/gbuffer/GBuffer.vert",
-		"assets/shaders/render_graph/passes/gbuffer/GBuffer.frag",
-		"assets/shaders/render_graph/passes/ssao/SSAO.frag",
-		"assets/shaders/render_graph/passes/ssao_blur/SSAOBlur.frag",
-		"assets/shaders/render_graph/passes/ssr_trace/SSRTrace.frag",
-		"assets/shaders/render_graph/passes/ssr_resolve/SSRResolve.frag",
-		"assets/shaders/render_graph/passes/composite/Composite.frag",
-		"assets/shaders/render_graph/passes/temporal_filter/TemporalFilter.frag",
-		"assets/shaders/render_graph/passes/tonemap/Tonemap.frag",
-		"assets/shaders/render_graph/passes/gamma/Gamma.frag",
-		"assets/shaders/render_graph/passes/imgui/ImGui.vert",
-		"assets/shaders/render_graph/passes/imgui/ImGui.frag",
 	};
 
 	static std::vector<scapes::foundation::render::ShaderType> shader_types = {
@@ -37,19 +24,6 @@ namespace config
 		scapes::foundation::render::ShaderType::FRAGMENT,
 		scapes::foundation::render::ShaderType::FRAGMENT,
 		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::VERTEX,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::VERTEX,
-		scapes::foundation::render::ShaderType::FRAGMENT,
 	};
 
 	// Textures
@@ -58,8 +32,6 @@ namespace config
 		"assets/textures/environment/umbrellas.hdr",
 		"assets/textures/environment/shanghai_bund_4k.hdr",
 	};
-
-	static const char *blue_noise = "assets/textures/blue_noise.png";
 }
 
 static scapes::visual::TextureHandle generateTexture(scapes::visual::API *visual_api, uint8_t r, uint8_t g, uint8_t b)
@@ -100,21 +72,18 @@ void ApplicationResources::init()
 		loaded_shaders.push_back(shader);
 	}
 
-	fullscreen_quad = visual_api->createMeshQuad(2.0f);
 	skybox = visual_api->createMeshSkybox(10000.0f);
 
 	baked_brdf = visual_api->createTexture2D(
 		scapes::foundation::render::Format::R16G16_SFLOAT,
 		512,
 		512,
-		fullscreen_quad,
 		getShader(config::Shaders::FullscreenQuadVertex),
 		getShader(config::Shaders::BakedBRDFFragment)
 	);
 
+	scapes::foundation::render::Device *device = visual_api->getDevice();
 	device->setTextureSamplerWrapMode(baked_brdf->gpu_data, scapes::foundation::render::SamplerWrapMode::CLAMP_TO_EDGE);
-
-	blue_noise = visual_api->loadTexture(config::blue_noise);
 
 	default_albedo = generateTexture(visual_api, 127, 127, 127);
 	default_normal = generateTexture(visual_api, 127, 127, 255);
@@ -125,7 +94,6 @@ void ApplicationResources::init()
 	create_data.format = scapes::foundation::render::Format::R32G32B32A32_SFLOAT;
 	create_data.cubemap_size = 128;
 
-	create_data.fullscreen_quad = fullscreen_quad;
 	create_data.baked_brdf = baked_brdf;
 	create_data.cubemap_vertex = getShader(config::Shaders::CubemapVertex);
 	create_data.equirectangular_projection_fragment = getShader(config::Shaders::EquirectangularProjectionFragment);

@@ -1,6 +1,7 @@
 #include "RenderGraph.h"
 #include "HashUtils.h"
 
+#include <scapes/visual/API.h>
 #include <scapes/foundation/io/FileSystem.h>
 
 #include <algorithm>
@@ -216,9 +217,9 @@ namespace scapes::visual
 {
 	/*
 	 */
-	RenderGraph *RenderGraph::create(foundation::render::Device *device, foundation::game::World *world, foundation::io::FileSystem *file_system, foundation::resources::ResourceManager *resource_manager)
+	RenderGraph *RenderGraph::create(API *api, foundation::io::FileSystem *file_system)
 	{
-		return new RenderGraphImpl(device, world, file_system, resource_manager);
+		return new RenderGraphImpl(api, file_system);
 	}
 
 	void RenderGraph::destroy(RenderGraph *RenderGraph)
@@ -240,8 +241,8 @@ namespace scapes::visual
 
 	/*
 	 */
-	RenderGraphImpl::RenderGraphImpl(foundation::render::Device *device, foundation::game::World *world, foundation::io::FileSystem *file_system, foundation::resources::ResourceManager *resource_manager)
-		: device(device), world(world), file_system(file_system), resource_manager(resource_manager)
+	RenderGraphImpl::RenderGraphImpl(API *api, foundation::io::FileSystem *file_system)
+		: api(api), file_system(file_system)
 	{
 
 	}
@@ -535,8 +536,7 @@ namespace scapes::visual
 
 								if (!texture_path.empty())
 								{
-									// TODO: replace by visual API loadTexture call
-									TextureHandle handle = resource_manager->import<resources::Texture>(texture_path.c_str(), device);
+									TextureHandle handle = api->loadTexture(texture_path.c_str());
 									setGroupTexture(group_name.c_str(), texture_name.c_str(), handle);
 								}
 							}
@@ -573,7 +573,57 @@ namespace scapes::visual
 				}
 
 				if (child_key.compare("RenderPass") == 0)
-					foundation::Log::message("Found RenderPass\n");
+				{
+					std::string type_name;
+					std::string name;
+
+					for (const yaml::NodeRef renderpass_child : child.children())
+					{
+						yaml::csubstr renderpass_child_key = renderpass_child.key();
+
+						if (renderpass_child_key.compare("name") == 0 && renderpass_child.has_val())
+						{
+							yaml::csubstr renderpass_child_value = renderpass_child.val();
+							name = std::string(renderpass_child_value.data(), renderpass_child_value.size());
+						}
+
+						else if (renderpass_child_key.compare("type") == 0 && renderpass_child.has_val())
+						{
+							yaml::csubstr renderpass_child_value = renderpass_child.val();
+							type_name = std::string(renderpass_child_value.data(), renderpass_child_value.size());
+						}
+					}
+
+					if (name.empty() || type_name.empty())
+						continue;
+
+					uint64_t render_pass_hash = 0;
+					common::HashUtils::combine(render_pass_hash, std::string_view(name));
+
+					auto it = pass_lookup.find(render_pass_hash);
+					if (it != pass_lookup.end())
+						continue;
+
+					IRenderPass *render_pass = createRenderPassInternal(type_name.c_str());
+
+					if (render_pass)
+					{
+						if (!render_pass->deserialize(child))
+						{
+							foundation::Log::message("Can't deserialize render pass with type \"%s\"\n", type_name.c_str());
+
+							delete render_pass;
+							render_pass = nullptr;
+						}
+					}
+
+					if (render_pass)
+					{
+						foundation::Log::message("Found RenderPass\n");
+						passes.push_back(render_pass);
+						pass_lookup.insert({render_pass_hash, render_pass});
+					}
+				}
 			}
 		}
 
@@ -996,6 +1046,8 @@ namespace scapes::visual
 		if (it != framebuffer_cache.end())
 			return it->second;
 
+		foundation::render::Device *device = api->getDevice();
+
 		foundation::render::FrameBuffer *framebuffer = device->createFrameBuffer(num_attachments, attachments);
 		framebuffer_cache.insert({hash, framebuffer});
 
@@ -1004,12 +1056,40 @@ namespace scapes::visual
 
 	/*
 	 */
+	IRenderPass *RenderGraphImpl::getRenderPass(const char *name) const
+	{
+		uint64_t render_pass_hash = 0;
+		common::HashUtils::combine(render_pass_hash, std::string_view(name));
+
+		auto it = pass_lookup.find(render_pass_hash);
+		if (it == pass_lookup.end())
+			return nullptr;
+
+		return it->second;
+	}
+
 	bool RenderGraphImpl::removeRenderPass(size_t index)
 	{
 		if (index >= passes.size())
 			return false;
 
 		IRenderPass *pass = passes[index];
+
+		auto lookup_it = pass_lookup.end();
+		for (auto it = pass_lookup.begin(); it != pass_lookup.end(); ++it)
+		{
+			if (it->second == pass)
+			{
+				lookup_it = it;
+				break;
+			}
+		}
+
+		if (lookup_it == pass_lookup.end())
+			return false;
+
+		pass_lookup.erase(lookup_it);
+
 		pass->shutdown();
 		delete pass;
 
@@ -1036,6 +1116,7 @@ namespace scapes::visual
 		}
 
 		passes.clear();
+		pass_lookup.clear();
 	}
 
 	/*
@@ -1108,10 +1189,10 @@ namespace scapes::visual
 
 	/*
 	 */
-	bool RenderGraphImpl::registerRenderPass(const char *name, PFN_createRenderPass function)
+	bool RenderGraphImpl::registerRenderPassType(const char *type_name, PFN_createRenderPass function)
 	{
 		uint64_t render_pass_hash = 0;
-		common::HashUtils::combine(render_pass_hash, std::string_view(name));
+		common::HashUtils::combine(render_pass_hash, std::string_view(type_name));
 
 		auto it = render_pass_type_lookup.find(render_pass_hash);
 		if (it != render_pass_type_lookup.end())
@@ -1121,12 +1202,31 @@ namespace scapes::visual
 		return true;
 	}
 
-	IRenderPass *RenderGraphImpl::createRenderPass(const char *name)
+	IRenderPass *RenderGraphImpl::createRenderPass(const char *type_name, const char *name)
 	{
 		uint64_t render_pass_hash = 0;
 		common::HashUtils::combine(render_pass_hash, std::string_view(name));
 
-		auto it = render_pass_type_lookup.find(render_pass_hash);
+		auto it = pass_lookup.find(render_pass_hash);
+		if (it != pass_lookup.end())
+			return nullptr;
+
+		IRenderPass *render_pass = createRenderPassInternal(type_name);
+		if (render_pass == nullptr)
+			return nullptr;
+
+		passes.push_back(render_pass);
+		pass_lookup.insert({render_pass_hash, render_pass});
+
+		return render_pass;
+	}
+
+	IRenderPass *RenderGraphImpl::createRenderPassInternal(const char *type_name)
+	{
+		uint64_t render_pass_type_hash = 0;
+		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
+
+		auto it = render_pass_type_lookup.find(render_pass_type_hash);
 		if (it == render_pass_type_lookup.end())
 			return nullptr;
 
@@ -1136,7 +1236,6 @@ namespace scapes::visual
 		IRenderPass *render_pass = function(this);
 		assert(render_pass);
 
-		passes.push_back(render_pass);
 		return render_pass;
 	}
 
@@ -1161,6 +1260,8 @@ namespace scapes::visual
 	{
 		assert(group);
 
+		foundation::render::Device *device = api->getDevice();
+
 		// TODO: make sure UBO + BindSet recreated only if
 		// current UBO size is not enough to fit all parameters
 		device->destroyUniformBuffer(group->buffer);
@@ -1179,6 +1280,8 @@ namespace scapes::visual
 
 		if (!group->dirty)
 			return false;
+
+		foundation::render::Device *device = api->getDevice();
 
 		bool should_invalidate = false;
 
@@ -1281,6 +1384,8 @@ namespace scapes::visual
 	{
 		assert(buffer);
 
+		foundation::render::Device *device = api->getDevice();
+
 		device->destroyTexture(buffer->texture);
 		buffer->texture = nullptr;
 
@@ -1294,6 +1399,8 @@ namespace scapes::visual
 
 		if (texture->texture)
 			return false;
+
+		foundation::render::Device *device = api->getDevice();
 
 		assert(texture->bindings == nullptr);
 
@@ -1312,6 +1419,8 @@ namespace scapes::visual
 	 */
 	void RenderGraphImpl::invalidateFrameBufferCache()
 	{
+		foundation::render::Device *device = api->getDevice();
+
 		for (auto &[hash, framebuffer] : framebuffer_cache)
 			device->destroyFrameBuffer(framebuffer);
 

@@ -10,7 +10,6 @@ namespace scapes::visual
 		foundation::render::Format format {foundation::render::Format::R32G32B32A32_SFLOAT};
 		uint32_t cubemap_size {128};
 
-		MeshHandle fullscreen_quad; // TODO: find a way to get rid of fullscreen quad mesh
 		TextureHandle baked_brdf;
 		ShaderHandle cubemap_vertex; // TODO: find a way to get rid of cubemap vertex shader
 		ShaderHandle equirectangular_projection_fragment;
@@ -27,18 +26,12 @@ namespace scapes::visual
 		virtual ~API() { }
 
 	public:
+		virtual foundation::resources::ResourceManager *getResourceManager() const = 0;
+		virtual foundation::game::World *getWorld() const = 0;
+		virtual foundation::render::Device *getDevice() const = 0;
+		virtual foundation::shaders::Compiler *getCompiler() const = 0;
 
-		virtual void drawRenderables(
-			uint8_t material_binding,
-			foundation::render::PipelineState *pipeline_state,
-			foundation::render::CommandBuffer *command_buffer
-		) = 0;
-
-		virtual void drawSkyLights(
-			uint8_t light_binding,
-			foundation::render::PipelineState *pipeline_state,
-			foundation::render::CommandBuffer *command_buffer
-		) = 0;
+		virtual MeshHandle getFullscreenQuadMesh() const = 0;
 
 		virtual TextureHandle createTexture2D(
 			foundation::render::Format format,
@@ -53,7 +46,6 @@ namespace scapes::visual
 			foundation::render::Format format,
 			uint32_t width,
 			uint32_t height,
-			MeshHandle fullscreen_quad,
 			ShaderHandle vertex_shader,
 			ShaderHandle fragment_shader
 		) = 0;

@@ -23,8 +23,8 @@ namespace scapes::visual
 
 		virtual void render(foundation::render::CommandBuffer *command_buffer) = 0;
 
-		virtual bool deserialize(const foundation::serde::yaml::Tree &tree) = 0;
-		virtual foundation::serde::yaml::Tree serialize() = 0;
+		virtual bool deserialize(const foundation::serde::yaml::NodeRef node) = 0;
+		virtual foundation::serde::yaml::NodeRef serialize() = 0;
 	};
 
 	/*
@@ -36,14 +36,14 @@ namespace scapes::visual
 	class RenderGraph
 	{
 	public:
-		static SCAPES_API RenderGraph *create(foundation::render::Device *device, foundation::game::World *world, foundation::io::FileSystem *file_system, foundation::resources::ResourceManager *resource_manager);
+		static SCAPES_API RenderGraph *create(API *api, foundation::io::FileSystem *file_system);
 		static SCAPES_API void destroy(RenderGraph *render_graph);
 
 		virtual ~RenderGraph() { }
 
 	public:
-		virtual foundation::render::Device *getDevice() const = 0;
-		virtual foundation::game::World *getWorld() const = 0;
+		virtual API *getAPI() const = 0;
+		virtual foundation::io::FileSystem *getFileSystem() const = 0;
 
 		virtual uint32_t getWidth() const = 0;
 		virtual uint32_t getHeight() const = 0;
@@ -95,6 +95,7 @@ namespace scapes::visual
 
 		virtual size_t getNumRenderPasses() const = 0;
 		virtual IRenderPass *getRenderPass(size_t index) const = 0;
+		virtual IRenderPass *getRenderPass(const char *name) const = 0;
 
 		virtual bool removeRenderPass(size_t index) = 0;
 		virtual bool removeRenderPass(IRenderPass *pass) = 0;
@@ -161,15 +162,21 @@ namespace scapes::visual
 		}
 
 		template<typename T>
-		SCAPES_INLINE T *createRenderPass()
+		SCAPES_INLINE T *createRenderPass(const char *name)
 		{
-			return static_cast<T*>(createRenderPass(TypeTraits<T>::name));
+			return static_cast<T*>(createRenderPass(TypeTraits<T>::name), name);
 		}
 
 		template<typename T>
-		SCAPES_INLINE bool registerRenderPass()
+		SCAPES_INLINE T *getRenderPass(const char *name)
 		{
-			return registerRenderPass(TypeTraits<T>::name, &T::create);
+			return static_cast<T*>(getRenderPass(name));
+		}
+
+		template<typename T>
+		SCAPES_INLINE bool registerRenderPassType()
+		{
+			return registerRenderPassType(TypeTraits<T>::name, &T::create);
 		}
 
 	protected:
@@ -177,7 +184,7 @@ namespace scapes::visual
 		virtual const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t offset) const = 0;
 		virtual bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_offset, size_t src_size, const void *src_data) = 0;
 
-		virtual bool registerRenderPass(const char *name, PFN_createRenderPass function) = 0;
-		virtual IRenderPass *createRenderPass(const char *name) = 0;
+		virtual bool registerRenderPassType(const char *type_name, PFN_createRenderPass function) = 0;
+		virtual IRenderPass *createRenderPass(const char *type_name, const char *name) = 0;
 	};
 }

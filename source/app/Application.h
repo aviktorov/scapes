@@ -24,10 +24,10 @@ struct ApplicationState
 		MAX_TEMPORAL_FRAMES = 16,
 	};
 
-	int currentTemporalFrame {0};
-	int currentEnvironment {0};
-	scapes::foundation::math::vec2 temporalSamples[MAX_TEMPORAL_FRAMES];
-	bool firstFrame {true};
+	int current_temporal_frame {0};
+	int current_environment {0};
+	scapes::foundation::math::vec2 temporal_samples[MAX_TEMPORAL_FRAMES];
+	bool first_frame {true};
 };
 
 struct CameraState
@@ -86,7 +86,7 @@ private:
 
 private:
 	GLFWwindow *window {nullptr};
-	bool windowResized {false};
+	bool window_resized {false};
 	uint32_t width {0};
 	uint32_t height {0};
 

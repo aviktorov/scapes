@@ -83,11 +83,11 @@ void Application::update()
 
 	// TODO: move to render graph
 	// patch projection matrix for temporal supersampling
-	const foundation::math::vec2 &temporalSample = application_state.temporalSamples[application_state.currentTemporalFrame];
-	projection[2][0] = temporalSample.x / width;
-	projection[2][1] = temporalSample.y / height;
+	const foundation::math::vec2 &temporal_sample = application_state.temporal_samples[application_state.current_temporal_frame];
+	projection[2][0] = temporal_sample.x / width;
+	projection[2][1] = temporal_sample.y / height;
 
-	application_state.currentTemporalFrame = (application_state.currentTemporalFrame + 1) % ApplicationState::MAX_TEMPORAL_FRAMES;
+	application_state.current_temporal_frame = (application_state.current_temporal_frame + 1) % ApplicationState::MAX_TEMPORAL_FRAMES;
 
 	render_graph->setGroupParameter("Camera", "View", view);
 	render_graph->setGroupParameter("Camera", "IView", foundation::math::inverse(view));
@@ -98,25 +98,25 @@ void Application::update()
 
 	render_graph->setGroupParameter("Application", "Time", time);
 
-	if (application_state.firstFrame)
+	if (application_state.first_frame)
 	{
 		render_graph->setGroupParameter<foundation::math::mat4>("Camera", "ViewOld", view);
-		application_state.firstFrame = false;
+		application_state.first_frame = false;
 	}
 
 	bool reset_environment = false;
 
 	ImGui::Begin("Render Parameters");
 
-	int oldCurrentEnvironment = application_state.currentEnvironment;
-	if (ImGui::BeginCombo("Choose Your Destiny", application_resources->getIBLTexturePath(application_state.currentEnvironment)))
+	int oldcurrent_environment = application_state.current_environment;
+	if (ImGui::BeginCombo("Choose Your Destiny", application_resources->getIBLTexturePath(application_state.current_environment)))
 	{
 		for (int i = 0; i < application_resources->getNumIBLTextures(); i++)
 		{
-			bool selected = (i == application_state.currentEnvironment);
+			bool selected = (i == application_state.current_environment);
 			if (ImGui::Selectable(application_resources->getIBLTexturePath(i), &selected))
 			{
-				application_state.currentEnvironment = i;
+				application_state.current_environment = i;
 				reset_environment = true;
 			}
 			if (selected)
@@ -225,7 +225,7 @@ void Application::update()
 	if (reset_environment)
 	{
 		visual::components::SkyLight &comp = sky_light.getComponent<visual::components::SkyLight>();
-		comp.ibl_environment = application_resources->getIBLTexture(application_state.currentEnvironment);
+		comp.ibl_environment = application_resources->getIBLTexture(application_state.current_environment);
 	}
 }
 
@@ -250,9 +250,9 @@ void Application::render()
 
 	device->submitSyncked(command_buffer, swap_chain->getBackend());
 
-	if (!swap_chain->present(command_buffer) || windowResized)
+	if (!swap_chain->present(command_buffer) || window_resized)
 	{
-		windowResized = false;
+		window_resized = false;
 		recreateSwapChain();
 	}
 }
@@ -261,9 +261,6 @@ void Application::postRender()
 {
 	const foundation::math::mat4 &view = render_graph->getGroupParameter<foundation::math::mat4>("Camera", "View");
 	render_graph->setGroupParameter<foundation::math::mat4>("Camera", "ViewOld", view);
-
-	render_graph->swapRenderBuffers("CompositeTAA", "CompositeOld");
-	render_graph->swapRenderBuffers("SSRTAA", "SSROld");
 }
 
 /*
@@ -324,7 +321,7 @@ void Application::onFramebufferResize(GLFWwindow *window, int width, int height)
 	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
 	assert(application != nullptr);
 
-	application->windowResized = true;
+	application->window_resized = true;
 	application->width = static_cast<uint32_t>(width);
 	application->height = static_cast<uint32_t>(height);
 }
@@ -376,7 +373,7 @@ void Application::initRenderScene()
 	world = foundation::game::World::create();
 	visual_api = visual::API::create(resource_manager, world, device, compiler);
 
-	application_resources = new ApplicationResources(device, visual_api);
+	application_resources = new ApplicationResources(visual_api);
 	application_resources->init();
 
 	importer = new SceneImporter(world, visual_api);
@@ -384,10 +381,7 @@ void Application::initRenderScene()
 
 	sky_light = foundation::game::Entity(world);
 	sky_light.addComponent<visual::components::SkyLight>(
-		application_resources->getIBLTexture(0),
-		application_resources->getFullscreenQuad(),
-		application_resources->getShader(config::Shaders::FullscreenQuadVertex),
-		application_resources->getShader(config::Shaders::LBufferSkylight)
+		application_resources->getIBLTexture(0)
 	);
 }
 
@@ -413,187 +407,23 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	render_graph = visual::RenderGraph::create(device, world, file_system, resource_manager);
+	render_graph = visual::RenderGraph::create(visual_api, file_system);
+	render_graph->registerRenderPassType<RenderPassPrepareOld>();
+	render_graph->registerRenderPassType<RenderPassGeometry>();
+	render_graph->registerRenderPassType<RenderPassLBuffer>();
+	render_graph->registerRenderPassType<RenderPassPost>();
+	render_graph->registerRenderPassType<RenderPassImGui>();
+	render_graph->registerRenderPassType<RenderPassSwapRenderBuffers>();
+
 	render_graph->load("shaders/render_graph/schema.yaml");
 
-	constexpr uint32_t MAX_SSAO_SAMPLES = 32;
-
-	render_graph->registerRenderPass<RenderPassPrepareOld>();
-	render_graph->registerRenderPass<RenderPassGeometry>();
-	render_graph->registerRenderPass<RenderPassLBuffer>();
-	render_graph->registerRenderPass<RenderPassPost>();
-	render_graph->registerRenderPass<RenderPassImGui>();
-
-	// Prepare pass
-	RenderPassPrepareOld *prepare_pass = render_graph->createRenderPass<RenderPassPrepareOld>();
-	auto prepare_load_op = foundation::render::RenderPassLoadOp::CLEAR;
-	auto prepare_store_op = foundation::render::RenderPassStoreOp::STORE;
-
-	prepare_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
-
-	prepare_pass->addColorOutput("CompositeOld", prepare_load_op, prepare_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
-	prepare_pass->addColorOutput("SSROld", prepare_load_op, prepare_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
-
-	// GBuffer pass
-	RenderPassGeometry *gbuffer_pass = render_graph->createRenderPass<RenderPassGeometry>();
-	auto gbuffer_load_op = foundation::render::RenderPassLoadOp::CLEAR;
-	auto gbuffer_store_op = foundation::render::RenderPassStoreOp::STORE;
-
-	gbuffer_pass->addColorOutput("GBufferBaseColor", gbuffer_load_op, gbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
-	gbuffer_pass->addColorOutput("GBufferNormal", gbuffer_load_op, gbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
-	gbuffer_pass->addColorOutput("GBufferShading", gbuffer_load_op, gbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
-	gbuffer_pass->addColorOutput("GBufferVelocity", gbuffer_load_op, gbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
-	gbuffer_pass->setDepthStencilOutput("GBufferDepth", gbuffer_load_op, gbuffer_store_op, {1.0f, 0});
-
-	gbuffer_pass->addInputGroup("Application");
-	gbuffer_pass->addInputGroup("Camera");
-
-	gbuffer_pass->setMaterialBinding(2);
-	gbuffer_pass->setVertexShader(application_resources->getShader(config::Shaders::GBufferVertex));
-	gbuffer_pass->setFragmentShader(application_resources->getShader(config::Shaders::GBufferFragment));
-
-	// SSAO pass
-	RenderPassPost *ssao_pass = render_graph->createRenderPass<RenderPassPost>();
-
-	ssao_pass->setFragmentShader(application_resources->getShader(config::Shaders::SSAOFragment));
-	ssao_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
-
-	ssao_pass->addColorOutput("SSAORough", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
-
-	ssao_pass->addInputGroup("Camera");
-	ssao_pass->addInputGroup("SSAO");
-	ssao_pass->addInputRenderBuffer("GBufferNormal");
-	ssao_pass->addInputRenderBuffer("GBufferDepth");
-
-	// SSAO Blur pass
-	RenderPassPost *ssao_blur_pass = render_graph->createRenderPass<RenderPassPost>();
-
-	ssao_blur_pass->setFragmentShader(application_resources->getShader(config::Shaders::SSAOBlurFragment));
-	ssao_blur_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
-
-	ssao_blur_pass->addColorOutput("SSAO", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
-
-	ssao_blur_pass->addInputRenderBuffer("SSAORough");
-
-	// LBuffer pass
-	RenderPassLBuffer *lbuffer_pass = render_graph->createRenderPass<RenderPassLBuffer>();
-	auto lbuffer_load_op = foundation::render::RenderPassLoadOp::CLEAR;
-	auto lbuffer_store_op = foundation::render::RenderPassStoreOp::STORE;
-
-	lbuffer_pass->addColorOutput("LBufferDiffuse", lbuffer_load_op, lbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
-	lbuffer_pass->addColorOutput("LBufferSpecular", lbuffer_load_op, lbuffer_store_op, {0.0f, 0.0f, 0.0f, 0.0f});
-
-	lbuffer_pass->addInputGroup("Camera");
-	lbuffer_pass->addInputRenderBuffer("GBufferBaseColor");
-	lbuffer_pass->addInputRenderBuffer("GBufferNormal");
-	lbuffer_pass->addInputRenderBuffer("GBufferShading");
-	lbuffer_pass->addInputRenderBuffer("GBufferDepth");
-
-	lbuffer_pass->setLightBinding(5);
-
-	// SSR Trace pass
-	RenderPassPost *ssr_trace_pass = render_graph->createRenderPass<RenderPassPost>();
-
-	ssr_trace_pass->setFragmentShader(application_resources->getShader(config::Shaders::SSRTraceFragment));
-	ssr_trace_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
-
-	ssr_trace_pass->addColorOutput("SSRTrace", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
-
-	ssr_trace_pass->addInputGroup("Application");
-	ssr_trace_pass->addInputGroup("Camera");
-	ssr_trace_pass->addInputGroup("SSR");
-	ssr_trace_pass->addInputRenderBuffer("GBufferNormal");
-	ssr_trace_pass->addInputRenderBuffer("GBufferShading");
-	ssr_trace_pass->addInputRenderBuffer("GBufferDepth");
-
-	// SSR Resolve pass
-	RenderPassPost *ssr_resolve_pass = render_graph->createRenderPass<RenderPassPost>();
-
-	ssr_resolve_pass->setFragmentShader(application_resources->getShader(config::Shaders::SSRResolveFragment));
-	ssr_resolve_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
-
-	ssr_resolve_pass->addColorOutput("SSR", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
-	ssr_resolve_pass->addColorOutput("SSRVelocity", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
-
-	ssr_resolve_pass->addInputGroup("Application");
-	ssr_resolve_pass->addInputGroup("Camera");
-	ssr_resolve_pass->addInputGroup("SSR");
-	ssr_resolve_pass->addInputRenderBuffer("GBufferBaseColor");
-	ssr_resolve_pass->addInputRenderBuffer("GBufferNormal");
-	ssr_resolve_pass->addInputRenderBuffer("GBufferShading");
-	ssr_resolve_pass->addInputRenderBuffer("GBufferDepth");
-	ssr_resolve_pass->addInputRenderBuffer("SSRTrace");
-	ssr_resolve_pass->addInputRenderBuffer("CompositeOld");
-
-	// SSR Temporal Filter pass
-	RenderPassPost *ssr_temporal_filter_pass = render_graph->createRenderPass<RenderPassPost>();
-
-	ssr_temporal_filter_pass->setFragmentShader(application_resources->getShader(config::Shaders::TemporalFilterFragment));
-	ssr_temporal_filter_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
-
-	ssr_temporal_filter_pass->addColorOutput("SSRTAA", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
-
-	ssr_temporal_filter_pass->addInputRenderBuffer("SSR");
-	ssr_temporal_filter_pass->addInputRenderBuffer("SSRVelocity");
-	ssr_temporal_filter_pass->addInputRenderBuffer("SSROld");
-
-	// Composite pass
-	RenderPassPost *composite_pass = render_graph->createRenderPass<RenderPassPost>();
-
-	composite_pass->setFragmentShader(application_resources->getShader(config::Shaders::CompositeFragment));
-	composite_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
-
-	composite_pass->addColorOutput("Composite", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
-
-	composite_pass->addInputRenderBuffer("LBufferDiffuse");
-	composite_pass->addInputRenderBuffer("LBufferSpecular");
-	composite_pass->addInputRenderBuffer("SSAO");
-	composite_pass->addInputRenderBuffer("SSRTAA");
-
-	// SSR Temporal Filter pass
-	RenderPassPost *temporal_aa_pass = render_graph->createRenderPass<RenderPassPost>();
-
-	temporal_aa_pass->setFragmentShader(application_resources->getShader(config::Shaders::TemporalFilterFragment));
-	temporal_aa_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
-
-	temporal_aa_pass->addColorOutput("CompositeTAA", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
-
-	temporal_aa_pass->addInputRenderBuffer("Composite");
-	temporal_aa_pass->addInputRenderBuffer("GBufferVelocity");
-	temporal_aa_pass->addInputRenderBuffer("CompositeOld");
-
-	// Tonemap pass
-	RenderPassPost *tonemap_pass = render_graph->createRenderPass<RenderPassPost>();
-
-	tonemap_pass->setFragmentShader(application_resources->getShader(config::Shaders::TonemappingFragment));
-	tonemap_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
-
-	tonemap_pass->addColorOutput("Color", foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
-
-	tonemap_pass->addInputRenderBuffer("CompositeTAA");
-
-	// Gamma pass
-	RenderPassPost *gamma_pass = render_graph->createRenderPass<RenderPassPost>();
-
-	gamma_pass->setFragmentShader(application_resources->getShader(config::Shaders::GammaFragment));
-	gamma_pass->setFullscreenQuad(application_resources->getShader(config::Shaders::FullscreenQuadVertex), application_resources->getFullscreenQuad());
-
-	gamma_pass->setSwapChainOutput(foundation::render::RenderPassLoadOp::DONT_CARE, foundation::render::RenderPassStoreOp::STORE, {});
-
-	gamma_pass->addInputRenderBuffer("Color");
-
 	// ImGui pass
-	imgui_pass = render_graph->createRenderPass<RenderPassImGui>();
-
-	imgui_pass->setSwapChainOutput(foundation::render::RenderPassLoadOp::LOAD, foundation::render::RenderPassStoreOp::STORE, {});
-
-	imgui_pass->setVertexShader(application_resources->getShader(config::Shaders::ImGuiVertex));
-	imgui_pass->setFragmentShader(application_resources->getShader(config::Shaders::ImGuiFragment));
+	imgui_pass = render_graph->getRenderPass<RenderPassImGui>("ImGui");
 	imgui_pass->setImGuiContext(ImGui::GetCurrentContext());
 
-	// TODO: Swap pass
-
 	// setup ssao
+	constexpr uint32_t MAX_SSAO_SAMPLES = 32;
+
 	uint32_t data[16];
 	for (uint32_t i = 0; i < 16; ++i)
 	{
@@ -626,9 +456,6 @@ void Application::initRenderers()
 	render_graph->setGroupTexture("SSAO", "Noise", ssao_noise);
 	render_graph->setGroupParameter<foundation::math::vec4>("SSAO", "Samples", MAX_SSAO_SAMPLES, samples);
 
-	// setup ssr
-	render_graph->setGroupTexture("SSR", "Noise", application_resources->getBlueNoiseTexture());
-
 	// init render graph
 	render_graph->setSwapChain(swap_chain->getBackend());
 	render_graph->init(width, height);
@@ -644,7 +471,7 @@ void Application::initRenderers()
 	{
 		for (uint8_t x = 0; x < num_columns; ++x)
 		{
-			foundation::math::vec2 &sample = application_state.temporalSamples[x + y * num_columns];
+			foundation::math::vec2 &sample = application_state.temporal_samples[x + y * num_columns];
 			sample.x = halton2[x];
 			sample.y = halton3[y];
 
@@ -730,5 +557,5 @@ void Application::recreateSwapChain()
 	render_graph->setSwapChain(swap_chain->getBackend());
 	imgui_pass->invalidateTextureIDs();
 	render_graph->resize(width, height);
-	application_state.firstFrame = true;
+	application_state.first_frame = true;
 }

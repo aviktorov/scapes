@@ -22,11 +22,11 @@ namespace scapes::visual
 	class RenderGraphImpl : public RenderGraph
 	{
 	public:
-		RenderGraphImpl(foundation::render::Device *device, foundation::game::World *world, foundation::io::FileSystem *file_system, foundation::resources::ResourceManager *resource_manager);
+		RenderGraphImpl(API *api, foundation::io::FileSystem *file_system);
 		~RenderGraphImpl() final;
 
-		SCAPES_INLINE foundation::render::Device *getDevice() const final { return device; }
-		SCAPES_INLINE foundation::game::World *getWorld() const final { return world; }
+		SCAPES_INLINE API *getAPI() const final { return api; }
+		SCAPES_INLINE foundation::io::FileSystem *getFileSystem() const final { return file_system; }
 
 		SCAPES_INLINE uint32_t getWidth() const final { return width; }
 		SCAPES_INLINE uint32_t getHeight() const final { return height; }
@@ -78,6 +78,7 @@ namespace scapes::visual
 
 		SCAPES_INLINE size_t getNumRenderPasses() const final { return passes.size(); }
 		SCAPES_INLINE IRenderPass *getRenderPass(size_t index) const final { return passes[index]; }
+		IRenderPass *getRenderPass(const char *name) const final;
 
 		bool removeRenderPass(size_t index) final;
 		bool removeRenderPass(IRenderPass *pass) final;
@@ -127,8 +128,9 @@ namespace scapes::visual
 		const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t offset) const final;
 		bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_offset, size_t src_size, const void *src_data) final;
 
-		bool registerRenderPass(const char *name, PFN_createRenderPass function) final;
-		IRenderPass *createRenderPass(const char *name) final;
+		bool registerRenderPassType(const char *type_name, PFN_createRenderPass function) final;
+		IRenderPass *createRenderPass(const char *type_name, const char *name) final;
+		IRenderPass *createRenderPassInternal(const char *type_name);
 
 	private:
 		void destroyGroup(Group *group);
@@ -145,10 +147,14 @@ namespace scapes::visual
 		void invalidateFrameBufferCache();
 
 	private:
+		API *api {nullptr};
+		foundation::io::FileSystem *file_system {nullptr};
+
 		uint32_t width {0};
 		uint32_t height {0};
 
 		std::unordered_map<uint64_t, PFN_createRenderPass> render_pass_type_lookup;
+		std::unordered_map<uint64_t, IRenderPass *> pass_lookup;
 		std::vector<IRenderPass *> passes;
 
 		ParameterAllocator parameter_allocator;
@@ -161,9 +167,5 @@ namespace scapes::visual
 		std::unordered_map<uint64_t, foundation::render::FrameBuffer *> framebuffer_cache;
 
 		foundation::render::SwapChain *swap_chain {nullptr};
-		foundation::render::Device *device {nullptr};
-		foundation::game::World *world {nullptr};
-		foundation::io::FileSystem *file_system {nullptr};
-		foundation::resources::ResourceManager *resource_manager {nullptr};
 	};
 }

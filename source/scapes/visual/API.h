@@ -22,17 +22,12 @@ namespace scapes::visual
 
 		~APIImpl();
 
-		void drawRenderables(
-			uint8_t material_binding,
-			foundation::render::PipelineState *pipeline_state,
-			foundation::render::CommandBuffer *command_buffer
-		) final;
+		SCAPES_INLINE foundation::resources::ResourceManager *getResourceManager() const final { return resource_manager; }
+		SCAPES_INLINE foundation::game::World *getWorld() const final { return world; }
+		SCAPES_INLINE foundation::render::Device *getDevice() const final { return device; }
+		SCAPES_INLINE foundation::shaders::Compiler *getCompiler() const final { return compiler; }
 
-		void drawSkyLights(
-			uint8_t light_binding,
-			foundation::render::PipelineState *pipeline_state,
-			foundation::render::CommandBuffer *command_buffer
-		) final;
+		SCAPES_INLINE MeshHandle getFullscreenQuadMesh() const final { return fullscreen_quad; }
 
 		TextureHandle createTexture2D(
 			foundation::render::Format format,
@@ -47,7 +42,6 @@ namespace scapes::visual
 			foundation::render::Format format,
 			uint32_t width,
 			uint32_t height,
-			MeshHandle fullscreen_quad,
 			ShaderHandle vertex_shader,
 			ShaderHandle fragment_shader
 		) final;
@@ -113,13 +107,12 @@ namespace scapes::visual
 		foundation::render::Device *device {nullptr};
 		foundation::shaders::Compiler *compiler {nullptr};
 
+		scapes::visual::MeshHandle fullscreen_quad;
+
 		std::vector<TextureHandle> managed_textures;
 		std::vector<ShaderHandle> managed_shaders;
 		std::vector<MeshHandle> managed_meshes;
 		std::vector<RenderMaterialHandle> managed_render_materials;
 		std::vector<IBLTextureHandle> managed_ibl_textures;
-
-		foundation::game::Query<foundation::components::Transform, components::Renderable> *renderable_query {nullptr};
-		foundation::game::Query<components::SkyLight> *skylight_query {nullptr};
 	};
 }

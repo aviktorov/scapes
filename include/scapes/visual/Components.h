@@ -12,9 +12,6 @@ namespace scapes::visual::components
 	struct SkyLight
 	{
 		IBLTextureHandle ibl_environment;
-		MeshHandle mesh;
-		ShaderHandle vertex_shader;
-		ShaderHandle fragment_shader;
 	};
 
 	template<>

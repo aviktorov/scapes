@@ -13,11 +13,11 @@ using namespace scapes::visual;
 
 /*
  */
-static foundation::render::Format deduceFormat(size_t pixelSize, int channels)
+static foundation::render::Format deduceFormat(size_t pixel_size, int channels)
 {
 	assert(channels > 0 && channels <= 4);
 
-	if (pixelSize == sizeof(stbi_uc))
+	if (pixel_size == sizeof(stbi_uc))
 	{
 		switch (channels)
 		{
@@ -28,7 +28,7 @@ static foundation::render::Format deduceFormat(size_t pixelSize, int channels)
 		}
 	}
 
-	if (pixelSize == sizeof(float))
+	if (pixel_size == sizeof(float))
 	{
 		switch (channels)
 		{
