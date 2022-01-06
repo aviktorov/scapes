@@ -6,41 +6,45 @@
 
 #include <algorithm>
 
+namespace yaml = scapes::foundation::serde::yaml;
+namespace math = scapes::foundation::math;
+namespace render = scapes::foundation::render;
+
 namespace c4
 {
 	/*
 	 */
-	SCAPES_INLINE bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::render::Format *format)
+	static const char *supported_render_formats[static_cast<size_t>(render::Format::MAX)] =
 	{
-		static const char *supported_formats[static_cast<size_t>(scapes::foundation::render::Format::MAX)] =
+		"UNDEFINED",
+
+		"R8_UNORM", "R8_SNORM", "R8_UINT", "R8_SINT",
+		"R8G8_UNORM", "R8G8_SNORM", "R8G8_UINT", "R8G8_SINT",
+		"R8G8B8_UNORM", "R8G8B8_SNORM", "R8G8B8_UINT", "R8G8B8_SINT",
+		"B8G8R8_UNORM", "B8G8R8_SNORM", "B8G8R8_UINT", "B8G8R8_SINT",
+		"R8G8B8A8_UNORM", "R8G8B8A8_SNORM", "R8G8B8A8_UINT", "R8G8B8A8_SINT",
+		"B8G8R8A8_UNORM", "B8G8R8A8_SNORM", "B8G8R8A8_UINT", "B8G8R8A8_SINT",
+
+		"R16_UNORM", "R16_SNORM", "R16_UINT", "R16_SINT", "R16_SFLOAT", "R16G16_UNORM",
+		"R16G16_SNORM", "R16G16_UINT", "R16G16_SINT", "R16G16_SFLOAT",
+		"R16G16B16_UNORM", "R16G16B16_SNORM", "R16G16B16_UINT", "R16G16B16_SINT", "R16G16B16_SFLOAT",
+		"R16G16B16A16_UNORM", "R16G16B16A16_SNORM", "R16G16B16A16_UINT", "R16G16B16A16_SINT", "R16G16B16A16_SFLOAT",
+
+		"R32_UINT", "R32_SINT", "R32_SFLOAT",
+		"R32G32_UINT", "R32G32_SINT", "R32G32_SFLOAT",
+		"R32G32B32_UINT", "R32G32B32_SINT", "R32G32B32_SFLOAT",
+		"R32G32B32A32_UINT", "R32G32B32A32_SINT", "R32G32B32A32_SFLOAT",
+
+		"D16_UNORM", "D16_UNORM_S8_UINT", "D24_UNORM", "D24_UNORM_S8_UINT", "D32_SFLOAT", "D32_SFLOAT_S8_UINT",
+	};
+
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, render::Format *format)
+	{
+		for (size_t i = 0; i < static_cast<size_t>(render::Format::MAX); ++i)
 		{
-			"UNDEFINED",
-
-			"R8_UNORM", "R8_SNORM", "R8_UINT", "R8_SINT",
-			"R8G8_UNORM", "R8G8_SNORM", "R8G8_UINT", "R8G8_SINT",
-			"R8G8B8_UNORM", "R8G8B8_SNORM", "R8G8B8_UINT", "R8G8B8_SINT",
-			"B8G8R8_UNORM", "B8G8R8_SNORM", "B8G8R8_UINT", "B8G8R8_SINT",
-			"R8G8B8A8_UNORM", "R8G8B8A8_SNORM", "R8G8B8A8_UINT", "R8G8B8A8_SINT",
-			"B8G8R8A8_UNORM", "B8G8R8A8_SNORM", "B8G8R8A8_UINT", "B8G8R8A8_SINT",
-
-			"R16_UNORM", "R16_SNORM", "R16_UINT", "R16_SINT", "R16_SFLOAT", "R16G16_UNORM",
-			"R16G16_SNORM", "R16G16_UINT", "R16G16_SINT", "R16G16_SFLOAT",
-			"R16G16B16_UNORM", "R16G16B16_SNORM", "R16G16B16_UINT", "R16G16B16_SINT", "R16G16B16_SFLOAT",
-			"R16G16B16A16_UNORM", "R16G16B16A16_SNORM", "R16G16B16A16_UINT", "R16G16B16A16_SINT", "R16G16B16A16_SFLOAT",
-
-			"R32_UINT", "R32_SINT", "R32_SFLOAT",
-			"R32G32_UINT", "R32G32_SINT", "R32G32_SFLOAT",
-			"R32G32B32_UINT", "R32G32B32_SINT", "R32G32B32_SFLOAT",
-			"R32G32B32A32_UINT", "R32G32B32A32_SINT", "R32G32B32A32_SFLOAT",
-
-			"D16_UNORM", "D16_UNORM_S8_UINT", "D24_UNORM", "D24_UNORM_S8_UINT", "D32_SFLOAT", "D32_SFLOAT_S8_UINT",
-		};
-
-		for (size_t i = 0; i < static_cast<size_t>(scapes::foundation::render::Format::MAX); ++i)
-		{
-			if (buf.compare(supported_formats[i], strlen(supported_formats[i])) == 0)
+			if (buf.compare(supported_render_formats[i], strlen(supported_render_formats[i])) == 0)
 			{
-				*format = static_cast<scapes::foundation::render::Format>(i);
+				*format = static_cast<render::Format>(i);
 				return true;
 			}
 		}
@@ -48,35 +52,43 @@ namespace c4
 		return false;
 	}
 
+	size_t to_chars(yaml::substr buffer, render::Format format)
+	{
+		if (format == render::Format::UNDEFINED)
+			return 0;
+
+		return ryml::format(buffer, "{}", supported_render_formats[static_cast<size_t>(format)]);
+	}
+
 	/*
 	 */
-	using qualifier = scapes::foundation::math::qualifier;
+	using qualifier = math::qualifier;
 
-	template<typename T, qualifier Q> bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::math::vec<2, T, Q> *vec)
+	template<typename T, qualifier Q> bool from_chars(const yaml::csubstr buf, math::vec<2, T, Q> *vec)
 	{
-		size_t ret = scapes::foundation::serde::yaml::unformat(buf, "{},{}", vec->x, vec->y);
+		size_t ret = yaml::unformat(buf, "{},{}", vec->x, vec->y);
 		return ret != ryml::yml::npos;
 	}
 
-	template<typename T, qualifier Q> bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::math::vec<3, T, Q> *vec)
+	template<typename T, qualifier Q> bool from_chars(const yaml::csubstr buf, math::vec<3, T, Q> *vec)
 	{
-		size_t ret = scapes::foundation::serde::yaml::unformat(buf, "{},{},{}", vec->x, vec->y, vec->z);
+		size_t ret = yaml::unformat(buf, "{},{},{}", vec->x, vec->y, vec->z);
 		return ret != ryml::yml::npos;
 	}
 
-	template<typename T, qualifier Q> bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::math::vec<4, T, Q> *vec)
+	template<typename T, qualifier Q> bool from_chars(const yaml::csubstr buf, math::vec<4, T, Q> *vec)
 	{
-		size_t ret = scapes::foundation::serde::yaml::unformat(buf, "{},{},{},{}", vec->x, vec->y, vec->z, vec->w);
+		size_t ret = yaml::unformat(buf, "{},{},{},{}", vec->x, vec->y, vec->z, vec->w);
 		return ret != ryml::yml::npos;
 	}
 
-	SCAPES_INLINE bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::math::mat3 *mat)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, math::mat3 *mat)
 	{
-		scapes::foundation::math::vec3 &c0 = (*mat)[0];
-		scapes::foundation::math::vec3 &c1 = (*mat)[1];
-		scapes::foundation::math::vec3 &c2 = (*mat)[2];
+		math::vec3 &c0 = (*mat)[0];
+		math::vec3 &c1 = (*mat)[1];
+		math::vec3 &c2 = (*mat)[2];
 
-		size_t ret = scapes::foundation::serde::yaml::unformat(
+		size_t ret = yaml::unformat(
 			buf,
 			"{},{},{},{},{},{},{},{},{}",
 			c0.x, c0.y, c0.z,
@@ -87,14 +99,14 @@ namespace c4
 		return ret != ryml::yml::npos;
 	}
 
-	SCAPES_INLINE bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::math::mat4 *mat)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, math::mat4 *mat)
 	{
-		scapes::foundation::math::vec4 &c0 = (*mat)[0];
-		scapes::foundation::math::vec4 &c1 = (*mat)[1];
-		scapes::foundation::math::vec4 &c2 = (*mat)[2];
-		scapes::foundation::math::vec4 &c3 = (*mat)[3];
+		math::vec4 &c0 = (*mat)[0];
+		math::vec4 &c1 = (*mat)[1];
+		math::vec4 &c2 = (*mat)[2];
+		math::vec4 &c3 = (*mat)[3];
 
-		size_t ret = scapes::foundation::serde::yaml::unformat(
+		size_t ret = yaml::unformat(
 			buf,
 			"{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
 			c0.x, c0.y, c0.z, c0.w,
@@ -108,22 +120,22 @@ namespace c4
 
 	/*
 	 */
-	bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::visual::GroupParameterType *type)
+	static const char *supported_group_parameter_types[static_cast<size_t>(scapes::visual::GroupParameterType::MAX)] =
 	{
-		static const char *supported_formats[static_cast<size_t>(scapes::visual::GroupParameterType::MAX)] =
-		{
-			"undefined",
-			"float", "int", "uint",
-			"vec2", "vec3", "vec4",
-			"ivec2", "ivec3", "ivec4",
-			"uvec2", "uvec3", "uvec4",
-			"mat3", "mat4",
-		};
+		"undefined",
+		"float", "int", "uint",
+		"vec2", "vec3", "vec4",
+		"ivec2", "ivec3", "ivec4",
+		"uvec2", "uvec3", "uvec4",
+		"mat3", "mat4",
+	};
 
+	bool from_chars(const yaml::csubstr buf, scapes::visual::GroupParameterType *type)
+	{
 		// NOTE: start index is intentionally set to 1 in order to skip check for UNDEFINED type
 		for (size_t i = 1; i < static_cast<size_t>(scapes::visual::GroupParameterType::MAX); ++i)
 		{
-			if (buf.compare(supported_formats[i], strlen(supported_formats[i])) == 0)
+			if (buf.compare(supported_group_parameter_types[i], strlen(supported_group_parameter_types[i])) == 0)
 			{
 				*type = static_cast<scapes::visual::GroupParameterType>(i);
 				return true;
@@ -131,6 +143,14 @@ namespace c4
 		}
 
 		return false;
+	}
+
+	size_t to_chars(yaml::substr buffer, scapes::visual::GroupParameterType type)
+	{
+		if (type == scapes::visual::GroupParameterType::UNDEFINED)
+			return 0;
+
+		return ryml::format(buffer, "{}", supported_group_parameter_types[static_cast<size_t>(type)]);
 	}
 }
 
@@ -156,7 +176,7 @@ namespace scapes::visual
 		foundation::math::mat4 m4;
 	};
 
-	static GroupParameterValue parseGroupParameterValue(GroupParameterType type, const foundation::serde::yaml::NodeRef node)
+	static GroupParameterValue parseGroupParameterValue(GroupParameterType type, const yaml::NodeRef node)
 	{
 		GroupParameterValue ret;
 
@@ -352,8 +372,8 @@ namespace scapes::visual
 		file->read(data, sizeof(uint8_t), size);
 		file_system->close(file);
 
-		foundation::serde::yaml::csubstr yaml(reinterpret_cast<const char *>(data), size);
-		foundation::serde::yaml::Tree &tree = foundation::serde::yaml::parse(yaml);
+		yaml::csubstr yaml(reinterpret_cast<const char *>(data), size);
+		yaml::Tree &tree = yaml::parse(yaml);
 		bool result = deserialize(tree);
 		delete[] data;
 
@@ -362,13 +382,30 @@ namespace scapes::visual
 
 	bool RenderGraphImpl::save(const foundation::io::URI &uri)
 	{
-		// TODO: implement
-		return false;
+		foundation::io::Stream *file = file_system->open(uri, "wb");
+		if (!file)
+		{
+			foundation::Log::error("RenderGraph::save(): can't open \"%s\" file\n", uri);
+			return false;
+		}
+
+		const yaml::Tree &tree = serialize();
+		yaml::csubstr output = yaml::emit(tree, tree.root_id(), yaml::substr{}, false);
+
+		char *data = new char[output.len];
+		yaml::emit(tree, tree.root_id(), yaml::to_substr(data));
+
+		size_t bytes_written = file->write(data, sizeof(char), output.len);
+		file_system->close(file);
+
+		delete[] data;
+
+		return bytes_written == output.len;
 	}
 
 	/*
 	 */
-	bool RenderGraphImpl::deserialize(const foundation::serde::yaml::Tree &tree)
+	bool RenderGraphImpl::deserialize(const yaml::Tree &tree)
 	{
 		// TODO: split this into multiple methods for the sake of readability
 		using namespace foundation::serde;
@@ -547,13 +584,15 @@ namespace scapes::visual
 						{
 							yaml::csubstr renderbuffer_child_key = renderbuffer_child.key();
 
-							if (renderbuffer_child_key.compare("name") == 0)
+							if (renderbuffer_child_key.compare("name") == 0 && renderbuffer_child.has_val())
 							{
 								yaml::csubstr renderbuffer_child_value = renderbuffer_child.val();
 								name = std::string(renderbuffer_child_value.data(), renderbuffer_child_value.size());
 							}
-							else if (renderbuffer_child_key.compare("format") == 0)
+							else if (renderbuffer_child_key.compare("format") == 0 && renderbuffer_child.has_val())
 								renderbuffer_child >> format;
+							else if (renderbuffer_child_key.compare("downscale") == 0 && renderbuffer_child.has_val())
+								renderbuffer_child >> downscale;
 						}
 
 						if (!name.empty() && format != foundation::render::Format::UNDEFINED)
@@ -603,7 +642,7 @@ namespace scapes::visual
 					IRenderPass *render_pass = pass_types_runtime.constructors[render_pass_type_index](this);
 					if (!render_pass->deserialize(child))
 					{
-						foundation::Log::message("Can't deserialize render pass with type \"%s\"\n", type_name.c_str());
+						foundation::Log::error("Can't deserialize render pass with type \"%s\"\n", type_name.c_str());
 
 						delete render_pass;
 						render_pass = nullptr;
@@ -624,34 +663,113 @@ namespace scapes::visual
 		return true;
 	}
 
-	foundation::serde::yaml::Tree RenderGraphImpl::serialize()
+	yaml::Tree RenderGraphImpl::serialize()
 	{
-		foundation::serde::yaml::Tree tree;
-		foundation::serde::yaml::NodeRef root = tree.rootref();
+		yaml::Tree tree;
+		yaml::NodeRef root = tree.rootref();
+		root |= yaml::STREAM;
 
 		// serialize all parameter groups
 		for (auto &[hash, group] : group_lookup)
 		{
-			foundation::serde::yaml::NodeRef child = root.append_child();
+			yaml::NodeRef child = root.append_child();
+			child |= yaml::DOCMAP;
 
-			child.set_type(foundation::serde::yaml::DOC);
+			child = child.append_child();
+			child |= yaml::MAP;
 
-			child["name"] = foundation::serde::yaml::csubstr(group->name.data(), group->name.size());
+			child.set_key("ParameterGroup");
 
-			foundation::serde::yaml::NodeRef parameters = child.append_child();
-			parameters.set_key("parameters");
+			child["name"] << group->name.c_str();
 
-			foundation::serde::yaml::NodeRef parameters_container = parameters.append_child();
-
-			for (size_t i = 0; i < group->parameters.size(); ++i)
+			if (group->parameters.size() > 0)
 			{
-				const GroupParameter *parameter = group->parameters[i];
+				yaml::NodeRef parameters = child.append_child();
+				parameters |= yaml::SEQ;
+				parameters.set_key("parameters");
 
-				foundation::serde::yaml::NodeRef parameter_node = parameters.append_child();
-				// parameter_node["name"] = ... ;
-				// parameter_node["type"] << ... ;
-				// parameter_node[""]
+				for (size_t i = 0; i < group->parameters.size(); ++i)
+				{
+					yaml::NodeRef parameter_node = parameters.append_child();
+					parameter_node |= yaml::MAP;
+
+					const GroupParameter *parameter = group->parameters[i];
+
+					parameter_node["name"] << parameter->name.c_str();
+					if (parameter->type != GroupParameterType::UNDEFINED)
+						parameter_node["type"] << parameter->type;
+					else
+						parameter_node["size"] << parameter->type_size;
+
+					if (parameter->num_elements > 1)
+						parameter_node["elements"] << parameter->num_elements;
+
+					// TODO: serialize current / default value?
+				}
 			}
+
+			if (group->textures.size() > 0)
+			{
+				yaml::NodeRef textures = child.append_child();
+				textures |= yaml::SEQ;
+				textures.set_key("textures");
+
+				for (size_t i = 0; i < group->textures.size(); ++i)
+				{
+					yaml::NodeRef texture_node = textures.append_child();
+					texture_node |= yaml::MAP;
+
+					const GroupTexture *texture = group->textures[i];
+
+					texture_node["name"] << texture->name.c_str();
+
+					// TODO: get URI by TextureHandle
+				}
+			}
+		}
+
+		// serialize all render buffers
+		if (render_buffer_lookup.size() > 0)
+		{
+			yaml::NodeRef child = root.append_child();
+			child |= yaml::DOCMAP;
+
+			child = child.append_child();
+			child |= yaml::SEQ;
+
+			child.set_key("RenderBuffers");
+
+			for (auto &[hash, render_buffer] : render_buffer_lookup)
+			{
+				yaml::NodeRef render_buffer_node = child.append_child();
+				render_buffer_node |= yaml::MAP;
+
+				render_buffer_node["name"] << render_buffer->name.c_str();
+				render_buffer_node["format"] << render_buffer->format;
+
+				if (render_buffer->downscale != 1)
+					render_buffer_node["downscale"] << render_buffer->downscale;
+			}
+		}
+
+		// serialize all render passes
+		for (size_t i = 0; i < passes_runtime.passes.size(); ++i)
+		{
+			yaml::NodeRef child = root.append_child();
+
+			child.set_type(yaml::DOCMAP);
+
+			child = child.append_child();
+			child |= yaml::MAP;
+
+			child.set_key("RenderPass");
+
+			child["name"] << passes_runtime.names[i].c_str();
+			child["type"] << passes_runtime.type_names[i].c_str();
+
+			IRenderPass *pass = passes_runtime.passes[i];
+			if (!pass->serialize(child))
+				foundation::Log::error("Can't serialize render pass with type \"%s\"\n", passes_runtime.type_names[i].c_str());
 		}
 
 		return tree;
@@ -792,6 +910,7 @@ namespace scapes::visual
 		Group *group = it->second;
 
 		GroupTexture *texture = new GroupTexture();
+		texture->name = std::string(texture_name);
 		texture->group = group;
 
 		group->textures.push_back(texture);

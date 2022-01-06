@@ -47,7 +47,7 @@ namespace scapes::visual
 		virtual void render(foundation::render::CommandBuffer *command_buffer) = 0;
 
 		virtual bool deserialize(const foundation::serde::yaml::NodeRef node) = 0;
-		virtual foundation::serde::yaml::NodeRef serialize() = 0;
+		virtual bool serialize(foundation::serde::yaml::NodeRef node) = 0;
 	};
 
 	/*

@@ -15,18 +15,20 @@ using namespace scapes;
 
 namespace c4
 {
+	/*
+	 */
+	static const char *supported_render_pass_load_ops[static_cast<size_t>(foundation::render::RenderPassLoadOp::MAX)] =
+	{
+		"LOAD",
+		"CLEAR",
+		"DONT_CARE",
+	};
+
 	SCAPES_INLINE bool from_chars(const foundation::serde::yaml::csubstr buf, foundation::render::RenderPassLoadOp *load_op)
 	{
-		static const char *supported_formats[foundation::render::RenderPassLoadOp::MAX] =
-		{
-			"LOAD",
-			"CLEAR",
-			"DONT_CARE",
-		};
-
 		for (size_t i = 0; i < static_cast<size_t>(foundation::render::RenderPassLoadOp::MAX); ++i)
 		{
-			if (buf.compare(supported_formats[i], strlen(supported_formats[i])) == 0)
+			if (buf.compare(supported_render_pass_load_ops[i], strlen(supported_render_pass_load_ops[i])) == 0)
 			{
 				*load_op = static_cast<foundation::render::RenderPassLoadOp>(i);
 				return true;
@@ -36,17 +38,24 @@ namespace c4
 		return false;
 	}
 
+	size_t to_chars(foundation::serde::yaml::substr buffer, foundation::render::RenderPassLoadOp load_op)
+	{
+		return ryml::format(buffer, "{}", supported_render_pass_load_ops[static_cast<size_t>(load_op)]);
+	}
+
+	/*
+	 */
+	static const char *supported_render_pass_store_ops[static_cast<size_t>(foundation::render::RenderPassStoreOp::MAX)] =
+	{
+		"STORE",
+		"DONT_CARE",
+	};
+
 	SCAPES_INLINE bool from_chars(const foundation::serde::yaml::csubstr buf, foundation::render::RenderPassStoreOp *store_op)
 	{
-		static const char *supported_formats[foundation::render::RenderPassStoreOp::MAX] =
-		{
-			"STORE",
-			"DONT_CARE",
-		};
-
 		for (size_t i = 0; i < static_cast<size_t>(foundation::render::RenderPassStoreOp::MAX); ++i)
 		{
-			if (buf.compare(supported_formats[i], strlen(supported_formats[i])) == 0)
+			if (buf.compare(supported_render_pass_store_ops[i], strlen(supported_render_pass_store_ops[i])) == 0)
 			{
 				*store_op = static_cast<foundation::render::RenderPassStoreOp>(i);
 				return true;
@@ -56,6 +65,13 @@ namespace c4
 		return false;
 	}
 
+	size_t to_chars(foundation::serde::yaml::substr buffer, foundation::render::RenderPassStoreOp store_op)
+	{
+		return ryml::format(buffer, "{}", supported_render_pass_store_ops[static_cast<size_t>(store_op)]);
+	}
+
+	/*
+	 */
 	SCAPES_INLINE bool from_chars(const foundation::serde::yaml::csubstr buf, foundation::render::RenderPassClearColor *clear_color)
 	{
 		size_t ret = foundation::serde::yaml::unformat(
@@ -70,6 +86,20 @@ namespace c4
 		return ret != ryml::yml::npos;
 	}
 
+	size_t to_chars(foundation::serde::yaml::substr buffer, foundation::render::RenderPassClearColor clear_color)
+	{
+		return ryml::format(
+			buffer,
+			"{},{},{},{}",
+			clear_color.as_f32[0],
+			clear_color.as_f32[1],
+			clear_color.as_f32[2],
+			clear_color.as_f32[3]
+		);
+	}
+
+	/*
+	 */
 	SCAPES_INLINE bool from_chars(const foundation::serde::yaml::csubstr buf, foundation::render::RenderPassClearDepthStencil *clear_depthstencil)
 	{
 		size_t ret = foundation::serde::yaml::unformat(
@@ -80,6 +110,16 @@ namespace c4
 		);
 
 		return ret != ryml::yml::npos;
+	}
+
+	size_t to_chars(foundation::serde::yaml::substr buffer, foundation::render::RenderPassClearDepthStencil clear_depthstencil)
+	{
+		return ryml::format(
+			buffer,
+			"{},{}",
+			clear_depthstencil.depth,
+			clear_depthstencil.stencil
+		);
 	}
 }
 
@@ -176,10 +216,10 @@ void RenderPassGraphicsBase::render(foundation::render::CommandBuffer *command_b
 		uint32_t num_render_buffers = 0;
 
 		for (size_t i = 0; i < color_outputs.size(); ++i)
-			render_buffers[num_render_buffers++] = color_outputs[i].texture_name.c_str();
+			render_buffers[num_render_buffers++] = color_outputs[i].renderbuffer_name.c_str();
 
 		if (has_depthstencil_output)
-			render_buffers[num_render_buffers++] = depthstencil_output.texture_name.c_str();
+			render_buffers[num_render_buffers++] = depthstencil_output.renderbuffer_name.c_str();
 
 		foundation::render::FrameBuffer *frame_buffer = render_graph->fetchFrameBuffer(num_render_buffers, render_buffers);
 		assert(frame_buffer);
@@ -374,9 +414,96 @@ bool RenderPassGraphicsBase::deserialize(const foundation::serde::yaml::NodeRef 
 	return result;
 }
 
-foundation::serde::yaml::NodeRef RenderPassGraphicsBase::serialize()
+bool RenderPassGraphicsBase::serialize(foundation::serde::yaml::NodeRef node)
 {
-	return foundation::serde::yaml::NodeRef();
+	if (input_groups.size() > 0)
+	{
+		foundation::serde::yaml::NodeRef container = node.append_child();
+		container.set_key("input_groups");
+		container |= foundation::serde::yaml::SEQ;
+
+		for (const std::string &name : input_groups)
+		{
+			foundation::serde::yaml::NodeRef child = container.append_child();
+			child << name.c_str();
+		}
+	}
+
+	if (input_render_buffers.size() > 0)
+	{
+		foundation::serde::yaml::NodeRef container = node.append_child();
+		container.set_key("input_renderbuffers");
+		container |= foundation::serde::yaml::SEQ;
+
+		for (const std::string &name : input_render_buffers)
+		{
+			foundation::serde::yaml::NodeRef child = container.append_child();
+			child << name.c_str();
+		}
+	}
+
+	if (color_outputs.size() > 0)
+	{
+		foundation::serde::yaml::NodeRef container = node.append_child();
+		container.set_key("output_colors");
+		container |= foundation::serde::yaml::SEQ;
+
+		for (const FrameBufferOutput color_output : color_outputs)
+		{
+			foundation::serde::yaml::NodeRef child = container.append_child();
+			child |= foundation::serde::yaml::MAP;
+
+			child["name"] << color_output.renderbuffer_name.c_str();
+
+			if (color_output.load_op != foundation::render::RenderPassLoadOp::LOAD)
+				child["load_op"] << color_output.load_op;
+
+			if (color_output.store_op != foundation::render::RenderPassStoreOp::STORE)
+				child["store_op"] << color_output.store_op;
+
+			if (color_output.load_op == foundation::render::RenderPassLoadOp::CLEAR)
+				child["clear_color"] << color_output.clear_value.as_color;
+		}
+	}
+
+	if (has_depthstencil_output)
+	{
+		foundation::serde::yaml::NodeRef child = node.append_child();
+		child.set_key("output_depthstencil");
+		child |= foundation::serde::yaml::MAP;
+
+		child["name"] << depthstencil_output.renderbuffer_name.c_str();
+
+		if (depthstencil_output.load_op != foundation::render::RenderPassLoadOp::LOAD)
+			child["load_op"] << depthstencil_output.load_op;
+
+		if (depthstencil_output.store_op != foundation::render::RenderPassStoreOp::STORE)
+			child["store_op"] << depthstencil_output.store_op;
+
+		if (depthstencil_output.load_op == foundation::render::RenderPassLoadOp::CLEAR)
+			child["clear_color"] << depthstencil_output.clear_value.as_depth_stencil;
+	}
+
+	if (has_swapchain_output)
+	{
+		foundation::serde::yaml::NodeRef child = node.append_child();
+		child.set_key("output_swapchain");
+		child |= foundation::serde::yaml::MAP;
+
+		child["load_op"] << swapchain_output.load_op;
+
+		if (swapchain_output.store_op != foundation::render::RenderPassStoreOp::STORE)
+			child["store_op"] << swapchain_output.store_op;
+
+		if (swapchain_output.load_op == foundation::render::RenderPassLoadOp::CLEAR)
+			child["clear_color"] << swapchain_output.clear_value;
+	}
+
+	// TODO: get URI from shader handles
+
+	bool result = onSerialize(node);
+
+	return result;
 }
 
 /*
@@ -433,7 +560,7 @@ void RenderPassGraphicsBase::addColorOutput(
 )
 {
 	FrameBufferOutput output = {};
-	output.texture_name = std::string(name);
+	output.renderbuffer_name = std::string(name);
 	output.load_op = load_op;
 	output.store_op = store_op;
 	output.clear_value.as_color = clear_value;
@@ -446,7 +573,7 @@ void RenderPassGraphicsBase::removeColorOutput(const char *name)
 	const std::string texture_name = std::string(name);
 	for (auto it = color_outputs.begin(); it != color_outputs.end(); ++it)
 	{
-		if (it->texture_name == texture_name)
+		if (it->renderbuffer_name == texture_name)
 		{
 			color_outputs.erase(it);
 			return;
@@ -468,7 +595,7 @@ void RenderPassGraphicsBase::setDepthStencilOutput(
 	foundation::render::RenderPassClearDepthStencil clear_value
 )
 {
-	depthstencil_output.texture_name = std::string(name);
+	depthstencil_output.renderbuffer_name = std::string(name);
 	depthstencil_output.load_op = load_op;
 	depthstencil_output.store_op = store_op;
 	depthstencil_output.clear_value.as_depth_stencil = clear_value;
@@ -545,7 +672,7 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 	{
 		foundation::render::RenderPassAttachment &attachment = attachments[num_attachments];
 		const FrameBufferOutput &output = color_outputs[num_attachments];
-		const std::string &texture_name = output.texture_name;
+		const std::string &texture_name = output.renderbuffer_name;
 
 		attachment.clear_value = output.clear_value;
 		attachment.load_op = output.load_op;
@@ -559,7 +686,7 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 	if (has_depthstencil_output)
 	{
 		foundation::render::RenderPassAttachment &attachment = attachments[num_attachments];
-		const std::string &texture_name = depthstencil_output.texture_name;
+		const std::string &texture_name = depthstencil_output.renderbuffer_name;
 
 		attachment.clear_value = depthstencil_output.clear_value;
 		attachment.load_op = depthstencil_output.load_op;
@@ -697,6 +824,13 @@ bool RenderPassGeometry::onDeserialize(const scapes::foundation::serde::yaml::No
 	return true;
 }
 
+bool RenderPassGeometry::onSerialize(scapes::foundation::serde::yaml::NodeRef node)
+{
+	node["input_material_binding"] << material_binding;
+
+	return true;
+}
+
 /*
  */
 visual::IRenderPass *RenderPassLBuffer::create(visual::RenderGraph *render_graph)
@@ -762,6 +896,13 @@ bool RenderPassLBuffer::onDeserialize(const scapes::foundation::serde::yaml::Nod
 		if (child_key.compare("input_light_binding") == 0 && child.has_val())
 			child >> light_binding;
 	}
+
+	return true;
+}
+
+bool RenderPassLBuffer::onSerialize(scapes::foundation::serde::yaml::NodeRef node)
+{
+	node["input_light_binding"] << light_binding;
 
 	return true;
 }
@@ -1119,9 +1260,25 @@ bool RenderPassSwapRenderBuffers::deserialize(const foundation::serde::yaml::Nod
 	return true;
 }
 
-foundation::serde::yaml::NodeRef RenderPassSwapRenderBuffers::serialize()
+bool RenderPassSwapRenderBuffers::serialize(foundation::serde::yaml::NodeRef node)
 {
-	return foundation::serde::yaml::NodeRef();
+	if (pairs.size() > 0)
+	{
+		foundation::serde::yaml::NodeRef container = node.append_child();
+		container.set_key("pairs");
+		container |= foundation::serde::yaml::SEQ;
+
+		for (const SwapPair &pair : pairs)
+		{
+			foundation::serde::yaml::NodeRef child = container.append_child();
+			child |= foundation::serde::yaml::MAP;
+
+			child["src"] << pair.src.c_str();
+			child["dst"] << pair.dst.c_str();
+		}
+	}
+
+	return true;
 }
 
 /*

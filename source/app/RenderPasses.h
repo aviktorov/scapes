@@ -25,7 +25,7 @@ public:
 	void invalidate() final;
 
 	bool deserialize(const scapes::foundation::serde::yaml::NodeRef node) override;
-	scapes::foundation::serde::yaml::NodeRef serialize() override;
+	bool serialize(scapes::foundation::serde::yaml::NodeRef node) override;
 
 	// TODO: manually set bind set index
 	void addInputGroup(const char *name);
@@ -88,6 +88,7 @@ protected:
 	virtual void onShutdown() {}
 	virtual void onInvalidate() {};
 	virtual bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) { return true; };
+	virtual bool onSerialize(scapes::foundation::serde::yaml::NodeRef node) { return true; }
 
 private:
 	void clear();
@@ -97,7 +98,7 @@ private:
 protected:
 	struct FrameBufferOutput
 	{
-		std::string texture_name;
+		std::string renderbuffer_name;
 		scapes::foundation::render::RenderPassLoadOp load_op;
 		scapes::foundation::render::RenderPassStoreOp store_op;
 		scapes::foundation::render::RenderPassClearValue clear_value;
@@ -172,6 +173,7 @@ private:
 	void onInit() final;
 	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
 	bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) final;
+	bool onSerialize(scapes::foundation::serde::yaml::NodeRef node) final;
 
 private:
 	uint32_t material_binding {0};
@@ -197,6 +199,7 @@ private:
 	void onInit() final;
 	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
 	bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) final;
+	bool onSerialize(scapes::foundation::serde::yaml::NodeRef node) final;
 
 private:
 	uint32_t light_binding {0};
@@ -292,7 +295,7 @@ public:
 	void clear();
 
 	bool deserialize(const scapes::foundation::serde::yaml::NodeRef node) override;
-	scapes::foundation::serde::yaml::NodeRef serialize() override;
+	bool serialize(scapes::foundation::serde::yaml::NodeRef node) override;
 
 	void addSwapPair(const char *src, const char *dst);
 	void removeAllSwapPairs();
