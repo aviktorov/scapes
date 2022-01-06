@@ -11,6 +11,29 @@ namespace scapes::visual
 {
 	/*
 	 */
+	enum class GroupParameterType
+	{
+		UNDEFINED = 0,
+		FLOAT,
+		INT,
+		UINT,
+		VEC2,
+		VEC3,
+		VEC4,
+		IVEC2,
+		IVEC3,
+		IVEC4,
+		UVEC2,
+		UVEC3,
+		UVEC4,
+		MAT3,
+		MAT4,
+
+		MAX,
+	};
+
+	/*
+	 */
 	class IRenderPass
 	{
 	public:
@@ -70,7 +93,8 @@ namespace scapes::visual
 
 		virtual foundation::render::BindSet *getGroupBindings(const char *name) const = 0;
 
-		virtual bool addGroupParameter(const char *group_name, const char *parameter_name, size_t size) = 0;
+		virtual bool addGroupParameter(const char *group_name, const char *parameter_name, size_t type_size, size_t num_elements) = 0;
+		virtual bool addGroupParameter(const char *group_name, const char *parameter_name, GroupParameterType type, size_t num_elements) = 0;
 		virtual bool removeGroupParameter(const char *group_name, const char *parameter_name) = 0;
 		virtual void removeAllGroupParameters() = 0;
 
@@ -103,9 +127,9 @@ namespace scapes::visual
 
 	public:
 		template<typename T>
-		SCAPES_INLINE bool addGroupParameter(const char *group_name, const char *parameter_name, size_t count, const T *value)
+		SCAPES_INLINE bool addGroupParameter(const char *group_name, const char *parameter_name, size_t num_elements, const T *value)
 		{
-			bool success = addGroupParameter(group_name, parameter_name, sizeof(T) * count);
+			bool success = addGroupParameter(group_name, parameter_name, sizeof(T), num_elements);
 
 			if (success)
 				return setGroupParameter<T>(group_name, parameter_name, 1, value);
@@ -127,22 +151,24 @@ namespace scapes::visual
 		}
 
 		template<typename T>
-		SCAPES_INLINE const T *getGroupParameter(const char *group_name, const char *parameter_name, size_t offset) const
+		SCAPES_INLINE const T *getGroupParameter(const char *group_name, const char *parameter_name, size_t index) const
 		{
-			assert(getGroupParameterSize(group_name, parameter_name) >= offset * sizeof(T));
+			assert(getGroupParameterTypeSize(group_name, parameter_name) == sizeof(T));
+			assert(getGroupParameterNumElements(group_name, parameter_name) > index);
 
-			const void *data = getGroupParameter(group_name, parameter_name, offset * sizeof(T));
+			const void *data = getGroupParameter(group_name, parameter_name, index);
 			assert(data);
 
 			return reinterpret_cast<const T*>(data);
 		}
 
 		template<typename T>
-		SCAPES_INLINE bool setGroupParameter(const char *group_name, const char *parameter_name, size_t count, const T *value)
+		SCAPES_INLINE bool setGroupParameter(const char *group_name, const char *parameter_name, size_t num_elements, const T *value)
 		{
-			assert(getGroupParameterSize(group_name, parameter_name) >= sizeof(T) * count);
+			assert(getGroupParameterTypeSize(group_name, parameter_name) == sizeof(T));
+			assert(getGroupParameterNumElements(group_name, parameter_name) >= num_elements);
 
-			return setGroupParameter(group_name, parameter_name, 0, sizeof(T) * count, value);
+			return setGroupParameter(group_name, parameter_name, 0, num_elements, value);
 		}
 
 		template<typename T>
@@ -180,9 +206,10 @@ namespace scapes::visual
 		}
 
 	protected:
-		virtual size_t getGroupParameterSize(const char *group_name, const char *parameter_name) const = 0;
-		virtual const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t offset) const = 0;
-		virtual bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_offset, size_t src_size, const void *src_data) = 0;
+		virtual size_t getGroupParameterTypeSize(const char *group_name, const char *parameter_name) const = 0;
+		virtual size_t getGroupParameterNumElements(const char *group_name, const char *parameter_name) const = 0;
+		virtual const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t index) const = 0;
+		virtual bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_index, size_t num_src_elements, const void *src_data) = 0;
 
 		virtual bool registerRenderPassType(const char *type_name, PFN_createRenderPass function) = 0;
 		virtual IRenderPass *createRenderPass(const char *type_name, const char *name) = 0;

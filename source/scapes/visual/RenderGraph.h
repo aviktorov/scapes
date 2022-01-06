@@ -53,7 +53,8 @@ namespace scapes::visual
 
 		foundation::render::BindSet *getGroupBindings(const char *name) const final;
 
-		bool addGroupParameter(const char *group_name, const char *parameter_name, size_t size) final;
+		bool addGroupParameter(const char *group_name, const char *parameter_name, size_t type_size, size_t num_elements) final;
+		bool addGroupParameter(const char *group_name, const char *parameter_name, GroupParameterType type, size_t num_elements) final;
 		bool removeGroupParameter(const char *group_name, const char *parameter_name) final;
 		void removeAllGroupParameters() final;
 
@@ -76,8 +77,8 @@ namespace scapes::visual
 
 		foundation::render::FrameBuffer *fetchFrameBuffer(uint32_t num_attachments, const char *render_buffer_names[]) final;
 
-		SCAPES_INLINE size_t getNumRenderPasses() const final { return passes.size(); }
-		SCAPES_INLINE IRenderPass *getRenderPass(size_t index) const final { return passes[index]; }
+		SCAPES_INLINE size_t getNumRenderPasses() const final { return passes_runtime.passes.size(); }
+		SCAPES_INLINE IRenderPass *getRenderPass(size_t index) const final { return passes_runtime.passes[index]; }
 		IRenderPass *getRenderPass(const char *name) const final;
 
 		bool removeRenderPass(size_t index) final;
@@ -91,46 +92,74 @@ namespace scapes::visual
 
 		struct GroupParameter
 		{
-			Group *group {nullptr};
-
-			size_t size {0};
+			std::string name;
+			GroupParameterType type {GroupParameterType::UNDEFINED};
+			size_t type_size {0};
+			size_t num_elements {0};
 			void *memory {nullptr};
+
+			Group *group {nullptr};
 		};
 
 		struct GroupTexture
 		{
-			Group *group {nullptr};
-
+			std::string name;
 			TextureHandle texture;
+
+			Group *group {nullptr};
 		};
 
 		struct Group
 		{
-			foundation::render::UniformBuffer *buffer {nullptr};
-			uint32_t buffer_size {0};
-
-			foundation::render::BindSet *bindings {nullptr};
+			std::string name;
 			std::vector<GroupParameter *> parameters;
 			std::vector<GroupTexture *> textures;
+
+			foundation::render::BindSet *bindings {nullptr};
+			foundation::render::UniformBuffer *buffer {nullptr};
+			uint32_t buffer_size {0};
 			bool dirty {true};
 		};
 
 		struct RenderBuffer
 		{
+			std::string name;
 			foundation::render::Format format {foundation::render::Format::UNDEFINED};
 			foundation::render::Texture *texture {nullptr};
 			foundation::render::BindSet *bindings {nullptr};
 			uint32_t downscale {1};
-	};
+		};
+
+		struct RenderPassTypeRuntime
+		{
+			std::vector<std::string> names;
+			std::vector<uint64_t> name_hashes;
+			std::vector<PFN_createRenderPass> constructors;
+		};
+
+		struct RenderPassesRuntime
+		{
+			std::vector<std::string> names;
+			std::vector<std::string> type_names;
+			std::vector<uint64_t> name_hashes;
+			std::vector<uint64_t> type_hashes;
+			std::vector<IRenderPass *> passes;
+		};
 
 	private:
-		size_t getGroupParameterSize(const char *group_name, const char *parameter_name) const final;
-		const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t offset) const final;
-		bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_offset, size_t src_size, const void *src_data) final;
+		bool addGroupParameterInternal(const char *group_name, const char *parameter_name, GroupParameterType type, size_t type_size, size_t num_elements);
+
+		size_t getGroupParameterTypeSize(const char *group_name, const char *parameter_name) const final;
+		size_t getGroupParameterNumElements(const char *group_name, const char *parameter_name) const final;
+		const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t index) const final;
+		bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_index, size_t num_src_elements, const void *src_data) final;
 
 		bool registerRenderPassType(const char *type_name, PFN_createRenderPass function) final;
 		IRenderPass *createRenderPass(const char *type_name, const char *name) final;
-		IRenderPass *createRenderPassInternal(const char *type_name);
+		int32_t findRenderPass(const char *name);
+		int32_t findRenderPass(uint64_t hash);
+		int32_t findRenderPassType(const char *type_name);
+		int32_t findRenderPassType(uint64_t hash);
 
 	private:
 		void destroyGroup(Group *group);
@@ -153,9 +182,8 @@ namespace scapes::visual
 		uint32_t width {0};
 		uint32_t height {0};
 
-		std::unordered_map<uint64_t, PFN_createRenderPass> render_pass_type_lookup;
-		std::unordered_map<uint64_t, IRenderPass *> pass_lookup;
-		std::vector<IRenderPass *> passes;
+		RenderPassTypeRuntime pass_types_runtime;
+		RenderPassesRuntime passes_runtime;
 
 		ParameterAllocator parameter_allocator;
 

@@ -6,92 +6,13 @@
 
 #include <algorithm>
 
-enum class GroupParameterType
-{
-	UNDEFINED = 0,
-	FLOAT,
-	INT,
-	UINT,
-	VEC2,
-	VEC3,
-	VEC4,
-	IVEC2,
-	IVEC3,
-	IVEC4,
-	UVEC2,
-	UVEC3,
-	UVEC4,
-	MAT3,
-	MAT4,
-
-	MAX,
-};
-
-union GroupParameterValue
-{
-	float f;
-	int32_t i;
-	uint32_t u;
-	scapes::foundation::math::vec2 v2;
-	scapes::foundation::math::vec3 v3;
-	scapes::foundation::math::vec4 v4;
-	scapes::foundation::math::ivec2 i2;
-	scapes::foundation::math::ivec3 i3;
-	scapes::foundation::math::ivec4 i4;
-	scapes::foundation::math::uvec2 u2;
-	scapes::foundation::math::uvec3 u3;
-	scapes::foundation::math::uvec4 u4;
-	scapes::foundation::math::mat3 m3;
-	scapes::foundation::math::mat4 m4;
-};
-
-static GroupParameterValue parseGroupParameterValue(GroupParameterType type, const scapes::foundation::serde::yaml::NodeRef node)
-{
-	GroupParameterValue ret;
-
-	switch (type)
-	{
-		case GroupParameterType::FLOAT: node >> ret.f; break;
-		case GroupParameterType::INT: node >> ret.i; break;
-		case GroupParameterType::UINT: node >> ret.u; break;
-		case GroupParameterType::VEC2: node >> ret.v2; break;
-		case GroupParameterType::VEC3: node >> ret.v3; break;
-		case GroupParameterType::VEC4: node >> ret.v4; break;
-		case GroupParameterType::IVEC2: node >> ret.i2; break;
-		case GroupParameterType::IVEC3: node >> ret.i3; break;
-		case GroupParameterType::IVEC4: node >> ret.i4; break;
-		case GroupParameterType::UVEC2: node >> ret.u2; break;
-		case GroupParameterType::UVEC3: node >> ret.u3; break;
-		case GroupParameterType::UVEC4: node >> ret.u4; break;
-		case GroupParameterType::MAT3: node >> ret.m3; break;
-		case GroupParameterType::MAT4: node >> ret.m4; break;
-	}
-
-	return ret;
-}
-
-static size_t getGroupParameterTypeSize(GroupParameterType type)
-{
-	static size_t supported_formats[GroupParameterType::MAX] =
-	{
-		0,
-		sizeof(float), sizeof(int32_t), sizeof(uint32_t),
-		sizeof(scapes::foundation::math::vec2), sizeof(scapes::foundation::math::vec3), sizeof(scapes::foundation::math::vec4),
-		sizeof(scapes::foundation::math::ivec2), sizeof(scapes::foundation::math::ivec3), sizeof(scapes::foundation::math::ivec4),
-		sizeof(scapes::foundation::math::uvec2), sizeof(scapes::foundation::math::uvec3), sizeof(scapes::foundation::math::uvec4),
-		sizeof(scapes::foundation::math::mat3), sizeof(scapes::foundation::math::mat4),
-	};
-
-	return supported_formats[static_cast<size_t>(type)];
-}
-
 namespace c4
 {
 	/*
 	 */
 	SCAPES_INLINE bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::foundation::render::Format *format)
 	{
-		static const char *supported_formats[scapes::foundation::render::Format::MAX] =
+		static const char *supported_formats[static_cast<size_t>(scapes::foundation::render::Format::MAX)] =
 		{
 			"UNDEFINED",
 
@@ -187,9 +108,9 @@ namespace c4
 
 	/*
 	 */
-	bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, GroupParameterType *type)
+	bool from_chars(const scapes::foundation::serde::yaml::csubstr buf, scapes::visual::GroupParameterType *type)
 	{
-		static const char *supported_formats[GroupParameterType::MAX] =
+		static const char *supported_formats[static_cast<size_t>(scapes::visual::GroupParameterType::MAX)] =
 		{
 			"undefined",
 			"float", "int", "uint",
@@ -200,11 +121,11 @@ namespace c4
 		};
 
 		// NOTE: start index is intentionally set to 1 in order to skip check for UNDEFINED type
-		for (size_t i = 1; i < static_cast<size_t>(GroupParameterType::MAX); ++i)
+		for (size_t i = 1; i < static_cast<size_t>(scapes::visual::GroupParameterType::MAX); ++i)
 		{
 			if (buf.compare(supported_formats[i], strlen(supported_formats[i])) == 0)
 			{
-				*type = static_cast<GroupParameterType>(i);
+				*type = static_cast<scapes::visual::GroupParameterType>(i);
 				return true;
 			}
 		}
@@ -215,6 +136,66 @@ namespace c4
 
 namespace scapes::visual
 {
+	/*
+	 */
+	union GroupParameterValue
+	{
+		float f;
+		int32_t i;
+		uint32_t u;
+		foundation::math::vec2 v2;
+		foundation::math::vec3 v3;
+		foundation::math::vec4 v4;
+		foundation::math::ivec2 i2;
+		foundation::math::ivec3 i3;
+		foundation::math::ivec4 i4;
+		foundation::math::uvec2 u2;
+		foundation::math::uvec3 u3;
+		foundation::math::uvec4 u4;
+		foundation::math::mat3 m3;
+		foundation::math::mat4 m4;
+	};
+
+	static GroupParameterValue parseGroupParameterValue(GroupParameterType type, const foundation::serde::yaml::NodeRef node)
+	{
+		GroupParameterValue ret;
+
+		switch (type)
+		{
+			case GroupParameterType::FLOAT: node >> ret.f; break;
+			case GroupParameterType::INT: node >> ret.i; break;
+			case GroupParameterType::UINT: node >> ret.u; break;
+			case GroupParameterType::VEC2: node >> ret.v2; break;
+			case GroupParameterType::VEC3: node >> ret.v3; break;
+			case GroupParameterType::VEC4: node >> ret.v4; break;
+			case GroupParameterType::IVEC2: node >> ret.i2; break;
+			case GroupParameterType::IVEC3: node >> ret.i3; break;
+			case GroupParameterType::IVEC4: node >> ret.i4; break;
+			case GroupParameterType::UVEC2: node >> ret.u2; break;
+			case GroupParameterType::UVEC3: node >> ret.u3; break;
+			case GroupParameterType::UVEC4: node >> ret.u4; break;
+			case GroupParameterType::MAT3: node >> ret.m3; break;
+			case GroupParameterType::MAT4: node >> ret.m4; break;
+		}
+
+		return ret;
+	}
+
+	static size_t getTypeSize(GroupParameterType type)
+	{
+		static size_t supported_formats[static_cast<size_t>(GroupParameterType::MAX)] =
+		{
+			0,
+			sizeof(float), sizeof(int32_t), sizeof(uint32_t),
+			sizeof(foundation::math::vec2), sizeof(foundation::math::vec3), sizeof(foundation::math::vec4),
+			sizeof(foundation::math::ivec2), sizeof(foundation::math::ivec3), sizeof(foundation::math::ivec4),
+			sizeof(foundation::math::uvec2), sizeof(foundation::math::uvec3), sizeof(foundation::math::uvec4),
+			sizeof(foundation::math::mat3), sizeof(foundation::math::mat4),
+		};
+
+		return supported_formats[static_cast<size_t>(type)];
+	}
+
 	/*
 	 */
 	RenderGraph *RenderGraph::create(API *api, foundation::io::FileSystem *file_system)
@@ -257,7 +238,9 @@ namespace scapes::visual
 		removeAllRenderBuffers();
 		removeAllRenderPasses();
 
-		render_pass_type_lookup.clear();
+		pass_types_runtime.constructors.clear();
+		pass_types_runtime.name_hashes.clear();
+		pass_types_runtime.names.clear();
 	}
 
 	/*
@@ -281,18 +264,18 @@ namespace scapes::visual
 			should_invalidate = should_invalidate || result;
 		}
 
-		for (IRenderPass *pass : passes)
+		for (IRenderPass *pass : passes_runtime.passes)
 			pass->init();
 
 		if (should_invalidate)
-			for (IRenderPass *pass : passes)
+			for (IRenderPass *pass : passes_runtime.passes)
 				pass->invalidate();
 
 	}
 
 	void RenderGraphImpl::shutdown()
 	{
-		for (IRenderPass *pass : passes)
+		for (IRenderPass *pass : passes_runtime.passes)
 			pass->shutdown();
 
 		for (auto &[hash, group] : group_lookup)
@@ -319,7 +302,7 @@ namespace scapes::visual
 
 		invalidateFrameBufferCache();
 
-		for (IRenderPass *pass : passes)
+		for (IRenderPass *pass : passes_runtime.passes)
 			pass->invalidate();
 	}
 
@@ -342,11 +325,11 @@ namespace scapes::visual
 		if (should_invalidate)
 		{
 			scapes::foundation::Log::message("Invalidation before render\n");
-			for (IRenderPass *pass : passes)
+			for (IRenderPass *pass : passes_runtime.passes)
 				pass->invalidate();
 		}
 
-		for (IRenderPass *pass : passes)
+		for (IRenderPass *pass : passes_runtime.passes)
 			pass->render(command_buffer);
 	}
 
@@ -457,7 +440,8 @@ namespace scapes::visual
 						for (const yaml::NodeRef parameter : parameters)
 						{
 							std::string parameter_name;
-							size_t parameter_count = 1;
+							size_t parameter_num_elements = 1;
+							size_t parameter_type_size = 0;
 							GroupParameterType parameter_type = GroupParameterType::UNDEFINED;
 							yaml::NodeRef parameter_value;
 
@@ -475,34 +459,39 @@ namespace scapes::visual
 								// TODO: check if we already remembered the value
 								else if (parameter_child_key.compare("value") == 0)
 									parameter_value = parameter_child;
-								else if (parameter_child_key.compare("count") == 0)
-									parameter_child >> parameter_count;
+								else if (parameter_child_key.compare("size") == 0)
+									parameter_child >> parameter_type_size;
+								else if (parameter_child_key.compare("elements") == 0)
+									parameter_child >> parameter_num_elements;
 							}
 
-							size_t parameter_type_size = getGroupParameterTypeSize(parameter_type);
-							size_t parameter_size = parameter_type_size * parameter_count;
+							if (parameter_type != GroupParameterType::UNDEFINED)
+								parameter_type_size = getTypeSize(parameter_type);
 
-							if (!parameter_name.empty() && parameter_size > 0)
+							if (!parameter_name.empty() && parameter_type_size * parameter_num_elements > 0)
 							{
-								addGroupParameter(group_name.c_str(), parameter_name.c_str(), parameter_size);
+								if (parameter_type != GroupParameterType::UNDEFINED)
+									addGroupParameter(group_name.c_str(), parameter_name.c_str(), parameter_type, parameter_num_elements);
+								else
+									addGroupParameter(group_name.c_str(), parameter_name.c_str(), parameter_type_size, parameter_num_elements);
 
 								if (parameter_value.valid())
 								{
-									if (parameter_count == 1)
+									if (parameter_num_elements == 1)
 									{
 										GroupParameterValue value = parseGroupParameterValue(parameter_type, parameter_value);
-										setGroupParameter(group_name.c_str(), parameter_name.c_str(), 0, parameter_type_size, &value);
+										setGroupParameter(group_name.c_str(), parameter_name.c_str(), 0, 1, &value);
 									}
 									else
 									{
 										const yaml::NodeRef value_array = parameter_value.first_child();
-										size_t offset = 0;
+										size_t dst_index = 0;
 
 										for (const yaml::NodeRef value_child : value_array.siblings())
 										{
 											GroupParameterValue value = parseGroupParameterValue(parameter_type, value_child);
-											setGroupParameter(group_name.c_str(), parameter_name.c_str(), offset, parameter_type_size, &value);
-											offset += parameter_type_size;
+											setGroupParameter(group_name.c_str(), parameter_name.c_str(), dst_index, 1, &value);
+											dst_index++;
 										}
 									}
 								}
@@ -600,28 +589,33 @@ namespace scapes::visual
 					uint64_t render_pass_hash = 0;
 					common::HashUtils::combine(render_pass_hash, std::string_view(name));
 
-					auto it = pass_lookup.find(render_pass_hash);
-					if (it != pass_lookup.end())
+					int32_t render_pass_index = findRenderPass(render_pass_hash);
+					if (render_pass_index != -1)
 						continue;
 
-					IRenderPass *render_pass = createRenderPassInternal(type_name.c_str());
+					uint64_t render_pass_type_hash = 0;
+					common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
 
-					if (render_pass)
+					int32_t render_pass_type_index = findRenderPassType(render_pass_type_hash);
+					if (render_pass_type_index == -1)
+						continue;
+
+					IRenderPass *render_pass = pass_types_runtime.constructors[render_pass_type_index](this);
+					if (!render_pass->deserialize(child))
 					{
-						if (!render_pass->deserialize(child))
-						{
-							foundation::Log::message("Can't deserialize render pass with type \"%s\"\n", type_name.c_str());
+						foundation::Log::message("Can't deserialize render pass with type \"%s\"\n", type_name.c_str());
 
-							delete render_pass;
-							render_pass = nullptr;
-						}
+						delete render_pass;
+						render_pass = nullptr;
 					}
 
 					if (render_pass)
 					{
-						foundation::Log::message("Found RenderPass\n");
-						passes.push_back(render_pass);
-						pass_lookup.insert({render_pass_hash, render_pass});
+						passes_runtime.passes.push_back(render_pass);
+						passes_runtime.name_hashes.push_back(render_pass_hash);
+						passes_runtime.type_hashes.push_back(render_pass_type_hash);
+						passes_runtime.names.push_back(name);
+						passes_runtime.type_names.push_back(type_name);
 					}
 				}
 			}
@@ -632,8 +626,35 @@ namespace scapes::visual
 
 	foundation::serde::yaml::Tree RenderGraphImpl::serialize()
 	{
-		// TODO: implement
-		return foundation::serde::yaml::Tree();
+		foundation::serde::yaml::Tree tree;
+		foundation::serde::yaml::NodeRef root = tree.rootref();
+
+		// serialize all parameter groups
+		for (auto &[hash, group] : group_lookup)
+		{
+			foundation::serde::yaml::NodeRef child = root.append_child();
+
+			child.set_type(foundation::serde::yaml::DOC);
+
+			child["name"] = foundation::serde::yaml::csubstr(group->name.data(), group->name.size());
+
+			foundation::serde::yaml::NodeRef parameters = child.append_child();
+			parameters.set_key("parameters");
+
+			foundation::serde::yaml::NodeRef parameters_container = parameters.append_child();
+
+			for (size_t i = 0; i < group->parameters.size(); ++i)
+			{
+				const GroupParameter *parameter = group->parameters[i];
+
+				foundation::serde::yaml::NodeRef parameter_node = parameters.append_child();
+				// parameter_node["name"] = ... ;
+				// parameter_node["type"] << ... ;
+				// parameter_node[""]
+			}
+		}
+
+		return tree;
 	}
 
 	/*
@@ -647,6 +668,8 @@ namespace scapes::visual
 			return false;
 
 		Group *group = new Group();
+		group->name = std::string(name);
+
 		group_lookup.insert({hash, group});
 
 		return true;
@@ -692,34 +715,15 @@ namespace scapes::visual
 
 	/*
 	 */
-	bool RenderGraphImpl::addGroupParameter(const char *group_name, const char *parameter_name, size_t size)
+	bool RenderGraphImpl::addGroupParameter(const char *group_name, const char *parameter_name, GroupParameterType type, size_t num_elements)
 	{
-		uint64_t group_hash = 0;
-		common::HashUtils::combine(group_hash, std::string_view(group_name));
+		size_t type_size = getTypeSize(type);
+		return addGroupParameterInternal(group_name, parameter_name, type, type_size, num_elements);
+	}
 
-		auto it = group_lookup.find(group_hash);
-		if (it == group_lookup.end())
-			return false;
-
-		uint64_t parameter_hash = group_hash;
-		common::HashUtils::combine(parameter_hash, std::string_view(parameter_name));
-
-		if (group_parameter_lookup.find(parameter_hash) != group_parameter_lookup.end())
-			return false;
-
-		Group *group = it->second;
-
-		GroupParameter *parameter = new GroupParameter();
-		parameter->group = group;
-		parameter->size = size;
-		parameter->memory = parameter_allocator.allocate(size);
-
-		group->parameters.push_back(parameter);
-		group_parameter_lookup.insert({parameter_hash, parameter});
-
-		invalidateGroup(group);
-
-		return true;
+	bool RenderGraphImpl::addGroupParameter(const char *group_name, const char *parameter_name, size_t type_size, size_t num_elements)
+	{
+		return addGroupParameterInternal(group_name, parameter_name, GroupParameterType::UNDEFINED, type_size, num_elements);
 	}
 
 	bool RenderGraphImpl::removeGroupParameter(const char *group_name, const char *parameter_name)
@@ -901,6 +905,7 @@ namespace scapes::visual
 
 		RenderBuffer *render_buffer = new RenderBuffer();
 
+		render_buffer->name = std::string(name);
 		render_buffer->format = format;
 		render_buffer->downscale = std::max<uint32_t>(1, downscale);
 		render_buffer->texture = nullptr;
@@ -1061,67 +1066,94 @@ namespace scapes::visual
 		uint64_t render_pass_hash = 0;
 		common::HashUtils::combine(render_pass_hash, std::string_view(name));
 
-		auto it = pass_lookup.find(render_pass_hash);
-		if (it == pass_lookup.end())
-			return nullptr;
+		for (size_t i = 0; i < passes_runtime.name_hashes.size(); ++i)
+			if (passes_runtime.name_hashes[i] == render_pass_hash)
+				return passes_runtime.passes[i];
 
-		return it->second;
+		return nullptr;
 	}
 
 	bool RenderGraphImpl::removeRenderPass(size_t index)
 	{
-		if (index >= passes.size())
+		if (index >= passes_runtime.passes.size())
 			return false;
 
-		IRenderPass *pass = passes[index];
-
-		auto lookup_it = pass_lookup.end();
-		for (auto it = pass_lookup.begin(); it != pass_lookup.end(); ++it)
-		{
-			if (it->second == pass)
-			{
-				lookup_it = it;
-				break;
-			}
-		}
-
-		if (lookup_it == pass_lookup.end())
-			return false;
-
-		pass_lookup.erase(lookup_it);
+		IRenderPass *pass = passes_runtime.passes[index];
 
 		pass->shutdown();
 		delete pass;
 
-		passes.erase(passes.begin() + index);
+		passes_runtime.passes.erase(passes_runtime.passes.begin() + index);
+		passes_runtime.name_hashes.erase(passes_runtime.name_hashes.begin() + index);
+		passes_runtime.type_hashes.erase(passes_runtime.type_hashes.begin() + index);
+
 		return true;
 	}
 
 	bool RenderGraphImpl::removeRenderPass(IRenderPass *pass)
 	{
-		auto it = std::find(passes.begin(), passes.end(), pass);
-		if (it == passes.end())
+		auto it = std::find(passes_runtime.passes.begin(), passes_runtime.passes.end(), pass);
+		if (it == passes_runtime.passes.end())
 			return false;
 
-		size_t index = std::distance(passes.begin(), it);
+		size_t index = std::distance(passes_runtime.passes.begin(), it);
 		return removeRenderPass(index);
 	}
 
 	void RenderGraphImpl::removeAllRenderPasses()
 	{
-		for (IRenderPass *pass : passes)
+		for (size_t i = 0; i < passes_runtime.passes.size(); ++i)
 		{
+			IRenderPass *pass = passes_runtime.passes[i];
 			pass->shutdown();
 			delete pass;
 		}
 
-		passes.clear();
-		pass_lookup.clear();
+		passes_runtime.passes.clear();
+		passes_runtime.name_hashes.clear();
+		passes_runtime.type_hashes.clear();
+		passes_runtime.names.clear();
+		passes_runtime.type_names.clear();
 	}
 
 	/*
 	 */
-	size_t RenderGraphImpl::getGroupParameterSize(const char *group_name, const char *parameter_name) const
+	bool RenderGraphImpl::addGroupParameterInternal(const char *group_name, const char *parameter_name, GroupParameterType type, size_t type_size, size_t num_elements)
+	{
+		uint64_t group_hash = 0;
+		common::HashUtils::combine(group_hash, std::string_view(group_name));
+
+		auto it = group_lookup.find(group_hash);
+		if (it == group_lookup.end())
+			return false;
+
+		uint64_t parameter_hash = group_hash;
+		common::HashUtils::combine(parameter_hash, std::string_view(parameter_name));
+
+		if (group_parameter_lookup.find(parameter_hash) != group_parameter_lookup.end())
+			return false;
+
+		Group *group = it->second;
+
+		GroupParameter *parameter = new GroupParameter();
+		parameter->name = std::string(parameter_name);
+		parameter->group = group;
+		parameter->type = type;
+		parameter->type_size = type_size;
+		parameter->num_elements = num_elements;
+		parameter->memory = parameter_allocator.allocate(parameter->type_size * parameter->num_elements);
+
+		group->parameters.push_back(parameter);
+		group_parameter_lookup.insert({parameter_hash, parameter});
+
+		invalidateGroup(group);
+
+		return true;
+	}
+
+	/*
+	 */
+	size_t RenderGraphImpl::getGroupParameterTypeSize(const char *group_name, const char *parameter_name) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(group_name));
@@ -1132,10 +1164,24 @@ namespace scapes::visual
 			return 0;
 
 		GroupParameter *parameter = it->second;
-		return parameter->size;
+		return parameter->type_size;
 	}
 
-	const void *RenderGraphImpl::getGroupParameter(const char *group_name, const char *parameter_name, size_t offset) const
+	size_t RenderGraphImpl::getGroupParameterNumElements(const char *group_name, const char *parameter_name) const
+	{
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(group_name));
+		common::HashUtils::combine(hash, std::string_view(parameter_name));
+
+		auto it = group_parameter_lookup.find(hash);
+		if (it == group_parameter_lookup.end())
+			return 0;
+
+		GroupParameter *parameter = it->second;
+		return parameter->num_elements;
+	}
+
+	const void *RenderGraphImpl::getGroupParameter(const char *group_name, const char *parameter_name, size_t index) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(group_name));
@@ -1148,13 +1194,13 @@ namespace scapes::visual
 		GroupParameter *parameter = it->second;
 		const uint8_t *data = reinterpret_cast<const uint8_t *>(parameter->memory);
 
-		if (offset >= parameter->size)
+		if (index >= parameter->num_elements)
 			return nullptr;
 
-		return data + offset;
+		return data + index * parameter->type_size;
 	}
 
-	bool RenderGraphImpl::setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_offset, size_t src_size, const void *src_data)
+	bool RenderGraphImpl::setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_index, size_t num_src_elements, const void *src_data)
 	{
 		uint64_t group_hash = 0;
 		common::HashUtils::combine(group_hash, std::string_view(group_name));
@@ -1174,13 +1220,13 @@ namespace scapes::visual
 		GroupParameter *parameter = parameter_it->second;
 		uint8_t *dst_data = reinterpret_cast<uint8_t *>(parameter->memory);
 
-		if (dst_offset >= parameter->size)
+		if (dst_index >= parameter->num_elements)
 			return false;
 
-		if ((parameter->size - dst_offset) < src_size)
+		if ((parameter->num_elements - dst_index) < num_src_elements)
 			return false;
 
-		memcpy(dst_data + dst_offset, src_data, src_size);
+		memcpy(dst_data + dst_index * parameter->type_size, src_data, num_src_elements * parameter->type_size);
 
 		group->dirty = true;
 
@@ -1191,14 +1237,17 @@ namespace scapes::visual
 	 */
 	bool RenderGraphImpl::registerRenderPassType(const char *type_name, PFN_createRenderPass function)
 	{
-		uint64_t render_pass_hash = 0;
-		common::HashUtils::combine(render_pass_hash, std::string_view(type_name));
+		uint64_t render_pass_type_hash = 0;
+		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
 
-		auto it = render_pass_type_lookup.find(render_pass_hash);
-		if (it != render_pass_type_lookup.end())
-			return false;
+		for (size_t i = 0; i < pass_types_runtime.name_hashes.size(); ++i)
+			if (pass_types_runtime.name_hashes[i] == render_pass_type_hash)
+				return false;
 
-		render_pass_type_lookup.insert({render_pass_hash, function});
+		pass_types_runtime.constructors.push_back(function);
+		pass_types_runtime.name_hashes.push_back(render_pass_type_hash);
+		pass_types_runtime.names.push_back(std::string(type_name));
+
 		return true;
 	}
 
@@ -1207,36 +1256,61 @@ namespace scapes::visual
 		uint64_t render_pass_hash = 0;
 		common::HashUtils::combine(render_pass_hash, std::string_view(name));
 
-		auto it = pass_lookup.find(render_pass_hash);
-		if (it != pass_lookup.end())
+		for (size_t i = 0; i < passes_runtime.name_hashes.size(); ++i)
+			if (passes_runtime.name_hashes[i] == render_pass_hash)
+				return nullptr;
+
+		uint64_t render_pass_type_hash = 0;
+		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
+
+		int32_t type_index = findRenderPassType(render_pass_type_hash);
+
+		if (type_index == -1)
 			return nullptr;
 
-		IRenderPass *render_pass = createRenderPassInternal(type_name);
-		if (render_pass == nullptr)
-			return nullptr;
+		IRenderPass *pass = pass_types_runtime.constructors[type_index](this);
 
-		passes.push_back(render_pass);
-		pass_lookup.insert({render_pass_hash, render_pass});
+		passes_runtime.passes.push_back(pass);
+		passes_runtime.name_hashes.push_back(render_pass_hash);
+		passes_runtime.type_hashes.push_back(render_pass_type_hash);
+		passes_runtime.names.push_back(std::string(name));
+		passes_runtime.type_names.push_back(std::string(type_name));
 
-		return render_pass;
+		return pass;
 	}
 
-	IRenderPass *RenderGraphImpl::createRenderPassInternal(const char *type_name)
+	int32_t RenderGraphImpl::findRenderPass(const char *name)
+	{
+		uint64_t render_pass_hash = 0;
+		common::HashUtils::combine(render_pass_hash, std::string_view(name));
+
+		return findRenderPass(render_pass_hash);
+	}
+
+	int32_t RenderGraphImpl::findRenderPass(uint64_t hash)
+	{
+		for (size_t i = 0; i < passes_runtime.name_hashes.size(); ++i)
+			if (passes_runtime.name_hashes[i] == hash)
+				return static_cast<int32_t>(i);
+
+		return -1;
+	}
+
+	int32_t RenderGraphImpl::findRenderPassType(const char *type_name)
 	{
 		uint64_t render_pass_type_hash = 0;
 		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
 
-		auto it = render_pass_type_lookup.find(render_pass_type_hash);
-		if (it == render_pass_type_lookup.end())
-			return nullptr;
+		return findRenderPassType(render_pass_type_hash);
+	}
 
-		PFN_createRenderPass function = it->second;
-		assert(function);
+	int32_t RenderGraphImpl::findRenderPassType(uint64_t hash)
+	{
+		for (size_t i = 0; i < pass_types_runtime.name_hashes.size(); ++i)
+			if (pass_types_runtime.name_hashes[i] == hash)
+				return static_cast<int32_t>(i);
 
-		IRenderPass *render_pass = function(this);
-		assert(render_pass);
-
-		return render_pass;
+		return -1;
 	}
 
 	/*
@@ -1292,11 +1366,13 @@ namespace scapes::visual
 		for (GroupParameter *parameter : group->parameters)
 		{
 			uint32_t padding = alignment - current_offset % alignment;
-			if (current_offset > 0 && current_offset + parameter->size > alignment)
+			uint32_t total_size = static_cast<uint32_t>(parameter->type_size * parameter->num_elements);
+
+			if (current_offset > 0 && current_offset + total_size > alignment)
 				ubo_size += padding;
 
-			ubo_size += static_cast<uint32_t>(parameter->size);
-			current_offset = (current_offset + parameter->size) % alignment;
+			ubo_size += static_cast<uint32_t>(total_size);
+			current_offset = (current_offset + total_size) % alignment;
 		}
 
 		if (group->buffer_size < ubo_size)
@@ -1318,13 +1394,15 @@ namespace scapes::visual
 			for (GroupParameter *parameter : group->parameters)
 			{
 				size_t padding = alignment - current_offset % alignment;
-				if (current_offset > 0 && current_offset + parameter->size > alignment)
+				uint32_t total_size = static_cast<uint32_t>(parameter->type_size * parameter->num_elements);
+
+				if (current_offset > 0 && current_offset + total_size > alignment)
 					ubo_data += padding;
 
-				memcpy(ubo_data, parameter->memory, parameter->size);
+				memcpy(ubo_data, parameter->memory, total_size);
 
-				ubo_data += parameter->size;
-				current_offset = (current_offset + parameter->size) % alignment;
+				ubo_data += total_size;
+				current_offset = (current_offset + total_size) % alignment;
 			}
 
 			device->unmap(group->buffer);

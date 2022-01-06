@@ -18,7 +18,7 @@ ParameterGroup:
   - { name: IProjection, type: mat4 }
   - { name: ViewOld, type: mat4 }
   - { name: Parameters, type: vec4 }
-  - { name: PositionWS, type: vec4 }
+  - { name: PositionWS, type: vec3 }
 
 ---
 ParameterGroup:
@@ -27,7 +27,7 @@ ParameterGroup:
   - { name: NumSamples, type: int, value: 32 }
   - { name: Radius, type: float, value: 10.0 }
   - { name: Intensity, type: float, value: 1.5 }
-  - { name: Samples, type: vec4, count: 32 }
+  - { name: Samples, type: vec4, elements: 32 }
   textures:
   - { name: Noise }
 
