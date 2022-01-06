@@ -76,9 +76,10 @@ PBR Sandbox:
             ☐ Add naive FileWatcher for resource auto reloading
             ☐ Think about having ResourceWatcher<T>
         ☐ Use FileSystem inside ResourceManager::import<T> call
+        ☐ Clean up RenderGraph serde
     Stream 83:
-        ☐ Clean up RenderGraph::deserialize() method
-        ☐ Implement serialization for RenderGraph
+        ✔ Implement serialization for RenderGraph @done (1/6/2022, 8:16:02 PM)
+        ✔ Add lookup tables for textures / shaders to visual::API class @done (1/6/2022, 9:04:20 PM)
     Stream 82:
         ✔ Migrate all render passes @done (1/5/2022, 10:13:04 PM)
             ✔ Deserialization for RenderPassGraphicsBase @done (1/5/2022, 10:13:04 PM)
