@@ -232,7 +232,9 @@ namespace scapes::visual
 	 */
 	void *ParameterAllocator::allocate(size_t size)
 	{
-		return malloc(size);
+		void *memory = malloc(size);
+		memset(memory, 0, size);
+		return memory;
 	}
 
 	void ParameterAllocator::deallocate(void *memory)
@@ -392,13 +394,12 @@ namespace scapes::visual
 		const yaml::Tree &tree = serialize();
 		yaml::csubstr output = yaml::emit(tree, tree.root_id(), yaml::substr{}, false);
 
-		char *data = new char[output.len];
-		yaml::emit(tree, tree.root_id(), yaml::to_substr(data));
+		std::vector<char> data;
+		data.resize(output.len);
+		yaml::emit(tree, tree.root_id(), yaml::substr(data.data(), data.size()));
 
-		size_t bytes_written = file->write(data, sizeof(char), output.len);
+		size_t bytes_written = file->write(data.data(), sizeof(char), output.len);
 		file_system->close(file);
-
-		delete[] data;
 
 		return bytes_written == output.len;
 	}
@@ -723,7 +724,9 @@ namespace scapes::visual
 
 					texture_node["name"] << texture->name.c_str();
 
-					// TODO: get URI by TextureHandle
+					const foundation::io::URI &uri = api->getTextureUri(texture->texture);
+					if (uri != nullptr)
+						texture_node["path"] << uri;
 				}
 			}
 		}

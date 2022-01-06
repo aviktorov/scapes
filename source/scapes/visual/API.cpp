@@ -62,6 +62,12 @@ namespace scapes::visual
 		managed_meshes.clear();
 		managed_render_materials.clear();
 		managed_ibl_textures.clear();
+
+		uri_shader_lookup.clear();
+		shader_uri_lookup.clear();
+
+		uri_texture_lookup.clear();
+		texture_uri_lookup.clear();
 	}
 
 	TextureHandle APIImpl::createTexture2D(
@@ -139,14 +145,32 @@ namespace scapes::visual
 		const foundation::io::URI &uri
 	)
 	{
+		std::string uri_string = std::string(uri);
+		auto it = uri_texture_lookup.find(uri_string);
+		if (it != uri_texture_lookup.end())
+			return it->second;
+
 		TextureHandle result = resource_manager->import<resources::Texture>(uri, device);
 
-		// TODO: add resource to another lookup table in order not to load it twice
-		// and also for future live reloading
 		if (result.get())
+		{
 			managed_textures.push_back(result);
+			uri_texture_lookup.insert({uri_string, result});
+			texture_uri_lookup.insert({result, uri_string});
+		}
 
 		return result;
+	}
+
+	foundation::io::URI APIImpl::getTextureUri(
+		TextureHandle handle
+	) const
+	{
+		auto it = texture_uri_lookup.find(handle);
+		if (it == texture_uri_lookup.end())
+			return nullptr;
+
+		return it->second.c_str();
 	}
 
 	ShaderHandle APIImpl::loadShaderFromMemory(
@@ -167,14 +191,32 @@ namespace scapes::visual
 		foundation::render::ShaderType shader_type
 	)
 	{
+		std::string uri_string = std::string(uri);
+		auto it = uri_shader_lookup.find(uri_string);
+		if (it != uri_shader_lookup.end())
+			return it->second;
+
 		ShaderHandle result = resource_manager->import<resources::Shader>(uri, shader_type, device, compiler);
 
-		// TODO: add resource to another lookup table in order not to load it twice
-		// and also for future live reloading
 		if (result.get())
+		{
 			managed_shaders.push_back(result);
+			uri_shader_lookup.insert({uri_string, result});
+			shader_uri_lookup.insert({result, uri_string});
+		}
 
 		return result;
+	}
+
+	foundation::io::URI APIImpl::getShaderUri(
+		ShaderHandle handle
+	) const
+	{
+		auto it = shader_uri_lookup.find(handle);
+		if (it == shader_uri_lookup.end())
+			return nullptr;
+
+		return it->second.c_str();
 	}
 
 	MeshHandle APIImpl::createMesh(

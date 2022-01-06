@@ -416,6 +416,9 @@ bool RenderPassGraphicsBase::deserialize(const foundation::serde::yaml::NodeRef 
 
 bool RenderPassGraphicsBase::serialize(foundation::serde::yaml::NodeRef node)
 {
+	visual::API *visual_api = render_graph->getAPI();
+	assert(visual_api);
+
 	if (input_groups.size() > 0)
 	{
 		foundation::serde::yaml::NodeRef container = node.append_child();
@@ -481,7 +484,7 @@ bool RenderPassGraphicsBase::serialize(foundation::serde::yaml::NodeRef node)
 			child["store_op"] << depthstencil_output.store_op;
 
 		if (depthstencil_output.load_op == foundation::render::RenderPassLoadOp::CLEAR)
-			child["clear_color"] << depthstencil_output.clear_value.as_depth_stencil;
+			child["clear_depthstencil"] << depthstencil_output.clear_value.as_depth_stencil;
 	}
 
 	if (has_swapchain_output)
@@ -499,7 +502,40 @@ bool RenderPassGraphicsBase::serialize(foundation::serde::yaml::NodeRef node)
 			child["clear_color"] << swapchain_output.clear_value;
 	}
 
-	// TODO: get URI from shader handles
+	if (vertex_shader.get())
+	{
+		const foundation::io::URI &uri = visual_api->getShaderUri(vertex_shader);
+		if (uri != nullptr)
+			node["vertex_shader"] << uri;
+	}
+
+	if (tessellation_control_shader.get())
+	{
+		const foundation::io::URI &uri = visual_api->getShaderUri(tessellation_control_shader);
+		if (uri != nullptr)
+			node["tessellation_control_shader"] << uri;
+	}
+
+	if (tessellation_evaluation_shader.get())
+	{
+		const foundation::io::URI &uri = visual_api->getShaderUri(tessellation_evaluation_shader);
+		if (uri != nullptr)
+			node["tessellation_evaluation_shader"] << uri;
+	}
+
+	if (geometry_shader.get())
+	{
+		const foundation::io::URI &uri = visual_api->getShaderUri(geometry_shader);
+		if (uri != nullptr)
+			node["geometry_shader"] << uri;
+	}
+
+	if (fragment_shader.get())
+	{
+		const foundation::io::URI &uri = visual_api->getShaderUri(fragment_shader);
+		if (uri != nullptr)
+			node["fragment_shader"] << uri;
+	}
 
 	bool result = onSerialize(node);
 

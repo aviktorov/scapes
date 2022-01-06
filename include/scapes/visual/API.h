@@ -67,6 +67,10 @@ namespace scapes::visual
 			const foundation::io::URI &uri
 		) = 0;
 
+		virtual foundation::io::URI getTextureUri(
+			TextureHandle handle
+		) const = 0;
+
 		virtual ShaderHandle loadShaderFromMemory(
 			const uint8_t *data,
 			size_t size,
@@ -77,6 +81,10 @@ namespace scapes::visual
 			const foundation::io::URI &uri,
 			foundation::render::ShaderType shader_type
 		) = 0;
+
+		virtual foundation::io::URI getShaderUri(
+			ShaderHandle handle
+		) const = 0;
 
 		virtual MeshHandle createMesh(
 			uint32_t num_vertices,

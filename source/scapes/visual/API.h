@@ -7,6 +7,8 @@
 #include <scapes/visual/Resources.h>
 
 #include <vector>
+#include <map>
+#include <string>
 
 namespace scapes::visual
 {
@@ -63,6 +65,10 @@ namespace scapes::visual
 			const foundation::io::URI &uri
 		) final;
 
+		foundation::io::URI getTextureUri(
+			TextureHandle handle
+		) const final;
+
 		ShaderHandle loadShaderFromMemory(
 			const uint8_t *data,
 			size_t size,
@@ -73,6 +79,10 @@ namespace scapes::visual
 			const foundation::io::URI &uri,
 			foundation::render::ShaderType shader_type
 		) final;
+
+		foundation::io::URI getShaderUri(
+			ShaderHandle handle
+		) const final;
 
 		MeshHandle createMesh(
 			uint32_t num_vertices,
@@ -102,12 +112,31 @@ namespace scapes::visual
 		) final;
 
 	private:
+		template<typename HandleType>
+		struct HandleCompare
+		{
+			SCAPES_INLINE bool operator()(
+				const HandleType &h0,
+				const HandleType &h1
+			) const
+			{
+				return h0.get() < h1.get();
+			}
+		};
+
+	private:
 		foundation::resources::ResourceManager *resource_manager {nullptr};
 		foundation::game::World *world {nullptr};
 		foundation::render::Device *device {nullptr};
 		foundation::shaders::Compiler *compiler {nullptr};
 
 		scapes::visual::MeshHandle fullscreen_quad;
+
+		std::map<std::string, TextureHandle> uri_texture_lookup;
+		std::map<TextureHandle, std::string, HandleCompare<TextureHandle>> texture_uri_lookup;
+
+		std::map<std::string, ShaderHandle> uri_shader_lookup;
+		std::map<ShaderHandle, std::string, HandleCompare<ShaderHandle>> shader_uri_lookup;
 
 		std::vector<TextureHandle> managed_textures;
 		std::vector<ShaderHandle> managed_shaders;
