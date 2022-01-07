@@ -63,10 +63,15 @@ void Application::update()
 	const float zFar = 10000.0f;
 	const float fov = 60.0f;
 
+	float cos_phi = cos(foundation::math::radians(camera_state.phi));
+	float sin_phi = sin(foundation::math::radians(camera_state.phi));
+	float cos_theta = cos(foundation::math::radians(camera_state.theta));
+	float sin_theta = sin(foundation::math::radians(camera_state.theta));
+
 	foundation::math::vec3 camera_position;
-	camera_position.x = static_cast<float>(foundation::math::cos(camera_state.phi) * foundation::math::cos(camera_state.theta) * camera_state.radius);
-	camera_position.y = static_cast<float>(foundation::math::sin(camera_state.phi) * foundation::math::cos(camera_state.theta) * camera_state.radius);
-	camera_position.z = static_cast<float>(foundation::math::sin(camera_state.theta) * camera_state.radius);
+	camera_position.x = sin_phi * cos_theta * camera_state.radius;
+	camera_position.y = cos_phi * cos_theta * camera_state.radius;
+	camera_position.z = sin_theta * camera_state.radius;
 
 	foundation::math::vec4 camera_parameters;
 	camera_parameters.x = zNear;
@@ -291,8 +296,8 @@ void Application::mainloop()
  */
 void Application::initWindow()
 {
-	width = 800;
-	height = 600;
+	width = 1920;
+	height = 1080;
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	window = glfwCreateWindow(width, height, "Scapes v1.0", nullptr, nullptr);
@@ -326,25 +331,25 @@ void Application::onFramebufferResize(GLFWwindow *window, int width, int height)
 	application->height = static_cast<uint32_t>(height);
 }
 
-void Application::onMousePosition(GLFWwindow* window, double mouseX, double mouseY)
+void Application::onMousePosition(GLFWwindow* window, double mouse_x, double mouse_y)
 {
 	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
 	assert(application != nullptr);
 
 	if (application->input_state.rotating)
 	{
-		double deltaX = mouseX - application->input_state.lastMouseX;
-		double deltaY = mouseY - application->input_state.lastMouseY;
+		float delta_x = static_cast<float>(mouse_x) - application->input_state.last_mouse_x;
+		float delta_y = static_cast<float>(mouse_y) - application->input_state.last_mouse_y;
 
-		application->camera_state.phi -= deltaX * application->input_state.rotationSpeed;
-		application->camera_state.theta += deltaY * application->input_state.rotationSpeed;
+		application->camera_state.phi += delta_x * application->input_state.rotation_speed;
+		application->camera_state.theta += delta_y * application->input_state.rotation_speed;
 
-		application->camera_state.phi = std::fmod(application->camera_state.phi, foundation::math::two_pi<double>());
-		application->camera_state.theta = std::clamp<double>(application->camera_state.theta, -foundation::math::half_pi<double>(), foundation::math::half_pi<double>());
+		application->camera_state.phi = std::fmod(application->camera_state.phi, 360.0f);
+		application->camera_state.theta = std::clamp(application->camera_state.theta, -90.0f, 90.0f);
 	}
 
-	application->input_state.lastMouseX = mouseX;
-	application->input_state.lastMouseY = mouseY;
+	application->input_state.last_mouse_x = static_cast<float>(mouse_x);
+	application->input_state.last_mouse_y = static_cast<float>(mouse_y);
 }
 
 void Application::onMouseButton(GLFWwindow* window, int button, int action, int mods)
@@ -356,12 +361,12 @@ void Application::onMouseButton(GLFWwindow* window, int button, int action, int 
 		application->input_state.rotating = (action == GLFW_PRESS);
 }
 
-void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
+void Application::onScroll(GLFWwindow* window, double delta_x, double delta_y)
 {
 	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
 	assert(application);
-
-	application->camera_state.radius -= deltaY * application->input_state.scrollSpeed;
+ 
+	application->camera_state.radius -= static_cast<float>(delta_y) * application->input_state.scroll_speed;
 }
 
 /*
@@ -447,8 +452,8 @@ void Application::initRenderers()
 		float theta = foundation::math::radians(foundation::math::linearRand(0.0f, 90.0f));
 
 		float cos_theta = cos(theta);
-		samples[i].x = cos(phi) * cos_theta * radius;
-		samples[i].y = sin(phi) * cos_theta * radius;
+		samples[i].x = sin(phi) * cos_theta * radius;
+		samples[i].y = cos(phi) * cos_theta * radius;
 		samples[i].z = sin(theta) * radius;
 		samples[i].w = 1.0f;
 	}

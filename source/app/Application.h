@@ -32,19 +32,19 @@ struct ApplicationState
 
 struct CameraState
 {
-	double phi {0.0f};
-	double theta {0.0f};
-	double radius {2.0f};
+	float phi {220.0f};
+	float theta {20.0f};
+	float radius {5.0f};
 	scapes::foundation::math::vec3 target;
 };
 
 struct InputState
 {
-	const double rotationSpeed {0.01};
-	const double scrollSpeed {5.0};
+	const float rotation_speed {0.1f};
+	const float scroll_speed {5.0f};
 	bool rotating {false};
-	double lastMouseX {0.0};
-	double lastMouseY {0.0};
+	float last_mouse_x {0.0f};
+	float last_mouse_y {0.0f};
 };
 
 /*
