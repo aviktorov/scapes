@@ -90,11 +90,6 @@ protected:
 	virtual bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) { return true; };
 	virtual bool onSerialize(scapes::foundation::serde::yaml::NodeRef node) { return true; }
 
-private:
-	void clear();
-	void createRenderPassOffscreen();
-	void createRenderPassSwapChain();
-
 protected:
 	struct FrameBufferOutput
 	{
@@ -111,6 +106,20 @@ protected:
 		scapes::foundation::render::RenderPassClearColor clear_value;
 	};
 
+private:
+	void clear();
+	void createRenderPassOffscreen();
+	void createRenderPassSwapChain();
+
+	void deserializeFrameBufferOutput(scapes::foundation::serde::yaml::NodeRef node, bool is_depthstencil);
+	void deserializeSwapChainOutput(scapes::foundation::serde::yaml::NodeRef node);
+	void deserializeShader(scapes::foundation::serde::yaml::NodeRef node, scapes::visual::ShaderHandle &handle, scapes::foundation::render::ShaderType shader_type);
+
+	void serializeFrameBufferOutput(scapes::foundation::serde::yaml::NodeRef node, const FrameBufferOutput &data, bool is_depthstencil);
+	void serializeSwapChainOutput(scapes::foundation::serde::yaml::NodeRef node, const SwapChainOutput &data);
+	void serializeShader(scapes::foundation::serde::yaml::NodeRef node, const char *name, scapes::visual::ShaderHandle handle);
+
+protected:
 	std::vector<std::string> input_groups;
 	std::vector<std::string> input_render_buffers
 ;

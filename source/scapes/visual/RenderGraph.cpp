@@ -409,8 +409,6 @@ namespace scapes::visual
 	bool RenderGraphImpl::deserialize(const yaml::Tree &tree)
 	{
 		// TODO: split this into multiple methods for the sake of readability
-		using namespace foundation::serde;
-
 		const yaml::NodeRef stream = tree.rootref();
 		if (!stream.is_root())
 		{
@@ -443,221 +441,13 @@ namespace scapes::visual
 				yaml::csubstr child_key = child.key();
 
 				if (child_key.compare("ParameterGroup") == 0)
-				{
-					std::string group_name;
-					std::vector<yaml::NodeRef> parameters;
-					std::vector<yaml::NodeRef> textures;
+					deserializeGroup(child);
 
-					for (const yaml::NodeRef group_child : child.children())
-					{
-						yaml::csubstr group_child_key = group_child.key();
+				else if (child_key.compare("RenderBuffers") == 0)
+					deserializeRenderBuffers(child);
 
-						if (group_child_key.compare("name") == 0 && group_child.has_val())
-						{
-							yaml::csubstr group_child_value = group_child.val();
-							group_name = std::string(group_child_value.data(), group_child_value.size());
-						}
-						else if (group_child_key.compare("parameters") == 0)
-						{
-							const yaml::NodeRef parameter_data = group_child.first_child();
-							for (const yaml::NodeRef parameter_container : parameter_data.siblings())
-								parameters.push_back(parameter_container);
-						}
-						else if (group_child_key.compare("textures") == 0)
-						{
-							const yaml::NodeRef texture_data = group_child.first_child();
-							for (const yaml::NodeRef texture_container : texture_data.siblings())
-								textures.push_back(texture_container);
-						}
-					}
-
-					if (!group_name.empty())
-					{
-						addGroup(group_name.c_str());
-
-						for (const yaml::NodeRef parameter : parameters)
-						{
-							std::string parameter_name;
-							size_t parameter_num_elements = 1;
-							size_t parameter_type_size = 0;
-							GroupParameterType parameter_type = GroupParameterType::UNDEFINED;
-							yaml::NodeRef parameter_value;
-
-							for (const yaml::NodeRef parameter_child : parameter.children())
-							{
-								yaml::csubstr parameter_child_key = parameter_child.key();
-
-								if (parameter_child_key.compare("name") == 0 && parameter_child.has_val())
-								{
-									yaml::csubstr parameter_child_value = parameter_child.val();
-									parameter_name = std::string(parameter_child_value.data(), parameter_child_value.size());
-								}
-								else if (parameter_child_key.compare("type") == 0)
-									parameter_child >> parameter_type;
-								// TODO: check if we already remembered the value
-								else if (parameter_child_key.compare("value") == 0)
-									parameter_value = parameter_child;
-								else if (parameter_child_key.compare("size") == 0)
-									parameter_child >> parameter_type_size;
-								else if (parameter_child_key.compare("elements") == 0)
-									parameter_child >> parameter_num_elements;
-							}
-
-							if (parameter_type != GroupParameterType::UNDEFINED)
-								parameter_type_size = getTypeSize(parameter_type);
-
-							if (!parameter_name.empty() && parameter_type_size * parameter_num_elements > 0)
-							{
-								if (parameter_type != GroupParameterType::UNDEFINED)
-									addGroupParameter(group_name.c_str(), parameter_name.c_str(), parameter_type, parameter_num_elements);
-								else
-									addGroupParameter(group_name.c_str(), parameter_name.c_str(), parameter_type_size, parameter_num_elements);
-
-								if (parameter_value.valid())
-								{
-									if (parameter_num_elements == 1)
-									{
-										GroupParameterValue value = parseGroupParameterValue(parameter_type, parameter_value);
-										setGroupParameter(group_name.c_str(), parameter_name.c_str(), 0, 1, &value);
-									}
-									else
-									{
-										const yaml::NodeRef value_array = parameter_value.first_child();
-										size_t dst_index = 0;
-
-										for (const yaml::NodeRef value_child : value_array.siblings())
-										{
-											GroupParameterValue value = parseGroupParameterValue(parameter_type, value_child);
-											setGroupParameter(group_name.c_str(), parameter_name.c_str(), dst_index, 1, &value);
-											dst_index++;
-										}
-									}
-								}
-							}
-						}
-
-						for (const yaml::NodeRef texture : textures)
-						{
-							std::string texture_name;
-							std::string texture_path;
-
-							for (const yaml::NodeRef texture_child : texture.children())
-							{
-								yaml::csubstr texture_child_key = texture_child.key();
-
-								if (texture_child_key.compare("name") == 0 && texture_child.has_val())
-								{
-									yaml::csubstr texture_child_value = texture_child.val();
-									texture_name = std::string(texture_child_value.data(), texture_child_value.size());
-								}
-								else if (texture_child_key.compare("path") == 0 && texture_child.has_val())
-								{
-									yaml::csubstr texture_child_value = texture_child.val();
-									texture_path = std::string(texture_child_value.data(), texture_child_value.size());
-								}
-							}
-
-							if (!texture_name.empty())
-							{
-								addGroupTexture(group_name.c_str(), texture_name.c_str());
-
-								if (!texture_path.empty())
-								{
-									TextureHandle handle = api->loadTexture(texture_path.c_str());
-									setGroupTexture(group_name.c_str(), texture_name.c_str(), handle);
-								}
-							}
-						}
-					}
-				}
-
-				if (child_key.compare("RenderBuffers") == 0)
-				{
-					const yaml::NodeRef renderbuffer_data = child.first_child();
-
-					for (const yaml::NodeRef renderbuffer_container : renderbuffer_data.siblings())
-					{
-						std::string name;
-						foundation::render::Format format = foundation::render::Format::UNDEFINED;
-						uint32_t downscale = 1;
-
-						for (const yaml::NodeRef renderbuffer_child : renderbuffer_container.children())
-						{
-							yaml::csubstr renderbuffer_child_key = renderbuffer_child.key();
-
-							if (renderbuffer_child_key.compare("name") == 0 && renderbuffer_child.has_val())
-							{
-								yaml::csubstr renderbuffer_child_value = renderbuffer_child.val();
-								name = std::string(renderbuffer_child_value.data(), renderbuffer_child_value.size());
-							}
-							else if (renderbuffer_child_key.compare("format") == 0 && renderbuffer_child.has_val())
-								renderbuffer_child >> format;
-							else if (renderbuffer_child_key.compare("downscale") == 0 && renderbuffer_child.has_val())
-								renderbuffer_child >> downscale;
-						}
-
-						if (!name.empty() && format != foundation::render::Format::UNDEFINED)
-							addRenderBuffer(name.c_str(), format, downscale);
-					}
-				}
-
-				if (child_key.compare("RenderPass") == 0)
-				{
-					std::string type_name;
-					std::string name;
-
-					for (const yaml::NodeRef renderpass_child : child.children())
-					{
-						yaml::csubstr renderpass_child_key = renderpass_child.key();
-
-						if (renderpass_child_key.compare("name") == 0 && renderpass_child.has_val())
-						{
-							yaml::csubstr renderpass_child_value = renderpass_child.val();
-							name = std::string(renderpass_child_value.data(), renderpass_child_value.size());
-						}
-
-						else if (renderpass_child_key.compare("type") == 0 && renderpass_child.has_val())
-						{
-							yaml::csubstr renderpass_child_value = renderpass_child.val();
-							type_name = std::string(renderpass_child_value.data(), renderpass_child_value.size());
-						}
-					}
-
-					if (name.empty() || type_name.empty())
-						continue;
-
-					uint64_t render_pass_hash = 0;
-					common::HashUtils::combine(render_pass_hash, std::string_view(name));
-
-					int32_t render_pass_index = findRenderPass(render_pass_hash);
-					if (render_pass_index != -1)
-						continue;
-
-					uint64_t render_pass_type_hash = 0;
-					common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
-
-					int32_t render_pass_type_index = findRenderPassType(render_pass_type_hash);
-					if (render_pass_type_index == -1)
-						continue;
-
-					IRenderPass *render_pass = pass_types_runtime.constructors[render_pass_type_index](this);
-					if (!render_pass->deserialize(child))
-					{
-						foundation::Log::error("Can't deserialize render pass with type \"%s\"\n", type_name.c_str());
-
-						delete render_pass;
-						render_pass = nullptr;
-					}
-
-					if (render_pass)
-					{
-						passes_runtime.passes.push_back(render_pass);
-						passes_runtime.name_hashes.push_back(render_pass_hash);
-						passes_runtime.type_hashes.push_back(render_pass_type_hash);
-						passes_runtime.names.push_back(name);
-						passes_runtime.type_names.push_back(type_name);
-					}
-				}
+				else if (child_key.compare("RenderPass") == 0)
+					deserializeRenderPass(child);
 			}
 		}
 
@@ -1625,5 +1415,233 @@ namespace scapes::visual
 			device->destroyFrameBuffer(framebuffer);
 
 		framebuffer_cache.clear();
+	}
+
+	/*
+	 */
+	void RenderGraphImpl::deserializeGroup(yaml::NodeRef group_node)
+	{
+		std::string group_name;
+		std::vector<yaml::NodeRef> parameters;
+		std::vector<yaml::NodeRef> textures;
+
+		for (const yaml::NodeRef group_child : group_node.children())
+		{
+			yaml::csubstr group_child_key = group_child.key();
+
+			if (group_child_key.compare("name") == 0 && group_child.has_val())
+			{
+				yaml::csubstr group_child_value = group_child.val();
+				group_name = std::string(group_child_value.data(), group_child_value.size());
+			}
+			else if (group_child_key.compare("parameters") == 0)
+			{
+				const yaml::NodeRef parameter_data = group_child.first_child();
+				for (const yaml::NodeRef parameter_container : parameter_data.siblings())
+					parameters.push_back(parameter_container);
+			}
+			else if (group_child_key.compare("textures") == 0)
+			{
+				const yaml::NodeRef texture_data = group_child.first_child();
+				for (const yaml::NodeRef texture_container : texture_data.siblings())
+					textures.push_back(texture_container);
+			}
+		}
+
+		if (group_name.empty())
+			return;
+
+		addGroup(group_name.c_str());
+
+		for (const yaml::NodeRef parameter : parameters)
+			deserializeGroupParameter(group_name.c_str(), parameter);
+
+		for (const yaml::NodeRef texture : textures)
+			deserializeGroupTexture(group_name.c_str(), texture);
+	}
+
+	void RenderGraphImpl::deserializeGroupParameter(const char *group_name, yaml::NodeRef parameter_node)
+	{
+		std::string parameter_name;
+		size_t parameter_num_elements = 1;
+		size_t parameter_type_size = 0;
+		GroupParameterType parameter_type = GroupParameterType::UNDEFINED;
+		yaml::NodeRef parameter_value;
+
+		for (const yaml::NodeRef parameter_child : parameter_node.children())
+		{
+			yaml::csubstr parameter_child_key = parameter_child.key();
+
+			if (parameter_child_key.compare("name") == 0 && parameter_child.has_val())
+			{
+				yaml::csubstr parameter_child_value = parameter_child.val();
+				parameter_name = std::string(parameter_child_value.data(), parameter_child_value.size());
+			}
+			else if (parameter_child_key.compare("type") == 0 && parameter_child.has_val())
+				parameter_child >> parameter_type;
+			// TODO: check if we already remembered the value
+			else if (parameter_child_key.compare("value") == 0)
+				parameter_value = parameter_child;
+			else if (parameter_child_key.compare("size") == 0 && parameter_child.has_val())
+				parameter_child >> parameter_type_size;
+			else if (parameter_child_key.compare("elements") == 0 && parameter_child.has_val())
+				parameter_child >> parameter_num_elements;
+		}
+
+		if (parameter_type != GroupParameterType::UNDEFINED)
+			parameter_type_size = getTypeSize(parameter_type);
+
+		if (parameter_name.empty() || parameter_type_size * parameter_num_elements == 0)
+			return;
+
+		if (parameter_type != GroupParameterType::UNDEFINED)
+			addGroupParameter(group_name, parameter_name.c_str(), parameter_type, parameter_num_elements);
+		else
+			addGroupParameter(group_name, parameter_name.c_str(), parameter_type_size, parameter_num_elements);
+
+		if (!parameter_value.valid())
+			return;
+
+		if (parameter_num_elements == 1)
+		{
+			GroupParameterValue value = parseGroupParameterValue(parameter_type, parameter_value);
+			setGroupParameter(group_name, parameter_name.c_str(), 0, 1, &value);
+		}
+		else
+		{
+			const yaml::NodeRef value_array = parameter_value.first_child();
+			size_t dst_index = 0;
+
+			for (const yaml::NodeRef value_child : value_array.siblings())
+			{
+				GroupParameterValue value = parseGroupParameterValue(parameter_type, value_child);
+				setGroupParameter(group_name, parameter_name.c_str(), dst_index, 1, &value);
+				dst_index++;
+			}
+		}
+	}
+
+	void RenderGraphImpl::deserializeGroupTexture(const char *group_name, yaml::NodeRef texture_node)
+	{
+		std::string texture_name;
+		std::string texture_path;
+
+		for (const yaml::NodeRef texture_child : texture_node.children())
+		{
+			yaml::csubstr texture_child_key = texture_child.key();
+
+			if (texture_child_key.compare("name") == 0 && texture_child.has_val())
+			{
+				yaml::csubstr texture_child_value = texture_child.val();
+				texture_name = std::string(texture_child_value.data(), texture_child_value.size());
+			}
+			else if (texture_child_key.compare("path") == 0 && texture_child.has_val())
+			{
+				yaml::csubstr texture_child_value = texture_child.val();
+				texture_path = std::string(texture_child_value.data(), texture_child_value.size());
+			}
+		}
+
+		if (texture_name.empty())
+			return;
+
+		addGroupTexture(group_name, texture_name.c_str());
+
+		if (texture_path.empty())
+			return;
+
+		TextureHandle handle = api->loadTexture(texture_path.c_str());
+		setGroupTexture(group_name, texture_name.c_str(), handle);
+	}
+
+	/*
+	 */
+	void RenderGraphImpl::deserializeRenderBuffers(yaml::NodeRef renderbuffers_root)
+	{
+		const yaml::NodeRef renderbuffer_container = renderbuffers_root.first_child();
+
+		for (const yaml::NodeRef renderbuffer_node : renderbuffer_container.siblings())
+		{
+			std::string name;
+			foundation::render::Format format = foundation::render::Format::UNDEFINED;
+			uint32_t downscale = 1;
+
+			for (const yaml::NodeRef renderbuffer_child : renderbuffer_node.children())
+			{
+				yaml::csubstr renderbuffer_child_key = renderbuffer_child.key();
+
+				if (renderbuffer_child_key.compare("name") == 0 && renderbuffer_child.has_val())
+				{
+					yaml::csubstr renderbuffer_child_value = renderbuffer_child.val();
+					name = std::string(renderbuffer_child_value.data(), renderbuffer_child_value.size());
+				}
+				else if (renderbuffer_child_key.compare("format") == 0 && renderbuffer_child.has_val())
+					renderbuffer_child >> format;
+				else if (renderbuffer_child_key.compare("downscale") == 0 && renderbuffer_child.has_val())
+					renderbuffer_child >> downscale;
+			}
+
+			if (!name.empty() && format != foundation::render::Format::UNDEFINED)
+				addRenderBuffer(name.c_str(), format, downscale);
+		}
+	}
+
+	/*
+	 */
+	void RenderGraphImpl::deserializeRenderPass(yaml::NodeRef renderpass_node)
+	{
+		std::string type_name;
+		std::string name;
+
+		for (const yaml::NodeRef renderpass_child : renderpass_node.children())
+		{
+			yaml::csubstr renderpass_child_key = renderpass_child.key();
+
+			if (renderpass_child_key.compare("name") == 0 && renderpass_child.has_val())
+			{
+				yaml::csubstr renderpass_child_value = renderpass_child.val();
+				name = std::string(renderpass_child_value.data(), renderpass_child_value.size());
+			}
+
+			else if (renderpass_child_key.compare("type") == 0 && renderpass_child.has_val())
+			{
+				yaml::csubstr renderpass_child_value = renderpass_child.val();
+				type_name = std::string(renderpass_child_value.data(), renderpass_child_value.size());
+			}
+		}
+
+		if (name.empty() || type_name.empty())
+			return;
+
+		uint64_t render_pass_hash = 0;
+		common::HashUtils::combine(render_pass_hash, std::string_view(name));
+
+		int32_t render_pass_index = findRenderPass(render_pass_hash);
+		if (render_pass_index != -1)
+			return;
+
+		uint64_t render_pass_type_hash = 0;
+		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
+
+		int32_t render_pass_type_index = findRenderPassType(render_pass_type_hash);
+		if (render_pass_type_index == -1)
+			return;
+
+		IRenderPass *render_pass = pass_types_runtime.constructors[render_pass_type_index](this);
+		if (!render_pass->deserialize(renderpass_node))
+		{
+			foundation::Log::error("Can't deserialize render pass with type \"%s\"\n", type_name.c_str());
+
+			delete render_pass;
+			render_pass = nullptr;
+
+			return;
+		}
+
+		passes_runtime.passes.push_back(render_pass);
+		passes_runtime.name_hashes.push_back(render_pass_hash);
+		passes_runtime.type_hashes.push_back(render_pass_type_hash);
+		passes_runtime.names.push_back(name);
+		passes_runtime.type_names.push_back(type_name);
 	}
 }

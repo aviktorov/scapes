@@ -161,6 +161,12 @@ namespace scapes::visual
 		int32_t findRenderPassType(const char *type_name);
 		int32_t findRenderPassType(uint64_t hash);
 
+		void deserializeGroup(foundation::serde::yaml::NodeRef group_node);
+		void deserializeGroupParameter(const char *group_name, foundation::serde::yaml::NodeRef parameter_node);
+		void deserializeGroupTexture(const char *group_name, foundation::serde::yaml::NodeRef texture_node);
+		void deserializeRenderBuffers(foundation::serde::yaml::NodeRef renderbuffers_root);
+		void deserializeRenderPass(foundation::serde::yaml::NodeRef renderpass_node);
+
 	private:
 		void destroyGroup(Group *group);
 		void invalidateGroup(Group *group);
