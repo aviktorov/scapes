@@ -5,7 +5,8 @@ namespace scapes::foundation::resources::impl
 {
 	/*
 	 */
-	ResourceManager::ResourceManager()
+	ResourceManager::ResourceManager(io::FileSystem *file_system)
+		: file_system(file_system)
 	{
 
 	}

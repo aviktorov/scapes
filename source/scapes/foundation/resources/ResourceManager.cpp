@@ -2,9 +2,9 @@
 
 namespace scapes::foundation::resources
 {
-	ResourceManager *ResourceManager::create()
+	ResourceManager *ResourceManager::create(io::FileSystem *file_system)
 	{
-		return new impl::ResourceManager();
+		return new impl::ResourceManager(file_system);
 	}
 
 	void ResourceManager::destroy(ResourceManager *resource_manager)

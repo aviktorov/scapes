@@ -368,7 +368,7 @@ void Application::onScroll(GLFWwindow* window, double deltaX, double deltaY)
  */
 void Application::initRenderScene()
 {
-	resource_manager = foundation::resources::ResourceManager::create();
+	resource_manager = foundation::resources::ResourceManager::create(file_system);
 
 	world = foundation::game::World::create();
 	visual_api = visual::API::create(resource_manager, world, device, compiler);

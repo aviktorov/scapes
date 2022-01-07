@@ -4,6 +4,7 @@
 #include <scapes/foundation/Log.h>
 #include <scapes/foundation/TypeTraits.h>
 #include <scapes/foundation/Fwd.h>
+#include <scapes/foundation/io/FileSystem.h>
 
 template <typename T> struct ResourcePipeline { };
 
@@ -77,10 +78,12 @@ namespace scapes::foundation::resources
 	class ResourceManager
 	{
 	public:
-		static SCAPES_API ResourceManager *create();
+		static SCAPES_API ResourceManager *create(io::FileSystem *file_system);
 		static SCAPES_API void destroy(ResourceManager *resource_manager);
 
 		virtual ~ResourceManager() { }
+
+		virtual io::FileSystem *getFileSystem() const = 0;
 
 	public:
 		template <typename T>
@@ -96,24 +99,24 @@ namespace scapes::foundation::resources
 		template <typename T, typename... Arguments>
 		ResourceHandle<T> import(const io::URI &uri, Arguments&&... params)
 		{
-			// TODO: use I/O to load resource into temp memory and provide to resource pipeline
-			FILE *file = fopen(uri, "rb");
-			if (!file)
+			io::FileSystem *file_system = getFileSystem();
+			assert(file_system);
+
+			io::Stream *stream = file_system->open(uri, "rb");
+			if (!stream)
 			{
 				Log::error("ResourceManager::import(): can't open \"%s\" file\n", uri);
 				return ResourceHandle<T>();
 			}
 
-			fseek(file, 0, SEEK_END);
-			size_t size = ftell(file);
-			fseek(file, 0, SEEK_SET);
+			size_t size = static_cast<size_t>(stream->size());
 
 			uint8_t *data = new uint8_t[size];
-			fread(data, sizeof(uint8_t), size, file);
-			fclose(file);
+			stream->read(data, sizeof(uint8_t), size);
+			file_system->close(stream);
 
-			ResourceHandle<T> resource = create<T>();
-			ResourcePipeline<T>::process(this, resource, data, size, std::forward<Arguments>(params)...);
+			
+			ResourceHandle<T> resource = importFromMemory<T>(data, size, std::forward<Arguments>(params)...);
 			delete[] data;
 
 			return resource;

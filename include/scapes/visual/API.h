@@ -20,7 +20,12 @@ namespace scapes::visual
 	class API
 	{
 	public:
-		static SCAPES_API API *create(foundation::resources::ResourceManager *resource_manager, foundation::game::World *world, foundation::render::Device *device, foundation::shaders::Compiler *compiler);
+		static SCAPES_API API *create(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::game::World *world,
+			foundation::render::Device *device,
+			foundation::shaders::Compiler *compiler
+		);
 		static SCAPES_API void destroy(API *api);
 
 		virtual ~API() { }
