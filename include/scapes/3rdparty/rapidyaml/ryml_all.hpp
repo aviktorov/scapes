@@ -73,6 +73,9 @@
 //     #define C4CORE_SINGLE_HDR_DEFINE_NOW and then include this header.
 //     This will enable the function and class definitions in
 //     the header file.
+//   - To compile into a shared library, just define the
+//     preprocessor symbol C4CORE_SHARED . This will take
+//     care of symbol export/import.
 //
 
 
@@ -104,6 +107,12 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
+
+// shared library: export when defining
+#if defined(C4CORE_SHARED) && defined(C4CORE_SINGLE_HDR_DEFINE_NOW) && !defined(C4CORE_EXPORTS)
+#define C4CORE_EXPORTS
+#endif
+
 
 
 
@@ -1758,8 +1767,14 @@ struct fail_type__ {};
 #else
 #   ifdef __clang__
 #       pragma clang diagnostic push
-#       if (__clang_major__ >= 10)
-#           pragma clang diagnostic ignored "-Wgnu-inline-cpp-without-extern" // debugbreak/debugbreak.h:50:16: error: 'gnu_inline' attribute without 'extern' in C++ treated as externally available, this changed in Clang 10 [-Werror,-Wgnu-inline-cpp-without-extern]
+#       if !defined(__APPLE_CC__)
+#           if __clang_major__ >= 10
+#               pragma clang diagnostic ignored "-Wgnu-inline-cpp-without-extern" // debugbreak/debugbreak.h:50:16: error: 'gnu_inline' attribute without 'extern' in C++ treated as externally available, this changed in Clang 10 [-Werror,-Wgnu-inline-cpp-without-extern]
+#           endif
+#       else
+#           if __clang_major__ >= 13
+#               pragma clang diagnostic ignored "-Wgnu-inline-cpp-without-extern" // debugbreak/debugbreak.h:50:16: error: 'gnu_inline' attribute without 'extern' in C++ treated as externally available, this changed in Clang 10 [-Werror,-Wgnu-inline-cpp-without-extern]
+#           endif
 #       endif
 #   elif defined(__GNUC__)
 #   endif
@@ -4453,7 +4468,7 @@ C4_MUST_BE_TRIVIAL_COPY(cblob);
 namespace c4 {
 
 #ifndef DOXYGEN
-template<class C> struct basic_substring;
+template<class C> struct C4CORE_EXPORT basic_substring;
 using csubstr = C4CORE_EXPORT basic_substring<const char>;
 using substr = C4CORE_EXPORT basic_substring<char>;
 #endif // !DOXYGEN
@@ -5665,7 +5680,33 @@ public:
                             continue;
                         }
                     }
-                    return _is_delim_char(c) ? ne.first(i) : ne.first(0);
+                    else if(i == skip_start)
+                    {
+                        if(c == 'i')
+                        {
+                            if(ne.len >= skip_start + 8 && ne.sub(skip_start, 8) == "infinity")
+                                return _is_delim_char(ne.str[skip_start + 8]) ? ne.first(skip_start + 8) : ne.first(0);
+                            else if(ne.len >= skip_start + 3 && ne.sub(skip_start, 3) == "inf")
+                                return _is_delim_char(ne.str[skip_start + 3]) ? ne.first(skip_start + 3) : ne.first(0);
+                            else
+                                return ne.first(0);
+                        }
+                        else if(c == 'n')
+                        {
+                            if(ne.len >= skip_start + 3 && ne.sub(skip_start, 3) == "nan")
+                                return _is_delim_char(ne.str[skip_start + 3]) ? ne.first(skip_start + 3) : ne.first(0);
+                            else
+                                return ne.first(0);
+                        }
+                        else
+                        {
+                            return ne.first(0);
+                        }
+                    }
+                    else
+                    {
+                        return _is_delim_char(c) ? ne.first(i) : ne.first(0);
+                    }
                 }
             }
         }
@@ -9400,19 +9441,40 @@ namespace std {
 template<typename> class allocator;
 template<typename T, typename Alloc> class vector;
 } // namespace std
-#elif defined(_LIBCPP_VERSION)
+#elif defined(_LIBCPP_VERSION) || defined(__APPLE_CC__)
+#   if defined(__EMSCRIPTEN__)
 namespace std {
 template<typename> class allocator;
-#if defined(__EMSCRIPTEN__)
 inline namespace __2 {
 template<typename T, typename Alloc> class vector;
 } // namespace __2
-#else
+} // namespace std
+#   else // !defined(__EMSCRIPTEN__)
+#       if !defined(__APPLE_CC__)
+namespace std {
+template<typename> class allocator;
 inline namespace __1 {
 template<typename T, typename Alloc> class vector;
 } // namespace __1
-#endif
 } // namespace std
+#       else // defined(__APPLE_CC__)
+#           if (__clang_major__ >= 13)
+namespace std {
+template<typename> class allocator;
+inline namespace __1 {
+template<typename T, typename Alloc> class vector;
+} // namespace __1
+} // namespace std
+#           else // if __clang_major__ < 13
+namespace std {
+inline namespace __1 {
+template<typename> class allocator;
+template<typename T, typename Alloc> class vector;
+} // namespace __1
+} // namespace std
+#           endif // __clang_major < 13
+#       endif // defined(__APPLE_CC__)
+#   endif // !defined(__EMSCRIPTEN__)
 #else
 #error "unknown standard library"
 #endif
@@ -10791,7 +10853,7 @@ inline size_t dtoa(substr str, double v, int precision=-1, RealFormat_e formatti
  */
 inline bool atof(csubstr str, float * C4_RESTRICT v)
 {
-    C4_ASSERT(str == str.first_real_span());
+    C4_ASSERT(str.triml(" \r\t\n").len == str.len);
 #if C4CORE_HAVE_FAST_FLOAT
     fast_float::from_chars_result result;
     result = fast_float::from_chars(str.str, str.str + str.len, *v);
@@ -10815,7 +10877,7 @@ inline bool atof(csubstr str, float * C4_RESTRICT v)
  */
 inline bool atod(csubstr str, double * C4_RESTRICT v)
 {
-    C4_ASSERT(str == str.first_real_span());
+    C4_ASSERT(str.triml(" \r\t\n").len == str.len);
 #if C4CORE_HAVE_FAST_FLOAT
     fast_float::from_chars_result result;
     result = fast_float::from_chars(str.str, str.str + str.len, *v);
@@ -10833,7 +10895,8 @@ inline bool atod(csubstr str, double * C4_RESTRICT v)
 
 /** Convert a string to a single precision real number.
  * Leading whitespace is skipped until valid characters are found.
- * @return true iff the conversion succeeded */
+ * @return the number of characters read from the string, or npos if
+ * conversion was not successful or if the string was empty */
 inline size_t atof_first(csubstr str, float * C4_RESTRICT v)
 {
     csubstr trimmed = str.first_real_span();
@@ -10847,8 +10910,8 @@ inline size_t atof_first(csubstr str, float * C4_RESTRICT v)
 
 /** Convert a string to a double precision real number.
  * Leading whitespace is skipped until valid characters are found.
- * @return true iff the conversion succeeded
- */
+ * @return the number of characters read from the string, or npos if
+ * conversion was not successful or if the string was empty */
 inline size_t atod_first(csubstr str, double * C4_RESTRICT v)
 {
     csubstr trimmed = str.first_real_span();
@@ -11525,10 +11588,10 @@ inline raw_wrapper raw(T & C4_RESTRICT data, size_t alignment=alignof(T))
 
 
 /** write a variable in raw binary format, using memcpy */
-size_t to_chars(substr buf, fmt::const_raw_wrapper r);
+C4CORE_EXPORT size_t to_chars(substr buf, fmt::const_raw_wrapper r);
 
 /** read a variable in raw binary format, using memcpy */
-bool from_chars(csubstr buf, fmt::raw_wrapper *r);
+C4CORE_EXPORT bool from_chars(csubstr buf, fmt::raw_wrapper *r);
 /** read a variable in raw binary format, using memcpy */
 inline bool from_chars(csubstr buf, fmt::raw_wrapper r)
 {
@@ -15184,7 +15247,7 @@ size_t base64_decode(csubstr encoded, blob data)
 #error "amalgamate: file c4/windows_push.hpp must have been included at this point"
 #endif /* C4_WINDOWS_PUSH_HPP_ */
 
-#include <Windows.h>
+#include <windows.h>
 // amalgamate: removed include of
 // https://github.com/biojppm/c4core/src/c4/windows_pop.hpp
 //#include "c4/windows_pop.hpp"
