@@ -71,12 +71,13 @@ PBR Sandbox:
     Stream 85:
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Add camera component
-    Stream 84:
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
             ☐ Think about having ResourceWatcher<T>
-        ☐ Use FileSystem inside ResourceManager::import<T> call
-        ☐ Clean up RenderGraph serde
+    Stream 84:
+        ✔ Refactor layered cubemap rendering @done (1/8/2022, 5:54:58 AM)
+        ✔ Use FileSystem inside ResourceManager::import<T> call @done (1/7/2022, 8:07:51 PM)
+        ✔ Clean up RenderGraph serde @done (1/7/2022, 7:43:36 PM)
     Stream 83:
         ✔ Implement serialization for RenderGraph @done (1/6/2022, 8:16:02 PM)
         ✔ Add lookup tables for textures / shaders to visual::API class @done (1/6/2022, 9:04:20 PM)
