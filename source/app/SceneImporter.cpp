@@ -350,7 +350,10 @@ void SceneImporter::clear()
 visual::MeshHandle SceneImporter::import_cgltf_mesh(const cgltf_mesh *mesh)
 {
 	assert(mesh);
-	assert(mesh->primitives_count == 1);
+	assert(mesh->primitives_count >= 1);
+
+	if (mesh->primitives_count > 1)
+		foundation::Log::warning("SceneImporter::import_cgltf_mesh(): mesh contains more than one primitive, current importer does not support submeshes\n");
 
 	const cgltf_primitive &primitive = mesh->primitives[0];
 
