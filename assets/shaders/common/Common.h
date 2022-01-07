@@ -4,6 +4,7 @@
 const float PI =  3.141592653589798979f;
 const float PI2 = 6.283185307179586477f;
 const float iPI = 0.318309886183790672f;
+const float iPI2 = 0.1591549430918953357f;
 const float EPSILON = 1e-6f;
 
 #define saturate(X) clamp(X, 0.0f, 1.0f)
@@ -37,16 +38,16 @@ vec3 importanceSamplingGGX(vec2 Xi, vec3 normal, float roughness)
 	Xi.y = saturate(Xi.y - EPSILON);
 
 	float phi = PI2 * Xi.x;
-	float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (alpha2 - 1.0f) * Xi.y));
-	float sinTheta = sqrt(1.0f - sqr(cosTheta));
+	float cos_theta = sqrt((1.0f - Xi.y) / (1.0f + (alpha2 - 1.0f) * Xi.y));
+	float sin_theta = sqrt(1.0f - sqr(cos_theta));
 
 	// from spherical coordinates to cartesian coordinates
 	vec3 H;
-	H.x = cos(phi) * sinTheta;
-	H.y = sin(phi) * sinTheta;
-	H.z = cosTheta;
+	H.x = sin(phi) * sin_theta;
+	H.y = cos(phi) * sin_theta;
+	H.z = cos_theta;
 
-	// from tangent-space vector to world-space sample vector
+	// from tangent-space vector to target-space vector
 	vec3 up = abs(normal.z) < 0.999f ? vec3(0.0f, 0.0f, 1.0f) : vec3(1.0f, 0.0f, 0.0f);
 	vec3 tangent = normalize(cross(up, normal));
 	vec3 binormal = cross(normal, tangent);
