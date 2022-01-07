@@ -128,14 +128,14 @@ namespace scapes::foundation::render::vulkan
 		int estimate = -1;
 		for (const auto& device : devices)
 		{
-			int currentEstimate = examinePhysicalDevice(device);
-			if (currentEstimate == -1)
+			int current_estimate = examinePhysicalDevice(device);
+			if (current_estimate == -1)
 				continue;
 
-			if (estimate > currentEstimate)
+			if (estimate > current_estimate)
 				continue;
 
-			estimate = currentEstimate;
+			estimate = current_estimate;
 			physicalDevice = device;
 		}
 
@@ -155,6 +155,8 @@ namespace scapes::foundation::render::vulkan
 		VkPhysicalDeviceFeatures deviceFeatures = {};
 		deviceFeatures.samplerAnisotropy = VK_TRUE;
 		deviceFeatures.sampleRateShading = VK_TRUE;
+		deviceFeatures.geometryShader = VK_TRUE;
+		deviceFeatures.tessellationShader = VK_TRUE;
 
 		VkDeviceCreateInfo deviceCreateInfo = {};
 		deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -270,12 +272,13 @@ namespace scapes::foundation::render::vulkan
 			case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: estimate = 1000; break;
 		}
 
-		// TODO: add more estimates here
-		if (physicalDeviceFeatures.geometryShader)
-			estimate++;
+		if (!physicalDeviceFeatures.geometryShader)
+			return -1;
 
-		if (physicalDeviceFeatures.tessellationShader)
-			estimate++;
+		if (!physicalDeviceFeatures.tessellationShader)
+			return -1;
+
+		// TODO: add more estimates here
 
 		return estimate;
 	}
