@@ -24,9 +24,8 @@ vec3 SkyLight_Diffuse(vec3 normal_ws, vec3 view_ws, Material material)
 vec3 SkyLight_Specular(vec3 normal_ws, vec3 view_ws, Material material)
 {
 	float dot_NV = max(0.0f, dot(normal_ws, view_ws));
+	float mip = material.roughness * textureQueryLevels(tex_skylight_environment);
 
-	// TODO: remove magic constant, pass max mip levels instead
-	float mip = material.roughness * 8.0f;
 	vec3 Li = textureLod(tex_skylight_environment, -reflect(view_ws, normal_ws), mip).rgb;
 	vec2 brdf = texture(tex_skylight_brdf, vec2(material.roughness, dot_NV)).xy;
 
