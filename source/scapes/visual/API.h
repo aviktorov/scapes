@@ -29,7 +29,8 @@ namespace scapes::visual
 		SCAPES_INLINE foundation::render::Device *getDevice() const final { return device; }
 		SCAPES_INLINE foundation::shaders::Compiler *getCompiler() const final { return compiler; }
 
-		SCAPES_INLINE MeshHandle getFullscreenQuadMesh() const final { return fullscreen_quad; }
+		SCAPES_INLINE MeshHandle getUnitQuad() const final { return unit_quad; }
+		SCAPES_INLINE MeshHandle getUnitCube() const final { return unit_cube; }
 
 		TextureHandle createTexture2D(
 			foundation::render::Format format,
@@ -95,7 +96,7 @@ namespace scapes::visual
 			float size
 		) final;
 
-		MeshHandle createMeshSkybox(
+		MeshHandle createMeshCube(
 			float size
 		) final;
 
@@ -130,7 +131,8 @@ namespace scapes::visual
 		foundation::render::Device *device {nullptr};
 		foundation::shaders::Compiler *compiler {nullptr};
 
-		scapes::visual::MeshHandle fullscreen_quad;
+		scapes::visual::MeshHandle unit_quad;
+		scapes::visual::MeshHandle unit_cube;
 
 		std::map<std::string, TextureHandle> uri_texture_lookup;
 		std::map<TextureHandle, std::string, HandleCompare<TextureHandle>> texture_uri_lookup;

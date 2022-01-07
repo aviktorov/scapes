@@ -22,6 +22,7 @@ namespace scapes::visual
 		void render(
 			const resources::Mesh *mesh,
 			const resources::Shader *vertex_shader,
+			const resources::Shader *geometry_shader,
 			const resources::Shader *fragment_shader,
 			const resources::Texture *input_texture,
 			uint8_t push_constants_size = 0,

@@ -11,9 +11,10 @@ namespace scapes::visual
 {
 	/*
 	 */
-	struct CubemapFaceOrientationData
+	struct CubemapFaceData
 	{
-		math::mat4 faces[6];
+		math::mat4 projection;
+		math::mat4 face_views[6];
 	};
 
 	/*
@@ -36,24 +37,19 @@ namespace scapes::visual
 	)
 	{
 		// Create uniform buffers
-		uint32_t ubo_size = sizeof(CubemapFaceOrientationData);
+		uint32_t ubo_size = sizeof(CubemapFaceData);
 		uniform_buffer = device->createUniformBuffer(render::BufferType::DYNAMIC, ubo_size);
 
 		// Create bind set
 		bind_set = device->createBindSet();
 
 		// Create framebuffer
-		render::FrameBufferAttachment frame_buffer_attachments[6] =
+		render::FrameBufferAttachment frame_buffer_attachments[1] =
 		{
-			{ target_texture->gpu_data, target_mip, 0, 1 },
-			{ target_texture->gpu_data, target_mip, 1, 1 },
-			{ target_texture->gpu_data, target_mip, 2, 1 },
-			{ target_texture->gpu_data, target_mip, 3, 1 },
-			{ target_texture->gpu_data, target_mip, 4, 1 },
-			{ target_texture->gpu_data, target_mip, 5, 1 },
+			{ target_texture->gpu_data, target_mip, 0, 6 },
 		};
 
-		frame_buffer = device->createFrameBuffer(6, frame_buffer_attachments);
+		frame_buffer = device->createFrameBuffer(1, frame_buffer_attachments);
 
 		// Create render pass
 		render::RenderPassClearValue clear_value;
@@ -63,41 +59,34 @@ namespace scapes::visual
 		render::RenderPassLoadOp load_op = render::RenderPassLoadOp::CLEAR;
 		render::RenderPassStoreOp store_op = render::RenderPassStoreOp::STORE;
 
-		render::RenderPassAttachment render_pass_attachments[6] =
+		render::RenderPassAttachment render_pass_attachments[1] =
 		{
-			{ target_texture->format, samples, load_op, store_op, clear_value },
-			{ target_texture->format, samples, load_op, store_op, clear_value },
-			{ target_texture->format, samples, load_op, store_op, clear_value },
-			{ target_texture->format, samples, load_op, store_op, clear_value },
-			{ target_texture->format, samples, load_op, store_op, clear_value },
 			{ target_texture->format, samples, load_op, store_op, clear_value },
 		};
 
-		uint32_t color_attachments[6] = { 0, 1, 2, 3, 4, 5 };
+		uint32_t color_attachments[1] = { 0 };
 
 		render::RenderPassDescription render_pass_description = {};
-		render_pass_description.num_color_attachments = 6;
+		render_pass_description.num_color_attachments = 1;
 		render_pass_description.color_attachments = color_attachments;
 
-		render_pass = device->createRenderPass(6, render_pass_attachments, render_pass_description);
+		render_pass = device->createRenderPass(1, render_pass_attachments, render_pass_description);
 
 		// Create command buffer
 		command_buffer = device->createCommandBuffer(render::CommandBufferType::PRIMARY);
 
 		// Create pipeline state
-		uint32_t target_width = std::max<uint32_t>(1, target_texture->width << target_mip);
-		uint32_t target_height = std::max<uint32_t>(1, target_texture->height << target_mip);
+		uint32_t target_width = std::max<uint32_t>(1, target_texture->width >> target_mip);
+		uint32_t target_height = std::max<uint32_t>(1, target_texture->height >> target_mip);
 
 		pipeline_state = device->createPipelineState();
 		device->setViewport(pipeline_state, 0, 0, target_width, target_height);
 		device->setScissor(pipeline_state, 0, 0, target_width, target_height);
 
 		// Fill uniform buffer
-		CubemapFaceOrientationData *ubo = reinterpret_cast<CubemapFaceOrientationData *>(device->map(uniform_buffer));
+		CubemapFaceData *ubo = reinterpret_cast<CubemapFaceData *>(device->map(uniform_buffer));
 
-		const math::mat4 &translateZ = math::translate(math::mat4(1.0f), math::vec3(0.0f, 0.0f, 1.0f));
-
-		const math::vec3 faceDirs[6] =
+		const math::vec3 face_dirs[6] =
 		{
 			math::vec3( 1.0f,  0.0f,  0.0f),
 			math::vec3(-1.0f,  0.0f,  0.0f),
@@ -107,27 +96,20 @@ namespace scapes::visual
 			math::vec3( 0.0f,  0.0f, -1.0f),
 		};
 
-		const math::vec3 faceUps[6] = {
-			math::vec3( 0.0f,  0.0f, -1.0f),
+		const math::vec3 face_ups[6] =
+		{
+			math::vec3( 0.0f, -1.0f,  0.0f),
+			math::vec3( 0.0f, -1.0f,  0.0f),
 			math::vec3( 0.0f,  0.0f,  1.0f),
-			math::vec3(-1.0f,  0.0f,  0.0f),
-			math::vec3(-1.0f,  0.0f,  0.0f),
+			math::vec3( 0.0f,  0.0f, -1.0f),
 			math::vec3( 0.0f, -1.0f,  0.0f),
 			math::vec3( 0.0f, -1.0f,  0.0f),
 		};
 
-		// TODO: get rid of this mess
-		const math::mat4 faceRotations[6] = {
-			math::rotate(math::mat4(1.0f), math::radians(180.0f), math::vec3(0.0f, 1.0f, 0.0f)),
-			math::rotate(math::mat4(1.0f), math::radians(180.0f), math::vec3(0.0f, 1.0f, 0.0f)),
-			math::mat4(1.0f),
-			math::mat4(1.0f),
-			math::rotate(math::mat4(1.0f), math::radians(-90.0f), math::vec3(0.0f, 0.0f, 1.0f)),
-			math::rotate(math::mat4(1.0f), math::radians(-90.0f), math::vec3(0.0f, 0.0f, 1.0f)),
-		};
+		ubo->projection = math::perspective(math::radians(90.0f), 1.0f, 0.1f, 10.0f);
 
 		for (int i = 0; i < 6; i++)
-			ubo->faces[i] = faceRotations[i] * math::lookAtRH(math::vec3(0.0f), faceDirs[i], faceUps[i]) * translateZ;
+			ubo->face_views[i] = math::lookAt(math::vec3(0.0f), face_dirs[i], face_ups[i]);
 
 		device->unmap(uniform_buffer);
 
@@ -161,6 +143,7 @@ namespace scapes::visual
 	void CubemapRenderer::render(
 		const resources::Mesh *mesh,
 		const resources::Shader *vertex_shader,
+		const resources::Shader *geometry_shader,
 		const resources::Shader *fragment_shader,
 		const resources::Texture *input_texture,
 		uint8_t push_constants_size,
@@ -172,6 +155,7 @@ namespace scapes::visual
 		device->setPushConstants(pipeline_state, push_constants_size, push_constants_data);
 		device->setBindSet(pipeline_state, 0, bind_set);
 		device->setShader(pipeline_state, render::ShaderType::VERTEX, vertex_shader->shader);
+		device->setShader(pipeline_state, render::ShaderType::GEOMETRY, geometry_shader->shader);
 		device->setShader(pipeline_state, render::ShaderType::FRAGMENT, fragment_shader->shader);
 
 		device->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
@@ -179,6 +163,8 @@ namespace scapes::visual
 		device->resetCommandBuffer(command_buffer);
 		device->beginCommandBuffer(command_buffer);
 		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
+
+		device->setCullMode(pipeline_state,render::CullMode::NONE);
 
 		device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
 

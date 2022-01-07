@@ -88,6 +88,8 @@ namespace scapes::visual
 		device->clearVertexStreams(pipeline_state);
 		device->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
 
+		device->setCullMode(pipeline_state,render::CullMode::NONE);
+
 		device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
 
 		device->endRenderPass(command_buffer);

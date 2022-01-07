@@ -11,7 +11,8 @@ namespace scapes::visual
 		uint32_t cubemap_size {128};
 
 		TextureHandle baked_brdf;
-		ShaderHandle cubemap_vertex; // TODO: find a way to get rid of cubemap vertex shader
+		ShaderHandle cubemap_vertex; // TODO: replace graphics pipeline by compute?
+		ShaderHandle cubemap_geometry;
 		ShaderHandle equirectangular_projection_fragment;
 		ShaderHandle prefiltered_specular_fragment;
 		ShaderHandle diffuse_irradiance_fragment;
@@ -36,7 +37,8 @@ namespace scapes::visual
 		virtual foundation::render::Device *getDevice() const = 0;
 		virtual foundation::shaders::Compiler *getCompiler() const = 0;
 
-		virtual MeshHandle getFullscreenQuadMesh() const = 0;
+		virtual MeshHandle getUnitQuad() const = 0;
+		virtual MeshHandle getUnitCube() const = 0;
 
 		virtual TextureHandle createTexture2D(
 			foundation::render::Format format,
@@ -102,7 +104,7 @@ namespace scapes::visual
 			float size
 		) = 0;
 
-		virtual MeshHandle createMeshSkybox(
+		virtual MeshHandle createMeshCube(
 			float size
 		) = 0;
 

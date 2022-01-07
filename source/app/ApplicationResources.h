@@ -8,8 +8,8 @@ namespace config
 {
 	enum Shaders
 	{
-		FullscreenQuadVertex = 0,
-		CubemapVertex,
+		DefaultVertex = 0,
+		DefaultCubemapGeometry,
 		EquirectangularProjectionFragment,
 		PrefilteredSpecularCubemapFragment,
 		DiffuseIrradianceCubemapFragment,
@@ -36,8 +36,6 @@ public:
 
 	inline scapes::visual::TextureHandle getBakedBRDFTexture() const { return baked_brdf; }
 
-	inline scapes::visual::MeshHandle getSkybox() const { return skybox; }
-
 	inline scapes::visual::TextureHandle getDefaultAlbedo() const { return default_albedo; }
 	inline scapes::visual::TextureHandle getDefaultNormal() const { return default_normal; }
 	inline scapes::visual::TextureHandle getDefaultRoughness() const { return default_roughness; }
@@ -47,8 +45,6 @@ public:
 
 private:
 	scapes::visual::API *visual_api {nullptr};
-
-	scapes::visual::MeshHandle skybox;
 
 	scapes::visual::TextureHandle baked_brdf;
 	scapes::visual::TextureHandle blue_noise;

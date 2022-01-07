@@ -9,8 +9,8 @@ namespace config
 {
 	// Shaders
 	static std::vector<const char *> shaders = {
-		"assets/shaders/common/FullscreenQuad.vert",
-		"assets/shaders/render_graph/utils/Cubemap.vert",
+		"assets/shaders/common/Default.vert",
+		"assets/shaders/common/DefaultCubemap.geom",
 		"assets/shaders/render_graph/utils/EquirectangularProjection.frag",
 		"assets/shaders/render_graph/utils/PrefilteredSpecularCubemap.frag",
 		"assets/shaders/render_graph/utils/DiffuseIrradianceCubemap.frag",
@@ -19,7 +19,7 @@ namespace config
 
 	static std::vector<scapes::foundation::render::ShaderType> shader_types = {
 		scapes::foundation::render::ShaderType::VERTEX,
-		scapes::foundation::render::ShaderType::VERTEX,
+		scapes::foundation::render::ShaderType::GEOMETRY,
 		scapes::foundation::render::ShaderType::FRAGMENT,
 		scapes::foundation::render::ShaderType::FRAGMENT,
 		scapes::foundation::render::ShaderType::FRAGMENT,
@@ -28,6 +28,7 @@ namespace config
 
 	// Textures
 	static std::vector<const char *> ibl_textures = {
+		"assets/textures/environment/debug.jpg",
 		"assets/textures/environment/arctic.hdr",
 		"assets/textures/environment/umbrellas.hdr",
 		"assets/textures/environment/shanghai_bund_4k.hdr",
@@ -72,13 +73,11 @@ void ApplicationResources::init()
 		loaded_shaders.push_back(shader);
 	}
 
-	skybox = visual_api->createMeshSkybox(10000.0f);
-
 	baked_brdf = visual_api->createTexture2D(
 		scapes::foundation::render::Format::R16G16_SFLOAT,
 		512,
 		512,
-		getShader(config::Shaders::FullscreenQuadVertex),
+		getShader(config::Shaders::DefaultVertex),
 		getShader(config::Shaders::BakedBRDFFragment)
 	);
 
@@ -95,7 +94,8 @@ void ApplicationResources::init()
 	create_data.cubemap_size = 128;
 
 	create_data.baked_brdf = baked_brdf;
-	create_data.cubemap_vertex = getShader(config::Shaders::CubemapVertex);
+	create_data.cubemap_vertex = getShader(config::Shaders::DefaultVertex);
+	create_data.cubemap_geometry = getShader(config::Shaders::DefaultCubemapGeometry);
 	create_data.equirectangular_projection_fragment = getShader(config::Shaders::EquirectangularProjectionFragment);
 	create_data.prefiltered_specular_fragment = getShader(config::Shaders::PrefilteredSpecularCubemapFragment);
 	create_data.diffuse_irradiance_fragment = getShader(config::Shaders::DiffuseIrradianceCubemapFragment);

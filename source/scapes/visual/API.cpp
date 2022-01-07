@@ -1,5 +1,7 @@
 #include "API.h"
-#include <RenderUtils.h>
+
+#include <CubemapRenderer.h>
+#include <Texture2DRenderer.h>
 
 #include <scapes/foundation/game/World.h>
 #include <scapes/foundation/game/Query.h>
@@ -29,6 +31,45 @@ namespace scapes::visual
 
 	/*
 	 */
+	static void uploadToGPU(
+		foundation::render::Device *device,
+		MeshHandle mesh
+	)
+	{
+		assert(device);
+		assert(mesh.get());
+		assert(mesh->num_vertices);
+		assert(mesh->num_indices);
+		assert(mesh->vertices);
+		assert(mesh->indices);
+
+		static foundation::render::VertexAttribute mesh_attributes[6] =
+		{
+			{ foundation::render::Format::R32G32B32_SFLOAT, offsetof(resources::Mesh::Vertex, position) },
+			{ foundation::render::Format::R32G32_SFLOAT, offsetof(resources::Mesh::Vertex, uv) },
+			{ foundation::render::Format::R32G32B32A32_SFLOAT, offsetof(resources::Mesh::Vertex, tangent) },
+			{ foundation::render::Format::R32G32B32_SFLOAT, offsetof(resources::Mesh::Vertex, binormal) },
+			{ foundation::render::Format::R32G32B32_SFLOAT, offsetof(resources::Mesh::Vertex, normal) },
+			{ foundation::render::Format::R32G32B32A32_SFLOAT, offsetof(resources::Mesh::Vertex, color) },
+		};
+
+		mesh->vertex_buffer = device->createVertexBuffer(
+			foundation::render::BufferType::STATIC,
+			sizeof(resources::Mesh::Vertex), mesh->num_vertices,
+			6, mesh_attributes,
+			mesh->vertices
+		);
+
+		mesh->index_buffer = device->createIndexBuffer(
+			foundation::render::BufferType::STATIC,
+			foundation::render::IndexFormat::UINT32,
+			mesh->num_indices,
+			mesh->indices
+		);
+	}
+
+	/*
+	 */
 	APIImpl::APIImpl(
 		foundation::resources::ResourceManager *resource_manager,
 		foundation::game::World *world,
@@ -37,7 +78,8 @@ namespace scapes::visual
 	)
 		: resource_manager(resource_manager), world(world), device(device), compiler(compiler)
 	{
-		fullscreen_quad = createMeshQuad(2.0f);
+		unit_quad = createMeshQuad(2.0f);
+		unit_cube = createMeshCube(2.0f);
 	}
 
 	APIImpl::~APIImpl()
@@ -102,7 +144,10 @@ namespace scapes::visual
 	)
 	{
 		TextureHandle result = createTexture2D(format, width, height, 1);
-		RenderUtils::renderTexture2D(device, result, fullscreen_quad, vertex_shader, fragment_shader);
+
+		Texture2DRenderer renderer(device);
+		renderer.init(result.get());
+		renderer.render(unit_quad.get(), vertex_shader.get(), fragment_shader.get());
 
 		return result;
 	}
@@ -237,7 +282,7 @@ namespace scapes::visual
 
 		memcpy(result->vertices, vertices, sizeof(resources::Mesh::Vertex) * result->num_vertices);
 		memcpy(result->indices, indices, sizeof(uint32_t) * result->num_indices);
-		RenderUtils::uploadToGPU(device, result);
+		uploadToGPU(device, result);
 
 		managed_meshes.push_back(result);
 		return result;
@@ -276,13 +321,13 @@ namespace scapes::visual
 		};
 
 		memcpy(result->indices, quad_indices, sizeof(uint32_t) * result->num_indices);
-		RenderUtils::uploadToGPU(device, result);
+		uploadToGPU(device, result);
 
 		managed_meshes.push_back(result);
 		return result;
 	}
 
-	MeshHandle APIImpl::createMeshSkybox(
+	MeshHandle APIImpl::createMeshCube(
 		float size
 	)
 	{
@@ -310,16 +355,16 @@ namespace scapes::visual
 
 		static uint32_t skybox_indices[] =
 		{
-			0, 1, 2, 2, 3, 0,
-			1, 5, 6, 6, 2, 1,
-			3, 2, 6, 6, 7, 3,
-			5, 4, 6, 4, 7, 6,
-			1, 0, 4, 4, 5, 1,
-			4, 0, 3, 3, 7, 4,
+			1, 5, 6, 6, 2, 1, // +x
+			0, 1, 2, 2, 3, 0, // -x
+			3, 2, 6, 6, 7, 3, // +y
+			1, 0, 4, 4, 5, 1, // -y
+			5, 4, 6, 4, 7, 6, // +z
+			4, 0, 3, 3, 7, 4, // -z
 		};
 
 		memcpy(result->indices, skybox_indices, sizeof(uint32_t) * result->num_indices);
-		RenderUtils::uploadToGPU(device, result);
+		uploadToGPU(device, result);
 
 		managed_meshes.push_back(result);
 		return result;
@@ -330,8 +375,8 @@ namespace scapes::visual
 		const IBLTextureCreateData &create_data
 	)
 	{
-		TextureHandle equirectangular_texture = resource_manager->import<resources::Texture>(uri, device);
-		if (equirectangular_texture.get() == nullptr)
+		TextureHandle hdri_texture = resource_manager->import<resources::Texture>(uri, device);
+		if (hdri_texture.get() == nullptr)
 			return IBLTextureHandle();
 
 		uint32_t mips = static_cast<int>(std::floor(std::log2(create_data.cubemap_size)) + 1);
@@ -360,27 +405,48 @@ namespace scapes::visual
 		prefiltered_specular->layers = 6;
 		prefiltered_specular->gpu_data = device->createTextureCube(create_data.cubemap_size, mips, create_data.format);
 
-		RenderUtils::renderHDRIToCube(
-			device,
-			prefiltered_specular,
-			fullscreen_quad,
-			create_data.cubemap_vertex,
-			create_data.equirectangular_projection_fragment,
-			create_data.prefiltered_specular_fragment,
-			equirectangular_texture,
-			temp_cubemap
+		CubemapRenderer renderer(device);
+		renderer.init(temp_cubemap.get(), 0);
+		renderer.render(
+			unit_cube.get(),
+			create_data.cubemap_vertex.get(),
+			create_data.cubemap_geometry.get(),
+			create_data.equirectangular_projection_fragment.get(),
+			hdri_texture.get()
 		);
+		renderer.shutdown();
 
-		RenderUtils::renderTextureCube(
-			device,
-			diffuse_irradiance,
-			fullscreen_quad,
-			create_data.cubemap_vertex,
-			create_data.diffuse_irradiance_fragment,
-			prefiltered_specular
+		for (uint32_t mip = 0; mip < prefiltered_specular->mip_levels; ++mip)
+		{
+			float roughness = static_cast<float>(mip) / prefiltered_specular->mip_levels;
+
+			uint8_t size = static_cast<uint8_t>(sizeof(float));
+			const uint8_t *data = reinterpret_cast<const uint8_t *>(&roughness);
+
+			renderer.init(prefiltered_specular.get(), mip);
+			renderer.render(
+				unit_cube.get(),
+				create_data.cubemap_vertex.get(),
+				create_data.cubemap_geometry.get(),
+				create_data.prefiltered_specular_fragment.get(),
+				temp_cubemap.get(),
+				size,
+				data
+			);
+			renderer.shutdown();
+		}
+
+		renderer.init(diffuse_irradiance.get(), 0);
+		renderer.render(
+			unit_cube.get(),
+			create_data.cubemap_vertex.get(),
+			create_data.cubemap_geometry.get(),
+			create_data.diffuse_irradiance_fragment.get(),
+			temp_cubemap.get()
 		);
+		renderer.shutdown();
 
-		resource_manager->destroy(equirectangular_texture, device);
+		resource_manager->destroy(hdri_texture, device);
 		resource_manager->destroy(temp_cubemap, device);
 
 		IBLTextureHandle result = resource_manager->create<resources::IBLTexture>();

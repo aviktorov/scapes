@@ -1,5 +1,4 @@
 #include <scapes/visual/Resources.h>
-#include <RenderUtils.h>
 
 using namespace scapes;
 using namespace scapes::visual;

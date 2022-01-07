@@ -11,15 +11,12 @@ layout(push_constant) uniform Push
 
 layout(set = 0, binding = 1) uniform samplerCube tex_environment;
 
-// 
-layout(location = 0) in vec4 inFacePositionVS[6];
+// Input
+layout(location = 0) in vec2 in_uv;
+layout(location = 1) in vec3 in_position_ws;
 
-layout(location = 0) out vec4 outPrefilteredSpecular0;
-layout(location = 1) out vec4 outPrefilteredSpecular1;
-layout(location = 2) out vec4 outPrefilteredSpecular2;
-layout(location = 3) out vec4 outPrefilteredSpecular3;
-layout(location = 4) out vec4 outPrefilteredSpecular4;
-layout(location = 5) out vec4 outPrefilteredSpecular5;
+// Output
+layout(location = 0) out vec4 out_color;
 
 //
 vec3 prefilterSpecularEnvironment(vec3 view, vec3 normal, float roughness)
@@ -33,40 +30,26 @@ vec3 prefilterSpecularEnvironment(vec3 view, vec3 normal, float roughness)
 	{
 		vec2 Xi = hammersley(i, samples);
 
-		vec3 half_vector = importanceSamplingGGX(Xi, normal, roughness);
-		vec3 light = -reflect(view, half_vector);
+		vec3 microfacet_normal = importanceSamplingGGX(Xi, normal, roughness);
+		vec3 light = -reflect(view, microfacet_normal);
 
-		float dot_NL = max(0.0f, dot(normal, light));
+		float dotNL = max(0.0f, dot(normal, light));
 		vec3 Li = texture(tex_environment, light).rgb;
 
-		result += Li * dot_NL;
-		weight += dot_NL;
+		result += Li * dotNL;
+		weight += dotNL;
 	}
 
 	return result / weight;
 }
 
-vec4 fillFace(int index)
+void main()
 {
-	vec3 direction = normalize(inFacePositionVS[index].xyz);
-
-	// TODO: figure out why cubemap sampling direction is inversed and rotated 90 degress around Z axis
-	direction = -direction;
-	direction.xy = vec2(direction.y, -direction.x);
+	vec3 direction = normalize(in_position_ws);
 
 	vec4 color;
 	color.rgb = prefilterSpecularEnvironment(direction, direction, push.roughness);
 	color.a = 1.0f;
 
-	return color;
-}
-
-void main()
-{
-	outPrefilteredSpecular0 = fillFace(0);
-	outPrefilteredSpecular1 = fillFace(1);
-	outPrefilteredSpecular2 = fillFace(2);
-	outPrefilteredSpecular3 = fillFace(3);
-	outPrefilteredSpecular4 = fillFace(4);
-	outPrefilteredSpecular5 = fillFace(5);
+	out_color = color;
 }

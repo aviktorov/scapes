@@ -734,11 +734,11 @@ void RenderPassPrepareOld::onInit()
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
 
-	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
-	assert(fullscreen_quad.get());
+	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
+	assert(unit_quad.get());
 
 	device->clearVertexStreams(pipeline_state);
-	device->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
+	device->setVertexStream(pipeline_state, 0, unit_quad->vertex_buffer);
 }
 
 void RenderPassPrepareOld::onInvalidate()
@@ -751,14 +751,14 @@ void RenderPassPrepareOld::onRender(foundation::render::CommandBuffer *command_b
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
 
-	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
-	assert(fullscreen_quad.get());
+	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
+	assert(unit_quad.get());
 
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
 		pipeline_state,
-		fullscreen_quad->index_buffer,
-		fullscreen_quad->num_indices
+		unit_quad->index_buffer,
+		unit_quad->num_indices
 	);
 
 	first_frame = false;
@@ -851,11 +851,11 @@ void RenderPassLBuffer::onInit()
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
 
-	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
-	assert(fullscreen_quad.get());
+	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
+	assert(unit_quad.get());
 
 	device->clearVertexStreams(pipeline_state);
-	device->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
+	device->setVertexStream(pipeline_state, 0, unit_quad->vertex_buffer);
 }
 
 void RenderPassLBuffer::onRender(foundation::render::CommandBuffer *command_buffer)
@@ -863,8 +863,8 @@ void RenderPassLBuffer::onRender(foundation::render::CommandBuffer *command_buff
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
 
-	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
-	assert(fullscreen_quad.get());
+	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
+	assert(unit_quad.get());
 
 	auto query = foundation::game::Query<visual::components::SkyLight>(world);
 
@@ -883,8 +883,8 @@ void RenderPassLBuffer::onRender(foundation::render::CommandBuffer *command_buff
 			device->drawIndexedPrimitiveInstanced(
 				command_buffer,
 				pipeline_state,
-				fullscreen_quad->index_buffer,
-				fullscreen_quad->num_indices
+				unit_quad->index_buffer,
+				unit_quad->num_indices
 			);
 		}
 	}
@@ -927,11 +927,11 @@ void RenderPassPost::onInit()
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
 
-	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
-	assert(fullscreen_quad.get());
+	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
+	assert(unit_quad.get());
 
 	device->clearVertexStreams(pipeline_state);
-	device->setVertexStream(pipeline_state, 0, fullscreen_quad->vertex_buffer);
+	device->setVertexStream(pipeline_state, 0, unit_quad->vertex_buffer);
 }
 
 void RenderPassPost::onRender(foundation::render::CommandBuffer *command_buffer)
@@ -939,14 +939,14 @@ void RenderPassPost::onRender(foundation::render::CommandBuffer *command_buffer)
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
 
-	visual::MeshHandle fullscreen_quad = visual_api->getFullscreenQuadMesh();
-	assert(fullscreen_quad.get());
+	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
+	assert(unit_quad.get());
 
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
 		pipeline_state,
-		fullscreen_quad->index_buffer,
-		fullscreen_quad->num_indices
+		unit_quad->index_buffer,
+		unit_quad->num_indices
 	);
 }
 
