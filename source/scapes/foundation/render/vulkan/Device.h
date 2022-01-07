@@ -68,6 +68,7 @@ namespace scapes::foundation::render::vulkan
 		VkExtent2D sizes {0, 0};
 
 		uint32_t num_attachments {0};
+		uint32_t num_layers {1};
 		VkImageView attachment_views[MAX_ATTACHMENTS];
 		VkFormat attachment_formats[MAX_ATTACHMENTS];
 		VkSampleCountFlagBits attachment_samples[MAX_ATTACHMENTS];

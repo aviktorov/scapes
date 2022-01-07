@@ -613,6 +613,7 @@ namespace scapes::foundation::render::vulkan
 
 		uint32_t width = 0;
 		uint32_t height = 0;
+		uint32_t num_layers = 1;
 
 		// add color attachments
 		result->num_attachments = num_attachments;
@@ -625,12 +626,16 @@ namespace scapes::foundation::render::vulkan
 			result->attachment_formats[i] = texture->format;
 			result->attachment_samples[i] = texture->samples;
 
-			width = std::max<int>(1, texture->width / (1 << input_attachment.base_mip));
-			height = std::max<int>(1, texture->height / (1 << input_attachment.base_mip));
+			width = std::max<int>(1, texture->width >> input_attachment.base_mip);
+			height = std::max<int>(1, texture->height >> input_attachment.base_mip);
+
+			num_layers = std::max<int>(num_layers, input_attachment.num_layers);
 		}
 
 		result->sizes.width = width;
 		result->sizes.height = height;
+
+		result->num_layers = num_layers;
 
 		return result;
 	}
@@ -1968,7 +1973,7 @@ namespace scapes::foundation::render::vulkan
 			framebuffer_info.pAttachments = vk_frame_buffer->attachment_views;
 			framebuffer_info.width = vk_frame_buffer->sizes.width;
 			framebuffer_info.height = vk_frame_buffer->sizes.height;
-			framebuffer_info.layers = 1;
+			framebuffer_info.layers = vk_frame_buffer->num_layers;
 
 			if (vkCreateFramebuffer(context->getDevice(), &framebuffer_info, nullptr, &vk_frame_buffer->frame_buffer) != VK_SUCCESS)
 			{
