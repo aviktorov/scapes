@@ -12,9 +12,10 @@ project(${TARGET})
 # ==================================================================================================
 file(GLOB SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
-	${DIR_THIRDPARTY}/imgui/examples/imgui_impl_glfw.cpp
+	${DIR_THIRDPARTY}/imgui/backends/imgui_impl_glfw.cpp
 	${DIR_THIRDPARTY}/imgui/imgui.cpp
 	${DIR_THIRDPARTY}/imgui/imgui_draw.cpp
+	${DIR_THIRDPARTY}/imgui/imgui_tables.cpp
 	${DIR_THIRDPARTY}/imgui/imgui_widgets.cpp
 )
 

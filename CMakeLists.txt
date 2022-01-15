@@ -36,7 +36,7 @@ include_directories("3rdparty/volk")
 include_directories("3rdparty/vma")
 include_directories("3rdparty/vulkan")
 include_directories("3rdparty/imgui")
-include_directories("3rdparty/imgui/examples")
+include_directories("3rdparty/imgui/backends")
 include_directories("3rdparty/flecs")
 include_directories("3rdparty/cgltf")
 

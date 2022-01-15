@@ -1000,7 +1000,10 @@ void RenderPassImGui::onShutdown()
 
 void RenderPassImGui::onRender(foundation::render::CommandBuffer *command_buffer)
 {
-	const ImDrawData &draw_data = context->DrawData;
+	assert(context);
+	assert(context->Viewports.size() > 0);
+
+	const ImDrawData &draw_data = context->Viewports[0]->DrawDataP;
 	const ImVec2 &clip_offset = draw_data.DisplayPos;
 	const ImVec2 &clip_scale = draw_data.FramebufferScale;
 
