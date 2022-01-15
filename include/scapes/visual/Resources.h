@@ -21,7 +21,7 @@ namespace scapes::visual::resources
 		TextureHandle prefiltered_specular_cubemap;
 		TextureHandle diffuse_irradiance_cubemap;
 
-		foundation::render::BindSet *bindings {nullptr};
+		foundation::render::BindSet bindings {SCAPES_NULL_HANDLE};
 	};
 
 	template <>
@@ -56,8 +56,8 @@ namespace scapes::visual::resources
 		uint32_t num_indices {0};
 		uint32_t *indices {nullptr};
 
-		foundation::render::VertexBuffer *vertex_buffer {nullptr};
-		foundation::render::IndexBuffer *index_buffer {nullptr};
+		foundation::render::VertexBuffer vertex_buffer {SCAPES_NULL_HANDLE};
+		foundation::render::IndexBuffer index_buffer {SCAPES_NULL_HANDLE};
 	};
 
 	template <>
@@ -80,7 +80,7 @@ namespace scapes::visual::resources
 		TextureHandle normal;
 		TextureHandle roughness;
 		TextureHandle metalness;
-		foundation::render::BindSet *bindings {nullptr};
+		foundation::render::BindSet bindings {SCAPES_NULL_HANDLE};
 	};
 
 	template <>
@@ -99,7 +99,7 @@ namespace scapes::visual::resources
 	 */
 	struct Shader
 	{
-		foundation::render::Shader *shader {nullptr};
+		foundation::render::Shader shader {SCAPES_NULL_HANDLE};
 		foundation::render::ShaderType type {foundation::render::ShaderType::FRAGMENT};
 	};
 
@@ -127,7 +127,7 @@ namespace scapes::visual::resources
 		foundation::render::Format format {foundation::render::Format::UNDEFINED};
 
 		unsigned char *cpu_data {nullptr};
-		foundation::render::Texture *gpu_data {nullptr};
+		foundation::render::Texture gpu_data {SCAPES_NULL_HANDLE};
 	};
 
 	template <>

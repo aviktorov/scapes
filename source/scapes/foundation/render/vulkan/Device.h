@@ -13,7 +13,7 @@ namespace scapes::foundation::render::vulkan
 	class PipelineLayoutCache;
 	class PipelineCache;
 
-	struct VertexBuffer : public render::VertexBuffer
+	struct VertexBuffer
 	{
 		enum
 		{
@@ -30,7 +30,7 @@ namespace scapes::foundation::render::vulkan
 		uint32_t attribute_offsets[VertexBuffer::MAX_ATTRIBUTES];
 	};
 
-	struct IndexBuffer : public render::IndexBuffer
+	struct IndexBuffer
 	{
 		BufferType type {BufferType::STATIC};
 		VkBuffer buffer {VK_NULL_HANDLE};
@@ -39,7 +39,7 @@ namespace scapes::foundation::render::vulkan
 		uint32_t num_indices {0};
 	};
 
-	struct Texture : public render::Texture
+	struct Texture
 	{
 		VkImage image {VK_NULL_HANDLE};
 		VkSampler sampler {VK_NULL_HANDLE};
@@ -57,7 +57,7 @@ namespace scapes::foundation::render::vulkan
 		ImageViewCache *image_view_cache {nullptr};
 	};
 
-	struct FrameBuffer : public render::FrameBuffer
+	struct FrameBuffer
 	{
 		enum
 		{
@@ -74,7 +74,7 @@ namespace scapes::foundation::render::vulkan
 		VkSampleCountFlagBits attachment_samples[MAX_ATTACHMENTS];
 	};
 
-	struct RenderPass : public render::RenderPass
+	struct RenderPass
 	{
 		enum
 		{
@@ -97,7 +97,7 @@ namespace scapes::foundation::render::vulkan
 	// TODO: move to sanity check
 	static_assert(sizeof(VkClearValue) == sizeof(RenderPassClearValue));
 
-	struct CommandBuffer : public render::CommandBuffer
+	struct CommandBuffer
 	{
 		VkCommandBuffer command_buffer {VK_NULL_HANDLE};
 		VkCommandBufferLevel level {VK_COMMAND_BUFFER_LEVEL_PRIMARY};
@@ -109,7 +109,7 @@ namespace scapes::foundation::render::vulkan
 		uint32_t num_color_attachments {0};
 	};
 
-	struct UniformBuffer : public render::UniformBuffer
+	struct UniformBuffer
 	{
 		BufferType type {BufferType::STATIC};
 		VkBuffer buffer {VK_NULL_HANDLE};
@@ -118,13 +118,13 @@ namespace scapes::foundation::render::vulkan
 		// TODO: static / dynamic fields
 	};
 
-	struct Shader : public render::Shader
+	struct Shader
 	{
 		ShaderType type {ShaderType::FRAGMENT};
 		VkShaderModule module {VK_NULL_HANDLE};
 	};
 
-	struct BindSet : public render::BindSet
+	struct BindSet
 	{
 		enum
 		{
@@ -155,7 +155,7 @@ namespace scapes::foundation::render::vulkan
 		bool binding_dirty[MAX_BINDINGS];
 	};
 
-	struct PipelineState : public render::PipelineState
+	struct GraphicsPipeline
 	{
 		enum
 		{
@@ -174,8 +174,8 @@ namespace scapes::foundation::render::vulkan
 		VkCullModeFlags cull_mode {VK_CULL_MODE_BACK_BIT};
 		VkPrimitiveTopology primitive_topology {VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST};
 
-		VkBlendFactor blend_src_factor;
-		VkBlendFactor blend_dst_factor;
+		VkBlendFactor blend_src_factor {VK_BLEND_FACTOR_SRC_ALPHA};
+		VkBlendFactor blend_dst_factor {VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA};
 
 		VkViewport viewport;
 		VkRect2D scissor;
@@ -204,17 +204,17 @@ namespace scapes::foundation::render::vulkan
 		// IDEA: get rid of pipeline layout cache, recreate layout if needed and be happy
 	};
 
-	struct SwapChain : public render::SwapChain
+	struct SwapChain
 	{
 		enum
 		{
 			MAX_IMAGES = 8,
 		};
 
-		VkSwapchainKHR swap_chain {nullptr};
+		VkSwapchainKHR swap_chain {VK_NULL_HANDLE};
 		VkExtent2D sizes {0, 0};
 
-		VkSurfaceKHR surface {nullptr};
+		VkSurfaceKHR surface {VK_NULL_HANDLE};
 		VkSurfaceCapabilitiesKHR surface_capabilities;
 		VkSurfaceFormatKHR surface_format;
 
@@ -243,7 +243,7 @@ namespace scapes::foundation::render::vulkan
 		SCAPES_INLINE const Context *getContext() const { return context; }
 
 	public:
-		render::VertexBuffer *createVertexBuffer(
+		render::VertexBuffer createVertexBuffer(
 			BufferType type,
 			uint16_t vertex_size,
 			uint32_t num_vertices,
@@ -252,14 +252,14 @@ namespace scapes::foundation::render::vulkan
 			const void *data
 		) final;
 
-		render::IndexBuffer *createIndexBuffer(
+		render::IndexBuffer createIndexBuffer(
 			BufferType type,
 			IndexFormat index_format,
 			uint32_t num_indices,
 			const void *data
 		) final;
 
-		render::Texture *createTexture2D(
+		render::Texture createTexture2D(
 			uint32_t width,
 			uint32_t height,
 			uint32_t num_mipmaps,
@@ -268,14 +268,14 @@ namespace scapes::foundation::render::vulkan
 			uint32_t num_data_mipmaps = 1
 		) final;
 
-		render::Texture *createTexture2DMultisample(
+		render::Texture createTexture2DMultisample(
 			uint32_t width,
 			uint32_t height,
 			Format format,
 			Multisample samples
 		) final;
 
-		render::Texture *createTexture2DArray(
+		render::Texture createTexture2DArray(
 			uint32_t width,
 			uint32_t height,
 			uint32_t num_mipmaps,
@@ -286,7 +286,7 @@ namespace scapes::foundation::render::vulkan
 			uint32_t num_data_layers = 1
 		) final;
 
-		render::Texture *createTexture3D(
+		render::Texture createTexture3D(
 			uint32_t width,
 			uint32_t height,
 			uint32_t depth,
@@ -296,7 +296,7 @@ namespace scapes::foundation::render::vulkan
 			uint32_t num_data_mipmaps = 1
 		) final;
 
-		render::Texture *createTextureCube(
+		render::Texture createTextureCube(
 			uint32_t size,
 			uint32_t num_mipmaps,
 			Format format,
@@ -304,129 +304,129 @@ namespace scapes::foundation::render::vulkan
 			uint32_t num_data_mipmaps = 1
 		) final;
 
-		render::FrameBuffer *createFrameBuffer(
+		render::FrameBuffer createFrameBuffer(
 			uint32_t num_attachments,
 			const FrameBufferAttachment *attachments
 		) final;
 
-		render::RenderPass *createRenderPass(
+		render::RenderPass createRenderPass(
 			uint32_t num_attachments,
 			const RenderPassAttachment *attachments,
 			const RenderPassDescription &description
 		) final;
 
-		render::RenderPass *createRenderPass(
-			const render::SwapChain *swap_chain,
+		render::RenderPass createRenderPass(
+			render::SwapChain swap_chain,
 			RenderPassLoadOp load_op,
 			RenderPassStoreOp store_op,
-			const RenderPassClearColor *clear_color
+			const RenderPassClearColor &clear_color
 		) final;
 
-		render::CommandBuffer *createCommandBuffer(
+		render::CommandBuffer createCommandBuffer(
 			CommandBufferType type
 		) final;
 
-		render::UniformBuffer *createUniformBuffer(
+		render::UniformBuffer createUniformBuffer(
 			BufferType type,
 			uint32_t size,
 			const void *data = nullptr
 		) final;
 
-		render::Shader *createShaderFromSource(
+		render::Shader createShaderFromSource(
 			ShaderType type,
 			uint32_t size,
 			const char *data,
 			const char *path = nullptr
 		) final;
 
-		render::Shader *createShaderFromIL(
+		render::Shader createShaderFromIL(
 			ShaderType type,
 			ShaderILType il_type,
 			size_t size,
 			const void *data
 		) final;
 
-		render::BindSet *createBindSet(
+		render::BindSet createBindSet(
 		) final;
 
-		render::PipelineState *createPipelineState(
+		render::GraphicsPipeline createGraphicsPipeline(
 		) final;
 
-		render::SwapChain *createSwapChain(
+		render::SwapChain createSwapChain(
 			void *native_window
 		) final;
 
-		void destroyVertexBuffer(render::VertexBuffer *vertex_buffer) final;
-		void destroyIndexBuffer(render::IndexBuffer *index_buffer) final;
-		void destroyTexture(render::Texture *texture) final;
-		void destroyFrameBuffer(render::FrameBuffer *frame_buffer) final;
-		void destroyRenderPass(render::RenderPass *render_pass) final;
-		void destroyCommandBuffer(render::CommandBuffer *command_buffer) final;
-		void destroyUniformBuffer(render::UniformBuffer *uniform_buffer) final;
-		void destroyShader(render::Shader *shader) final;
-		void destroyBindSet(render::BindSet *bind_set) final;
-		void destroyPipelineState(render::PipelineState *pipeline_state) final;
-		void destroySwapChain(render::SwapChain *swap_chain) final;
+		void destroyVertexBuffer(render::VertexBuffer vertex_buffer) final;
+		void destroyIndexBuffer(render::IndexBuffer index_buffer) final;
+		void destroyTexture(render::Texture texture) final;
+		void destroyFrameBuffer(render::FrameBuffer frame_buffer) final;
+		void destroyRenderPass(render::RenderPass render_pass) final;
+		void destroyCommandBuffer(render::CommandBuffer command_buffer) final;
+		void destroyUniformBuffer(render::UniformBuffer uniform_buffer) final;
+		void destroyShader(render::Shader shader) final;
+		void destroyBindSet(render::BindSet bind_set) final;
+		void destroyGraphicsPipeline(render::GraphicsPipeline pipeline) final;
+		void destroySwapChain(render::SwapChain swap_chain) final;
 
 	public:
 		bool isFlipped() final { return false; }
 		Multisample getMaxSampleCount() final;
 
-		uint32_t getNumSwapChainImages(const render::SwapChain *swap_chain) final;
+		uint32_t getNumSwapChainImages(render::SwapChain swap_chain) final;
 
-		void setTextureSamplerWrapMode(render::Texture *texture, SamplerWrapMode mode) final;
-		void setTextureSamplerDepthCompare(render::Texture *texture, bool enabled, DepthCompareFunc func) final;
-		void generateTexture2DMipmaps(render::Texture *texture) final;
+		void setTextureSamplerWrapMode(render::Texture texture, SamplerWrapMode mode) final;
+		void setTextureSamplerDepthCompare(render::Texture texture, bool enabled, DepthCompareFunc func) final;
+		void generateTexture2DMipmaps(render::Texture texture) final;
 
 	public:
-		void *map(render::VertexBuffer *vertex_buffer) final;
-		void unmap(render::VertexBuffer *vertex_buffer) final;
+		void *map(render::VertexBuffer vertex_buffer) final;
+		void unmap(render::VertexBuffer vertex_buffer) final;
 
-		void *map(render::IndexBuffer *index_buffer) final;
-		void unmap(render::IndexBuffer *index_buffer) final;
+		void *map(render::IndexBuffer index_buffer) final;
+		void unmap(render::IndexBuffer index_buffer) final;
 
-		void *map(render::UniformBuffer *uniform_buffer) final;
-		void unmap(render::UniformBuffer *uniform_buffer) final;
+		void *map(render::UniformBuffer uniform_buffer) final;
+		void unmap(render::UniformBuffer uniform_buffer) final;
 
-		void flush(render::BindSet *bind_set) final;
-		void flush(render::PipelineState *pipeline_state) final;
+		void flush(render::BindSet bind_set) final;
+		void flush(render::GraphicsPipeline pipeline) final;
 
 	public:
 		bool acquire(
-			render::SwapChain *swap_chain,
+			render::SwapChain swap_chain,
 			uint32_t *new_image
 		) final;
 
 		bool present(
-			render::SwapChain *swap_chain,
+			render::SwapChain swap_chain,
 			uint32_t num_wait_command_buffers,
-			render::CommandBuffer * const *wait_command_buffers
+			const render::CommandBuffer *wait_command_buffers
 		) final;
 
 		void wait() final;
 		bool wait(
 			uint32_t num_wait_command_buffers,
-			render::CommandBuffer * const *wait_command_buffers
+			const render::CommandBuffer *wait_command_buffers
 		) final;
 
 	public:
 		// bindings
 		void bindUniformBuffer(
-			render::BindSet *bind_set,
+			render::BindSet bind_set,
 			uint32_t binding,
-			const render::UniformBuffer *uniform_buffer
+			render::UniformBuffer uniform_buffer
 		) final;
 
 		void bindTexture(
-			render::BindSet *bind_set,
+			render::BindSet bind_set,
 			uint32_t binding,
-			const render::Texture *texture
+			render::Texture texture
 		) final;
 
 		void bindTexture(
-			render::BindSet *bind_set,
+			render::BindSet bind_set,
 			uint32_t binding,
-			const render::Texture *texture,
+			render::Texture texture,
 			uint32_t base_mip,
 			uint32_t num_mips,
 			uint32_t base_layer,
@@ -436,47 +436,47 @@ namespace scapes::foundation::render::vulkan
 	public:
 		// pipeline state
 		void clearPushConstants(
-			render::PipelineState *pipeline_state
+			render::GraphicsPipeline pipeline
 		) final;
 
 		void setPushConstants(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			uint8_t size,
 			const void *data
 		) final;
 
 		void clearBindSets(
-			render::PipelineState *pipeline_state
+			render::GraphicsPipeline pipeline
 		) final;
 
 		void setBindSet(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			uint8_t binding,
-			render::BindSet *bind_set
+			render::BindSet bind_set
 		) final;
 
 		void clearShaders(
-			render::PipelineState *pipeline_state
+			render::GraphicsPipeline pipeline
 		) final;
 
 		void setShader(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			ShaderType type,
-			const render::Shader *shader
+			render::Shader shader
 		) final;
 
 		void clearVertexStreams(
-			render::PipelineState *pipeline_state
+			render::GraphicsPipeline pipeline
 		) final;
 
 		void setVertexStream(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			uint8_t binding,
-			render::VertexBuffer *vertex_buffer
+			render::VertexBuffer vertex_buffer
 		) final;
 
 		void setViewport(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			int32_t x,
 			int32_t y,
 			uint32_t width,
@@ -484,7 +484,7 @@ namespace scapes::foundation::render::vulkan
 		) final;
 
 		void setScissor(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			int32_t x,
 			int32_t y,
 			uint32_t width,
@@ -492,37 +492,37 @@ namespace scapes::foundation::render::vulkan
 		) final;
 
 		void setPrimitiveType(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			RenderPrimitiveType type
 		) final;
 
 		void setCullMode(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			CullMode mode
 		) final;
 
 		void setDepthTest(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			bool enabled
 		) final;
 
 		void setDepthWrite(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			bool enabled
 		) final;
 
 		void setDepthCompareFunc(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			DepthCompareFunc func
 		) final;
 
 		void setBlending(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			bool enabled
 		) final;
 
 		void setBlendFactors(
-			render::PipelineState *pipeline_state,
+			render::GraphicsPipeline pipeline,
 			BlendFactor src_factor,
 			BlendFactor dest_factor
 		) final;
@@ -530,54 +530,54 @@ namespace scapes::foundation::render::vulkan
 	public:
 		// command buffers
 		bool resetCommandBuffer(
-			render::CommandBuffer *command_buffer
+			render::CommandBuffer command_buffer
 		) final;
 
 		bool beginCommandBuffer(
-			render::CommandBuffer *command_buffer
+			render::CommandBuffer command_buffer
 		) final;
 
 		bool endCommandBuffer(
-			render::CommandBuffer *command_buffer
+			render::CommandBuffer command_buffer
 		) final;
 
 		bool submit(
-			render::CommandBuffer *command_buffer
+			render::CommandBuffer command_buffer
 		) final;
 
 		bool submitSyncked(
-			render::CommandBuffer *command_buffer,
-			const render::SwapChain *wait_swap_chain
+			render::CommandBuffer command_buffer,
+			render::SwapChain wait_swap_chain
 		) final;
 
 		bool submitSyncked(
-			render::CommandBuffer *command_buffer,
+			render::CommandBuffer command_buffer,
 			uint32_t num_wait_command_buffers,
-			render::CommandBuffer * const *wait_command_buffers
+			const render::CommandBuffer *wait_command_buffers
 		) final;
 
 	public:
 		// render commands
 		void beginRenderPass(
-			render::CommandBuffer *command_buffer,
-			const render::RenderPass *render_pass,
-			const render::FrameBuffer *frame_buffer
+			render::CommandBuffer command_buffer,
+			render::RenderPass render_pass,
+			render::FrameBuffer frame_buffer
 		) final;
 
 		void beginRenderPass(
-			render::CommandBuffer *command_buffer,
-			const render::RenderPass *render_pass,
-			const render::SwapChain *swap_chain
+			render::CommandBuffer command_buffer,
+			render::RenderPass render_pass,
+			render::SwapChain swap_chain
 		) final;
 
 		void endRenderPass(
-			render::CommandBuffer *command_buffer
+			render::CommandBuffer command_buffer
 		) final;
 
 		void drawIndexedPrimitiveInstanced(
-			render::CommandBuffer *command_buffer,
-			render::PipelineState *pipeline_state,
-			const render::IndexBuffer *index_buffer,
+			render::CommandBuffer command_buffer,
+			render::GraphicsPipeline pipeline,
+			render::IndexBuffer index_buffer,
 			uint32_t num_indices,
 			uint32_t base_index,
 			int32_t base_vertex,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <scapes/Common.h>
 #include <scapes/foundation/render/Device.h>
 
 #include <scapes/visual/RenderGraph.h>
@@ -35,7 +36,7 @@ namespace scapes::visual
 		void shutdown() final;
 
 		void resize(uint32_t width, uint32_t height) final;
-		void render(foundation::render::CommandBuffer *command_buffer) final;
+		void render(foundation::render::CommandBuffer command_buffer) final;
 
 		bool load(const foundation::io::URI &uri) final;
 		bool save(const foundation::io::URI &uri) final;
@@ -43,15 +44,15 @@ namespace scapes::visual
 		bool deserialize(const foundation::serde::yaml::Tree &tree) final;
 		foundation::serde::yaml::Tree serialize() final;
 
-		SCAPES_INLINE void setSwapChain(foundation::render::SwapChain *chain) final { swap_chain = chain; }
-		SCAPES_INLINE foundation::render::SwapChain *getSwapChain() final { return swap_chain; }
-		SCAPES_INLINE const foundation::render::SwapChain *getSwapChain() const final { return swap_chain; }
+		SCAPES_INLINE void setSwapChain(foundation::render::SwapChain chain) final { swap_chain = chain; }
+		SCAPES_INLINE foundation::render::SwapChain getSwapChain() final { return swap_chain; }
+		SCAPES_INLINE const foundation::render::SwapChain getSwapChain() const final { return swap_chain; }
 
 		bool addGroup(const char *name) final;
 		bool removeGroup(const char *name) final;
 		void removeAllGroups() final;
 
-		foundation::render::BindSet *getGroupBindings(const char *name) const final;
+		foundation::render::BindSet getGroupBindings(const char *name) const final;
 
 		bool addGroupParameter(const char *group_name, const char *parameter_name, size_t type_size, size_t num_elements) final;
 		bool addGroupParameter(const char *group_name, const char *parameter_name, GroupParameterType type, size_t num_elements) final;
@@ -70,12 +71,12 @@ namespace scapes::visual
 		void removeAllRenderBuffers() final;
 		bool swapRenderBuffers(const char *name0, const char *name1) final;
 
-		foundation::render::Texture *getRenderBufferTexture(const char *name) const final;
-		foundation::render::BindSet *getRenderBufferBindings(const char *name) const final;
+		foundation::render::Texture getRenderBufferTexture(const char *name) const final;
+		foundation::render::BindSet getRenderBufferBindings(const char *name) const final;
 		foundation::render::Format getRenderBufferFormat(const char *name) const final;
 		uint32_t getRenderBufferDownscale(const char *name) const final;
 
-		foundation::render::FrameBuffer *fetchFrameBuffer(uint32_t num_attachments, const char *render_buffer_names[]) final;
+		foundation::render::FrameBuffer fetchFrameBuffer(uint32_t num_attachments, const char *render_buffer_names[]) final;
 
 		SCAPES_INLINE size_t getNumRenderPasses() const final { return passes_runtime.passes.size(); }
 		SCAPES_INLINE IRenderPass *getRenderPass(size_t index) const final { return passes_runtime.passes[index]; }
@@ -115,8 +116,8 @@ namespace scapes::visual
 			std::vector<GroupParameter *> parameters;
 			std::vector<GroupTexture *> textures;
 
-			foundation::render::BindSet *bindings {nullptr};
-			foundation::render::UniformBuffer *buffer {nullptr};
+			foundation::render::BindSet bindings {SCAPES_NULL_HANDLE};
+			foundation::render::UniformBuffer buffer {SCAPES_NULL_HANDLE};
 			uint32_t buffer_size {0};
 			bool dirty {true};
 		};
@@ -125,8 +126,8 @@ namespace scapes::visual
 		{
 			std::string name;
 			foundation::render::Format format {foundation::render::Format::UNDEFINED};
-			foundation::render::Texture *texture {nullptr};
-			foundation::render::BindSet *bindings {nullptr};
+			foundation::render::Texture texture {SCAPES_NULL_HANDLE};
+			foundation::render::BindSet bindings {SCAPES_NULL_HANDLE};
 			uint32_t downscale {1};
 		};
 
@@ -198,8 +199,8 @@ namespace scapes::visual
 		std::unordered_map<uint64_t, GroupTexture *> group_texture_lookup;
 		std::unordered_map<uint64_t, RenderBuffer *> render_buffer_lookup;
 
-		std::unordered_map<uint64_t, foundation::render::FrameBuffer *> framebuffer_cache;
+		std::unordered_map<uint64_t, foundation::render::FrameBuffer> framebuffer_cache;
 
-		foundation::render::SwapChain *swap_chain {nullptr};
+		foundation::render::SwapChain swap_chain {SCAPES_NULL_HANDLE};
 	};
 }

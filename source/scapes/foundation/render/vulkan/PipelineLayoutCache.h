@@ -7,7 +7,7 @@ namespace scapes::foundation::render::vulkan
 {
 	class DescriptorSetLayoutCache;
 	class Context;
-	struct PipelineState;
+	struct GraphicsPipeline;
 
 	/*
 	 */
@@ -18,7 +18,7 @@ namespace scapes::foundation::render::vulkan
 			: context(context), layout_cache(layout_cache) { }
 		~PipelineLayoutCache();
 
-		VkPipelineLayout fetch(const PipelineState *pipeline_state);
+		VkPipelineLayout fetch(const GraphicsPipeline *graphics_pipeline);
 		void clear();
 
 	private:

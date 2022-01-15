@@ -17,15 +17,15 @@ namespace scapes::foundation::render::vulkan
 		clear();
 	}
 
-	VkPipelineLayout PipelineLayoutCache::fetch(const PipelineState *pipeline_state)
+	VkPipelineLayout PipelineLayoutCache::fetch(const GraphicsPipeline *graphics_pipeline)
 	{
-		uint8_t push_constants_size = pipeline_state->push_constants_size;
-		uint8_t num_bind_sets = pipeline_state->num_bind_sets;
+		uint8_t push_constants_size = graphics_pipeline->push_constants_size;
+		uint8_t num_bind_sets = graphics_pipeline->num_bind_sets;
 
-		VkDescriptorSetLayout layouts[PipelineState::MAX_BIND_SETS];
+		VkDescriptorSetLayout layouts[GraphicsPipeline::MAX_BIND_SETS];
 		for (uint8_t i = 0; i < num_bind_sets; ++i)
 		{
-			BindSet *bind_set = pipeline_state->bind_sets[i];
+			BindSet *bind_set = graphics_pipeline->bind_sets[i];
 			assert(bind_set);
 
 			layouts[i] = bind_set->set_layout;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <scapes/Common.h>
 #include <scapes/visual/Fwd.h>
 
 namespace scapes::visual
@@ -31,11 +32,11 @@ namespace scapes::visual
 
 	private:
 		foundation::render::Device *device {nullptr};
-		foundation::render::BindSet *bind_set {nullptr};
-		foundation::render::CommandBuffer *command_buffer {nullptr};
-		foundation::render::FrameBuffer *frame_buffer {nullptr};
-		foundation::render::RenderPass *render_pass {nullptr};
-		foundation::render::UniformBuffer *uniform_buffer {nullptr};
-		foundation::render::PipelineState *pipeline_state {nullptr};
+		foundation::render::BindSet bind_set {SCAPES_NULL_HANDLE};
+		foundation::render::CommandBuffer command_buffer {SCAPES_NULL_HANDLE};
+		foundation::render::FrameBuffer frame_buffer {SCAPES_NULL_HANDLE};
+		foundation::render::RenderPass render_pass {SCAPES_NULL_HANDLE};
+		foundation::render::UniformBuffer uniform_buffer {SCAPES_NULL_HANDLE};
+		foundation::render::GraphicsPipeline graphics_pipeline {SCAPES_NULL_HANDLE};
 	};
 }

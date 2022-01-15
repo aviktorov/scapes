@@ -16,5 +16,7 @@
 	#define SCAPES_API SCAPES_IMPORT
 #endif
 
+#define SCAPES_NULL_HANDLE nullptr
+
 #include <cassert>
 #include <cstdint>

@@ -44,9 +44,9 @@ namespace scapes::visual
 
 		command_buffer = device->createCommandBuffer(render::CommandBufferType::PRIMARY);
 
-		pipeline_state = device->createPipelineState();
-		device->setViewport(pipeline_state, 0, 0, target_texture->width, target_texture->height);
-		device->setScissor(pipeline_state, 0, 0, target_texture->width, target_texture->height);
+		graphics_pipeline = device->createGraphicsPipeline();
+		device->setViewport(graphics_pipeline, 0, 0, target_texture->width, target_texture->height);
+		device->setScissor(graphics_pipeline, 0, 0, target_texture->width, target_texture->height);
 	}
 
 	void Texture2DRenderer::shutdown()
@@ -60,8 +60,8 @@ namespace scapes::visual
 		device->destroyCommandBuffer(command_buffer);
 		command_buffer = nullptr;
 
-		device->destroyPipelineState(pipeline_state);
-		pipeline_state = nullptr;
+		device->destroyGraphicsPipeline(graphics_pipeline);
+		graphics_pipeline = nullptr;
 	}
 
 	/*
@@ -80,17 +80,17 @@ namespace scapes::visual
 
 		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
 
-		device->clearBindSets(pipeline_state);
-		device->clearShaders(pipeline_state);
-		device->setShader(pipeline_state, render::ShaderType::VERTEX, vertex_shader->shader);
-		device->setShader(pipeline_state, render::ShaderType::FRAGMENT, fragment_shader->shader);
+		device->clearBindSets(graphics_pipeline);
+		device->clearShaders(graphics_pipeline);
+		device->setShader(graphics_pipeline, render::ShaderType::VERTEX, vertex_shader->shader);
+		device->setShader(graphics_pipeline, render::ShaderType::FRAGMENT, fragment_shader->shader);
 
-		device->clearVertexStreams(pipeline_state);
-		device->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
+		device->clearVertexStreams(graphics_pipeline);
+		device->setVertexStream(graphics_pipeline, 0, mesh->vertex_buffer);
 
-		device->setCullMode(pipeline_state,render::CullMode::NONE);
+		device->setCullMode(graphics_pipeline,render::CullMode::NONE);
 
-		device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
+		device->drawIndexedPrimitiveInstanced(command_buffer, graphics_pipeline, mesh->index_buffer, mesh->num_indices);
 
 		device->endRenderPass(command_buffer);
 

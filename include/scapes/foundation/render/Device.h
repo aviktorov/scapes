@@ -248,25 +248,17 @@ namespace scapes::foundation::render
 
 	/* C opaque structs
 	 */
-
-	// TODO: get rid of opaque structs since it's not allowed in C
-	//       use pointer aliases instead
-	struct VertexBuffer {};
-	struct IndexBuffer {};
-
-	struct Texture {};
-	struct FrameBuffer {};
-	struct RenderPass {};
-	struct CommandBuffer {};
-
-	struct UniformBuffer {};
-	// TODO: shader storage buffer?
-
-	struct Shader {};
-	struct BindSet {};
-	struct PipelineState {};
-
-	struct SwapChain {};
+	typedef struct VertexBuffer_t *VertexBuffer;
+	typedef struct IndexBuffer_t *IndexBuffer;
+	typedef struct Texture_t *Texture;
+	typedef struct FrameBuffer_t *FrameBuffer;
+	typedef struct RenderPass_t *RenderPass;
+	typedef struct CommandBuffer_t *CommandBuffer;
+	typedef struct UniformBuffer_t *UniformBuffer;
+	typedef struct Shader_t *Shader;
+	typedef struct BindSet_t *BindSet;
+	typedef struct GraphicsPipeline_t *GraphicsPipeline;
+	typedef struct SwapChain_t *SwapChain;
 
 	/* C structs
 	 */
@@ -278,7 +270,7 @@ namespace scapes::foundation::render
 
 	struct FrameBufferAttachment
 	{
-		const Texture *texture {nullptr};
+		Texture texture {SCAPES_NULL_HANDLE};
 		uint32_t base_mip {0};
 		uint32_t base_layer {0};
 		uint32_t num_layers {1};
@@ -331,7 +323,7 @@ namespace scapes::foundation::render
 		virtual ~Device() { }
 
 	public:
-		virtual VertexBuffer *createVertexBuffer(
+		virtual VertexBuffer createVertexBuffer(
 			BufferType type,
 			uint16_t vertex_size,
 			uint32_t num_vertices,
@@ -340,14 +332,14 @@ namespace scapes::foundation::render
 			const void *data
 		) = 0;
 
-		virtual IndexBuffer *createIndexBuffer(
+		virtual IndexBuffer createIndexBuffer(
 			BufferType type,
 			IndexFormat index_format,
 			uint32_t num_indices,
 			const void *data
 		) = 0;
 
-		virtual Texture *createTexture2D(
+		virtual Texture createTexture2D(
 			uint32_t width,
 			uint32_t height,
 			uint32_t num_mipmaps,
@@ -356,14 +348,14 @@ namespace scapes::foundation::render
 			uint32_t num_data_mipmaps = 1
 		) = 0;
 
-		virtual Texture *createTexture2DMultisample(
+		virtual Texture createTexture2DMultisample(
 			uint32_t width,
 			uint32_t height,
 			Format format,
 			Multisample samples
 		) = 0;
 
-		virtual Texture *createTexture2DArray(
+		virtual Texture createTexture2DArray(
 			uint32_t width,
 			uint32_t height,
 			uint32_t num_mipmaps,
@@ -374,7 +366,7 @@ namespace scapes::foundation::render
 			uint32_t num_data_layers = 1
 		) = 0;
 
-		virtual Texture *createTexture3D(
+		virtual Texture createTexture3D(
 			uint32_t width,
 			uint32_t height,
 			uint32_t depth,
@@ -384,7 +376,7 @@ namespace scapes::foundation::render
 			uint32_t num_data_mipmaps = 1
 		) = 0;
 
-		virtual Texture *createTextureCube(
+		virtual Texture createTextureCube(
 			uint32_t size,
 			uint32_t num_mipmaps,
 			Format format,
@@ -392,128 +384,128 @@ namespace scapes::foundation::render
 			uint32_t num_data_mipmaps = 1
 		) = 0;
 
-		virtual FrameBuffer *createFrameBuffer(
+		virtual FrameBuffer createFrameBuffer(
 			uint32_t num_attachments,
 			const FrameBufferAttachment *attachments
 		) = 0;
 
-		virtual RenderPass *createRenderPass(
+		virtual RenderPass createRenderPass(
 			uint32_t num_attachments,
 			const RenderPassAttachment *attachments,
 			const RenderPassDescription &description
 		) = 0;
 
-		virtual RenderPass *createRenderPass(
-			const SwapChain *swap_chain,
+		virtual RenderPass createRenderPass(
+			SwapChain swap_chain,
 			RenderPassLoadOp load_op,
 			RenderPassStoreOp store_op,
-			const RenderPassClearColor *clear_color
+			const RenderPassClearColor &clear_color
 		) = 0;
 
-		virtual CommandBuffer *createCommandBuffer(
+		virtual CommandBuffer createCommandBuffer(
 			CommandBufferType type
 		) = 0;
 
-		virtual UniformBuffer *createUniformBuffer(
+		virtual UniformBuffer createUniformBuffer(
 			BufferType type,
 			uint32_t size,
 			const void *data = nullptr
 		) = 0;
 
-		virtual Shader *createShaderFromSource(
+		virtual Shader createShaderFromSource(
 			ShaderType type,
 			uint32_t size,
 			const char *data,
 			const char *path = nullptr
 		) = 0;
 
-		virtual Shader *createShaderFromIL(
+		virtual Shader createShaderFromIL(
 			ShaderType type,
 			ShaderILType il_type,
 			size_t size,
 			const void *data
 		) = 0;
 
-		virtual BindSet *createBindSet(
+		virtual BindSet createBindSet(
 		) = 0;
 
-		virtual PipelineState *createPipelineState(
+		virtual GraphicsPipeline createGraphicsPipeline(
 		) = 0;
 
-		virtual SwapChain *createSwapChain(
+		virtual SwapChain createSwapChain(
 			void *native_window
 		) = 0;
 
-		virtual void destroyVertexBuffer(VertexBuffer *vertex_buffer) = 0;
-		virtual void destroyIndexBuffer(IndexBuffer *index_buffer) = 0;
-		virtual void destroyTexture(Texture *texture) = 0;
-		virtual void destroyFrameBuffer(FrameBuffer *frame_buffer) = 0;
-		virtual void destroyRenderPass(RenderPass *render_pass) = 0;
-		virtual void destroyCommandBuffer(CommandBuffer *command_buffer) = 0;
-		virtual void destroyUniformBuffer(UniformBuffer *uniform_buffer) = 0;
-		virtual void destroyShader(Shader *shader) = 0;
-		virtual void destroyBindSet(BindSet *bind_set) = 0;
-		virtual void destroyPipelineState(PipelineState *pipeline_state) = 0;
-		virtual void destroySwapChain(SwapChain *swap_chain) = 0;
+		virtual void destroyVertexBuffer(VertexBuffer vertex_buffer) = 0;
+		virtual void destroyIndexBuffer(IndexBuffer index_buffer) = 0;
+		virtual void destroyTexture(Texture texture) = 0;
+		virtual void destroyFrameBuffer(FrameBuffer frame_buffer) = 0;
+		virtual void destroyRenderPass(RenderPass render_pass) = 0;
+		virtual void destroyCommandBuffer(CommandBuffer command_buffer) = 0;
+		virtual void destroyUniformBuffer(UniformBuffer uniform_buffer) = 0;
+		virtual void destroyShader(Shader shader) = 0;
+		virtual void destroyBindSet(BindSet bind_set) = 0;
+		virtual void destroyGraphicsPipeline(GraphicsPipeline pipeline) = 0;
+		virtual void destroySwapChain(SwapChain swap_chain) = 0;
 
 	public:
 		virtual bool isFlipped() = 0;
 		virtual Multisample getMaxSampleCount() = 0;
 
-		virtual uint32_t getNumSwapChainImages(const SwapChain *swap_chain) = 0;
+		virtual uint32_t getNumSwapChainImages(SwapChain swap_chain) = 0;
 
-		virtual void setTextureSamplerWrapMode(Texture *texture, SamplerWrapMode mode) = 0;
-		virtual void setTextureSamplerDepthCompare(Texture *texture, bool enabled, DepthCompareFunc func) = 0;
-		virtual void generateTexture2DMipmaps(Texture *texture) = 0;
+		virtual void setTextureSamplerWrapMode(Texture texture, SamplerWrapMode mode) = 0;
+		virtual void setTextureSamplerDepthCompare(Texture texture, bool enabled, DepthCompareFunc func) = 0;
+		virtual void generateTexture2DMipmaps(Texture texture) = 0;
 
 	public:
-		virtual void *map(VertexBuffer *vertex_buffer) = 0;
-		virtual void unmap(VertexBuffer *vertex_buffer) = 0;
+		virtual void *map(VertexBuffer vertex_buffer) = 0;
+		virtual void unmap(VertexBuffer vertex_buffer) = 0;
 
-		virtual void *map(IndexBuffer *index_buffer) = 0;
-		virtual void unmap(IndexBuffer *index_buffer) = 0;
+		virtual void *map(IndexBuffer index_buffer) = 0;
+		virtual void unmap(IndexBuffer index_buffer) = 0;
 
-		virtual void *map(UniformBuffer *uniform_buffer) = 0;
-		virtual void unmap(UniformBuffer *uniform_buffer) = 0;
+		virtual void *map(UniformBuffer uniform_buffer) = 0;
+		virtual void unmap(UniformBuffer uniform_buffer) = 0;
 
-		virtual void flush(BindSet *bind_set) = 0;
-		virtual void flush(PipelineState *pipeline_state) = 0;
+		virtual void flush(BindSet bind_set) = 0;
+		virtual void flush(GraphicsPipeline pipeline) = 0;
 
 	public:
 		virtual bool acquire(
-			SwapChain *swap_chain,
+			SwapChain swap_chain,
 			uint32_t *new_image
 		) = 0;
 
 		virtual bool present(
-			SwapChain *swap_chain,
+			SwapChain swap_chain,
 			uint32_t num_wait_command_buffers,
-			CommandBuffer * const *wait_command_buffers
+			const CommandBuffer *wait_command_buffers
 		) = 0;
 
 		virtual void wait() = 0;
 		virtual bool wait(
 			uint32_t num_wait_command_buffers,
-			CommandBuffer * const *wait_command_buffers
+			const CommandBuffer *wait_command_buffers
 		) = 0;
 	public:
 		// bindings
 		virtual void bindUniformBuffer(
-			BindSet *bind_set,
+			BindSet bind_set,
 			uint32_t binding,
-			const UniformBuffer *uniform_buffer
+			UniformBuffer uniform_buffer
 		) = 0;
 
 		virtual void bindTexture(
-			BindSet *bind_set,
+			BindSet bind_set,
 			uint32_t binding,
-			const Texture *texture
+			Texture texture
 		) = 0;
 
 		virtual void bindTexture(
-			BindSet *bind_set,
+			BindSet bind_set,
 			uint32_t binding,
-			const Texture *texture,
+			Texture texture,
 			uint32_t base_mip,
 			uint32_t num_mips,
 			uint32_t base_layer,
@@ -523,48 +515,48 @@ namespace scapes::foundation::render
 	public:
 		// pipeline state
 		virtual void clearPushConstants(
-			PipelineState *pipeline_state
+			GraphicsPipeline pipeline
 		) = 0;
 
 		virtual void setPushConstants(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			uint8_t size,
 			const void *data
 		) = 0;
 
 		virtual void clearBindSets(
-			PipelineState *pipeline_state
+			GraphicsPipeline pipeline
 		) = 0;
 
 		virtual void setBindSet(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			uint8_t binding,
-			BindSet *bind_set
+			BindSet bind_set
 		) = 0;
 
 		virtual void clearShaders(
-			PipelineState *pipeline_state
+			GraphicsPipeline pipeline
 		) = 0;
 
 		virtual void setShader(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			ShaderType type,
-			const Shader *shader
+			const Shader shader
 		) = 0;
 
 		virtual void clearVertexStreams(
-			PipelineState *pipeline_state
+			GraphicsPipeline pipeline
 		) = 0;
 
 		virtual void setVertexStream(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			uint8_t binding,
-			VertexBuffer *vertex_buffer
+			VertexBuffer vertex_buffer
 			// TODO: vertex stream usage (per vertex or per instance)
 		) = 0;
 
 		virtual void setViewport(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			int32_t x,
 			int32_t y,
 			uint32_t width,
@@ -572,7 +564,7 @@ namespace scapes::foundation::render
 		) = 0;
 
 		virtual void setScissor(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			int32_t x,
 			int32_t y,
 			uint32_t width,
@@ -580,37 +572,37 @@ namespace scapes::foundation::render
 		) = 0;
 
 		virtual void setPrimitiveType(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			RenderPrimitiveType type
 		) = 0;
 
 		virtual void setCullMode(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			CullMode mode
 		) = 0;
 
 		virtual void setDepthTest(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			bool enabled
 		) = 0;
 
 		virtual void setDepthWrite(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			bool enabled
 		) = 0;
 
 		virtual void setDepthCompareFunc(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			DepthCompareFunc func
 		) = 0;
 
 		virtual void setBlending(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			bool enabled
 		) = 0;
 
 		virtual void setBlendFactors(
-			PipelineState *pipeline_state,
+			GraphicsPipeline pipeline,
 			BlendFactor src_factor,
 			BlendFactor dest_factor
 		) = 0;
@@ -618,53 +610,53 @@ namespace scapes::foundation::render
 	public:
 		// command buffers
 		virtual bool resetCommandBuffer(
-			CommandBuffer *command_buffer
+			CommandBuffer command_buffer
 		) = 0;
 
 		virtual bool beginCommandBuffer(
-			CommandBuffer *command_buffer
+			CommandBuffer command_buffer
 		) = 0;
 
 		virtual bool endCommandBuffer(
-			CommandBuffer *command_buffer
+			CommandBuffer command_buffer
 		) = 0;
 
 		virtual bool submit(
-			CommandBuffer *command_buffer
+			CommandBuffer command_buffer
 		) = 0;
 
 		virtual bool submitSyncked(
-			CommandBuffer *command_buffer,
-			const SwapChain *wait_swap_chain
+			CommandBuffer command_buffer,
+			SwapChain wait_swap_chain
 		) = 0;
 
 		virtual bool submitSyncked(
-			CommandBuffer *command_buffer,
+			CommandBuffer command_buffer,
 			uint32_t num_wait_command_buffers,
-			CommandBuffer * const *wait_command_buffers
+			const CommandBuffer *wait_command_buffers
 		) = 0;
 	public:
 		// render commands
 		virtual void beginRenderPass(
-			CommandBuffer *command_buffer,
-			const RenderPass *render_pass,
-			const FrameBuffer *frame_buffer
+			CommandBuffer command_buffer,
+			RenderPass render_pass,
+			FrameBuffer frame_buffer
 		) = 0;
 
 		virtual void beginRenderPass(
-			CommandBuffer *command_buffer,
-			const RenderPass *render_pass,
-			const SwapChain *swap_chain
+			CommandBuffer command_buffer,
+			RenderPass render_pass,
+			SwapChain swap_chain
 		) = 0;
 
 		virtual void endRenderPass(
-			CommandBuffer *command_buffer
+			CommandBuffer command_buffer
 		) = 0;
 
 		virtual void drawIndexedPrimitiveInstanced(
-			CommandBuffer *command_buffer,
-			PipelineState *pipeline_state,
-			const IndexBuffer *index_buffer,
+			CommandBuffer command_buffer,
+			GraphicsPipeline pipeline,
+			IndexBuffer index_buffer,
 			uint32_t num_indices,
 			uint32_t base_index = 0,
 			int32_t base_vertex = 0,

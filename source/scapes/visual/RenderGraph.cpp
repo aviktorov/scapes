@@ -328,7 +328,7 @@ namespace scapes::visual
 			pass->invalidate();
 	}
 
-	void RenderGraphImpl::render(foundation::render::CommandBuffer *command_buffer)
+	void RenderGraphImpl::render(foundation::render::CommandBuffer command_buffer)
 	{
 		bool should_invalidate = false;
 
@@ -611,7 +611,7 @@ namespace scapes::visual
 		group_lookup.clear();
 	}
 
-	foundation::render::BindSet *RenderGraphImpl::getGroupBindings(const char *name) const
+	foundation::render::BindSet RenderGraphImpl::getGroupBindings(const char *name) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(name));
@@ -885,7 +885,7 @@ namespace scapes::visual
 
 	/*
 	 */
-	foundation::render::Texture *RenderGraphImpl::getRenderBufferTexture(const char *name) const
+	foundation::render::Texture RenderGraphImpl::getRenderBufferTexture(const char *name) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(name));
@@ -898,7 +898,7 @@ namespace scapes::visual
 		return render_buffer->texture;
 	}
 
-	foundation::render::BindSet *RenderGraphImpl::getRenderBufferBindings(const char *name) const
+	foundation::render::BindSet RenderGraphImpl::getRenderBufferBindings(const char *name) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(name));
@@ -939,7 +939,7 @@ namespace scapes::visual
 
 	/*
 	 */
-	foundation::render::FrameBuffer *RenderGraphImpl::fetchFrameBuffer(uint32_t num_attachments, const char *render_buffer_names[])
+	foundation::render::FrameBuffer RenderGraphImpl::fetchFrameBuffer(uint32_t num_attachments, const char *render_buffer_names[])
 	{
 		uint64_t hash = 0;
 
@@ -965,7 +965,7 @@ namespace scapes::visual
 
 		foundation::render::Device *device = api->getDevice();
 
-		foundation::render::FrameBuffer *framebuffer = device->createFrameBuffer(num_attachments, attachments);
+		foundation::render::FrameBuffer framebuffer = device->createFrameBuffer(num_attachments, attachments);
 		framebuffer_cache.insert({hash, framebuffer});
 
 		return framebuffer;

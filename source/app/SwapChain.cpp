@@ -34,28 +34,28 @@ void SwapChain::shutdown()
 	for (int i = 0; i < NUM_IN_FLIGHT_FRAMES; i++)
 	{
 		device->destroyCommandBuffer(command_buffers[i]);
-		command_buffers[i] = nullptr;
+		command_buffers[i] = SCAPES_NULL_HANDLE;
 	}
 
 	device->destroySwapChain(swap_chain);
-	swap_chain = nullptr;
+	swap_chain = SCAPES_NULL_HANDLE;
 }
 
 /*
  */
-scapes::foundation::render::CommandBuffer *SwapChain::acquire()
+scapes::foundation::render::CommandBuffer SwapChain::acquire()
 {
 	uint32_t image_index = 0;
 	if (!device->acquire(swap_chain, &image_index))
-		return nullptr;
+		return SCAPES_NULL_HANDLE;
 
-	scapes::foundation::render::CommandBuffer *command_buffer = command_buffers[current_in_flight_frame];
+	scapes::foundation::render::CommandBuffer command_buffer = command_buffers[current_in_flight_frame];
 	device->wait(1, &command_buffer);
 
 	return command_buffer;
 }
 
-bool SwapChain::present(scapes::foundation::render::CommandBuffer *command_buffer)
+bool SwapChain::present(scapes::foundation::render::CommandBuffer command_buffer)
 {
 	bool result = device->present(swap_chain, 1, &command_buffer);
 	current_in_flight_frame = (current_in_flight_frame + 1) % NUM_IN_FLIGHT_FRAMES;

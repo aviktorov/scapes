@@ -79,9 +79,9 @@ namespace scapes::visual
 		uint32_t target_width = std::max<uint32_t>(1, target_texture->width >> target_mip);
 		uint32_t target_height = std::max<uint32_t>(1, target_texture->height >> target_mip);
 
-		pipeline_state = device->createPipelineState();
-		device->setViewport(pipeline_state, 0, 0, target_width, target_height);
-		device->setScissor(pipeline_state, 0, 0, target_width, target_height);
+		graphics_pipeline = device->createGraphicsPipeline();
+		device->setViewport(graphics_pipeline, 0, 0, target_width, target_height);
+		device->setScissor(graphics_pipeline, 0, 0, target_width, target_height);
 
 		// Fill uniform buffer
 		CubemapFaceData *ubo = reinterpret_cast<CubemapFaceData *>(device->map(uniform_buffer));
@@ -134,8 +134,8 @@ namespace scapes::visual
 		device->destroyBindSet(bind_set);
 		bind_set = nullptr;
 
-		device->destroyPipelineState(pipeline_state);
-		pipeline_state = nullptr;
+		device->destroyGraphicsPipeline(graphics_pipeline);
+		graphics_pipeline = nullptr;
 	}
 
 	/*
@@ -152,21 +152,21 @@ namespace scapes::visual
 	{
 		device->bindTexture(bind_set, 1, input_texture->gpu_data);
 
-		device->setPushConstants(pipeline_state, push_constants_size, push_constants_data);
-		device->setBindSet(pipeline_state, 0, bind_set);
-		device->setShader(pipeline_state, render::ShaderType::VERTEX, vertex_shader->shader);
-		device->setShader(pipeline_state, render::ShaderType::GEOMETRY, geometry_shader->shader);
-		device->setShader(pipeline_state, render::ShaderType::FRAGMENT, fragment_shader->shader);
+		device->setPushConstants(graphics_pipeline, push_constants_size, push_constants_data);
+		device->setBindSet(graphics_pipeline, 0, bind_set);
+		device->setShader(graphics_pipeline, render::ShaderType::VERTEX, vertex_shader->shader);
+		device->setShader(graphics_pipeline, render::ShaderType::GEOMETRY, geometry_shader->shader);
+		device->setShader(graphics_pipeline, render::ShaderType::FRAGMENT, fragment_shader->shader);
 
-		device->setVertexStream(pipeline_state, 0, mesh->vertex_buffer);
+		device->setVertexStream(graphics_pipeline, 0, mesh->vertex_buffer);
 
 		device->resetCommandBuffer(command_buffer);
 		device->beginCommandBuffer(command_buffer);
 		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
 
-		device->setCullMode(pipeline_state,render::CullMode::NONE);
+		device->setCullMode(graphics_pipeline,render::CullMode::NONE);
 
-		device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, mesh->index_buffer, mesh->num_indices);
+		device->drawIndexedPrimitiveInstanced(command_buffer, graphics_pipeline, mesh->index_buffer, mesh->num_indices);
 
 		device->endRenderPass(command_buffer);
 		device->endCommandBuffer(command_buffer);

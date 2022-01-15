@@ -149,24 +149,24 @@ void RenderPassGraphicsBase::init()
 	device = visual_api->getDevice();
 	world = visual_api->getWorld();
 
-	pipeline_state = device->createPipelineState();
+	graphics_pipeline = device->createGraphicsPipeline();
 
-	device->clearShaders(pipeline_state);
+	device->clearShaders(graphics_pipeline);
 
 	if (vertex_shader.get())
-		device->setShader(pipeline_state, vertex_shader->type, vertex_shader->shader);
+		device->setShader(graphics_pipeline, vertex_shader->type, vertex_shader->shader);
 
 	if (tessellation_control_shader.get())
-		device->setShader(pipeline_state, tessellation_control_shader->type, tessellation_control_shader->shader);
+		device->setShader(graphics_pipeline, tessellation_control_shader->type, tessellation_control_shader->shader);
 	
 	if (tessellation_evaluation_shader.get())
-		device->setShader(pipeline_state, tessellation_evaluation_shader->type, tessellation_evaluation_shader->shader);
+		device->setShader(graphics_pipeline, tessellation_evaluation_shader->type, tessellation_evaluation_shader->shader);
 
 	if (geometry_shader.get())
-		device->setShader(pipeline_state, geometry_shader->type, geometry_shader->shader);
+		device->setShader(graphics_pipeline, geometry_shader->type, geometry_shader->shader);
 	
 	if (fragment_shader.get())
-		device->setShader(pipeline_state, fragment_shader->type, fragment_shader->shader);
+		device->setShader(graphics_pipeline, fragment_shader->type, fragment_shader->shader);
 
 	onInit();
 }
@@ -178,33 +178,33 @@ void RenderPassGraphicsBase::shutdown()
 	clear();
 }
 
-void RenderPassGraphicsBase::render(foundation::render::CommandBuffer *command_buffer)
+void RenderPassGraphicsBase::render(foundation::render::CommandBuffer command_buffer)
 {
 	if (!canRender())
 		return;
 
 	// TODO: cache this?
-	device->clearBindSets(pipeline_state);
+	device->clearBindSets(graphics_pipeline);
 
 	uint8_t current_binding = 0;
 	for (size_t i = 0; i < input_groups.size(); ++i)
 	{
 		const char *group_name = input_groups[i].c_str();
-		foundation::render::BindSet *bindings = render_graph->getGroupBindings(group_name);
-		device->setBindSet(pipeline_state, current_binding++, bindings);
+		foundation::render::BindSet bindings = render_graph->getGroupBindings(group_name);
+		device->setBindSet(graphics_pipeline, current_binding++, bindings);
 	}
 
 	for (size_t i = 0; i < input_render_buffers.size(); ++i)
 	{
 		const char *texture_name = input_render_buffers[i].c_str();
-		foundation::render::BindSet *bindings = render_graph->getRenderBufferBindings(texture_name);
-		device->setBindSet(pipeline_state, current_binding++, bindings);
+		foundation::render::BindSet bindings = render_graph->getRenderBufferBindings(texture_name);
+		device->setBindSet(graphics_pipeline, current_binding++, bindings);
 	}
 
 	if (render_pass_swapchain)
 	{
-		foundation::render::SwapChain *swap_chain = render_graph->getSwapChain();
-		assert(swap_chain);
+		foundation::render::SwapChain swap_chain = render_graph->getSwapChain();
+		assert(swap_chain != SCAPES_NULL_HANDLE);
 
 		device->beginRenderPass(command_buffer, render_pass_swapchain, swap_chain);
 		onRender(command_buffer);
@@ -223,8 +223,8 @@ void RenderPassGraphicsBase::render(foundation::render::CommandBuffer *command_b
 		if (has_depthstencil_output)
 			render_buffers[num_render_buffers++] = depthstencil_output.renderbuffer_name.c_str();
 
-		foundation::render::FrameBuffer *frame_buffer = render_graph->fetchFrameBuffer(num_render_buffers, render_buffers);
-		assert(frame_buffer);
+		foundation::render::FrameBuffer frame_buffer = render_graph->fetchFrameBuffer(num_render_buffers, render_buffers);
+		assert(frame_buffer != SCAPES_NULL_HANDLE);
 
 		device->beginRenderPass(command_buffer, render_pass_offscreen, frame_buffer);
 		onRender(command_buffer);
@@ -237,8 +237,8 @@ void RenderPassGraphicsBase::invalidate()
 	uint32_t width = render_graph->getWidth();
 	uint32_t height = render_graph->getHeight();
 
-	device->setViewport(pipeline_state, 0, 0, width, height);
-	device->setScissor(pipeline_state, 0, 0, width, height);
+	device->setViewport(graphics_pipeline, 0, 0, width, height);
+	device->setScissor(graphics_pipeline, 0, 0, width, height);
 
 	device->destroyRenderPass(render_pass_swapchain);
 	render_pass_swapchain = nullptr;
@@ -638,13 +638,13 @@ void RenderPassGraphicsBase::removeSwapChainOutput()
 void RenderPassGraphicsBase::clear()
 {
 	device->destroyRenderPass(render_pass_offscreen);
-	render_pass_offscreen = nullptr;
+	render_pass_offscreen = SCAPES_NULL_HANDLE;
 
 	device->destroyRenderPass(render_pass_swapchain);
-	render_pass_swapchain = nullptr;
+	render_pass_swapchain = SCAPES_NULL_HANDLE;
 
-	device->destroyPipelineState(pipeline_state);
-	pipeline_state = nullptr;
+	device->destroyGraphicsPipeline(graphics_pipeline);
+	graphics_pipeline = SCAPES_NULL_HANDLE;
 
 	removeAllInputGroups();
 	removeAllInputRenderBuffers();
@@ -711,10 +711,10 @@ void RenderPassGraphicsBase::createRenderPassSwapChain()
 	if (!has_swapchain_output)
 		return;
 
-	foundation::render::SwapChain *swap_chain = render_graph->getSwapChain();
-	assert(swap_chain);
+	foundation::render::SwapChain swap_chain = render_graph->getSwapChain();
+	assert(swap_chain != SCAPES_NULL_HANDLE);
 
-	render_pass_swapchain = device->createRenderPass(swap_chain, swapchain_output.load_op, swapchain_output.store_op, &swapchain_output.clear_value);
+	render_pass_swapchain = device->createRenderPass(swap_chain, swapchain_output.load_op, swapchain_output.store_op, swapchain_output.clear_value);
 }
 
 /*
@@ -737,8 +737,8 @@ void RenderPassPrepareOld::onInit()
 	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
 	assert(unit_quad.get());
 
-	device->clearVertexStreams(pipeline_state);
-	device->setVertexStream(pipeline_state, 0, unit_quad->vertex_buffer);
+	device->clearVertexStreams(graphics_pipeline);
+	device->setVertexStream(graphics_pipeline, 0, unit_quad->vertex_buffer);
 }
 
 void RenderPassPrepareOld::onInvalidate()
@@ -746,7 +746,7 @@ void RenderPassPrepareOld::onInvalidate()
 	first_frame = true;
 }
 
-void RenderPassPrepareOld::onRender(foundation::render::CommandBuffer *command_buffer)
+void RenderPassPrepareOld::onRender(foundation::render::CommandBuffer command_buffer)
 {
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
@@ -756,7 +756,7 @@ void RenderPassPrepareOld::onRender(foundation::render::CommandBuffer *command_b
 
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
-		pipeline_state,
+		graphics_pipeline,
 		unit_quad->index_buffer,
 		unit_quad->num_indices
 	);
@@ -778,12 +778,12 @@ visual::IRenderPass *RenderPassGeometry::create(visual::RenderGraph *render_grap
  */
 void RenderPassGeometry::onInit()
 {
-	device->setCullMode(pipeline_state, foundation::render::CullMode::BACK);
-	device->setDepthTest(pipeline_state, true);
-	device->setDepthWrite(pipeline_state, true);
+	device->setCullMode(graphics_pipeline, foundation::render::CullMode::BACK);
+	device->setDepthTest(graphics_pipeline, true);
+	device->setDepthWrite(graphics_pipeline, true);
 }
 
-void RenderPassGeometry::onRender(foundation::render::CommandBuffer *command_buffer)
+void RenderPassGeometry::onRender(foundation::render::CommandBuffer command_buffer)
 {
 	auto query = foundation::game::Query<foundation::components::Transform, visual::components::Renderable>(world);
 
@@ -801,15 +801,15 @@ void RenderPassGeometry::onRender(foundation::render::CommandBuffer *command_buf
 			const visual::components::Renderable &renderable = renderables[i];
 			const foundation::math::mat4 &node_transform = transform.transform;
 
-			foundation::render::BindSet *material_bindings = renderable.material->bindings;
+			foundation::render::BindSet material_bindings = renderable.material->bindings;
 
-			device->clearVertexStreams(pipeline_state);
-			device->setVertexStream(pipeline_state, 0, renderable.mesh->vertex_buffer);
+			device->clearVertexStreams(graphics_pipeline);
+			device->setVertexStream(graphics_pipeline, 0, renderable.mesh->vertex_buffer);
 
-			device->setBindSet(pipeline_state, material_binding, material_bindings);
-			device->setPushConstants(pipeline_state, static_cast<uint8_t>(sizeof(foundation::math::mat4)), &node_transform);
+			device->setBindSet(graphics_pipeline, material_binding, material_bindings);
+			device->setPushConstants(graphics_pipeline, static_cast<uint8_t>(sizeof(foundation::math::mat4)), &node_transform);
 
-			device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, renderable.mesh->index_buffer, renderable.mesh->num_indices);
+			device->drawIndexedPrimitiveInstanced(command_buffer, graphics_pipeline, renderable.mesh->index_buffer, renderable.mesh->num_indices);
 		}
 	}
 }
@@ -854,11 +854,11 @@ void RenderPassLBuffer::onInit()
 	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
 	assert(unit_quad.get());
 
-	device->clearVertexStreams(pipeline_state);
-	device->setVertexStream(pipeline_state, 0, unit_quad->vertex_buffer);
+	device->clearVertexStreams(graphics_pipeline);
+	device->setVertexStream(graphics_pipeline, 0, unit_quad->vertex_buffer);
 }
 
-void RenderPassLBuffer::onRender(foundation::render::CommandBuffer *command_buffer)
+void RenderPassLBuffer::onRender(foundation::render::CommandBuffer command_buffer)
 {
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
@@ -879,10 +879,10 @@ void RenderPassLBuffer::onRender(foundation::render::CommandBuffer *command_buff
 		{
 			const visual::components::SkyLight &light = skylights[i];
 
-			device->setBindSet(pipeline_state, light_binding, light.ibl_environment->bindings);
+			device->setBindSet(graphics_pipeline, light_binding, light.ibl_environment->bindings);
 			device->drawIndexedPrimitiveInstanced(
 				command_buffer,
-				pipeline_state,
+				graphics_pipeline,
 				unit_quad->index_buffer,
 				unit_quad->num_indices
 			);
@@ -930,11 +930,11 @@ void RenderPassPost::onInit()
 	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
 	assert(unit_quad.get());
 
-	device->clearVertexStreams(pipeline_state);
-	device->setVertexStream(pipeline_state, 0, unit_quad->vertex_buffer);
+	device->clearVertexStreams(graphics_pipeline);
+	device->setVertexStream(graphics_pipeline, 0, unit_quad->vertex_buffer);
 }
 
-void RenderPassPost::onRender(foundation::render::CommandBuffer *command_buffer)
+void RenderPassPost::onRender(foundation::render::CommandBuffer command_buffer)
 {
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
@@ -944,7 +944,7 @@ void RenderPassPost::onRender(foundation::render::CommandBuffer *command_buffer)
 
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
-		pipeline_state,
+		graphics_pipeline,
 		unit_quad->index_buffer,
 		unit_quad->num_indices
 	);
@@ -984,21 +984,21 @@ void RenderPassImGui::onInit()
 void RenderPassImGui::onShutdown()
 {
 	device->destroyVertexBuffer(vertices);
-	vertices = nullptr;
+	vertices = SCAPES_NULL_HANDLE;
 
 	device->destroyIndexBuffer(indices);
-	indices = nullptr;
+	indices = SCAPES_NULL_HANDLE;
 
 	device->destroyBindSet(font_bind_set);
-	font_bind_set = nullptr;
+	font_bind_set = SCAPES_NULL_HANDLE;
 
 	device->destroyTexture(font_texture);
-	font_texture = nullptr;
+	font_texture = SCAPES_NULL_HANDLE;
 
 	invalidateTextureIDs();
 }
 
-void RenderPassImGui::onRender(foundation::render::CommandBuffer *command_buffer)
+void RenderPassImGui::onRender(foundation::render::CommandBuffer command_buffer)
 {
 	assert(context);
 	assert(context->Viewports.size() > 0);
@@ -1015,7 +1015,7 @@ void RenderPassImGui::onRender(foundation::render::CommandBuffer *command_buffer
 	uint32_t index_offset = 0;
 	int32_t vertex_offset = 0;
 
-	device->setViewport(pipeline_state, 0, 0, static_cast<uint32_t>(fb_size.x), static_cast<uint32_t>(fb_size.y));
+	device->setViewport(graphics_pipeline, 0, 0, static_cast<uint32_t>(fb_size.x), static_cast<uint32_t>(fb_size.y));
 
 	for (int i = 0; i < draw_data.CmdListsCount; ++i)
 	{
@@ -1038,8 +1038,8 @@ void RenderPassImGui::onRender(foundation::render::CommandBuffer *command_buffer
 				uint32_t base_index = index_offset + command.IdxOffset;
 				int32_t base_vertex = vertex_offset + command.VtxOffset;
 
-				foundation::render::BindSet *bind_set = reinterpret_cast<foundation::render::BindSet *>(command.TextureId);
-				device->setBindSet(pipeline_state, 0, bind_set);
+				foundation::render::BindSet bind_set = reinterpret_cast<foundation::render::BindSet>(command.TextureId);
+				device->setBindSet(graphics_pipeline, 0, bind_set);
 
 				float x0 = (command.ClipRect.x - clip_offset.x) * clip_scale.x;
 				float y0 = (command.ClipRect.y - clip_offset.y) * clip_scale.y;
@@ -1059,8 +1059,8 @@ void RenderPassImGui::onRender(foundation::render::CommandBuffer *command_buffer
 				uint32_t width = static_cast<uint32_t>(x1 - x0);
 				uint32_t height = static_cast<uint32_t>(y1 - y0);
 
-				device->setScissor(pipeline_state, static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
-				device->drawIndexedPrimitiveInstanced(command_buffer, pipeline_state, indices, num_indices, base_index, base_vertex, 1, 0);
+				device->setScissor(graphics_pipeline, static_cast<int32_t>(x0), static_cast<int32_t>(y0), width, height);
+				device->drawIndexedPrimitiveInstanced(command_buffer, graphics_pipeline, indices, num_indices, base_index, base_vertex, 1, 0);
 			}
 		}
 
@@ -1071,13 +1071,13 @@ void RenderPassImGui::onRender(foundation::render::CommandBuffer *command_buffer
 
 /*
  */
-ImTextureID RenderPassImGui::fetchTextureID(const foundation::render::Texture *texture)
+ImTextureID RenderPassImGui::fetchTextureID(foundation::render::Texture texture)
 {
 	auto it = registered_textures.find(texture);
 	if (it != registered_textures.end())
 		return it->second;
 
-	foundation::render::BindSet *bind_set = device->createBindSet();
+	foundation::render::BindSet bind_set = device->createBindSet();
 	device->bindTexture(bind_set, 0, texture);
 
 	registered_textures.insert(std::make_pair(texture, bind_set));
@@ -1157,8 +1157,8 @@ void RenderPassImGui::updateBuffers(const ImDrawData &draw_data)
 
 void RenderPassImGui::setupRenderState(const ImDrawData &draw_data)
 {
-	device->clearVertexStreams(pipeline_state);
-	device->setVertexStream(pipeline_state, 0, vertices);
+	device->clearVertexStreams(graphics_pipeline);
+	device->setVertexStream(graphics_pipeline, 0, vertices);
 
 	float L = draw_data.DisplayPos.x;
 	float R = draw_data.DisplayPos.x + draw_data.DisplaySize.x;
@@ -1170,14 +1170,14 @@ void RenderPassImGui::setupRenderState(const ImDrawData &draw_data)
 
 	foundation::math::mat4 projection = foundation::math::ortho(L, R, B, T, 0.0f, 1.0f);
 
-	device->clearPushConstants(pipeline_state);
-	device->setPushConstants(pipeline_state, sizeof(foundation::math::mat4), &projection);
+	device->clearPushConstants(graphics_pipeline);
+	device->setPushConstants(graphics_pipeline, sizeof(foundation::math::mat4), &projection);
 
-	device->setBlending(pipeline_state, true);
-	device->setBlendFactors(pipeline_state, foundation::render::BlendFactor::SRC_ALPHA, foundation::render::BlendFactor::ONE_MINUS_SRC_ALPHA);
-	device->setCullMode(pipeline_state, foundation::render::CullMode::NONE);
-	device->setDepthWrite(pipeline_state, false);
-	device->setDepthTest(pipeline_state, false);
+	device->setBlending(graphics_pipeline, true);
+	device->setBlendFactors(graphics_pipeline, foundation::render::BlendFactor::SRC_ALPHA, foundation::render::BlendFactor::ONE_MINUS_SRC_ALPHA);
+	device->setCullMode(graphics_pipeline, foundation::render::CullMode::NONE);
+	device->setDepthWrite(graphics_pipeline, false);
+	device->setDepthTest(graphics_pipeline, false);
 }
 
 /*
@@ -1213,7 +1213,7 @@ void RenderPassSwapRenderBuffers::shutdown()
 	clear();
 }
 
-void RenderPassSwapRenderBuffers::render(foundation::render::CommandBuffer *command_buffer)
+void RenderPassSwapRenderBuffers::render(foundation::render::CommandBuffer command_buffer)
 {
 	for (const SwapPair &pair : pairs)
 		render_graph->swapRenderBuffers(pair.src.c_str(), pair.dst.c_str());

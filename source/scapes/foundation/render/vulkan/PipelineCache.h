@@ -7,7 +7,7 @@ namespace scapes::foundation::render::vulkan
 {
 	class PipelineLayoutCache;
 	class Context;
-	struct PipelineState;
+	struct GraphicsPipeline;
 
 	/*
 	 */
@@ -18,11 +18,11 @@ namespace scapes::foundation::render::vulkan
 			: context(context), layout_cache(layout_cache) { }
 		~PipelineCache();
 
-		VkPipeline fetch(VkPipelineLayout layout, const PipelineState *pipeline_state);
+		VkPipeline fetch(VkPipelineLayout layout, const GraphicsPipeline *graphics_pipeline);
 		void clear();
 
 	private:
-		uint64_t getHash(VkPipelineLayout layout, const PipelineState *pipeline_state) const;
+		uint64_t getHash(VkPipelineLayout layout, const GraphicsPipeline *graphics_pipeline) const;
 
 	private:
 		const Context *context {nullptr};

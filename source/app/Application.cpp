@@ -238,7 +238,7 @@ void Application::update()
  */
 void Application::render()
 {
-	foundation::render::CommandBuffer *command_buffer = swap_chain->acquire();
+	foundation::render::CommandBuffer command_buffer = swap_chain->acquire();
 
 	if (!command_buffer)
 	{
@@ -352,7 +352,7 @@ void Application::onMousePosition(GLFWwindow* window, double mouse_x, double mou
 	application->input_state.last_mouse_y = static_cast<float>(mouse_y);
 }
 
-void Application::onMouseButton(GLFWwindow* window, int button, int action, int mods)
+void Application::onMouseButton(GLFWwindow *window, int button, int action, int mods)
 {
 	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
 	assert(application != nullptr);
@@ -361,7 +361,7 @@ void Application::onMouseButton(GLFWwindow* window, int button, int action, int 
 		application->input_state.rotating = (action == GLFW_PRESS);
 }
 
-void Application::onScroll(GLFWwindow* window, double delta_x, double delta_y)
+void Application::onScroll(GLFWwindow *window, double delta_x, double delta_y)
 {
 	Application *application = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
 	assert(application);

@@ -58,17 +58,29 @@ namespace scapes::foundation
 		enum class DepthCompareFunc : uint8_t;
 		enum class BlendFactor : uint8_t;
 
-		struct VertexBuffer;
-		struct IndexBuffer;
-		struct Texture;
-		struct FrameBuffer;
-		struct RenderPass;
-		struct CommandBuffer;
-		struct UniformBuffer;
-		struct Shader;
-		struct BindSet;
-		struct PipelineState;
-		struct SwapChain;
+		struct VertexBuffer_t;
+		struct IndexBuffer_t;
+		struct Texture_t;
+		struct FrameBuffer_t;
+		struct RenderPass_t;
+		struct CommandBuffer_t;
+		struct UniformBuffer_t;
+		struct Shader_t;
+		struct BindSet_t;
+		struct GraphicsPipeline_t;
+		struct SwapChain_t;
+
+		typedef struct VertexBuffer_t *VertexBuffer;
+		typedef struct IndexBuffer_t *IndexBuffer;
+		typedef struct Texture_t *Texture;
+		typedef struct FrameBuffer_t *FrameBuffer;
+		typedef struct RenderPass_t *RenderPass;
+		typedef struct CommandBuffer_t *CommandBuffer;
+		typedef struct UniformBuffer_t *UniformBuffer;
+		typedef struct Shader_t *Shader;
+		typedef struct BindSet_t *BindSet;
+		typedef struct GraphicsPipeline_t *GraphicsPipeline;
+		typedef struct SwapChain_t *SwapChain;
 
 		struct VertexAttribute;
 		struct FrameBufferAttachment;

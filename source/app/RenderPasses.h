@@ -21,7 +21,7 @@ public:
 public:
 	void init() final;
 	void shutdown() final;
-	void render(scapes::foundation::render::CommandBuffer *command_buffer) final;
+	void render(scapes::foundation::render::CommandBuffer command_buffer) final;
 	void invalidate() final;
 
 	bool deserialize(const scapes::foundation::serde::yaml::NodeRef node) override;
@@ -83,7 +83,7 @@ public:
 
 protected:
 	virtual bool canRender() const { return true; }
-	virtual void onRender(scapes::foundation::render::CommandBuffer *command_buffer) {}
+	virtual void onRender(scapes::foundation::render::CommandBuffer command_buffer) {}
 	virtual void onInit() {}
 	virtual void onShutdown() {}
 	virtual void onInvalidate() {};
@@ -134,9 +134,9 @@ protected:
 	scapes::foundation::render::Device *device {nullptr};
 	scapes::foundation::game::World *world {nullptr};
 
-	scapes::foundation::render::RenderPass *render_pass_swapchain {nullptr};
-	scapes::foundation::render::RenderPass *render_pass_offscreen {nullptr};
-	scapes::foundation::render::PipelineState *pipeline_state {nullptr};
+	scapes::foundation::render::RenderPass render_pass_swapchain {SCAPES_NULL_HANDLE};
+	scapes::foundation::render::RenderPass render_pass_offscreen {SCAPES_NULL_HANDLE};
+	scapes::foundation::render::GraphicsPipeline graphics_pipeline {SCAPES_NULL_HANDLE};
 
 	scapes::visual::ShaderHandle vertex_shader;
 	scapes::visual::ShaderHandle tessellation_control_shader;
@@ -156,7 +156,7 @@ private:
 	bool canRender() const final { return first_frame; }
 	void onInit() final;
 	void onInvalidate() final;
-	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
+	void onRender(scapes::foundation::render::CommandBuffer command_buffer) final;
 
 private:
 	bool first_frame {true};
@@ -180,7 +180,7 @@ public:
 
 private:
 	void onInit() final;
-	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
+	void onRender(scapes::foundation::render::CommandBuffer command_buffer) final;
 	bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) final;
 	bool onSerialize(scapes::foundation::serde::yaml::NodeRef node) final;
 
@@ -206,7 +206,7 @@ public:
 
 private:
 	void onInit() final;
-	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
+	void onRender(scapes::foundation::render::CommandBuffer command_buffer) final;
 	bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) final;
 	bool onSerialize(scapes::foundation::serde::yaml::NodeRef node) final;
 
@@ -229,7 +229,7 @@ public:
 
 private:
 	void onInit() final;
-	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
+	void onRender(scapes::foundation::render::CommandBuffer command_buffer) final;
 };
 
 template <>
@@ -251,7 +251,7 @@ public:
 	static scapes::visual::IRenderPass *create(scapes::visual::RenderGraph *render_graph);
 
 public:
-	ImTextureID fetchTextureID(const scapes::foundation::render::Texture *texture);
+	ImTextureID fetchTextureID(scapes::foundation::render::Texture texture);
 	void invalidateTextureIDs();
 
 	SCAPES_INLINE void setImGuiContext(ImGuiContext *c) { context = c; }
@@ -261,7 +261,7 @@ public:
 private:
 	void onInit() final;
 	void onShutdown() final;
-	void onRender(scapes::foundation::render::CommandBuffer *command_buffer) final;
+	void onRender(scapes::foundation::render::CommandBuffer command_buffer) final;
 
 	void updateBuffers(const ImDrawData &draw_data);
 	void setupRenderState(const ImDrawData &draw_data);
@@ -269,14 +269,14 @@ private:
 private:
 	ImGuiContext *context {nullptr};
 
-	scapes::foundation::render::Texture *font_texture {nullptr};
-	scapes::foundation::render::VertexBuffer *vertices {nullptr};
-	scapes::foundation::render::IndexBuffer *indices {nullptr};
+	scapes::foundation::render::Texture font_texture {SCAPES_NULL_HANDLE};
+	scapes::foundation::render::VertexBuffer vertices {SCAPES_NULL_HANDLE};
+	scapes::foundation::render::IndexBuffer indices {SCAPES_NULL_HANDLE};
 	size_t index_buffer_size {0};
 	size_t vertex_buffer_size {0};
 
-	scapes::foundation::render::BindSet *font_bind_set {nullptr};
-	std::map<const scapes::foundation::render::Texture *, scapes::foundation::render::BindSet *> registered_textures;
+	scapes::foundation::render::BindSet font_bind_set {SCAPES_NULL_HANDLE};
+	std::map<scapes::foundation::render::Texture, scapes::foundation::render::BindSet> registered_textures;
 };
 
 template <>
@@ -299,7 +299,7 @@ public:
 public:
 	void init() final;
 	void shutdown() final;
-	void render(scapes::foundation::render::CommandBuffer *command_buffer) final;
+	void render(scapes::foundation::render::CommandBuffer command_buffer) final;
 	void invalidate() final;
 	void clear();
 

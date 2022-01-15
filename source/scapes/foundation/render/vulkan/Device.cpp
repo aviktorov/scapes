@@ -353,7 +353,7 @@ namespace scapes::foundation::render::vulkan
 		context = nullptr;
 	}
 
-	render::VertexBuffer *Device::createVertexBuffer(
+	render::VertexBuffer Device::createVertexBuffer(
 		BufferType type,
 		uint16_t vertex_size,
 		uint32_t num_vertices,
@@ -405,10 +405,10 @@ namespace scapes::foundation::render::vulkan
 				Utils::fillHostVisibleBuffer(context, result->memory, buffer_size, data);
 		}
 
-		return result;
+		return reinterpret_cast<render::VertexBuffer>(result);
 	}
 
-	render::IndexBuffer *Device::createIndexBuffer(
+	render::IndexBuffer Device::createIndexBuffer(
 		BufferType type,
 		IndexFormat index_format,
 		uint32_t num_indices,
@@ -448,10 +448,10 @@ namespace scapes::foundation::render::vulkan
 				Utils::fillHostVisibleBuffer(context, result->memory, buffer_size, data);
 		}
 
-		return result;
+		return reinterpret_cast<render::IndexBuffer>(result);
 	}
 
-	render::Texture *Device::createTexture2D(
+	render::Texture Device::createTexture2D(
 		uint32_t width,
 		uint32_t height,
 		uint32_t num_mipmaps,
@@ -478,10 +478,10 @@ namespace scapes::foundation::render::vulkan
 
 		helpers::createTextureData(context, result, format, data, num_data_mipmaps, 1);
 
-		return result;
+		return reinterpret_cast<render::Texture>(result);
 	}
 
-	render::Texture *Device::createTexture2DMultisample(
+	render::Texture Device::createTexture2DMultisample(
 		uint32_t width,
 		uint32_t height,
 		Format format,
@@ -504,10 +504,10 @@ namespace scapes::foundation::render::vulkan
 
 		helpers::createTextureData(context, result, format, nullptr, 1, 1);
 
-		return result;
+		return reinterpret_cast<render::Texture>(result);
 	}
 
-	render::Texture *Device::createTexture2DArray(
+	render::Texture Device::createTexture2DArray(
 		uint32_t width,
 		uint32_t height,
 		uint32_t num_mipmaps,
@@ -538,10 +538,10 @@ namespace scapes::foundation::render::vulkan
 
 		helpers::createTextureData(context, result, format, data, num_data_mipmaps, num_data_layers);
 
-		return result;
+		return reinterpret_cast<render::Texture>(result);
 	}
 
-	render::Texture *Device::createTexture3D(
+	render::Texture Device::createTexture3D(
 		uint32_t width,
 		uint32_t height,
 		uint32_t depth,
@@ -569,10 +569,10 @@ namespace scapes::foundation::render::vulkan
 
 		helpers::createTextureData(context, result, format, data, num_data_mipmaps, 1);
 
-		return result;
+		return reinterpret_cast<render::Texture>(result);
 	}
 
-	render::Texture *Device::createTextureCube(
+	render::Texture Device::createTextureCube(
 		uint32_t size,
 		uint32_t num_mipmaps,
 		Format format,
@@ -598,10 +598,10 @@ namespace scapes::foundation::render::vulkan
 
 		helpers::createTextureData(context, result, format, data, num_data_mipmaps, 1);
 
-		return result;
+		return reinterpret_cast<render::Texture>(result);
 	}
 
-	render::FrameBuffer *Device::createFrameBuffer(
+	render::FrameBuffer Device::createFrameBuffer(
 		uint32_t num_attachments,
 		const FrameBufferAttachment *attachments
 	)
@@ -620,7 +620,7 @@ namespace scapes::foundation::render::vulkan
 		for (uint32_t i = 0; i < num_attachments; ++i)
 		{
 			const FrameBufferAttachment &input_attachment = attachments[i];
-			const Texture *texture = static_cast<const Texture *>(input_attachment.texture);
+			const Texture *texture = reinterpret_cast<const Texture *>(input_attachment.texture);
 
 			result->attachment_views[i] = texture->image_view_cache->fetch(texture, input_attachment.base_mip, 1, input_attachment.base_layer, input_attachment.num_layers);
 			result->attachment_formats[i] = texture->format;
@@ -637,10 +637,10 @@ namespace scapes::foundation::render::vulkan
 
 		result->num_layers = num_layers;
 
-		return result;
+		return reinterpret_cast<render::FrameBuffer>(result);
 	}
 
-	render::RenderPass *Device::createRenderPass(
+	render::RenderPass Device::createRenderPass(
 		uint32_t num_attachments,
 		const RenderPassAttachment *attachments,
 		const RenderPassDescription &description
@@ -692,19 +692,19 @@ namespace scapes::foundation::render::vulkan
 
 		result->render_pass = builder.build(context->getDevice());
 
-		return result;
+		return reinterpret_cast<render::RenderPass>(result);
 	}
 
-	render::RenderPass *Device::createRenderPass(
-		const render::SwapChain *swap_chain,
+	render::RenderPass Device::createRenderPass(
+		render::SwapChain swap_chain,
 		RenderPassLoadOp load_op,
 		RenderPassStoreOp store_op,
-		const RenderPassClearColor *clear_color
+		const RenderPassClearColor &clear_color
 	)
 	{
 		assert(swap_chain);
 
-		const SwapChain *vk_swap_chain = static_cast<const SwapChain *>(swap_chain);
+		const SwapChain *vk_swap_chain = reinterpret_cast<const SwapChain *>(swap_chain);
 
 		RenderPass *result = new RenderPass();
 
@@ -719,14 +719,10 @@ namespace scapes::foundation::render::vulkan
 		result->attachment_samples[0] = vk_samples;
 		result->attachment_load_ops[0] = vk_load_op;
 		result->attachment_store_ops[0] = vk_store_op;
-
-		if (clear_color)
-		{
-			result->attachment_clear_values[0].color.float32[0] = clear_color->as_f32[0];
-			result->attachment_clear_values[0].color.float32[1] = clear_color->as_f32[1];
-			result->attachment_clear_values[0].color.float32[2] = clear_color->as_f32[2];
-			result->attachment_clear_values[0].color.float32[3] = clear_color->as_f32[3];
-		}
+		result->attachment_clear_values[0].color.float32[0] = clear_color.as_f32[0];
+		result->attachment_clear_values[0].color.float32[1] = clear_color.as_f32[1];
+		result->attachment_clear_values[0].color.float32[2] = clear_color.as_f32[2];
+		result->attachment_clear_values[0].color.float32[3] = clear_color.as_f32[3];
 
 		result->num_color_attachments = 1;
 		result->max_samples = VK_SAMPLE_COUNT_1_BIT;
@@ -738,10 +734,10 @@ namespace scapes::foundation::render::vulkan
 			.addColorAttachmentReference(0, 0)
 			.build(context->getDevice());
 
-		return result;
+		return reinterpret_cast<render::RenderPass>(result);
 	}
 
-	render::CommandBuffer *Device::createCommandBuffer(
+	render::CommandBuffer Device::createCommandBuffer(
 		CommandBufferType type
 	)
 	{
@@ -758,7 +754,7 @@ namespace scapes::foundation::render::vulkan
 		if (vkAllocateCommandBuffers(context->getDevice(), &info, &result->command_buffer) != VK_SUCCESS)
 		{
 			std::cerr << "Device::createCommandBuffer(): can't allocate command buffer" << std::endl;
-			destroyCommandBuffer(result);
+			destroyCommandBuffer(reinterpret_cast<render::CommandBuffer>(result));
 			return nullptr;
 		}
 
@@ -769,7 +765,7 @@ namespace scapes::foundation::render::vulkan
 		if (vkCreateSemaphore(context->getDevice(), &semaphore_info, nullptr, &result->rendering_finished_gpu) != VK_SUCCESS)
 		{
 			std::cerr << "Device::createCommandBuffer(): can't create 'rendering finished' semaphore" << std::endl;
-			destroyCommandBuffer(result);
+			destroyCommandBuffer(reinterpret_cast<render::CommandBuffer>(result));
 			return nullptr;
 		}
 
@@ -781,14 +777,14 @@ namespace scapes::foundation::render::vulkan
 		if (vkCreateFence(context->getDevice(), &fence_info, nullptr, &result->rendering_finished_cpu) != VK_SUCCESS)
 		{
 			std::cerr << "Device::createCommandBuffer(): can't create 'rendering finished' fence" << std::endl;
-			destroyCommandBuffer(result);
+			destroyCommandBuffer(reinterpret_cast<render::CommandBuffer>(result));
 			return nullptr;
 		}
 
-		return result;
+		return reinterpret_cast<render::CommandBuffer>(result);
 	}
 
-	render::UniformBuffer *Device::createUniformBuffer(
+	render::UniformBuffer Device::createUniformBuffer(
 		BufferType type,
 		uint32_t size,
 		const void *data
@@ -813,10 +809,10 @@ namespace scapes::foundation::render::vulkan
 		if (data != nullptr)
 			Utils::fillHostVisibleBuffer(context, result->memory, size, data);
 
-		return result;
+		return reinterpret_cast<render::UniformBuffer>(result);
 	}
 
-	render::Shader *Device::createShaderFromSource(
+	render::Shader Device::createShaderFromSource(
 		ShaderType type,
 		uint32_t size,
 		const char *data,
@@ -827,7 +823,7 @@ namespace scapes::foundation::render::vulkan
 		return nullptr;
 	}
 
-	render::Shader *Device::createShaderFromIL(
+	render::Shader Device::createShaderFromIL(
 		ShaderType type,
 		ShaderILType il_type,
 		size_t size,
@@ -842,30 +838,30 @@ namespace scapes::foundation::render::vulkan
 		result->type = type;
 		result->module = Utils::createShaderModule(context, reinterpret_cast<const uint32_t *>(data), size);
 
-		return result;
+		return reinterpret_cast<render::Shader>(result);
 	}
 
-	render::BindSet *Device::createBindSet()
+	render::BindSet Device::createBindSet()
 	{
 		BindSet *result = new BindSet();
 		memset(result, 0, sizeof(BindSet));
 
-		return result;
+		return reinterpret_cast<render::BindSet>(result);
 	}
 
-	render::PipelineState *Device::createPipelineState()
+	render::GraphicsPipeline Device::createGraphicsPipeline()
 	{
-		PipelineState *result = new PipelineState();
-		memset(result, 0, sizeof(PipelineState));
+		GraphicsPipeline *result = new GraphicsPipeline();
+		memset(result, 0, sizeof(GraphicsPipeline));
 
 		result->cull_mode = VK_CULL_MODE_BACK_BIT;
 		result->primitive_topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		result->depth_compare_func = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-		return result;
+		return reinterpret_cast<render::GraphicsPipeline>(result);
 	}
 
-	render::SwapChain *Device::createSwapChain(void *native_window)
+	render::SwapChain Device::createSwapChain(void *native_window)
 	{
 		assert(native_window != nullptr && "Invalid window");
 
@@ -876,7 +872,7 @@ namespace scapes::foundation::render::vulkan
 		if (result->surface == VK_NULL_HANDLE)
 		{
 			std::cerr << "Device::createSwapChain(): can't create platform surface" << std::endl;
-			destroySwapChain(result);
+			destroySwapChain(reinterpret_cast<render::SwapChain>(result));
 			return false;
 		}
 
@@ -892,22 +888,22 @@ namespace scapes::foundation::render::vulkan
 		if (result->present_queue == VK_NULL_HANDLE)
 		{
 			std::cerr << "Device::createSwapChain(): can't get present queue from logical device" << std::endl;
-			destroySwapChain(result);
+			destroySwapChain(reinterpret_cast<render::SwapChain>(result));
 			return false;
 		}
 
 		helpers::selectOptimalSwapChainSettings(context, result);
 		helpers::createSwapChainObjects(context, result);
 
-		return result;
+		return reinterpret_cast<render::SwapChain>(result);
 	}
 
-	void Device::destroyVertexBuffer(render::VertexBuffer *vertex_buffer)
+	void Device::destroyVertexBuffer(render::VertexBuffer vertex_buffer)
 	{
-		if (vertex_buffer == nullptr)
+		if (vertex_buffer == SCAPES_NULL_HANDLE)
 			return;
 
-		VertexBuffer *vk_vertex_buffer = static_cast<VertexBuffer *>(vertex_buffer);
+		VertexBuffer *vk_vertex_buffer = reinterpret_cast<VertexBuffer *>(vertex_buffer);
 
 		vmaDestroyBuffer(context->getVRAMAllocator(), vk_vertex_buffer->buffer, vk_vertex_buffer->memory);
 
@@ -918,12 +914,12 @@ namespace scapes::foundation::render::vulkan
 		vk_vertex_buffer = nullptr;
 	}
 
-	void Device::destroyIndexBuffer(render::IndexBuffer *index_buffer)
+	void Device::destroyIndexBuffer(render::IndexBuffer index_buffer)
 	{
-		if (index_buffer == nullptr)
+		if (index_buffer == SCAPES_NULL_HANDLE)
 			return;
 
-		IndexBuffer *vk_index_buffer = static_cast<IndexBuffer *>(index_buffer);
+		IndexBuffer *vk_index_buffer = reinterpret_cast<IndexBuffer *>(index_buffer);
 
 		vmaDestroyBuffer(context->getVRAMAllocator(), vk_index_buffer->buffer, vk_index_buffer->memory);
 
@@ -934,12 +930,12 @@ namespace scapes::foundation::render::vulkan
 		vk_index_buffer = nullptr;
 	}
 
-	void Device::destroyTexture(render::Texture *texture)
+	void Device::destroyTexture(render::Texture texture)
 	{
-		if (texture == nullptr)
+		if (texture == SCAPES_NULL_HANDLE)
 			return;
 
-		Texture *vk_texture = static_cast<Texture *>(texture);
+		Texture *vk_texture = reinterpret_cast<Texture *>(texture);
 
 		vmaDestroyImage(context->getVRAMAllocator(), vk_texture->image, vk_texture->memory);
 
@@ -957,12 +953,12 @@ namespace scapes::foundation::render::vulkan
 		vk_texture = nullptr;
 	}
 
-	void Device::destroyFrameBuffer(render::FrameBuffer *frame_buffer)
+	void Device::destroyFrameBuffer(render::FrameBuffer frame_buffer)
 	{
-		if (frame_buffer == nullptr)
+		if (frame_buffer == SCAPES_NULL_HANDLE)
 			return;
 
-		FrameBuffer *vk_frame_buffer = static_cast<FrameBuffer *>(frame_buffer);
+		FrameBuffer *vk_frame_buffer = reinterpret_cast<FrameBuffer *>(frame_buffer);
 
 		for (uint8_t i = 0; i < vk_frame_buffer->num_attachments; ++i)
 			vk_frame_buffer->attachment_views[i] = VK_NULL_HANDLE;
@@ -974,12 +970,12 @@ namespace scapes::foundation::render::vulkan
 		vk_frame_buffer = nullptr;
 	}
 
-	void Device::destroyRenderPass(render::RenderPass *render_pass)
+	void Device::destroyRenderPass(render::RenderPass render_pass)
 	{
-		if (render_pass == nullptr)
+		if (render_pass == SCAPES_NULL_HANDLE)
 			return;
 
-		RenderPass *vk_render_pass = static_cast<RenderPass *>(render_pass);
+		RenderPass *vk_render_pass = reinterpret_cast<RenderPass *>(render_pass);
 
 		vkDestroyRenderPass(context->getDevice(), vk_render_pass->render_pass, nullptr);
 		vk_render_pass->render_pass = VK_NULL_HANDLE;
@@ -988,12 +984,12 @@ namespace scapes::foundation::render::vulkan
 		vk_render_pass = nullptr;
 	}
 
-	void Device::destroyCommandBuffer(render::CommandBuffer *command_buffer)
+	void Device::destroyCommandBuffer(render::CommandBuffer command_buffer)
 	{
-		if (command_buffer == nullptr)
+		if (command_buffer == SCAPES_NULL_HANDLE)
 			return;
 
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
 
 		vkFreeCommandBuffers(context->getDevice(), context->getCommandPool(), 1, &vk_command_buffer->command_buffer);
 		vk_command_buffer->command_buffer = VK_NULL_HANDLE;
@@ -1008,12 +1004,12 @@ namespace scapes::foundation::render::vulkan
 		vk_command_buffer = nullptr;
 	}
 
-	void Device::destroyUniformBuffer(render::UniformBuffer *uniform_buffer)
+	void Device::destroyUniformBuffer(render::UniformBuffer uniform_buffer)
 	{
-		if (uniform_buffer == nullptr)
+		if (uniform_buffer == SCAPES_NULL_HANDLE)
 			return;
 
-		UniformBuffer *vk_uniform_buffer = static_cast<UniformBuffer *>(uniform_buffer);
+		UniformBuffer *vk_uniform_buffer = reinterpret_cast<UniformBuffer *>(uniform_buffer);
 
 		vmaDestroyBuffer(context->getVRAMAllocator(), vk_uniform_buffer->buffer, vk_uniform_buffer->memory);
 
@@ -1024,12 +1020,12 @@ namespace scapes::foundation::render::vulkan
 		vk_uniform_buffer = nullptr;
 	}
 
-	void Device::destroyShader(render::Shader *shader)
+	void Device::destroyShader(render::Shader shader)
 	{
-		if (shader == nullptr)
+		if (shader == SCAPES_NULL_HANDLE)
 			return;
 
-		Shader *vk_shader = static_cast<Shader *>(shader);
+		Shader *vk_shader = reinterpret_cast<Shader *>(shader);
 
 		vkDestroyShaderModule(context->getDevice(), vk_shader->module, nullptr);
 		vk_shader->module = VK_NULL_HANDLE;
@@ -1038,12 +1034,12 @@ namespace scapes::foundation::render::vulkan
 		vk_shader = nullptr;
 	}
 
-	void Device::destroyBindSet(render::BindSet *bind_set)
+	void Device::destroyBindSet(render::BindSet bind_set)
 	{
-		if (bind_set == nullptr)
+		if (bind_set == SCAPES_NULL_HANDLE)
 			return;
 
-		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
+		BindSet *vk_bind_set = reinterpret_cast<BindSet *>(bind_set);
 
 		for (uint32_t i = 0; i < BindSet::MAX_BINDINGS; ++i)
 		{
@@ -1064,23 +1060,23 @@ namespace scapes::foundation::render::vulkan
 		vk_bind_set = nullptr;
 	}
 
-	void Device::destroyPipelineState(render::PipelineState *pipeline_state)
+	void Device::destroyGraphicsPipeline(render::GraphicsPipeline graphics_pipeline)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		delete vk_pipeline_state;
-		vk_pipeline_state = nullptr;
+		delete vk_graphics_pipeline;
+		vk_graphics_pipeline = nullptr;
 	}
 
-	void Device::destroySwapChain(render::SwapChain *swap_chain)
+	void Device::destroySwapChain(render::SwapChain swap_chain)
 	{
-		if (swap_chain == nullptr)
+		if (swap_chain == SCAPES_NULL_HANDLE)
 			return;
 
-		SwapChain *vk_swap_chain = static_cast<SwapChain *>(swap_chain);
+		SwapChain *vk_swap_chain = reinterpret_cast<SwapChain *>(swap_chain);
 
 		helpers::destroySwapChainObjects(context, vk_swap_chain);
 
@@ -1111,18 +1107,18 @@ namespace scapes::foundation::render::vulkan
 		return Utils::getApiSamples(samples);
 	}
 
-	uint32_t Device::getNumSwapChainImages(const render::SwapChain *swap_chain)
+	uint32_t Device::getNumSwapChainImages(render::SwapChain swap_chain)
 	{
-		assert(swap_chain != nullptr && "Invalid swap chain");
-		const SwapChain *vk_swap_chain = static_cast<const SwapChain *>(swap_chain);
+		assert(swap_chain != SCAPES_NULL_HANDLE && "Invalid swap chain");
+		const SwapChain *vk_swap_chain = reinterpret_cast<const SwapChain *>(swap_chain);
 
 		return vk_swap_chain->num_images;
 	}
 
-	void Device::setTextureSamplerWrapMode(render::Texture *texture, SamplerWrapMode mode)
+	void Device::setTextureSamplerWrapMode(render::Texture texture, SamplerWrapMode mode)
 	{
-		assert(texture != nullptr && "Invalid texture");
-		Texture *vk_texture = static_cast<Texture *>(texture);
+		assert(texture != SCAPES_NULL_HANDLE && "Invalid texture");
+		Texture *vk_texture = reinterpret_cast<Texture *>(texture);
 
 		vkDestroySampler(context->getDevice(), vk_texture->sampler, nullptr);
 		vk_texture->sampler = VK_NULL_HANDLE;
@@ -1131,10 +1127,10 @@ namespace scapes::foundation::render::vulkan
 		vk_texture->sampler = Utils::createSampler(context, 0, vk_texture->num_mipmaps, sampler_mode, sampler_mode, sampler_mode);
 	}
 
-	void Device::setTextureSamplerDepthCompare(render::Texture *texture, bool enabled, DepthCompareFunc func)
+	void Device::setTextureSamplerDepthCompare(render::Texture texture, bool enabled, DepthCompareFunc func)
 	{
-		assert(texture != nullptr && "Invalid texture");
-		Texture *vk_texture = static_cast<Texture *>(texture);
+		assert(texture != SCAPES_NULL_HANDLE && "Invalid texture");
+		Texture *vk_texture = reinterpret_cast<Texture *>(texture);
 
 		vkDestroySampler(context->getDevice(), vk_texture->sampler, nullptr);
 		vk_texture->sampler = VK_NULL_HANDLE;
@@ -1144,11 +1140,11 @@ namespace scapes::foundation::render::vulkan
 		vk_texture->sampler = Utils::createSampler(context, 0, vk_texture->num_mipmaps, sampler_mode, sampler_mode, sampler_mode, enabled, compare_func);
 	}
 
-	void Device::generateTexture2DMipmaps(render::Texture *texture)
+	void Device::generateTexture2DMipmaps(render::Texture texture)
 	{
-		assert(texture != nullptr && "Invalid texture");
+		assert(texture != SCAPES_NULL_HANDLE && "Invalid texture");
 
-		Texture *vk_texture = static_cast<Texture *>(texture);
+		Texture *vk_texture = reinterpret_cast<Texture *>(texture);
 
 		// prepare for transfer
 		Utils::transitionImageLayout(
@@ -1187,11 +1183,11 @@ namespace scapes::foundation::render::vulkan
 
 	/*
 	 */
-	void *Device::map(render::VertexBuffer *vertex_buffer)
+	void *Device::map(render::VertexBuffer vertex_buffer)
 	{
-		assert(vertex_buffer != nullptr && "Invalid buffer");
+		assert(vertex_buffer != SCAPES_NULL_HANDLE && "Invalid buffer");
 
-		VertexBuffer *vk_vertex_buffer = static_cast<VertexBuffer *>(vertex_buffer);
+		VertexBuffer *vk_vertex_buffer = reinterpret_cast<VertexBuffer *>(vertex_buffer);
 		assert(vk_vertex_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
 
 		void *result = nullptr;
@@ -1203,21 +1199,21 @@ namespace scapes::foundation::render::vulkan
 		return result;
 	}
 
-	void Device::unmap(render::VertexBuffer *vertex_buffer)
+	void Device::unmap(render::VertexBuffer vertex_buffer)
 	{
-		assert(vertex_buffer != nullptr && "Invalid buffer");
+		assert(vertex_buffer != SCAPES_NULL_HANDLE && "Invalid buffer");
 
-		VertexBuffer *vk_vertex_buffer = static_cast<VertexBuffer *>(vertex_buffer);
+		VertexBuffer *vk_vertex_buffer = reinterpret_cast<VertexBuffer *>(vertex_buffer);
 		assert(vk_vertex_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
 
 		vmaUnmapMemory(context->getVRAMAllocator(), vk_vertex_buffer->memory);
 	}
 
-	void *Device::map(render::IndexBuffer *index_buffer)
+	void *Device::map(render::IndexBuffer index_buffer)
 	{
-		assert(index_buffer != nullptr && "Invalid uniform buffer");
+		assert(index_buffer != SCAPES_NULL_HANDLE && "Invalid uniform buffer");
 
-		IndexBuffer *vk_index_buffer = static_cast<IndexBuffer *>(index_buffer);
+		IndexBuffer *vk_index_buffer = reinterpret_cast<IndexBuffer *>(index_buffer);
 		assert(vk_index_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
 
 		void *result = nullptr;
@@ -1229,21 +1225,21 @@ namespace scapes::foundation::render::vulkan
 		return result;
 	}
 
-	void Device::unmap(render::IndexBuffer *index_buffer)
+	void Device::unmap(render::IndexBuffer index_buffer)
 	{
-		assert(index_buffer != nullptr && "Invalid buffer");
+		assert(index_buffer != SCAPES_NULL_HANDLE && "Invalid buffer");
 
-		IndexBuffer *vk_index_buffer = static_cast<IndexBuffer *>(index_buffer);
+		IndexBuffer *vk_index_buffer = reinterpret_cast<IndexBuffer *>(index_buffer);
 		assert(vk_index_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
 
 		vmaUnmapMemory(context->getVRAMAllocator(), vk_index_buffer->memory);
 	}
 
-	void *Device::map(render::UniformBuffer *uniform_buffer)
+	void *Device::map(render::UniformBuffer uniform_buffer)
 	{
-		assert(uniform_buffer != nullptr && "Invalid uniform buffer");
+		assert(uniform_buffer != SCAPES_NULL_HANDLE && "Invalid uniform buffer");
 
-		UniformBuffer *vk_uniform_buffer = static_cast<UniformBuffer *>(uniform_buffer);
+		UniformBuffer *vk_uniform_buffer = reinterpret_cast<UniformBuffer *>(uniform_buffer);
 		assert(vk_uniform_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
 
 		void *result = nullptr;
@@ -1255,11 +1251,11 @@ namespace scapes::foundation::render::vulkan
 		return result;
 	}
 
-	void Device::unmap(render::UniformBuffer *uniform_buffer)
+	void Device::unmap(render::UniformBuffer uniform_buffer)
 	{
-		assert(uniform_buffer != nullptr && "Invalid buffer");
+		assert(uniform_buffer != SCAPES_NULL_HANDLE && "Invalid buffer");
 
-		UniformBuffer *vk_uniform_buffer = static_cast<UniformBuffer *>(uniform_buffer);
+		UniformBuffer *vk_uniform_buffer = reinterpret_cast<UniformBuffer *>(uniform_buffer);
 		assert(vk_uniform_buffer->type == BufferType::DYNAMIC && "Mapped buffer must have BufferType::DYNAMIC type");
 
 		vmaUnmapMemory(context->getVRAMAllocator(), vk_uniform_buffer->memory);
@@ -1267,12 +1263,12 @@ namespace scapes::foundation::render::vulkan
 
 	/*
 	 */
-	void Device::flush(render::BindSet *bind_set)
+	void Device::flush(render::BindSet bind_set)
 	{
-		if (bind_set == nullptr)
+		if (bind_set == SCAPES_NULL_HANDLE)
 			return;
 
-		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
+		BindSet *vk_bind_set = reinterpret_cast<BindSet *>(bind_set);
 
 		VkWriteDescriptorSet writes[BindSet::MAX_BINDINGS];
 		VkDescriptorImageInfo image_infos[BindSet::MAX_BINDINGS];
@@ -1345,31 +1341,34 @@ namespace scapes::foundation::render::vulkan
 			vkUpdateDescriptorSets(context->getDevice(), write_size, writes, 0, nullptr);
 	}
 
-	void Device::flush(render::PipelineState *pipeline_state)
+	void Device::flush(render::GraphicsPipeline graphics_pipeline)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		for (uint32_t i = 0; i < vk_pipeline_state->num_bind_sets; ++i)
-			flush(vk_pipeline_state->bind_sets[i]);
+		for (uint32_t i = 0; i < vk_graphics_pipeline->num_bind_sets; ++i)
+			flush(reinterpret_cast<render::BindSet>(vk_graphics_pipeline->bind_sets[i]));
 
-		if (vk_pipeline_state->pipeline_layout == VK_NULL_HANDLE)
+		if (vk_graphics_pipeline->pipeline_layout == VK_NULL_HANDLE)
 		{
-			vk_pipeline_state->pipeline_layout = pipeline_layout_cache->fetch(vk_pipeline_state);
-			vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+			vk_graphics_pipeline->pipeline_layout = pipeline_layout_cache->fetch(vk_graphics_pipeline);
+			vk_graphics_pipeline->pipeline = VK_NULL_HANDLE;
 		}
 
-		if (vk_pipeline_state->pipeline == VK_NULL_HANDLE)
-			vk_pipeline_state->pipeline = pipeline_cache->fetch(vk_pipeline_state->pipeline_layout, vk_pipeline_state);
+		if (vk_graphics_pipeline->pipeline == VK_NULL_HANDLE)
+			vk_graphics_pipeline->pipeline = pipeline_cache->fetch(vk_graphics_pipeline->pipeline_layout, vk_graphics_pipeline);
 	}
 
 	/*
 	 */
-	bool Device::acquire(render::SwapChain *swap_chain, uint32_t *new_image)
+	bool Device::acquire(render::SwapChain swap_chain, uint32_t *new_image)
 	{
-		SwapChain *vk_swap_chain = static_cast<SwapChain *>(swap_chain);
+		if (swap_chain == SCAPES_NULL_HANDLE)
+			return false;
+
+		SwapChain *vk_swap_chain = reinterpret_cast<SwapChain *>(swap_chain);
 
 		vk_swap_chain->current_frame++;
 		vk_swap_chain->current_frame %= vk_swap_chain->num_images;
@@ -1401,9 +1400,9 @@ namespace scapes::foundation::render::vulkan
 		return true;
 	}
 
-	bool Device::present(render::SwapChain *swap_chain, uint32_t num_wait_command_buffers, render::CommandBuffer * const *wait_command_buffers)
+	bool Device::present(render::SwapChain swap_chain, uint32_t num_wait_command_buffers, const render::CommandBuffer *wait_command_buffers)
 	{
-		SwapChain *vk_swap_chain = static_cast<SwapChain *>(swap_chain);
+		SwapChain *vk_swap_chain = reinterpret_cast<SwapChain *>(swap_chain);
 
 		std::vector<VkSemaphore> wait_semaphores(num_wait_command_buffers);
 
@@ -1411,7 +1410,7 @@ namespace scapes::foundation::render::vulkan
 		{
 			for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
 			{
-				const CommandBuffer *vk_wait_command_buffer = static_cast<const CommandBuffer *>(wait_command_buffers[i]);
+				CommandBuffer *vk_wait_command_buffer = reinterpret_cast<CommandBuffer *>(wait_command_buffers[i]);
 				wait_semaphores[i] = vk_wait_command_buffer->rendering_finished_gpu;
 			}
 		}
@@ -1451,7 +1450,7 @@ namespace scapes::foundation::render::vulkan
 
 	bool Device::wait(
 		uint32_t num_wait_command_buffers,
-		render::CommandBuffer * const *wait_command_buffers
+		const render::CommandBuffer *wait_command_buffers
 	)
 	{
 		if (num_wait_command_buffers == 0)
@@ -1461,7 +1460,7 @@ namespace scapes::foundation::render::vulkan
 
 		for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
 		{
-			const CommandBuffer *vk_wait_command_buffer = static_cast<const CommandBuffer *>(wait_command_buffers[i]);
+			CommandBuffer *vk_wait_command_buffer = reinterpret_cast<CommandBuffer *>(wait_command_buffers[i]);
 			wait_fences[i] = vk_wait_command_buffer->rendering_finished_cpu;
 		}
 
@@ -1473,18 +1472,18 @@ namespace scapes::foundation::render::vulkan
 	/*
 	 */
 	void Device::bindUniformBuffer(
-		render::BindSet *bind_set,
+		render::BindSet bind_set,
 		uint32_t binding,
-		const render::UniformBuffer *uniform_buffer
+		render::UniformBuffer uniform_buffer
 	)
 	{
 		assert(binding < BindSet::MAX_BINDINGS);
 
-		if (bind_set == nullptr)
+		if (bind_set == SCAPES_NULL_HANDLE)
 			return;
 
-		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
-		const UniformBuffer *vk_uniform_buffer = static_cast<const UniformBuffer *>(uniform_buffer);
+		BindSet *vk_bind_set = reinterpret_cast<BindSet *>(bind_set);
+		UniformBuffer *vk_uniform_buffer = reinterpret_cast<UniformBuffer *>(uniform_buffer);
 		
 		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
 		BindSet::Data &data = vk_bind_set->binding_data[binding];
@@ -1510,18 +1509,18 @@ namespace scapes::foundation::render::vulkan
 	}
 
 	void Device::bindTexture(
-		render::BindSet *bind_set,
+		render::BindSet bind_set,
 		uint32_t binding,
-		const render::Texture *texture
+		render::Texture texture
 	)
 	{
 		assert(binding < BindSet::MAX_BINDINGS);
 
-		if (bind_set == nullptr)
+		if (bind_set == SCAPES_NULL_HANDLE)
 			return;
 
-		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
-		const Texture *vk_texture = static_cast<const Texture *>(texture);
+		BindSet *vk_bind_set = reinterpret_cast<BindSet *>(bind_set);
+		Texture *vk_texture = reinterpret_cast<Texture *>(texture);
 
 		uint32_t num_mipmaps = (vk_texture) ? vk_texture->num_mipmaps : 0;
 		uint32_t num_layers = (vk_texture) ? vk_texture->num_layers : 0;
@@ -1530,9 +1529,9 @@ namespace scapes::foundation::render::vulkan
 	}
 
 	void Device::bindTexture(
-		render::BindSet *bind_set,
+		render::BindSet bind_set,
 		uint32_t binding,
-		const render::Texture *texture,
+		render::Texture texture,
 		uint32_t base_mip,
 		uint32_t num_mipmaps,
 		uint32_t base_layer,
@@ -1541,11 +1540,11 @@ namespace scapes::foundation::render::vulkan
 	{
 		assert(binding < BindSet::MAX_BINDINGS);
 
-		if (bind_set == nullptr)
+		if (bind_set == SCAPES_NULL_HANDLE)
 			return;
 
-		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
-		const Texture *vk_texture = static_cast<const Texture *>(texture);
+		BindSet *vk_bind_set = reinterpret_cast<BindSet *>(bind_set);
+		Texture *vk_texture = reinterpret_cast<Texture *>(texture);
 
 		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
 		BindSet::Data &data = vk_bind_set->binding_data[binding];
@@ -1577,295 +1576,295 @@ namespace scapes::foundation::render::vulkan
 
 	/*
 	 */
-	void Device::clearPushConstants(render::PipelineState *pipeline_state)
+	void Device::clearPushConstants(render::GraphicsPipeline graphics_pipeline)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == nullptr)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->push_constants_size = 0;
-		memset(vk_pipeline_state->push_constants, 0, PipelineState::MAX_PUSH_CONSTANT_SIZE);
+		vk_graphics_pipeline->push_constants_size = 0;
+		memset(vk_graphics_pipeline->push_constants, 0, GraphicsPipeline::MAX_PUSH_CONSTANT_SIZE);
 
 		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
-		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Device::setPushConstants(render::PipelineState *pipeline_state, uint8_t size, const void *data)
+	void Device::setPushConstants(render::GraphicsPipeline graphics_pipeline, uint8_t size, const void *data)
 	{
-		assert(size <= PipelineState::MAX_PUSH_CONSTANT_SIZE);
+		assert(size <= GraphicsPipeline::MAX_PUSH_CONSTANT_SIZE);
 
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->push_constants_size = size;
-		memcpy(vk_pipeline_state->push_constants, data, size);
+		vk_graphics_pipeline->push_constants_size = size;
+		memcpy(vk_graphics_pipeline->push_constants, data, size);
 
 		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
-		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Device::clearBindSets(render::PipelineState *pipeline_state)
+	void Device::clearBindSets(render::GraphicsPipeline graphics_pipeline)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		for (uint32_t i = 0; i < PipelineState::MAX_BIND_SETS; ++i)
-			vk_pipeline_state->bind_sets[i] = nullptr;
+		for (uint32_t i = 0; i < GraphicsPipeline::MAX_BIND_SETS; ++i)
+			vk_graphics_pipeline->bind_sets[i] = nullptr;
 
-		vk_pipeline_state->num_bind_sets = 0;
+		vk_graphics_pipeline->num_bind_sets = 0;
 
 		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
-		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Device::setBindSet(render::PipelineState *pipeline_state, uint8_t binding, render::BindSet *bind_set)
+	void Device::setBindSet(render::GraphicsPipeline graphics_pipeline, uint8_t binding, render::BindSet bind_set)
 	{
-		assert(binding < PipelineState::MAX_BIND_SETS);
+		assert(binding < GraphicsPipeline::MAX_BIND_SETS);
 
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
-		BindSet *vk_bind_set = static_cast<BindSet *>(bind_set);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
+		BindSet *vk_bind_set = reinterpret_cast<BindSet *>(bind_set);
 
-		vk_pipeline_state->bind_sets[binding] = vk_bind_set;
-		vk_pipeline_state->num_bind_sets = std::max<uint32_t>(vk_pipeline_state->num_bind_sets, binding + 1);
+		vk_graphics_pipeline->bind_sets[binding] = vk_bind_set;
+		vk_graphics_pipeline->num_bind_sets = std::max<uint32_t>(vk_graphics_pipeline->num_bind_sets, binding + 1);
 
 		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
-		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Device::clearShaders(render::PipelineState *pipeline_state)
+	void Device::clearShaders(render::GraphicsPipeline graphics_pipeline)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		for (uint32_t i = 0; i < PipelineState::MAX_SHADERS; ++i)
-			vk_pipeline_state->shaders[i] = VK_NULL_HANDLE;
+		for (uint32_t i = 0; i < GraphicsPipeline::MAX_SHADERS; ++i)
+			vk_graphics_pipeline->shaders[i] = VK_NULL_HANDLE;
 
 		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
-		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Device::setShader(render::PipelineState *pipeline_state, ShaderType type, const render::Shader *shader)
+	void Device::setShader(render::GraphicsPipeline graphics_pipeline, ShaderType type, render::Shader shader)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
-		const Shader *vk_shader = static_cast<const Shader *>(shader);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
+		Shader *vk_shader = reinterpret_cast<Shader *>(shader);
 
-		vk_pipeline_state->shaders[static_cast<int>(type)] = (vk_shader) ? vk_shader->module : VK_NULL_HANDLE;
+		vk_graphics_pipeline->shaders[static_cast<int>(type)] = (vk_shader) ? vk_shader->module : VK_NULL_HANDLE;
 
 		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
-		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Device::clearVertexStreams(render::PipelineState *pipeline_state)
+	void Device::clearVertexStreams(render::GraphicsPipeline graphics_pipeline)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		for (uint32_t i = 0; i < PipelineState::MAX_VERTEX_STREAMS; ++i)
-			vk_pipeline_state->vertex_streams[i] = nullptr;
+		for (uint32_t i = 0; i < GraphicsPipeline::MAX_VERTEX_STREAMS; ++i)
+			vk_graphics_pipeline->vertex_streams[i] = nullptr;
 
-		vk_pipeline_state->num_vertex_streams = 0;
+		vk_graphics_pipeline->num_vertex_streams = 0;
 
 		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
-		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline_layout = VK_NULL_HANDLE;
 	}
 
-	void Device::setVertexStream(render::PipelineState *pipeline_state, uint8_t binding, render::VertexBuffer *vertex_buffer)
+	void Device::setVertexStream(render::GraphicsPipeline graphics_pipeline, uint8_t binding, render::VertexBuffer vertex_buffer)
 	{
-		assert(binding < PipelineState::MAX_VERTEX_STREAMS);
+		assert(binding < GraphicsPipeline::MAX_VERTEX_STREAMS);
 
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
-		VertexBuffer *vk_vertex_buffer = static_cast<VertexBuffer *>(vertex_buffer);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
+		VertexBuffer *vk_vertex_buffer = reinterpret_cast<VertexBuffer *>(vertex_buffer);
 
-		vk_pipeline_state->vertex_streams[binding] = vk_vertex_buffer;
-		vk_pipeline_state->num_vertex_streams = std::max<uint32_t>(vk_pipeline_state->num_vertex_streams, binding + 1);
+		vk_graphics_pipeline->vertex_streams[binding] = vk_vertex_buffer;
+		vk_graphics_pipeline->num_vertex_streams = std::max<uint32_t>(vk_graphics_pipeline->num_vertex_streams, binding + 1);
 
 		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
-		vk_pipeline_state->pipeline_layout = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline_layout = VK_NULL_HANDLE;
 	}
 
 	/*
 	 */
-	void Device::setViewport(render::PipelineState *pipeline_state, int32_t x, int32_t y, uint32_t width, uint32_t height)
+	void Device::setViewport(render::GraphicsPipeline graphics_pipeline, int32_t x, int32_t y, uint32_t width, uint32_t height)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->viewport.x = static_cast<float>(x);
-		vk_pipeline_state->viewport.y = static_cast<float>(y);
-		vk_pipeline_state->viewport.width = static_cast<float>(width);
-		vk_pipeline_state->viewport.height = static_cast<float>(height);
-		vk_pipeline_state->viewport.minDepth = 0.0f;
-		vk_pipeline_state->viewport.maxDepth = 1.0f;
+		vk_graphics_pipeline->viewport.x = static_cast<float>(x);
+		vk_graphics_pipeline->viewport.y = static_cast<float>(y);
+		vk_graphics_pipeline->viewport.width = static_cast<float>(width);
+		vk_graphics_pipeline->viewport.height = static_cast<float>(height);
+		vk_graphics_pipeline->viewport.minDepth = 0.0f;
+		vk_graphics_pipeline->viewport.maxDepth = 1.0f;
 
-		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Device::setScissor(render::PipelineState *pipeline_state, int32_t x, int32_t y, uint32_t width, uint32_t height)
+	void Device::setScissor(render::GraphicsPipeline graphics_pipeline, int32_t x, int32_t y, uint32_t width, uint32_t height)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->scissor.offset = { x, y };
-		vk_pipeline_state->scissor.extent = { width, height };
+		vk_graphics_pipeline->scissor.offset = { x, y };
+		vk_graphics_pipeline->scissor.extent = { width, height };
 
-		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Device::setPrimitiveType(render::PipelineState *pipeline_state, RenderPrimitiveType type)
+	void Device::setPrimitiveType(render::GraphicsPipeline graphics_pipeline, RenderPrimitiveType type)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->primitive_topology = Utils::getPrimitiveTopology(type);
+		vk_graphics_pipeline->primitive_topology = Utils::getPrimitiveTopology(type);
 
-		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Device::setCullMode(render::PipelineState *pipeline_state, CullMode mode)
+	void Device::setCullMode(render::GraphicsPipeline graphics_pipeline, CullMode mode)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->cull_mode = Utils::getCullMode(mode);
+		vk_graphics_pipeline->cull_mode = Utils::getCullMode(mode);
 
-		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Device::setDepthTest(render::PipelineState *pipeline_state, bool enabled)
+	void Device::setDepthTest(render::GraphicsPipeline graphics_pipeline, bool enabled)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->depth_test = enabled;
+		vk_graphics_pipeline->depth_test = enabled;
 
-		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Device::setDepthWrite(render::PipelineState *pipeline_state, bool enabled)
+	void Device::setDepthWrite(render::GraphicsPipeline graphics_pipeline, bool enabled)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->depth_write = enabled;
+		vk_graphics_pipeline->depth_write = enabled;
 
-		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Device::setDepthCompareFunc(render::PipelineState *pipeline_state, DepthCompareFunc func)
+	void Device::setDepthCompareFunc(render::GraphicsPipeline graphics_pipeline, DepthCompareFunc func)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->depth_compare_func = Utils::getDepthCompareFunc(func);
+		vk_graphics_pipeline->depth_compare_func = Utils::getDepthCompareFunc(func);
 
-		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Device::setBlending(render::PipelineState *pipeline_state, bool enabled)
+	void Device::setBlending(render::GraphicsPipeline graphics_pipeline, bool enabled)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->blending = enabled;
+		vk_graphics_pipeline->blending = enabled;
 
-		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline = VK_NULL_HANDLE;
 	}
 
-	void Device::setBlendFactors(render::PipelineState *pipeline_state, BlendFactor src_factor, BlendFactor dst_factor)
+	void Device::setBlendFactors(render::GraphicsPipeline graphics_pipeline, BlendFactor src_factor, BlendFactor dst_factor)
 	{
-		if (pipeline_state == nullptr)
+		if (graphics_pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
 
-		vk_pipeline_state->blend_src_factor = Utils::getBlendFactor(src_factor);
-		vk_pipeline_state->blend_dst_factor = Utils::getBlendFactor(dst_factor);
+		vk_graphics_pipeline->blend_src_factor = Utils::getBlendFactor(src_factor);
+		vk_graphics_pipeline->blend_dst_factor = Utils::getBlendFactor(dst_factor);
 
-		vk_pipeline_state->pipeline = VK_NULL_HANDLE;
+		vk_graphics_pipeline->pipeline = VK_NULL_HANDLE;
 	}
 
 	/*
 	 */
-	bool Device::resetCommandBuffer(render::CommandBuffer *command_buffer)
+	bool Device::resetCommandBuffer(render::CommandBuffer command_buffer)
 	{
-		if (command_buffer == nullptr)
+		if (command_buffer == SCAPES_NULL_HANDLE)
 			return false;
 
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
 		if (vkResetCommandBuffer(vk_command_buffer->command_buffer, 0) != VK_SUCCESS)
 			return false;
 
 		return true;
 	}
 
-	bool Device::beginCommandBuffer(render::CommandBuffer *command_buffer)
+	bool Device::beginCommandBuffer(render::CommandBuffer command_buffer)
 	{
-		if (command_buffer == nullptr)
+		if (command_buffer == SCAPES_NULL_HANDLE)
 			return false;
 
 		VkCommandBufferBeginInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
 		if (vkBeginCommandBuffer(vk_command_buffer->command_buffer, &info) != VK_SUCCESS)
 			return false;
 
 		return true;
 	}
 
-	bool Device::endCommandBuffer(render::CommandBuffer *command_buffer)
+	bool Device::endCommandBuffer(render::CommandBuffer command_buffer)
 	{
-		if (command_buffer == nullptr)
+		if (command_buffer == SCAPES_NULL_HANDLE)
 			return false;
 
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
 		if (vkEndCommandBuffer(vk_command_buffer->command_buffer) != VK_SUCCESS)
 			return false;
 
 		return true;
 	}
 
-	bool Device::submit(render::CommandBuffer *command_buffer)
+	bool Device::submit(render::CommandBuffer command_buffer)
 	{
-		if (command_buffer == nullptr)
+		if (command_buffer == SCAPES_NULL_HANDLE)
 			return false;
 		
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
 
 		VkSubmitInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1879,12 +1878,12 @@ namespace scapes::foundation::render::vulkan
 		return true;
 	}
 
-	bool Device::submitSyncked(render::CommandBuffer *command_buffer, const render::SwapChain *wait_swap_chain)
+	bool Device::submitSyncked(render::CommandBuffer command_buffer, render::SwapChain wait_swap_chain)
 	{
-		if (command_buffer == nullptr)
+		if (command_buffer == SCAPES_NULL_HANDLE)
 			return false;
 		
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
 
 		VkSubmitInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1897,7 +1896,7 @@ namespace scapes::foundation::render::vulkan
 
 		if (wait_swap_chain != nullptr)
 		{
-			const SwapChain *vk_wait_swap_chain = static_cast<const SwapChain *>(wait_swap_chain);
+			SwapChain *vk_wait_swap_chain = reinterpret_cast<SwapChain *>(wait_swap_chain);
 			uint32_t current_frame = vk_wait_swap_chain->current_frame;
 
 			info.waitSemaphoreCount = 1;
@@ -1912,12 +1911,12 @@ namespace scapes::foundation::render::vulkan
 		return true;
 	}
 
-	bool Device::submitSyncked(render::CommandBuffer *command_buffer, uint32_t num_wait_command_buffers, render::CommandBuffer * const *wait_command_buffers)
+	bool Device::submitSyncked(render::CommandBuffer command_buffer, uint32_t num_wait_command_buffers, const render::CommandBuffer *wait_command_buffers)
 	{
-		if (command_buffer == nullptr)
+		if (command_buffer == SCAPES_NULL_HANDLE)
 			return false;
 		
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
 
 		VkSubmitInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1936,7 +1935,7 @@ namespace scapes::foundation::render::vulkan
 
 			for (uint32_t i = 0; i < num_wait_command_buffers; ++i)
 			{
-				const CommandBuffer *vk_wait_command_buffer = static_cast<const CommandBuffer *>(wait_command_buffers[i]);
+				CommandBuffer *vk_wait_command_buffer = reinterpret_cast<CommandBuffer *>(wait_command_buffers[i]);
 				wait_semaphores[i] = vk_wait_command_buffer->rendering_finished_gpu;
 				wait_stages[i] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 			}
@@ -1953,15 +1952,15 @@ namespace scapes::foundation::render::vulkan
 		return true;
 	}
 
-	void Device::beginRenderPass(render::CommandBuffer *command_buffer, const render::RenderPass *render_pass, const render::FrameBuffer *frame_buffer)
+	void Device::beginRenderPass(render::CommandBuffer command_buffer, render::RenderPass render_pass, render::FrameBuffer frame_buffer)
 	{
-		assert(command_buffer);
-		assert(render_pass);
-		assert(frame_buffer);
+		assert(command_buffer != SCAPES_NULL_HANDLE);
+		assert(render_pass != SCAPES_NULL_HANDLE);
+		assert(frame_buffer != SCAPES_NULL_HANDLE);
 
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
-		const RenderPass *vk_render_pass = static_cast<const RenderPass *>(render_pass);
-		const FrameBuffer *vk_frame_buffer = static_cast<const FrameBuffer *>(frame_buffer);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
+		RenderPass *vk_render_pass = reinterpret_cast<RenderPass *>(render_pass);
+		FrameBuffer *vk_frame_buffer = reinterpret_cast<FrameBuffer *>(frame_buffer);
 
 		// lazily create framebuffer
 		if (vk_frame_buffer->frame_buffer == VK_NULL_HANDLE)
@@ -2002,15 +2001,16 @@ namespace scapes::foundation::render::vulkan
 		vkCmdBeginRenderPass(vk_command_buffer->command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
 
-	void Device::beginRenderPass(render::CommandBuffer *command_buffer, const render::RenderPass *render_pass, const render::SwapChain *swap_chain)
+	void Device::beginRenderPass(render::CommandBuffer command_buffer, render::RenderPass render_pass, render::SwapChain swap_chain)
 	{
-		assert(command_buffer);
-		assert(render_pass);
-		assert(swap_chain);
+		assert(command_buffer != SCAPES_NULL_HANDLE);
+		assert(render_pass != SCAPES_NULL_HANDLE);
+		assert(swap_chain != SCAPES_NULL_HANDLE);
 
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
-		const RenderPass *vk_render_pass = static_cast<const RenderPass *>(render_pass);
-		const SwapChain *vk_swap_chain = static_cast<const SwapChain *>(swap_chain);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
+		RenderPass *vk_render_pass = reinterpret_cast<RenderPass *>(render_pass);
+		SwapChain *vk_swap_chain = reinterpret_cast<SwapChain *>(swap_chain);
+
 		VkFramebuffer frame_buffer = vk_swap_chain->frame_buffers[vk_swap_chain->current_image];
 
 		VkRect2D render_area = {};
@@ -2032,21 +2032,21 @@ namespace scapes::foundation::render::vulkan
 		vkCmdBeginRenderPass(vk_command_buffer->command_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 	}
 
-	void Device::endRenderPass(render::CommandBuffer *command_buffer)
+	void Device::endRenderPass(render::CommandBuffer command_buffer)
 	{
-		if (command_buffer == nullptr)
+		if (command_buffer == SCAPES_NULL_HANDLE)
 			return;
 
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
 		vkCmdEndRenderPass(vk_command_buffer->command_buffer);
 
 		vk_command_buffer->render_pass = VK_NULL_HANDLE;
 	}
 
 	void Device::drawIndexedPrimitiveInstanced(
-		render::CommandBuffer *command_buffer,
-		render::PipelineState *pipeline_state,
-		const render::IndexBuffer *index_buffer,
+		render::CommandBuffer command_buffer,
+		render::GraphicsPipeline graphics_pipeline,
+		render::IndexBuffer index_buffer,
 		uint32_t num_indices,
 		uint32_t base_index,
 		int32_t base_vertex,
@@ -2056,57 +2056,57 @@ namespace scapes::foundation::render::vulkan
 	{
 		SCAPES_PROFILER();
 
-		if (command_buffer == nullptr)
+		if (command_buffer == SCAPES_NULL_HANDLE)
 			return;
 
-		CommandBuffer *vk_command_buffer = static_cast<CommandBuffer *>(command_buffer);
-		PipelineState *vk_pipeline_state = static_cast<PipelineState *>(pipeline_state);
-		const IndexBuffer *vk_index_buffer = static_cast<const IndexBuffer *>(index_buffer);
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
+		IndexBuffer *vk_index_buffer = reinterpret_cast<IndexBuffer *>(index_buffer);
 
 		assert(vk_command_buffer->render_pass != VK_NULL_HANDLE);
 
-		vk_pipeline_state->render_pass = vk_command_buffer->render_pass;
-		vk_pipeline_state->num_color_attachments = vk_command_buffer->num_color_attachments;
-		vk_pipeline_state->max_samples = vk_command_buffer->max_samples;
+		vk_graphics_pipeline->render_pass = vk_command_buffer->render_pass;
+		vk_graphics_pipeline->num_color_attachments = vk_command_buffer->num_color_attachments;
+		vk_graphics_pipeline->max_samples = vk_command_buffer->max_samples;
 
-		flush(pipeline_state);
+		flush(graphics_pipeline);
 
 		SCAPES_PROFILER_N("Actual draw call");
 
-		VkPipeline pipeline = vk_pipeline_state->pipeline;
-		VkPipelineLayout pipeline_layout = vk_pipeline_state->pipeline_layout;
-		VkViewport viewport = vk_pipeline_state->viewport;
-		VkRect2D scissor = vk_pipeline_state->scissor;
+		VkPipeline pipeline = vk_graphics_pipeline->pipeline;
+		VkPipelineLayout pipeline_layout = vk_graphics_pipeline->pipeline_layout;
+		VkViewport viewport = vk_graphics_pipeline->viewport;
+		VkRect2D scissor = vk_graphics_pipeline->scissor;
 
 		vkCmdSetViewport(vk_command_buffer->command_buffer, 0, 1, &viewport);
 		vkCmdSetScissor(vk_command_buffer->command_buffer, 0, 1, &scissor);
 
 		vkCmdBindPipeline(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-		if (vk_pipeline_state->push_constants_size > 0)
-			vkCmdPushConstants(vk_command_buffer->command_buffer, pipeline_layout, VK_SHADER_STAGE_ALL, 0, vk_pipeline_state->push_constants_size, vk_pipeline_state->push_constants);
+		if (vk_graphics_pipeline->push_constants_size > 0)
+			vkCmdPushConstants(vk_command_buffer->command_buffer, pipeline_layout, VK_SHADER_STAGE_ALL, 0, vk_graphics_pipeline->push_constants_size, vk_graphics_pipeline->push_constants);
 
-		if (vk_pipeline_state->num_bind_sets > 0)
+		if (vk_graphics_pipeline->num_bind_sets > 0)
 		{
-			VkDescriptorSet sets[PipelineState::MAX_BIND_SETS];
-			for (uint32_t i = 0; i < vk_pipeline_state->num_bind_sets; ++i)
-				sets[i] = vk_pipeline_state->bind_sets[i]->set;
+			VkDescriptorSet sets[GraphicsPipeline::MAX_BIND_SETS];
+			for (uint32_t i = 0; i < vk_graphics_pipeline->num_bind_sets; ++i)
+				sets[i] = vk_graphics_pipeline->bind_sets[i]->set;
 
-			vkCmdBindDescriptorSets(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, vk_pipeline_state->num_bind_sets, sets, 0, nullptr);
+			vkCmdBindDescriptorSets(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, vk_graphics_pipeline->num_bind_sets, sets, 0, nullptr);
 		}
 
-		if (vk_pipeline_state->num_vertex_streams > 0)
+		if (vk_graphics_pipeline->num_vertex_streams > 0)
 		{
-			VkBuffer vertex_buffers[PipelineState::MAX_VERTEX_STREAMS];
-			VkDeviceSize offsets[PipelineState::MAX_VERTEX_STREAMS];
+			VkBuffer vertex_buffers[GraphicsPipeline::MAX_VERTEX_STREAMS];
+			VkDeviceSize offsets[GraphicsPipeline::MAX_VERTEX_STREAMS];
 
-			for (uint32_t i = 0; i < vk_pipeline_state->num_vertex_streams; ++i)
+			for (uint32_t i = 0; i < vk_graphics_pipeline->num_vertex_streams; ++i)
 			{
-				vertex_buffers[i] = vk_pipeline_state->vertex_streams[i]->buffer;
+				vertex_buffers[i] = vk_graphics_pipeline->vertex_streams[i]->buffer;
 				offsets[i] = 0;
 			}
 
-			vkCmdBindVertexBuffers(vk_command_buffer->command_buffer, 0, vk_pipeline_state->num_vertex_streams, vertex_buffers, offsets);
+			vkCmdBindVertexBuffers(vk_command_buffer->command_buffer, 0, vk_graphics_pipeline->num_vertex_streams, vertex_buffers, offsets);
 		}
 
 		if (vk_index_buffer)

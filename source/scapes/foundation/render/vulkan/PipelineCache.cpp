@@ -48,19 +48,19 @@ namespace scapes::foundation::render::vulkan
 		clear();
 	}
 
-	VkPipeline PipelineCache::fetch(VkPipelineLayout layout, const PipelineState *pipeline_state)
+	VkPipeline PipelineCache::fetch(VkPipelineLayout layout, const GraphicsPipeline *graphics_pipeline)
 	{
 		assert(layout != VK_NULL_HANDLE);
-		assert(pipeline_state);
-		assert(pipeline_state->render_pass != VK_NULL_HANDLE);
+		assert(graphics_pipeline);
+		assert(graphics_pipeline->render_pass != VK_NULL_HANDLE);
 
-		uint64_t hash = getHash(layout, pipeline_state);
+		uint64_t hash = getHash(layout, graphics_pipeline);
 
 		auto it = cache.find(hash);
 		if (it != cache.end())
 			return it->second;
 
-		GraphicsPipelineBuilder builder(layout, pipeline_state->render_pass);
+		GraphicsPipelineBuilder builder(layout, graphics_pipeline->render_pass);
 
 		builder.addViewport(VkViewport());
 		builder.addScissor(VkRect2D());
@@ -69,7 +69,7 @@ namespace scapes::foundation::render::vulkan
 
 		for (uint8_t i = 0; i < static_cast<uint8_t>(ShaderType::MAX); ++i)
 		{
-			VkShaderModule module = pipeline_state->shaders[i];
+			VkShaderModule module = graphics_pipeline->shaders[i];
 			if (module == VK_NULL_HANDLE)
 				continue;
 
@@ -77,9 +77,9 @@ namespace scapes::foundation::render::vulkan
 		}
 
 		uint32_t attribute_location = 0;
-		for (uint8_t i = 0; i < pipeline_state->num_vertex_streams; ++i)
+		for (uint8_t i = 0; i < graphics_pipeline->num_vertex_streams; ++i)
 		{
-			const VertexBuffer *vertex_buffer = pipeline_state->vertex_streams[i];
+			const VertexBuffer *vertex_buffer = graphics_pipeline->vertex_streams[i];
 
 			VkVertexInputBindingDescription input_binding = { i, vertex_buffer->vertex_size, VK_VERTEX_INPUT_RATE_VERTEX };
 			std::vector<VkVertexInputAttributeDescription> attributes(vertex_buffer->num_attributes);
@@ -90,18 +90,18 @@ namespace scapes::foundation::render::vulkan
 			builder.addVertexInput(input_binding, attributes);
 		}
 
-		builder.setInputAssemblyState(pipeline_state->primitive_topology);
+		builder.setInputAssemblyState(graphics_pipeline->primitive_topology);
 
-		builder.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, pipeline_state->cull_mode, VK_FRONT_FACE_COUNTER_CLOCKWISE);
-		builder.setDepthStencilState(pipeline_state->depth_test, pipeline_state->depth_write, pipeline_state->depth_compare_func);
+		builder.setRasterizerState(false, false, VK_POLYGON_MODE_FILL, 1.0f, graphics_pipeline->cull_mode, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+		builder.setDepthStencilState(graphics_pipeline->depth_test, graphics_pipeline->depth_write, graphics_pipeline->depth_compare_func);
 
-		builder.setMultisampleState(pipeline_state->max_samples, true);
+		builder.setMultisampleState(graphics_pipeline->max_samples, true);
 
-		bool blending_enabled = pipeline_state->blending;
-		VkBlendFactor src_factor = pipeline_state->blend_src_factor;
-		VkBlendFactor dst_factor = pipeline_state->blend_dst_factor;
+		bool blending_enabled = graphics_pipeline->blending;
+		VkBlendFactor src_factor = graphics_pipeline->blend_src_factor;
+		VkBlendFactor dst_factor = graphics_pipeline->blend_dst_factor;
 
-		for (uint8_t i = 0; i < pipeline_state->num_color_attachments; ++i)
+		for (uint8_t i = 0; i < graphics_pipeline->num_color_attachments; ++i)
 			builder.addBlendColorAttachment(
 				blending_enabled,
 				src_factor,
@@ -124,17 +124,17 @@ namespace scapes::foundation::render::vulkan
 		cache.clear();
 	}
 
-	uint64_t PipelineCache::getHash(VkPipelineLayout layout, const PipelineState *pipeline_state) const
+	uint64_t PipelineCache::getHash(VkPipelineLayout layout, const GraphicsPipeline *graphics_pipeline) const
 	{
-		assert(pipeline_state);
+		assert(graphics_pipeline);
 
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, layout);
-		common::HashUtils::combine(hash, pipeline_state->render_pass);
+		common::HashUtils::combine(hash, graphics_pipeline->render_pass);
 
-		for (uint8_t i = 0; i < pipeline_state->num_vertex_streams; ++i)
+		for (uint8_t i = 0; i < graphics_pipeline->num_vertex_streams; ++i)
 		{
-			const VertexBuffer *vertex_buffer = pipeline_state->vertex_streams[i];
+			const VertexBuffer *vertex_buffer = graphics_pipeline->vertex_streams[i];
 
 			for (uint8_t j = 0; j < vertex_buffer->num_attributes; ++j)
 			{
@@ -144,11 +144,11 @@ namespace scapes::foundation::render::vulkan
 			}
 		}
 
-		common::HashUtils::combine(hash, pipeline_state->primitive_topology);
+		common::HashUtils::combine(hash, graphics_pipeline->primitive_topology);
 
 		for (uint8_t i = 0; i < static_cast<uint8_t>(ShaderType::MAX); ++i)
 		{
-			VkShaderModule module = pipeline_state->shaders[i];
+			VkShaderModule module = graphics_pipeline->shaders[i];
 			if (module == VK_NULL_HANDLE)
 				continue;
 
@@ -156,15 +156,15 @@ namespace scapes::foundation::render::vulkan
 			common::HashUtils::combine(hash, module);
 		}
 
-		common::HashUtils::combine(hash, pipeline_state->num_color_attachments);
-		common::HashUtils::combine(hash, pipeline_state->max_samples);
-		common::HashUtils::combine(hash, pipeline_state->cull_mode);
-		common::HashUtils::combine(hash, pipeline_state->depth_compare_func);
-		common::HashUtils::combine(hash, pipeline_state->depth_test);
-		common::HashUtils::combine(hash, pipeline_state->depth_write);
-		common::HashUtils::combine(hash, pipeline_state->blending);
-		common::HashUtils::combine(hash, pipeline_state->blend_src_factor);
-		common::HashUtils::combine(hash, pipeline_state->blend_dst_factor);
+		common::HashUtils::combine(hash, graphics_pipeline->num_color_attachments);
+		common::HashUtils::combine(hash, graphics_pipeline->max_samples);
+		common::HashUtils::combine(hash, graphics_pipeline->cull_mode);
+		common::HashUtils::combine(hash, graphics_pipeline->depth_compare_func);
+		common::HashUtils::combine(hash, graphics_pipeline->depth_test);
+		common::HashUtils::combine(hash, graphics_pipeline->depth_write);
+		common::HashUtils::combine(hash, graphics_pipeline->blending);
+		common::HashUtils::combine(hash, graphics_pipeline->blend_src_factor);
+		common::HashUtils::combine(hash, graphics_pipeline->blend_dst_factor);
 
 		return hash;
 	}

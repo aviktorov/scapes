@@ -15,10 +15,10 @@ public:
 	void recreate();
 	void shutdown();
 
-	scapes::foundation::render::CommandBuffer *acquire();
-	bool present(scapes::foundation::render::CommandBuffer *command_buffer);
+	scapes::foundation::render::CommandBuffer acquire();
+	bool present(scapes::foundation::render::CommandBuffer command_buffer);
 
-	inline scapes::foundation::render::SwapChain *getBackend() { return swap_chain; }
+	inline scapes::foundation::render::SwapChain getBackend() { return swap_chain; }
 
 private:
 	enum
@@ -27,11 +27,11 @@ private:
 	};
 
 	scapes::foundation::render::Device *device {nullptr};
-	scapes::foundation::render::SwapChain *swap_chain {nullptr};
+	scapes::foundation::render::SwapChain swap_chain {SCAPES_NULL_HANDLE};
 	void *native_window {nullptr};
 
 	uint32_t current_in_flight_frame {0};
-	scapes::foundation::render::CommandBuffer *command_buffers[NUM_IN_FLIGHT_FRAMES];
+	scapes::foundation::render::CommandBuffer command_buffers[NUM_IN_FLIGHT_FRAMES];
 
 	uint32_t width {0};
 	uint32_t height {0};
