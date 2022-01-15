@@ -68,12 +68,16 @@ PBR Sandbox:
         ☐ Environment / Reflection probes
         ☐ Area lights
         ☐ Directional light & shadows
-    Stream 85:
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Add camera component
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
             ☐ Think about having ResourceWatcher<T>
+    Stream 85:
+        ☐ Add necessary raytracing extentions to Vulkan backend
+    Offscreen 2:
+        ✔ Replace empty opaque structs in foundation::render module by proper C-style struct pointers @done (1/16/2022, 4:29:14 AM)
+        ✔ Rename PipelineState into GraphicsPipeline since more pipeline types will be there @done (1/16/2022, 4:29:32 AM)
     Stream 84:
         ✔ Refactor layered cubemap rendering @done (1/8/2022, 5:54:58 AM)
         ✔ Use FileSystem inside ResourceManager::import<T> call @done (1/7/2022, 8:07:51 PM)
