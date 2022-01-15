@@ -501,7 +501,7 @@ void Application::initImGui()
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
 
-	ImGui_ImplGlfw_InitForVulkan(window, true);
+	ImGui_ImplGlfw_InitForOther(window, true);
 }
 
 void Application::shutdownImGui()
