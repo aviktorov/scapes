@@ -73,8 +73,12 @@ PBR Sandbox:
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
             ☐ Think about having ResourceWatcher<T>
+    Stream 86:
+        ☐ Create raytracing pipeline abstraction
+        ☐ Try to compile raygen/anyhit/closesthit/miss shaders
     Stream 85:
-        ☐ Add necessary raytracing extentions to Vulkan backend
+        ✔ Add necessary raytracing extentions to Vulkan backend @done (1/16/2022, 8:02:43 PM)
+        ✔ Create acceleration structure abstraction @done (1/17/2022, 1:55:01 AM)
     Offscreen 2:
         ✔ Replace empty opaque structs in foundation::render module by proper C-style struct pointers @done (1/16/2022, 4:29:14 AM)
         ✔ Rename PipelineState into GraphicsPipeline since more pipeline types will be there @done (1/16/2022, 4:29:32 AM)
