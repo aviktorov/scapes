@@ -56,6 +56,10 @@ namespace scapes::foundation::render::vulkan
 		static uint8_t getIndexSize(
 			IndexFormat format
 		);
+
+		static uint8_t getVertexSize(
+			Format format
+		);
 		
 		static VkPrimitiveTopology getPrimitiveTopology(
 			RenderPrimitiveType type
@@ -126,11 +130,16 @@ namespace scapes::foundation::render::vulkan
 			uint32_t graphicsQueueFamily
 		);
 
+		static VkDeviceAddress getBufferDeviceAddress(
+			const Context *context,
+			VkBuffer
+		);
+
 		static void createBuffer(
 			const Context *context,
 			VkDeviceSize size,
 			VkBufferUsageFlags usage,
-			VkMemoryPropertyFlags memoryProperties,
+			VmaMemoryUsage memory_usage,
 			VkBuffer &buffer,
 			VmaAllocation &memory
 		);
@@ -190,6 +199,25 @@ namespace scapes::foundation::render::vulkan
 			VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
 			bool depthCompareEnabled = false,
 			VkCompareOp depthCompareFunc = VK_COMPARE_OP_ALWAYS
+		);
+
+		static bool createAccelerationStructure(
+			const Context *context,
+			VkAccelerationStructureTypeKHR type,
+			VkBuildAccelerationStructureFlagBitsKHR build_flags,
+			uint32_t num_geometries,
+			const VkAccelerationStructureGeometryKHR *geometries,
+			const uint32_t *max_primitives,
+			AccelerationStructure *result
+		);
+
+		static void buildAccelerationStructure(
+			const Context *context,
+			VkAccelerationStructureTypeKHR type,
+			VkBuildAccelerationStructureFlagBitsKHR build_flags,
+			uint32_t num_geometries,
+			const VkAccelerationStructureGeometryKHR *geometries,
+			AccelerationStructure *result
 		);
 
 		static void fillImage(

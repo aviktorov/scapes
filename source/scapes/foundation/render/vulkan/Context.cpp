@@ -8,8 +8,6 @@
 #include <array>
 #include <vector>
 #include <iostream>
-#include <set>
-#include <optional>
 
 // TODO: replace all expection throws by Log::fatal
 
@@ -17,29 +15,34 @@ namespace scapes::foundation::render::vulkan
 {
 	/*
 	 */
-	struct QueueFamilyIndices
-	{
-		std::optional<uint32_t> graphicsFamily {std::nullopt};
-		std::optional<uint32_t> presentFamily {std::nullopt};
-
-		inline bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
-	};
-
-	/*
-	 */
-	static std::vector<const char*> requiredInstanceExtensions = {
+	static std::vector<const char *> required_instance_extensions = {
 		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 		VK_KHR_SURFACE_EXTENSION_NAME,
 	};
 
 	/*
 	 */
-	static std::vector<const char*> requiredPhysicalDeviceExtensions = {
+	static std::vector<const char *> required_device_extensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 	};
 
+	static std::vector<const char *> acceleration_structure_device_extensions = {
+		VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+		VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+	};
+
+	static std::vector<const char *> ray_tracing_device_extensions = {
+		VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+	};
+
+	static std::vector<const char *> ray_query_device_extensions = {
+		VK_KHR_RAY_QUERY_EXTENSION_NAME,
+	};
+
+	/*
+	 */
 #ifdef SCAPES_VULKAN_USE_VALIDATION_LAYERS
-	static std::vector<const char *> requiredValidationLayers = {
+	static std::vector<const char *> required_validation_layers = {
 		"VK_LAYER_KHRONOS_validation",
 	};
 #endif
@@ -47,82 +50,82 @@ namespace scapes::foundation::render::vulkan
 	/*
 	 */
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-		VkDebugUtilsMessageTypeFlagsEXT messageType,
-		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void* pUserData)
+		VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+		VkDebugUtilsMessageTypeFlagsEXT type,
+		const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
+		void *user_data)
 	{
-		std::cerr << "Validation layer: " << pCallbackData->pMessage << std::endl;
+		std::cerr << "Validation layer: " << callback_data->pMessage << std::endl;
 		return VK_FALSE;
 	}
 
 	/*
 	 */
-	void Context::init(const char *applicationName, const char *engineName)
+	void Context::init(const char *application_name, const char *engine_name)
 	{
 		if (volkInitialize() != VK_SUCCESS)
 			throw std::runtime_error("Can't initialize Vulkan helper library");
 
 		// Check required instance extensions
-		requiredInstanceExtensions.push_back(render::vulkan::Platform::getInstanceExtension());
-		if (!Utils::checkInstanceExtensions(requiredInstanceExtensions, true))
+		required_instance_extensions.push_back(render::vulkan::Platform::getInstanceExtension());
+		if (!Utils::checkInstanceExtensions(required_instance_extensions, true))
 			throw std::runtime_error("This device doesn't have required Vulkan extensions");
 
 #if SCAPES_VULKAN_USE_VALIDATION_LAYERS
 		// Check required instance validation layers
-		if (!Utils::checkInstanceValidationLayers(requiredValidationLayers, true))
+		if (!Utils::checkInstanceValidationLayers(required_validation_layers, true))
 			throw std::runtime_error("This device doesn't have required Vulkan validation layers");
 #endif
 
 		// Fill instance structures
-		VkApplicationInfo appInfo = {};
-		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-		appInfo.pApplicationName = applicationName;
-		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.pEngineName = engineName;
-		appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		appInfo.apiVersion = VK_API_VERSION_1_0;
+		VkApplicationInfo app_info = {};
+		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+		app_info.pApplicationName = application_name;
+		app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+		app_info.pEngineName = engine_name;
+		app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+		app_info.apiVersion = VK_API_VERSION_1_2;
 
-		VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = {};
-		debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-		debugMessengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-		debugMessengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-		debugMessengerInfo.pfnUserCallback = debugCallback;
-		debugMessengerInfo.pUserData = nullptr;
+		VkDebugUtilsMessengerCreateInfoEXT debug_messenger_info = {};
+		debug_messenger_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		debug_messenger_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		debug_messenger_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		debug_messenger_info.pfnUserCallback = debugCallback;
+		debug_messenger_info.pUserData = nullptr;
 
-		VkInstanceCreateInfo instanceInfo = {};
-		instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-		instanceInfo.pApplicationInfo = &appInfo;
-		instanceInfo.enabledExtensionCount = static_cast<uint32_t>(requiredInstanceExtensions.size());
-		instanceInfo.ppEnabledExtensionNames = requiredInstanceExtensions.data();
-		instanceInfo.pNext = &debugMessengerInfo;
+		VkInstanceCreateInfo instance_info = {};
+		instance_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+		instance_info.pApplicationInfo = &app_info;
+		instance_info.enabledExtensionCount = static_cast<uint32_t>(required_instance_extensions.size());
+		instance_info.ppEnabledExtensionNames = required_instance_extensions.data();
+		instance_info.pNext = &debug_messenger_info;
 
 #if SCAPES_VULKAN_USE_VALIDATION_LAYERS
-		instanceInfo.enabledLayerCount = static_cast<uint32_t>(requiredValidationLayers.size());
-		instanceInfo.ppEnabledLayerNames = requiredValidationLayers.data();
+		instance_info.enabledLayerCount = static_cast<uint32_t>(required_validation_layers.size());
+		instance_info.ppEnabledLayerNames = required_validation_layers.data();
 #endif
 
 		// Create Vulkan instance
-		VkResult result = vkCreateInstance(&instanceInfo, nullptr, &instance);
+		VkResult result = vkCreateInstance(&instance_info, nullptr, &instance);
 		if (result != VK_SUCCESS)
 			throw std::runtime_error("Failed to create Vulkan instance");
 
 		volkLoadInstance(instance);
 
 		// Create Vulkan debug messenger
-		result = vkCreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessenger);
+		result = vkCreateDebugUtilsMessengerEXT(instance, &debug_messenger_info, nullptr, &debug_messenger);
 		if (result != VK_SUCCESS)
 			throw std::runtime_error("Can't create Vulkan debug messenger");
 
 		// Enumerate physical devices
-		uint32_t deviceCount = 0;
-		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+		uint32_t num_devices = 0;
+		vkEnumeratePhysicalDevices(instance, &num_devices, nullptr);
 
-		if (deviceCount == 0)
+		if (num_devices == 0)
 			throw std::runtime_error("Failed to find GPUs with Vulkan support");
 
-		std::vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+		std::vector<VkPhysicalDevice> devices(num_devices);
+		vkEnumeratePhysicalDevices(instance, &num_devices, devices.data());
 
 		// Pick the best physical device
 		int estimate = -1;
@@ -136,97 +139,153 @@ namespace scapes::foundation::render::vulkan
 				continue;
 
 			estimate = current_estimate;
-			physicalDevice = device;
+			physical_device = device;
 		}
 
-		if (physicalDevice == VK_NULL_HANDLE)
+		if (physical_device == VK_NULL_HANDLE)
 			throw std::runtime_error("Failed to find a suitable GPU");
 
 		// Create logical device
-		graphicsQueueFamily = Utils::getGraphicsQueueFamily(physicalDevice);
-		const float queuePriority = 1.0f;
+		std::vector<const char *> device_extensions;
+		device_extensions.insert(device_extensions.begin(), required_device_extensions.begin(), required_device_extensions.end());
 
-		VkDeviceQueueCreateInfo graphicsQueueInfo = {};
-		graphicsQueueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		graphicsQueueInfo.queueFamilyIndex = graphicsQueueFamily;
-		graphicsQueueInfo.queueCount = 1;
-		graphicsQueueInfo.pQueuePriorities = &queuePriority;
+		if (Utils::checkPhysicalDeviceExtensions(physical_device, acceleration_structure_device_extensions))
+		{
+			device_extensions.insert(
+				device_extensions.begin(),
+				acceleration_structure_device_extensions.begin(),
+				acceleration_structure_device_extensions.end()
+			);
+			has_acceleration_structure = true;
+		}
 
-		VkPhysicalDeviceFeatures deviceFeatures = {};
-		deviceFeatures.samplerAnisotropy = VK_TRUE;
-		deviceFeatures.sampleRateShading = VK_TRUE;
-		deviceFeatures.geometryShader = VK_TRUE;
-		deviceFeatures.tessellationShader = VK_TRUE;
+		if (Utils::checkPhysicalDeviceExtensions(physical_device, ray_tracing_device_extensions))
+		{
+			device_extensions.insert(
+				device_extensions.begin(),
+				ray_tracing_device_extensions.begin(),
+				ray_tracing_device_extensions.end()
+			);
+			has_ray_tracing = true;
+		}
 
-		VkDeviceCreateInfo deviceCreateInfo = {};
-		deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
-		deviceCreateInfo.queueCreateInfoCount = 1;
-		deviceCreateInfo.pQueueCreateInfos = &graphicsQueueInfo;
-		deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(requiredPhysicalDeviceExtensions.size());
-		deviceCreateInfo.ppEnabledExtensionNames = requiredPhysicalDeviceExtensions.data();
+		if (Utils::checkPhysicalDeviceExtensions(physical_device, ray_query_device_extensions))
+		{
+			device_extensions.insert(
+				device_extensions.begin(),
+				ray_query_device_extensions.begin(),
+				ray_query_device_extensions.end()
+			);
+			has_ray_query = true;
+		}
+
+		graphics_queue_family = Utils::getGraphicsQueueFamily(physical_device);
+		const float queue_priority = 1.0f;
+
+		VkDeviceQueueCreateInfo graphics_queue_info = {};
+		graphics_queue_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		graphics_queue_info.queueFamilyIndex = graphics_queue_family;
+		graphics_queue_info.queueCount = 1;
+		graphics_queue_info.pQueuePriorities = &queue_priority;
+
+		VkPhysicalDeviceFeatures2 device_features = {};
+		device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		device_features.features.samplerAnisotropy = VK_TRUE;
+		device_features.features.sampleRateShading = VK_TRUE;
+		device_features.features.geometryShader = VK_TRUE;
+		device_features.features.tessellationShader = VK_TRUE;
+
+		VkDeviceCreateInfo device_info = {};
+		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		device_info.queueCreateInfoCount = 1;
+		device_info.pQueueCreateInfos = &graphics_queue_info;
+		device_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
+		device_info.ppEnabledExtensionNames = device_extensions.data();
+		device_info.pNext = &device_features;
+
+		VkPhysicalDeviceBufferDeviceAddressFeatures buffer_device_address_info = {};
+		buffer_device_address_info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+		buffer_device_address_info.bufferDeviceAddress = VK_TRUE;
+		
+		VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_info = {};
+		acceleration_structure_info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+		acceleration_structure_info.accelerationStructure = has_acceleration_structure;
+
+		VkPhysicalDeviceRayTracingPipelineFeaturesKHR raytracing_pipeline_info = {};
+		raytracing_pipeline_info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+		raytracing_pipeline_info.rayTracingPipeline = has_ray_tracing;
+
+		VkPhysicalDeviceRayQueryFeaturesKHR rayquery_info = {};
+		rayquery_info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+		rayquery_info.rayQuery = has_ray_query;
+
+		device_features.pNext = &buffer_device_address_info;
+		buffer_device_address_info.pNext = &acceleration_structure_info;
+		acceleration_structure_info.pNext = &raytracing_pipeline_info;
+		raytracing_pipeline_info.pNext = &rayquery_info;
 
 		// next two parameters are ignored, but it's still good to pass layers for backward compatibility
 #if SCAPES_VULKAN_USE_VALIDATION_LAYERS
-		deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(requiredValidationLayers.size()); 
-		deviceCreateInfo.ppEnabledLayerNames = requiredValidationLayers.data();
+		device_info.enabledLayerCount = static_cast<uint32_t>(required_validation_layers.size()); 
+		device_info.ppEnabledLayerNames = required_validation_layers.data();
 #endif
 
-		result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device);
+		result = vkCreateDevice(physical_device, &device_info, nullptr, &device);
 		if (result != VK_SUCCESS)
 			throw std::runtime_error("Can't create logical device");
 
 		volkLoadDevice(device);
 
 		// Get graphics queue
-		vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
-		if (graphicsQueue == VK_NULL_HANDLE)
+		vkGetDeviceQueue(device, graphics_queue_family, 0, &graphics_queue);
+		if (graphics_queue == VK_NULL_HANDLE)
 			throw std::runtime_error("Can't get graphics queue from logical device");
 
 		// Create command pool
-		VkCommandPoolCreateInfo commandPoolInfo = {};
-		commandPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		commandPoolInfo.queueFamilyIndex = graphicsQueueFamily;
-		commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		VkCommandPoolCreateInfo command_pool_info = {};
+		command_pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		command_pool_info.queueFamilyIndex = graphics_queue_family;
+		command_pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-		if (vkCreateCommandPool(device, &commandPoolInfo, nullptr, &commandPool) != VK_SUCCESS)
+		if (vkCreateCommandPool(device, &command_pool_info, nullptr, &command_pool) != VK_SUCCESS)
 			throw std::runtime_error("Can't create command pool");
 
 		// Create descriptor pools
-		std::array<VkDescriptorPoolSize, 2> descriptorPoolSizes = {};
-		descriptorPoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorPoolSizes[0].descriptorCount = MAX_UNIFORM_BUFFERS;
-		descriptorPoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorPoolSizes[1].descriptorCount = MAX_COMBINED_IMAGE_SAMPLERS;
+		std::array<VkDescriptorPoolSize, 2> descriptor_pool_sizes = {};
+		descriptor_pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptor_pool_sizes[0].descriptorCount = MAX_UNIFORM_BUFFERS;
+		descriptor_pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptor_pool_sizes[1].descriptorCount = MAX_COMBINED_IMAGE_SAMPLERS;
 
-		VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
-		descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size());
-		descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
-		descriptorPoolInfo.maxSets = MAX_DESCRIPTOR_SETS;
-		descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+		VkDescriptorPoolCreateInfo descriptor_pool_info = {};
+		descriptor_pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		descriptor_pool_info.poolSizeCount = static_cast<uint32_t>(descriptor_pool_sizes.size());
+		descriptor_pool_info.pPoolSizes = descriptor_pool_sizes.data();
+		descriptor_pool_info.maxSets = MAX_DESCRIPTOR_SETS;
+		descriptor_pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
-		if (vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+		if (vkCreateDescriptorPool(device, &descriptor_pool_info, nullptr, &descriptor_pool) != VK_SUCCESS)
 			throw std::runtime_error("Can't create descriptor pool");
 
-		maxMSAASamples = Utils::getMaxUsableSampleCount(physicalDevice);
+		max_samples = Utils::getMaxUsableSampleCount(physical_device);
 
-		VmaAllocatorCreateInfo allocatorInfo = {};
-		allocatorInfo.physicalDevice = physicalDevice;
-		allocatorInfo.device = device;
-		allocatorInfo.instance = instance;
+		VmaAllocatorCreateInfo allocator_info = {};
+		allocator_info.physicalDevice = physical_device;
+		allocator_info.device = device;
+		allocator_info.instance = instance;
+		allocator_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
-		if (vmaCreateAllocator(&allocatorInfo, &vram_allocator) != VK_SUCCESS)
+		if (vmaCreateAllocator(&allocator_info, &vram_allocator) != VK_SUCCESS)
 			throw std::runtime_error("Can't create VRAM allocator");
 	}
 
 	void Context::shutdown()
 	{
-		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-		descriptorPool = VK_NULL_HANDLE;
+		vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
+		descriptor_pool = VK_NULL_HANDLE;
 
-		vkDestroyCommandPool(device, commandPool, nullptr);
-		commandPool = VK_NULL_HANDLE;
+		vkDestroyCommandPool(device, command_pool, nullptr);
+		command_pool = VK_NULL_HANDLE;
 
 		vmaDestroyAllocator(vram_allocator);
 		vram_allocator = VK_NULL_HANDLE;
@@ -234,35 +293,35 @@ namespace scapes::foundation::render::vulkan
 		vkDestroyDevice(device, nullptr);
 		device = VK_NULL_HANDLE;
 
-		vkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-		debugMessenger = VK_NULL_HANDLE;
+		vkDestroyDebugUtilsMessengerEXT(instance, debug_messenger, nullptr);
+		debug_messenger = VK_NULL_HANDLE;
 
 		vkDestroyInstance(instance, nullptr);
 		instance = VK_NULL_HANDLE;
 
-		graphicsQueueFamily = 0xFFFF;
-		graphicsQueue = VK_NULL_HANDLE;
+		graphics_queue_family = 0xFFFF;
+		graphics_queue = VK_NULL_HANDLE;
 
-		maxMSAASamples = VK_SAMPLE_COUNT_1_BIT;
-		physicalDevice = VK_NULL_HANDLE;
+		max_samples = VK_SAMPLE_COUNT_1_BIT;
+		physical_device = VK_NULL_HANDLE;
 	}
 
 	/*
 	 */
-	int Context::examinePhysicalDevice(VkPhysicalDevice physicalDevice) const
+	int Context::examinePhysicalDevice(VkPhysicalDevice physical_device) const
 	{
-		if (!Utils::checkPhysicalDeviceExtensions(physicalDevice, requiredPhysicalDeviceExtensions))
+		if (!Utils::checkPhysicalDeviceExtensions(physical_device, required_device_extensions, true))
 			return -1;
 
-		VkPhysicalDeviceProperties physicalDeviceProperties;
-		vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+		VkPhysicalDeviceProperties properties;
+		vkGetPhysicalDeviceProperties(physical_device, &properties);
 
-		VkPhysicalDeviceFeatures physicalDeviceFeatures;
-		vkGetPhysicalDeviceFeatures(physicalDevice, &physicalDeviceFeatures);
+		VkPhysicalDeviceFeatures features;
+		vkGetPhysicalDeviceFeatures(physical_device, &features);
 
 		int estimate = 0;
 
-		switch (physicalDeviceProperties.deviceType)
+		switch (properties.deviceType)
 		{
 			case VK_PHYSICAL_DEVICE_TYPE_OTHER:
 			case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
@@ -272,11 +331,20 @@ namespace scapes::foundation::render::vulkan
 			case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: estimate = 1000; break;
 		}
 
-		if (!physicalDeviceFeatures.geometryShader)
+		if (!features.geometryShader)
 			return -1;
 
-		if (!physicalDeviceFeatures.tessellationShader)
+		if (!features.tessellationShader)
 			return -1;
+
+		if (Utils::checkPhysicalDeviceExtensions(physical_device, acceleration_structure_device_extensions))
+			estimate += 1000;
+
+		if (Utils::checkPhysicalDeviceExtensions(physical_device, ray_tracing_device_extensions))
+			estimate += 1000;
+
+		if (Utils::checkPhysicalDeviceExtensions(physical_device, ray_query_device_extensions))
+			estimate += 1000;
 
 		// TODO: add more estimates here
 

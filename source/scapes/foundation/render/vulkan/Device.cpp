@@ -320,6 +320,17 @@ namespace scapes::foundation::render::vulkan
 				bind_set->binding_dirty[i] = true;
 			}
 		}
+
+		static void destroyAccelerationStructure(const Context *context, AccelerationStructure *acceleration_structure)
+		{
+			vkDestroyAccelerationStructureKHR(context->getDevice(), acceleration_structure->acceleration_structure, nullptr);
+			vmaDestroyBuffer(context->getVRAMAllocator(), acceleration_structure->buffer, acceleration_structure->memory);
+
+			memset(acceleration_structure, 0, sizeof(BottomLevelAccelerationStructure));
+
+			delete acceleration_structure;
+			acceleration_structure = nullptr;
+		}
 	}
 
 	Device::Device(const char *application_name, const char *engine_name)
@@ -382,20 +393,18 @@ namespace scapes::foundation::render::vulkan
 		}
 
 		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-		VkMemoryPropertyFlags memory_flags = 0;
+		VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_UNKNOWN;
 
 		if (type == BufferType::STATIC)
 		{
 			usage_flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-			memory_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			memory_usage = VMA_MEMORY_USAGE_GPU_ONLY;
 		}
 		else if (type == BufferType::DYNAMIC)
-		{
-			memory_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		}
+			memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
 		// create vertex buffer
-		Utils::createBuffer(context, buffer_size, usage_flags, memory_flags, result->buffer, result->memory);
+		Utils::createBuffer(context, buffer_size, usage_flags, memory_usage, result->buffer, result->memory);
 
 		if (data)
 		{
@@ -425,20 +434,18 @@ namespace scapes::foundation::render::vulkan
 		result->num_indices = num_indices;
 
 		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		VkMemoryPropertyFlags memory_flags = 0;
+		VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_UNKNOWN;
 
 		if (type == BufferType::STATIC)
 		{
 			usage_flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-			memory_flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			memory_usage = VMA_MEMORY_USAGE_GPU_ONLY;
 		}
 		else if (type == BufferType::DYNAMIC)
-		{
-			memory_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		}
+			memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
 		// create index buffer
-		Utils::createBuffer(context, buffer_size, usage_flags, memory_flags, result->buffer, result->memory);
+		Utils::createBuffer(context, buffer_size, usage_flags, memory_usage, result->buffer, result->memory);
 
 		if (data)
 		{
@@ -790,24 +797,32 @@ namespace scapes::foundation::render::vulkan
 		const void *data
 	)
 	{
-		assert(type == BufferType::DYNAMIC && "Only dynamic buffers are implemented at the moment");
 		assert(size != 0 && "Invalid size");
 
 		UniformBuffer *result = new UniformBuffer();
 		result->type = type;
 		result->size = size;
 
-		Utils::createBuffer(
-			context,
-			size,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			result->buffer,
-			result->memory
-		);
+		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_UNKNOWN;
 
-		if (data != nullptr)
-			Utils::fillHostVisibleBuffer(context, result->memory, size, data);
+		if (type == BufferType::STATIC)
+		{
+			usage_flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			memory_usage = VMA_MEMORY_USAGE_GPU_ONLY;
+		}
+		else if (type == BufferType::DYNAMIC)
+			memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+		Utils::createBuffer(context, size, usage_flags, memory_usage,result->buffer, result->memory);
+
+		if (data)
+		{
+			if (type == BufferType::STATIC)
+				Utils::fillDeviceLocalBuffer(context, result->buffer, size, data);
+			else if (type == BufferType::DYNAMIC)
+				Utils::fillHostVisibleBuffer(context, result->memory, size, data);
+		}
 
 		return reinterpret_cast<render::UniformBuffer>(result);
 	}
@@ -859,6 +874,197 @@ namespace scapes::foundation::render::vulkan
 		result->depth_compare_func = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 		return reinterpret_cast<render::GraphicsPipeline>(result);
+	}
+
+	render::BottomLevelAccelerationStructure Device::createBottomLevelAccelerationStructure(
+		uint32_t num_geometries,
+		const AccelerationStructureGeometry *geometries
+	)
+	{
+		assert(num_geometries <= AccelerationStructure::MAX_GEOMETRIES);
+
+		VkBuffer allocated_buffers[AccelerationStructure::MAX_GEOMETRIES * 3];
+		VmaAllocation allocated_vram[AccelerationStructure::MAX_GEOMETRIES * 3];
+		VkAccelerationStructureGeometryKHR vk_geometries[AccelerationStructure::MAX_GEOMETRIES];
+		uint32_t max_primitives[AccelerationStructure::MAX_GEOMETRIES];
+
+		uint32_t num_allocations = 0;
+
+		for (uint32_t i = 0; i < num_geometries; ++i)
+		{
+			const AccelerationStructureGeometry &geometry = geometries[i];
+
+			VkDeviceSize vertex_buffer_size = Utils::getVertexSize(geometry.vertex_format) * geometry.num_vertices;
+			VkDeviceSize index_buffer_size = Utils::getIndexSize(geometry.index_format) * geometry.num_indices;
+			VkDeviceSize transform_buffer_size = sizeof(float) * 16;
+
+			VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+			VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+			// create vertex buffer
+			VkDeviceOrHostAddressConstKHR vertex_buffer_address = {};
+			VkBuffer vertex_buffer = VK_NULL_HANDLE;
+			VmaAllocation vertex_buffer_memory = VK_NULL_HANDLE;
+
+			Utils::createBuffer(context, vertex_buffer_size, usage_flags, memory_usage, vertex_buffer, vertex_buffer_memory);
+			Utils::fillHostVisibleBuffer(context, vertex_buffer_memory, vertex_buffer_size, geometry.vertices);
+
+			vertex_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, vertex_buffer);
+
+			allocated_buffers[num_allocations] = vertex_buffer;
+			allocated_vram[num_allocations] = vertex_buffer_memory;
+
+			num_allocations++;
+
+			// create index buffer
+			VkDeviceOrHostAddressConstKHR index_buffer_address = {};
+			VkBuffer index_buffer = VK_NULL_HANDLE;
+			VmaAllocation index_buffer_memory = VK_NULL_HANDLE;
+
+			Utils::createBuffer(context, index_buffer_size, usage_flags, memory_usage, index_buffer, index_buffer_memory);
+			Utils::fillHostVisibleBuffer(context, index_buffer_memory, index_buffer_size, geometry.indices);
+
+			index_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, index_buffer);
+
+			allocated_buffers[num_allocations] = index_buffer;
+			allocated_vram[num_allocations] = index_buffer_memory;
+
+			num_allocations++;
+
+			// create transform buffer
+			VkDeviceOrHostAddressConstKHR transform_buffer_address = {};
+			VkBuffer transform_buffer = VK_NULL_HANDLE;
+			VmaAllocation transform_buffer_memory = VK_NULL_HANDLE;
+
+			Utils::createBuffer(context, transform_buffer_size, usage_flags, memory_usage, transform_buffer, transform_buffer_memory);
+			Utils::fillHostVisibleBuffer(context, transform_buffer_memory, transform_buffer_size, geometry.transform);
+
+			allocated_buffers[num_allocations] = transform_buffer;
+			allocated_vram[num_allocations] = transform_buffer_memory;
+
+			transform_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, transform_buffer);
+
+			num_allocations++;
+
+			VkAccelerationStructureGeometryKHR &vk_geometry = vk_geometries[i];
+			vk_geometry = {};
+			vk_geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+			vk_geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+			vk_geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // TODO: different flags for transparent geometry
+			vk_geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+			vk_geometry.geometry.triangles.vertexFormat = Utils::getFormat(geometry.vertex_format);
+			vk_geometry.geometry.triangles.vertexData = vertex_buffer_address;
+			vk_geometry.geometry.triangles.vertexStride = Utils::getVertexSize(geometry.vertex_format);
+			vk_geometry.geometry.triangles.maxVertex = 3;
+			vk_geometry.geometry.triangles.indexType = Utils::getIndexType(geometry.index_format);
+			vk_geometry.geometry.triangles.indexData = index_buffer_address;
+			vk_geometry.geometry.triangles.transformData = transform_buffer_address;
+
+			max_primitives[i] = geometry.num_vertices / 3;
+		}
+
+		AccelerationStructure *result = new AccelerationStructure();
+
+		VkAccelerationStructureTypeKHR type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+		VkBuildAccelerationStructureFlagBitsKHR build_flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR; // TODO: pass as an argument
+
+		if (!Utils::createAccelerationStructure(context, type, build_flags, num_geometries, vk_geometries, max_primitives, result))
+		{
+			destroyBottomLevelAccelerationStructure(reinterpret_cast<render::BottomLevelAccelerationStructure>(result));
+			return SCAPES_NULL_HANDLE;
+		}
+
+		Utils::buildAccelerationStructure(context, type, build_flags, num_geometries, vk_geometries, result);
+
+		for (size_t i = 0; i < num_allocations; ++i)
+			vmaDestroyBuffer(context->getVRAMAllocator(), allocated_buffers[i], allocated_vram[i]);
+
+		result->device_address = Utils::getBufferDeviceAddress(context, result->buffer);
+
+		return reinterpret_cast<render::BottomLevelAccelerationStructure>(result);
+	}
+
+	render::TopLevelAccelerationStructure Device::createTopLevelAccelerationStructure(
+		uint32_t num_instances,
+		const AccelerationStructureInstance *instances
+	)
+	{
+		std::vector<VkBuffer> allocated_buffers;
+		std::vector<VmaAllocation> allocated_vram;
+		std::vector<VkAccelerationStructureGeometryKHR> vk_geometries;
+		std::vector<uint32_t> max_primitives;
+
+		for (uint32_t i = 0; i < num_instances; ++i)
+		{
+			const AccelerationStructureInstance &instance = instances[i];
+			const AccelerationStructure *blas = reinterpret_cast<const AccelerationStructure *>(instance.blas);
+
+			VkAccelerationStructureInstanceKHR vk_instance = {};
+			vk_instance.instanceCustomIndex = 0;
+			vk_instance.instanceShaderBindingTableRecordOffset = 0;
+			vk_instance.mask = 0xFF;
+			vk_instance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+			vk_instance.accelerationStructureReference = blas->device_address;
+			// TODO: copy transform matrix
+
+			VkDeviceSize instance_size = sizeof(VkAccelerationStructureInstanceKHR);
+			VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+			VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+			// create instance buffer
+			VkDeviceOrHostAddressConstKHR instance_buffer_address = {};
+			VkBuffer instance_buffer = VK_NULL_HANDLE;
+			VmaAllocation instance_buffer_memory = VK_NULL_HANDLE;
+
+			Utils::createBuffer(context, instance_size, usage_flags, memory_usage, instance_buffer, instance_buffer_memory);
+			Utils::fillHostVisibleBuffer(context, instance_buffer_memory, instance_size, &vk_instance);
+
+			instance_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, instance_buffer);
+
+			allocated_buffers.push_back(instance_buffer);
+			allocated_vram.push_back(instance_buffer_memory);
+
+			VkAccelerationStructureGeometryKHR vk_geometry = {};
+			vk_geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+			vk_geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+			vk_geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // TODO: different flags for transparent geometry
+			vk_geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+			vk_geometry.geometry.instances.arrayOfPointers = VK_FALSE;
+			vk_geometry.geometry.instances.data = instance_buffer_address;
+
+			vk_geometries.push_back(vk_geometry);
+			max_primitives.push_back(1);
+		}
+
+		AccelerationStructure *result = new AccelerationStructure();
+
+		VkAccelerationStructureTypeKHR type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+		VkBuildAccelerationStructureFlagBitsKHR build_flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR; // TODO: pass as an argument
+
+		if (!Utils::createAccelerationStructure(context, type, build_flags, num_instances, vk_geometries.data(), max_primitives.data(), result))
+		{
+			destroyTopLevelAccelerationStructure(reinterpret_cast<render::TopLevelAccelerationStructure>(result));
+			return SCAPES_NULL_HANDLE;
+		}
+
+		Utils::buildAccelerationStructure(context, type, build_flags, num_instances, vk_geometries.data(), result);
+
+		for (size_t i = 0; i < allocated_vram.size(); ++i)
+			vmaDestroyBuffer(context->getVRAMAllocator(), allocated_buffers[i], allocated_vram[i]);
+
+		result->device_address = Utils::getBufferDeviceAddress(context, result->buffer);
+
+		return reinterpret_cast<render::TopLevelAccelerationStructure>(result);
+	}
+
+	render::RayTracePipeline Device::createRayTracePipeline(
+		// ???
+	)
+	{
+		RayTracePipeline *result = new RayTracePipeline();
+		memset(result, 0, sizeof(RayTracePipeline));
+
+		return reinterpret_cast<render::RayTracePipeline>(result);
 	}
 
 	render::SwapChain Device::createSwapChain(void *native_window)
@@ -1060,15 +1266,44 @@ namespace scapes::foundation::render::vulkan
 		vk_bind_set = nullptr;
 	}
 
-	void Device::destroyGraphicsPipeline(render::GraphicsPipeline graphics_pipeline)
+	void Device::destroyGraphicsPipeline(render::GraphicsPipeline pipeline)
 	{
-		if (graphics_pipeline == SCAPES_NULL_HANDLE)
+		if (pipeline == SCAPES_NULL_HANDLE)
 			return;
 
-		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(graphics_pipeline);
+		GraphicsPipeline *vk_graphics_pipeline = reinterpret_cast<GraphicsPipeline *>(pipeline);
 
 		delete vk_graphics_pipeline;
 		vk_graphics_pipeline = nullptr;
+	}
+
+	void Device::destroyBottomLevelAccelerationStructure(render::BottomLevelAccelerationStructure acceleration_structure)
+	{
+		if (acceleration_structure == SCAPES_NULL_HANDLE)
+			return;
+
+		AccelerationStructure *vk_acceleration_structure = reinterpret_cast<AccelerationStructure *>(acceleration_structure);
+		helpers::destroyAccelerationStructure(context, vk_acceleration_structure);
+	}
+
+	void Device::destroyTopLevelAccelerationStructure(render::TopLevelAccelerationStructure acceleration_structure)
+	{
+		if (acceleration_structure == SCAPES_NULL_HANDLE)
+			return;
+
+		AccelerationStructure *vk_acceleration_structure = reinterpret_cast<AccelerationStructure *>(acceleration_structure);
+		helpers::destroyAccelerationStructure(context, vk_acceleration_structure);
+	}
+
+	void Device::destroyRayTracePipeline(render::RayTracePipeline pipeline)
+	{
+		if (pipeline == SCAPES_NULL_HANDLE)
+			return;
+
+		RayTracePipeline *vk_ray_trace_pipeline = reinterpret_cast<RayTracePipeline *>(pipeline);
+
+		delete vk_ray_trace_pipeline;
+		vk_ray_trace_pipeline = nullptr;
 	}
 
 	void Device::destroySwapChain(render::SwapChain swap_chain)
@@ -2113,5 +2348,16 @@ namespace scapes::foundation::render::vulkan
 			vkCmdBindIndexBuffer(vk_command_buffer->command_buffer, vk_index_buffer->buffer, 0, vk_index_buffer->index_type);
 
 		vkCmdDrawIndexed(vk_command_buffer->command_buffer, num_indices, num_instances, base_index, base_vertex, base_instance);
+	}
+
+	void Device::traceRays(
+		render::CommandBuffer command_buffer,
+		render::RayTracePipeline pipeline,
+		uint32_t width,
+		uint32_t height,
+		uint32_t depth
+	)
+	{
+
 	}
 }

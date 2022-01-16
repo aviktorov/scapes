@@ -114,7 +114,8 @@ namespace scapes::foundation::shaders::spirv
 		options = shaderc_compile_options_initialize();
 
 		shaderc_compile_options_set_include_callbacks(options, shaderc::includeResolver, shaderc::includeResultReleaser, file_system);
-		shaderc_compile_options_set_target_env(options, shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_0);
+		shaderc_compile_options_set_target_env(options, shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
+		shaderc_compile_options_set_target_spirv(options, shaderc_spirv_version_1_4);
 
 		cache.load(file_system, "spirv.cache");
 	}

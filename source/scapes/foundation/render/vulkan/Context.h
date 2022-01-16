@@ -1,5 +1,7 @@
 #pragma once
 
+#include <scapes/Common.h>
+
 #include <volk.h>
 #include <vk_mem_alloc.h>
 
@@ -10,22 +12,25 @@ namespace scapes::foundation::render::vulkan
 	class Context
 	{
 	public:
-		inline VkInstance getInstance() const { return instance; }
-		inline VkDevice getDevice() const { return device; }
-		inline VkPhysicalDevice getPhysicalDevice() const { return physicalDevice; }
-		inline VkCommandPool getCommandPool() const { return commandPool; }
-		inline VkDescriptorPool getDescriptorPool() const { return descriptorPool; }
-		inline uint32_t getGraphicsQueueFamily() const { return graphicsQueueFamily; }
-		inline VkQueue getGraphicsQueue() const { return graphicsQueue; }
-		inline VkSampleCountFlagBits getMaxSampleCount() const { return maxMSAASamples; }
-		inline VmaAllocator getVRAMAllocator() const { return vram_allocator; }
+		SCAPES_INLINE VkInstance getInstance() const { return instance; }
+		SCAPES_INLINE VkDevice getDevice() const { return device; }
+		SCAPES_INLINE VkPhysicalDevice getPhysicalDevice() const { return physical_device; }
+		SCAPES_INLINE VkCommandPool getCommandPool() const { return command_pool; }
+		SCAPES_INLINE VkDescriptorPool getDescriptorPool() const { return descriptor_pool; }
+		SCAPES_INLINE uint32_t getGraphicsQueueFamily() const { return graphics_queue_family; }
+		SCAPES_INLINE VkQueue getGraphicsQueue() const { return graphics_queue; }
+		SCAPES_INLINE VkSampleCountFlagBits getMaxSampleCount() const { return max_samples; }
+		SCAPES_INLINE VmaAllocator getVRAMAllocator() const { return vram_allocator; }
+		SCAPES_INLINE bool hasAccelerationStructure() const { return has_acceleration_structure; }
+		SCAPES_INLINE bool hasRayTracing() const { return has_ray_tracing; }
+		SCAPES_INLINE bool hasRayQuery() const { return has_ray_query; }
 
 	public:
-		void init(const char *applicationName, const char *engineName);
+		void init(const char *application_name, const char *engine_name);
 		void shutdown();
 
 	private:
-		int examinePhysicalDevice(VkPhysicalDevice physicalDevice) const;
+		int examinePhysicalDevice(VkPhysicalDevice physical_device) const;
 
 	private:
 		enum
@@ -35,19 +40,23 @@ namespace scapes::foundation::render::vulkan
 			MAX_DESCRIPTOR_SETS = 512,
 		};
 
+		bool has_acceleration_structure {false};
+		bool has_ray_tracing {false};
+		bool has_ray_query {false};
+
 		VkInstance instance {VK_NULL_HANDLE};
 
 		VkDevice device {VK_NULL_HANDLE};
-		VkPhysicalDevice physicalDevice {VK_NULL_HANDLE};
+		VkPhysicalDevice physical_device {VK_NULL_HANDLE};
 
-		VkCommandPool commandPool {VK_NULL_HANDLE};
-		VkDescriptorPool descriptorPool {VK_NULL_HANDLE};
+		VkCommandPool command_pool {VK_NULL_HANDLE};
+		VkDescriptorPool descriptor_pool {VK_NULL_HANDLE};
 
-		uint32_t graphicsQueueFamily {0xFFFF};
-		VkQueue graphicsQueue {VK_NULL_HANDLE};
+		uint32_t graphics_queue_family {0xFFFF};
+		VkQueue graphics_queue {VK_NULL_HANDLE};
 
-		VkSampleCountFlagBits maxMSAASamples {VK_SAMPLE_COUNT_1_BIT};
-		VkDebugUtilsMessengerEXT debugMessenger {VK_NULL_HANDLE};
+		VkSampleCountFlagBits max_samples {VK_SAMPLE_COUNT_1_BIT};
+		VkDebugUtilsMessengerEXT debug_messenger {VK_NULL_HANDLE};
 
 		VmaAllocator vram_allocator {VK_NULL_HANDLE};
 	};

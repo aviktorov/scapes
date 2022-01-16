@@ -206,6 +206,12 @@ namespace scapes::foundation::render
 		SECONDARY,
 	};
 
+	enum class AccelerationStructureBuildMode : uint8_t
+	{
+		PREFER_FAST_TRACING = 0,
+		PREFER_FAST_BUILD,
+	};
+
 	enum class CullMode : uint8_t
 	{
 		NONE = 0,
@@ -258,6 +264,9 @@ namespace scapes::foundation::render
 	typedef struct Shader_t *Shader;
 	typedef struct BindSet_t *BindSet;
 	typedef struct GraphicsPipeline_t *GraphicsPipeline;
+	typedef struct RayTracePipeline_t *RayTracePipeline;
+	typedef struct BottomLevelAccelerationStructure_t *BottomLevelAccelerationStructure;
+	typedef struct TopLevelAccelerationStructure_t *TopLevelAccelerationStructure;
 	typedef struct SwapChain_t *SwapChain;
 
 	/* C structs
@@ -310,6 +319,25 @@ namespace scapes::foundation::render
 		uint32_t *color_attachments {nullptr};
 		uint32_t *resolve_attachments {nullptr};
 		uint32_t *depthstencil_attachment {nullptr};
+	};
+
+	struct AccelerationStructureGeometry
+	{
+		Format vertex_format {Format::UNDEFINED};
+		uint32_t num_vertices {0};
+		void *vertices {nullptr};
+
+		IndexFormat index_format {IndexFormat::UINT32};
+		uint32_t num_indices {0};
+		void *indices {nullptr};
+
+		float transform[16];
+	};
+
+	struct AccelerationStructureInstance
+	{
+		BottomLevelAccelerationStructure blas {SCAPES_NULL_HANDLE};
+		float transform[16];
 	};
 
 	/*
@@ -432,6 +460,20 @@ namespace scapes::foundation::render
 		virtual GraphicsPipeline createGraphicsPipeline(
 		) = 0;
 
+		virtual BottomLevelAccelerationStructure createBottomLevelAccelerationStructure(
+			uint32_t num_geometries,
+			const AccelerationStructureGeometry *geometries
+		) = 0;
+
+		virtual TopLevelAccelerationStructure createTopLevelAccelerationStructure(
+			uint32_t num_instances,
+			const AccelerationStructureInstance *instances
+		) = 0;
+
+		virtual RayTracePipeline createRayTracePipeline(
+			// ???
+		) = 0;
+
 		virtual SwapChain createSwapChain(
 			void *native_window
 		) = 0;
@@ -446,6 +488,9 @@ namespace scapes::foundation::render
 		virtual void destroyShader(Shader shader) = 0;
 		virtual void destroyBindSet(BindSet bind_set) = 0;
 		virtual void destroyGraphicsPipeline(GraphicsPipeline pipeline) = 0;
+		virtual void destroyBottomLevelAccelerationStructure(BottomLevelAccelerationStructure acceleration_structure) = 0;
+		virtual void destroyTopLevelAccelerationStructure(TopLevelAccelerationStructure acceleration_structure) = 0;
+		virtual void destroyRayTracePipeline(RayTracePipeline pipeline) = 0;
 		virtual void destroySwapChain(SwapChain swap_chain) = 0;
 
 	public:
@@ -662,6 +707,14 @@ namespace scapes::foundation::render
 			int32_t base_vertex = 0,
 			uint32_t num_instances = 1,
 			uint32_t base_instance = 0
+		) = 0;
+
+		virtual void traceRays(
+			CommandBuffer command_buffer,
+			RayTracePipeline pipeline,
+			uint32_t width,
+			uint32_t height,
+			uint32_t depth
 		) = 0;
 	};
 }

@@ -277,6 +277,39 @@ namespace scapes::foundation::render::vulkan
 		return supported_formats[static_cast<int>(format)];
 	}
 
+	uint8_t Utils::getVertexSize(Format format)
+	{
+		static uint8_t supported_formats[static_cast<int>(Format::MAX)] =
+		{
+			0,
+
+			// 8-bit formats
+			1, 1, 1, 1,
+			2, 2, 2, 2,
+			3, 3, 3, 3,
+			3, 3, 3, 3,
+			4, 4, 4, 4,
+			4, 4, 4, 4,
+
+			// 16-bit formats
+			2, 2, 2, 2, 2,
+			4, 4, 4, 4, 4,
+			6, 6, 6, 6, 6,
+			8, 8, 8, 8, 8,
+
+			// 32-bit formats
+			4, 4, 4,
+			8, 8, 8,
+			12, 12, 12,
+			16, 16, 16,
+
+			// depth formats
+			0, 0, 0, 0, 0, 0,
+		};
+
+		return supported_formats[static_cast<int>(format)];
+	}
+
 	/*
 	 */
 	VkPrimitiveTopology Utils::getPrimitiveTopology(RenderPrimitiveType type)
@@ -447,6 +480,7 @@ namespace scapes::foundation::render::vulkan
 		std::vector<VkExtensionProperties> availableExtensions(availableExtensionCount);
 		vkEnumerateInstanceExtensionProperties(nullptr, &availableExtensionCount, availableExtensions.data());
 
+		bool result = true;
 		for (const char *requiredExtension : requiredExtensions)
 		{
 			bool supported = false;
@@ -464,14 +498,14 @@ namespace scapes::foundation::render::vulkan
 				if (verbose)
 					std::cerr << requiredExtension << " is not supported" << std::endl;
 
-				return false;
+				result = false;
 			}
 			
-			if (verbose)
+			else if (verbose)
 				std::cout << "Have " << requiredExtension << std::endl;
 		}
 
-		return true;
+		return result;
 	}
 
 	bool Utils::checkPhysicalDeviceExtensions(
@@ -486,6 +520,7 @@ namespace scapes::foundation::render::vulkan
 		std::vector<VkExtensionProperties> availableDeviceExtensions(availableDeviceExtensionCount);
 		vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &availableDeviceExtensionCount, availableDeviceExtensions.data());
 
+		bool result = true;
 		for (const char *requiredExtension : requiredExtensions)
 		{
 			bool supported = false;
@@ -503,14 +538,14 @@ namespace scapes::foundation::render::vulkan
 				if (verbose)
 					std::cerr << requiredExtension << " is not supported on this physical device" << std::endl;
 
-				return false;
+				result = false;
 			}
-			
-			if (verbose)
+
+			else if (verbose)
 				std::cout << "Have " << requiredExtension << std::endl;
 		}
 
-		return true;
+		return result;
 	}
 
 	/*
@@ -628,26 +663,39 @@ namespace scapes::foundation::render::vulkan
 
 	/*
 	 */
+	VkDeviceAddress Utils::getBufferDeviceAddress(
+		const Context *context,
+		VkBuffer buffer
+	)
+	{
+		VkBufferDeviceAddressInfoKHR buffer_device_address_info{};
+		buffer_device_address_info.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+		buffer_device_address_info.buffer = buffer;
+		return vkGetBufferDeviceAddress(context->getDevice(), &buffer_device_address_info);
+	}
+
+	/*
+	 */
 	void Utils::createBuffer(
 		const Context *context,
 		VkDeviceSize size,
 		VkBufferUsageFlags usage,
-		VkMemoryPropertyFlags memoryProperties,
+		VmaMemoryUsage memory_usage,
 		VkBuffer &buffer,
 		VmaAllocation &memory
 	)
 	{
 		// Create buffer
-		VkBufferCreateInfo bufferInfo = {};
-		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = size;
-		bufferInfo.usage = usage;
-		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		VkBufferCreateInfo buffer_info = {};
+		buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		buffer_info.size = size;
+		buffer_info.usage = usage;
+		buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		VmaAllocationCreateInfo allocInfo = {};
-		allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		VmaAllocationCreateInfo alloc_info = {};
+		alloc_info.usage = memory_usage;
 
-		if (vmaCreateBuffer(context->getVRAMAllocator(), &bufferInfo, &allocInfo, &buffer, &memory, nullptr) != VK_SUCCESS)
+		if (vmaCreateBuffer(context->getVRAMAllocator(), &buffer_info, &alloc_info, &buffer, &memory, nullptr) != VK_SUCCESS)
 		{
 			// TODO: log error "Can't create buffer"
 		}
@@ -838,6 +886,102 @@ namespace scapes::foundation::render::vulkan
 			return VK_NULL_HANDLE;
 
 		return sampler;
+	}
+
+	/*
+	 */
+	bool Utils::createAccelerationStructure(
+		const Context *context,
+		VkAccelerationStructureTypeKHR type,
+		VkBuildAccelerationStructureFlagBitsKHR build_flags,
+		uint32_t num_geometries,
+		const VkAccelerationStructureGeometryKHR *geometries,
+		const uint32_t *max_primitives,
+		AccelerationStructure *result
+	)
+	{
+		VkAccelerationStructureBuildGeometryInfoKHR build_info = {};
+		build_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+		build_info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+		build_info.type = type;
+		build_info.flags = build_flags;
+		build_info.geometryCount = num_geometries;
+		build_info.pGeometries = geometries;
+
+		VkAccelerationStructureBuildSizesInfoKHR build_sizes_info = {};
+		build_sizes_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+
+		vkGetAccelerationStructureBuildSizesKHR(
+			context->getDevice(),
+			VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
+			&build_info,
+			max_primitives,
+			&build_sizes_info
+		);
+
+		result->size = build_sizes_info.accelerationStructureSize;
+		result->update_scratch_size = build_sizes_info.updateScratchSize;
+		result->build_scratch_size = build_sizes_info.buildScratchSize;
+
+		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+		VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+		Utils::createBuffer(context, result->size, usage_flags, memory_usage, result->buffer, result->memory);
+
+		VkAccelerationStructureCreateInfoKHR create_info = {};
+		create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+		create_info.buffer = result->buffer;
+		create_info.size = result->size;
+		create_info.type = type;
+
+		if (vkCreateAccelerationStructureKHR(context->getDevice(), &create_info, nullptr, &result->acceleration_structure) != VK_SUCCESS)
+			return false;
+
+		return true;
+	}
+
+	void Utils::buildAccelerationStructure(
+		const Context *context,
+		VkAccelerationStructureTypeKHR type,
+		VkBuildAccelerationStructureFlagBitsKHR build_flags,
+		uint32_t num_geometries,
+		const VkAccelerationStructureGeometryKHR *geometries,
+		AccelerationStructure *result
+	)
+	{
+		VkBufferUsageFlags scratch_usage_flags = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+		VmaMemoryUsage scratch_memory_usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+		VkBuffer scratch_buffer = VK_NULL_HANDLE;
+		VmaAllocation scratch_memory = VK_NULL_HANDLE;
+
+		Utils::createBuffer(context, result->build_scratch_size, scratch_usage_flags, scratch_memory_usage, scratch_buffer, scratch_memory);
+
+		VkAccelerationStructureBuildGeometryInfoKHR build_info = {};
+		build_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+		build_info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+		build_info.type = type;
+		build_info.flags = build_flags;
+		build_info.geometryCount = num_geometries;
+		build_info.pGeometries = geometries;
+		build_info.dstAccelerationStructure = result->acceleration_structure;
+		build_info.scratchData.deviceAddress = Utils::getBufferDeviceAddress(context, scratch_buffer);
+
+		VkAccelerationStructureBuildRangeInfoKHR build_range_info = {};
+		build_range_info.primitiveCount = 1;
+		build_range_info.primitiveOffset = 0;
+		build_range_info.firstVertex = 0;
+		build_range_info.transformOffset = 0;
+
+		VkAccelerationStructureBuildRangeInfoKHR *build_ranges[] = { &build_range_info };
+
+		VkCommandBuffer command_buffer = Utils::beginSingleTimeCommands(context);
+
+		vkCmdBuildAccelerationStructuresKHR(command_buffer, 1, &build_info, build_ranges);
+
+		Utils::endSingleTimeCommands(context, command_buffer);
+
+		vmaDestroyBuffer(context->getVRAMAllocator(), scratch_buffer, scratch_memory);
 	}
 
 	/*

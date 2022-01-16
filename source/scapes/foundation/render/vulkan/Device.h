@@ -203,6 +203,49 @@ namespace scapes::foundation::render::vulkan
 		// TODO: pipeline caches here
 		// IDEA: get rid of pipeline layout cache, recreate layout if needed and be happy
 	};
+	
+	struct AccelerationStructure
+	{
+		enum
+		{
+			MAX_GEOMETRIES = 8,
+		};
+
+		VkBuffer buffer {VK_NULL_HANDLE};
+		VmaAllocation memory {VK_NULL_HANDLE};
+		VkAccelerationStructureKHR acceleration_structure {VK_NULL_HANDLE};
+		VkDeviceAddress device_address {0};
+		VkDeviceSize size {0};
+		VkDeviceSize update_scratch_size {0};
+		VkDeviceSize build_scratch_size {0};
+	};
+
+	struct RayTracePipeline
+	{
+		enum
+		{
+			MAX_BIND_SETS = 16,
+		};
+
+		// render state
+		VkViewport viewport;
+		VkRect2D scissor;
+
+		// resources
+		BindSet *bind_sets[MAX_BIND_SETS]; // TODO: make this safer
+		uint8_t num_bind_sets {0};
+
+		VkRenderPass render_pass {VK_NULL_HANDLE};
+		VkSampleCountFlagBits max_samples {VK_SAMPLE_COUNT_1_BIT};
+		uint8_t num_color_attachments {0};
+
+		// internal mutable state
+		VkPipeline pipeline {VK_NULL_HANDLE};
+		VkPipelineLayout pipeline_layout {VK_NULL_HANDLE};
+
+		// TODO: pipeline caches here
+		// IDEA: get rid of pipeline layout cache, recreate layout if needed and be happy
+	};
 
 	struct SwapChain
 	{
@@ -352,6 +395,20 @@ namespace scapes::foundation::render::vulkan
 		render::GraphicsPipeline createGraphicsPipeline(
 		) final;
 
+		render::BottomLevelAccelerationStructure createBottomLevelAccelerationStructure(
+			uint32_t num_geometries,
+			const AccelerationStructureGeometry *geometries
+		) final;
+
+		render::TopLevelAccelerationStructure createTopLevelAccelerationStructure(
+			uint32_t num_instances,
+			const AccelerationStructureInstance *instances
+		) final;
+
+		render::RayTracePipeline createRayTracePipeline(
+			// ???
+		) final;
+
 		render::SwapChain createSwapChain(
 			void *native_window
 		) final;
@@ -366,6 +423,9 @@ namespace scapes::foundation::render::vulkan
 		void destroyShader(render::Shader shader) final;
 		void destroyBindSet(render::BindSet bind_set) final;
 		void destroyGraphicsPipeline(render::GraphicsPipeline pipeline) final;
+		void destroyBottomLevelAccelerationStructure(render::BottomLevelAccelerationStructure acceleration_structure) final;
+		void destroyTopLevelAccelerationStructure(render::TopLevelAccelerationStructure acceleration_structure) final;
+		void destroyRayTracePipeline(render::RayTracePipeline pipeline) final;
 		void destroySwapChain(render::SwapChain swap_chain) final;
 
 	public:
@@ -583,6 +643,14 @@ namespace scapes::foundation::render::vulkan
 			int32_t base_vertex,
 			uint32_t num_instances,
 			uint32_t base_instance
+		) final;
+
+		void traceRays(
+			render::CommandBuffer command_buffer,
+			render::RayTracePipeline pipeline,
+			uint32_t width,
+			uint32_t height,
+			uint32_t depth
 		) final;
 
 	private:
