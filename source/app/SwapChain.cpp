@@ -45,12 +45,13 @@ void SwapChain::shutdown()
  */
 scapes::foundation::render::CommandBuffer SwapChain::acquire()
 {
+	scapes::foundation::render::CommandBuffer command_buffer = command_buffers[current_in_flight_frame];
+	if (!device->wait(1, &command_buffer))
+		return SCAPES_NULL_HANDLE;
+
 	uint32_t image_index = 0;
 	if (!device->acquire(swap_chain, &image_index))
 		return SCAPES_NULL_HANDLE;
-
-	scapes::foundation::render::CommandBuffer command_buffer = command_buffers[current_in_flight_frame];
-	device->wait(1, &command_buffer);
 
 	return command_buffer;
 }
