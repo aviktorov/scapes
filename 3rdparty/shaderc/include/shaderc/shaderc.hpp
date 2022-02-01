@@ -203,9 +203,9 @@ class CompileOptions {
         [](void* user_data, const char* requested_source, int type,
            const char* requesting_source, size_t include_depth) {
           auto* sub_includer = static_cast<IncluderInterface*>(user_data);
-          return sub_includer->GetInclude(requested_source,
-                                      (shaderc_include_type)type,
-                                      requesting_source, include_depth);
+          return sub_includer->GetInclude(
+              requested_source, static_cast<shaderc_include_type>(type),
+              requesting_source, include_depth);
         },
         [](void* user_data, shaderc_include_result* include_result) {
           auto* sub_includer = static_cast<IncluderInterface*>(user_data);
@@ -272,6 +272,13 @@ class CompileOptions {
   // that aren't already explicitly bound in the shader source.
   void SetAutoBindUniforms(bool auto_bind) {
     shaderc_compile_options_set_auto_bind_uniforms(options_, auto_bind);
+  }
+
+  // Sets whether the compiler should automatically remove sampler variables
+  // and convert image variables to combined image sampler variables.
+  void SetAutoSampledTextures(bool auto_sampled) {
+    shaderc_compile_options_set_auto_combined_image_sampler(options_,
+                                                            auto_sampled);
   }
 
   // Sets whether the compiler should use HLSL IO mapping rules for bindings.
