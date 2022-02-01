@@ -8,6 +8,7 @@ namespace scapes::foundation::render::vulkan
 	class DescriptorSetLayoutCache;
 	class Context;
 	struct GraphicsPipeline;
+	struct RayTracePipeline;
 
 	/*
 	 */
@@ -18,10 +19,12 @@ namespace scapes::foundation::render::vulkan
 			: context(context), layout_cache(layout_cache) { }
 		~PipelineLayoutCache();
 
+		VkPipelineLayout fetch(const RayTracePipeline *raytrace_pipeline);
 		VkPipelineLayout fetch(const GraphicsPipeline *graphics_pipeline);
 		void clear();
 
 	private:
+		VkPipelineLayout fetch(uint8_t num_layouts, const VkDescriptorSetLayout *layouts, uint8_t push_constants_size);
 		uint64_t getHash(uint8_t num_layouts, const VkDescriptorSetLayout *layouts, uint8_t push_constants_size) const;
 
 	private:

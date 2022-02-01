@@ -268,6 +268,7 @@ namespace scapes::foundation::render::vulkan
 			throw std::runtime_error("Can't create descriptor pool");
 
 		max_samples = Utils::getMaxUsableSampleCount(physical_device);
+		ray_tracing_properties = Utils::getRayTracingPipelineProperties(physical_device);
 
 		VmaAllocatorCreateInfo allocator_info = {};
 		allocator_info.physicalDevice = physical_device;

@@ -515,6 +515,7 @@ namespace scapes::foundation::render
 
 		virtual void flush(BindSet bind_set) = 0;
 		virtual void flush(GraphicsPipeline pipeline) = 0;
+		virtual void flush(RayTracePipeline pipeline) = 0;
 
 	public:
 		virtual bool acquire(
@@ -557,8 +558,55 @@ namespace scapes::foundation::render
 			uint32_t num_layers
 		) = 0;
 
+		virtual void bindTopLevelAccelerationStructure(
+			BindSet bind_set,
+			uint32_t binding,
+			TopLevelAccelerationStructure tlas
+		) = 0;
+
 	public:
-		// pipeline state
+		// raytrace pipeline state
+		virtual void clearBindSets(
+			RayTracePipeline pipeline
+		) = 0;
+
+		virtual void setBindSet(
+			RayTracePipeline pipeline,
+			uint8_t binding,
+			BindSet bind_set
+		) = 0;
+
+		virtual void clearRaygenShaders(
+			RayTracePipeline pipeline
+		) = 0;
+
+		virtual void addRaygenShader(
+			RayTracePipeline pipeline,
+			Shader shader
+		) = 0;
+
+		virtual void clearHitGroupShaders(
+			RayTracePipeline pipeline
+		) = 0;
+
+		virtual void addHitGroupShader(
+			RayTracePipeline pipeline,
+			Shader intersection_shader,
+			Shader anyhit_shader,
+			Shader closesthit_shader
+		) = 0;
+
+		virtual void clearMissShaders(
+			RayTracePipeline pipeline
+		) = 0;
+
+		virtual void addMissShader(
+			RayTracePipeline pipeline,
+			Shader shader
+		) = 0;
+
+	public:
+		// graphics pipeline state
 		virtual void clearPushConstants(
 			GraphicsPipeline pipeline
 		) = 0;
@@ -586,7 +634,7 @@ namespace scapes::foundation::render
 		virtual void setShader(
 			GraphicsPipeline pipeline,
 			ShaderType type,
-			const Shader shader
+			Shader shader
 		) = 0;
 
 		virtual void clearVertexStreams(
@@ -714,7 +762,8 @@ namespace scapes::foundation::render
 			RayTracePipeline pipeline,
 			uint32_t width,
 			uint32_t height,
-			uint32_t depth
+			uint32_t depth,
+			uint32_t raygen_shader_index = 0
 		) = 0;
 	};
 }

@@ -144,6 +144,10 @@ namespace scapes::foundation::render::vulkan
 				uint32_t offset;
 				uint32_t size;
 			} ubo;
+			struct TLAS
+			{
+				VkAccelerationStructureKHR acceleration_structure;
+			} tlas;
 		};
 
 		VkDescriptorSetLayout set_layout {VK_NULL_HANDLE};
@@ -225,23 +229,37 @@ namespace scapes::foundation::render::vulkan
 		enum
 		{
 			MAX_BIND_SETS = 16,
+			MAX_RAYGEN_SHADERS = 32,
+			MAX_HITGROUP_SHADERS = 32,
+			MAX_MISS_SHADERS = 32,
 		};
-
-		// render state
-		VkViewport viewport;
-		VkRect2D scissor;
 
 		// resources
 		BindSet *bind_sets[MAX_BIND_SETS]; // TODO: make this safer
 		uint8_t num_bind_sets {0};
 
-		VkRenderPass render_pass {VK_NULL_HANDLE};
-		VkSampleCountFlagBits max_samples {VK_SAMPLE_COUNT_1_BIT};
-		uint8_t num_color_attachments {0};
+		// shaders
+		VkShaderModule raygen_shaders[MAX_RAYGEN_SHADERS];
+		uint8_t num_raygen_shaders {0};
+
+		VkShaderModule intersection_shaders[MAX_HITGROUP_SHADERS];
+		VkShaderModule anyhit_shaders[MAX_HITGROUP_SHADERS];
+		VkShaderModule closesthit_shaders[MAX_HITGROUP_SHADERS];
+		uint8_t num_hitgroup_shaders {0};
+
+		VkShaderModule miss_shaders[MAX_MISS_SHADERS];
+		uint8_t num_miss_shaders {0};
 
 		// internal mutable state
 		VkPipeline pipeline {VK_NULL_HANDLE};
 		VkPipelineLayout pipeline_layout {VK_NULL_HANDLE};
+
+		VmaAllocation sbt_memory {VK_NULL_HANDLE};
+		VkBuffer sbt_buffer {VK_NULL_HANDLE};
+
+		VkDeviceAddress sbt_raygen_begin {0};
+		VkDeviceAddress sbt_miss_begin {0};
+		VkDeviceAddress sbt_hitgroup_begin {0};
 
 		// TODO: pipeline caches here
 		// IDEA: get rid of pipeline layout cache, recreate layout if needed and be happy
@@ -450,6 +468,7 @@ namespace scapes::foundation::render::vulkan
 
 		void flush(render::BindSet bind_set) final;
 		void flush(render::GraphicsPipeline pipeline) final;
+		void flush(render::RayTracePipeline pipeline) final;
 
 	public:
 		bool acquire(
@@ -491,6 +510,53 @@ namespace scapes::foundation::render::vulkan
 			uint32_t num_mips,
 			uint32_t base_layer,
 			uint32_t num_layers
+		) final;
+
+		void bindTopLevelAccelerationStructure(
+			render::BindSet bind_set,
+			uint32_t binding,
+			render::TopLevelAccelerationStructure tlas
+		) final;
+
+	public:
+		// raytrace pipeline state
+		void clearBindSets(
+			render::RayTracePipeline pipeline
+		) final;
+
+		void setBindSet(
+			render::RayTracePipeline pipeline,
+			uint8_t binding,
+			render::BindSet bind_set
+		) final;
+
+		void clearRaygenShaders(
+			render::RayTracePipeline pipeline
+		) final;
+
+		void addRaygenShader(
+			render::RayTracePipeline pipeline,
+			render::Shader shader
+		) final;
+
+		void clearHitGroupShaders(
+			render::RayTracePipeline pipeline
+		) final;
+
+		void addHitGroupShader(
+			render::RayTracePipeline pipeline,
+			render::Shader intersection_shader,
+			render::Shader anyhit_shader,
+			render::Shader closesthit_shader
+		) final;
+
+		void clearMissShaders(
+			render::RayTracePipeline pipeline
+		) final;
+
+		void addMissShader(
+			render::RayTracePipeline pipeline,
+			render::Shader shader
 		) final;
 
 	public:
@@ -650,10 +716,16 @@ namespace scapes::foundation::render::vulkan
 			render::RayTracePipeline pipeline,
 			uint32_t width,
 			uint32_t height,
-			uint32_t depth
+			uint32_t depth,
+			uint32_t raygen_shader_index
 		) final;
 
 	private:
+		enum
+		{
+			WAIT_NANOSECONDS = 1000000000ul,
+		};
+
 		Context *context {nullptr};
 		DescriptorSetLayoutCache *descriptor_set_layout_cache {nullptr};
 		PipelineLayoutCache *pipeline_layout_cache {nullptr};

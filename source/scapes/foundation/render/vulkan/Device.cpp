@@ -1302,6 +1302,10 @@ namespace scapes::foundation::render::vulkan
 
 		RayTracePipeline *vk_ray_trace_pipeline = reinterpret_cast<RayTracePipeline *>(pipeline);
 
+		vmaDestroyBuffer(context->getVRAMAllocator(), vk_ray_trace_pipeline->sbt_buffer, vk_ray_trace_pipeline->sbt_memory);
+		vk_ray_trace_pipeline->sbt_buffer = VK_NULL_HANDLE;
+		vk_ray_trace_pipeline->sbt_memory = VK_NULL_HANDLE;
+
 		delete vk_ray_trace_pipeline;
 		vk_ray_trace_pipeline = nullptr;
 	}
@@ -1508,10 +1512,12 @@ namespace scapes::foundation::render::vulkan
 		VkWriteDescriptorSet writes[BindSet::MAX_BINDINGS];
 		VkDescriptorImageInfo image_infos[BindSet::MAX_BINDINGS];
 		VkDescriptorBufferInfo buffer_infos[BindSet::MAX_BINDINGS];
+		VkWriteDescriptorSetAccelerationStructureKHR acceleration_structure_infos[BindSet::MAX_BINDINGS];
 
 		uint32_t write_size = 0;
 		uint32_t image_size = 0;
 		uint32_t buffer_size = 0;
+		uint32_t acceleration_structure_size = 0;
 
 		VkDescriptorSetLayout new_layout = descriptor_set_layout_cache->fetch(vk_bind_set);
 		helpers::updateBindSetLayout(context, vk_bind_set, new_layout);
@@ -1557,6 +1563,17 @@ namespace scapes::foundation::render::vulkan
 					write_set.pBufferInfo = &buffer_infos[buffer_size - 1];
 				}
 				break;
+				case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+				{
+					VkWriteDescriptorSetAccelerationStructureKHR info = {};
+					info.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+					info.accelerationStructureCount = 1;
+					info.pAccelerationStructures = &data.tlas.acceleration_structure;
+
+					acceleration_structure_infos[acceleration_structure_size++] = info;
+					write_set.pNext = &acceleration_structure_infos[acceleration_structure_size - 1];
+				}
+				break;
 				default:
 				{
 					assert(false && "Unsupported descriptor type");
@@ -1596,6 +1613,92 @@ namespace scapes::foundation::render::vulkan
 			vk_graphics_pipeline->pipeline = pipeline_cache->fetch(vk_graphics_pipeline->pipeline_layout, vk_graphics_pipeline);
 	}
 
+	void Device::flush(render::RayTracePipeline raytrace_pipeline)
+	{
+		if (raytrace_pipeline == SCAPES_NULL_HANDLE)
+			return;
+
+		RayTracePipeline *vk_raytrace_pipeline = reinterpret_cast<RayTracePipeline *>(raytrace_pipeline);
+
+		for (uint32_t i = 0; i < vk_raytrace_pipeline->num_bind_sets; ++i)
+			flush(reinterpret_cast<render::BindSet>(vk_raytrace_pipeline->bind_sets[i]));
+
+		if (vk_raytrace_pipeline->pipeline_layout == VK_NULL_HANDLE)
+		{
+			vk_raytrace_pipeline->pipeline_layout = pipeline_layout_cache->fetch(vk_raytrace_pipeline);
+			vk_raytrace_pipeline->pipeline = VK_NULL_HANDLE;
+		}
+
+		if (vk_raytrace_pipeline->pipeline == VK_NULL_HANDLE)
+		{
+			vmaDestroyBuffer(context->getVRAMAllocator(), vk_raytrace_pipeline->sbt_buffer, vk_raytrace_pipeline->sbt_memory);
+			vk_raytrace_pipeline->sbt_memory = VK_NULL_HANDLE;
+			vk_raytrace_pipeline->sbt_buffer = VK_NULL_HANDLE;
+
+			vk_raytrace_pipeline->pipeline = pipeline_cache->fetch(vk_raytrace_pipeline->pipeline_layout, vk_raytrace_pipeline);
+		}
+
+		if (vk_raytrace_pipeline->sbt_memory == VK_NULL_HANDLE)
+		{
+			const uint32_t num_groups = vk_raytrace_pipeline->num_raygen_shaders + vk_raytrace_pipeline->num_miss_shaders + vk_raytrace_pipeline->num_hitgroup_shaders;
+			const uint32_t sbt_handle_size_aligned = context->getSBTHandleSizeAligned();
+
+			const uint32_t sbt_src_raygen_size = vk_raytrace_pipeline->num_raygen_shaders * sbt_handle_size_aligned;
+			const uint32_t sbt_dst_raygen_size = context->getSBTBaseSizeAligned(sbt_src_raygen_size);
+
+			const uint32_t sbt_src_miss_size = vk_raytrace_pipeline->num_miss_shaders * sbt_handle_size_aligned;
+			const uint32_t sbt_dst_miss_size = context->getSBTBaseSizeAligned(sbt_src_miss_size);
+
+			const uint32_t sbt_src_hitgroup_size = vk_raytrace_pipeline->num_hitgroup_shaders * sbt_handle_size_aligned;
+			const uint32_t sbt_dst_hitgroup_size = context->getSBTBaseSizeAligned(sbt_src_hitgroup_size);
+
+			const uint32_t sbt_size = sbt_dst_raygen_size + sbt_dst_miss_size + sbt_dst_hitgroup_size;
+
+			// Create buffer
+			Utils::createBuffer(
+				context,
+				sbt_size,
+				VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+				VMA_MEMORY_USAGE_CPU_TO_GPU,
+				vk_raytrace_pipeline->sbt_buffer,
+				vk_raytrace_pipeline->sbt_memory
+			);
+
+			uint8_t *shader_handle_storage = new uint8_t[sbt_size];
+			if (vkGetRayTracingShaderGroupHandlesKHR(context->getDevice(), vk_raytrace_pipeline->pipeline, 0, num_groups, sbt_size, shader_handle_storage) != VK_SUCCESS)
+			{
+				// TODO: log error "Can't get shader group handles"
+			}
+
+			void *sbt_data = nullptr;
+			if (vmaMapMemory(context->getVRAMAllocator(), vk_raytrace_pipeline->sbt_memory, &sbt_data) != VK_SUCCESS)
+			{
+				// TODO: log error "Can't map SBT buffer"
+			}
+
+			uint8_t *dst_raygen_begin = reinterpret_cast<uint8_t *>(sbt_data);
+			uint8_t *dst_miss_begin = dst_raygen_begin + sbt_dst_raygen_size;
+			uint8_t *dst_hitgroup_begin = dst_miss_begin + sbt_dst_miss_size;
+
+			uint8_t *src_raygen_begin = shader_handle_storage;
+			uint8_t *src_miss_begin = src_raygen_begin + sbt_src_raygen_size;
+			uint8_t *src_hitgroup_begin = src_miss_begin + sbt_src_miss_size;
+
+			memcpy(dst_raygen_begin, src_raygen_begin, vk_raytrace_pipeline->num_raygen_shaders * sbt_handle_size_aligned);
+			memcpy(dst_miss_begin, shader_handle_storage, vk_raytrace_pipeline->num_miss_shaders * sbt_handle_size_aligned);
+			memcpy(dst_hitgroup_begin, shader_handle_storage, vk_raytrace_pipeline->num_hitgroup_shaders * sbt_handle_size_aligned);
+
+			vmaUnmapMemory(context->getVRAMAllocator(), vk_raytrace_pipeline->sbt_memory);
+
+			VkDeviceAddress sbt_begin = Utils::getBufferDeviceAddress(context, vk_raytrace_pipeline->sbt_buffer);
+			vk_raytrace_pipeline->sbt_raygen_begin = sbt_begin;
+			vk_raytrace_pipeline->sbt_miss_begin = sbt_begin + sbt_dst_raygen_size;
+			vk_raytrace_pipeline->sbt_hitgroup_begin = sbt_begin + sbt_dst_raygen_size + sbt_dst_miss_size;
+
+			delete[] shader_handle_storage;
+		}
+	}
+
 	/*
 	 */
 	bool Device::acquire(render::SwapChain swap_chain, uint32_t *new_image)
@@ -1613,11 +1716,14 @@ namespace scapes::foundation::render::vulkan
 		VkResult result = vkAcquireNextImageKHR(
 			context->getDevice(),
 			vk_swap_chain->swap_chain,
-			std::numeric_limits<uint64_t>::max(),
+			WAIT_NANOSECONDS,
 			sync,
 			VK_NULL_HANDLE,
 			&vk_swap_chain->current_image
 		);
+
+		if (result == VK_TIMEOUT)
+			return false;
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR)
 			return false;
@@ -1699,7 +1805,7 @@ namespace scapes::foundation::render::vulkan
 			wait_fences[i] = vk_wait_command_buffer->rendering_finished_cpu;
 		}
 
-		VkResult result = vkWaitForFences(context->getDevice(), num_wait_command_buffers, wait_fences.data(), VK_TRUE, UINT64_MAX);
+		VkResult result = vkWaitForFences(context->getDevice(), num_wait_command_buffers, wait_fences.data(), VK_TRUE, WAIT_NANOSECONDS);
 
 		return result == VK_SUCCESS;
 	}
@@ -1807,6 +1913,202 @@ namespace scapes::foundation::render::vulkan
 		info.descriptorCount = 1;
 		info.stageFlags = VK_SHADER_STAGE_ALL; // TODO: allow for different shader stages
 		info.pImmutableSamplers = nullptr;
+	}
+
+	void Device::bindTopLevelAccelerationStructure(
+		render::BindSet bind_set,
+		uint32_t binding,
+		render::TopLevelAccelerationStructure tlas
+	)
+	{
+		assert(binding < BindSet::MAX_BINDINGS);
+
+		if (bind_set == SCAPES_NULL_HANDLE)
+			return;
+
+		BindSet *vk_bind_set = reinterpret_cast<BindSet *>(bind_set);
+		AccelerationStructure *vk_tlas = reinterpret_cast<AccelerationStructure *>(tlas);
+
+		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
+		BindSet::Data &data = vk_bind_set->binding_data[binding];
+
+		VkAccelerationStructureKHR acceleration_structure = VK_NULL_HANDLE;
+
+		if (vk_tlas)
+		{
+			acceleration_structure = vk_tlas->acceleration_structure;
+		}
+
+		bool tlas_changed = (data.tlas.acceleration_structure != acceleration_structure);
+		bool type_changed = (info.descriptorType != VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+
+		vk_bind_set->binding_used[binding] = (vk_tlas != nullptr);
+		vk_bind_set->binding_dirty[binding] = type_changed || tlas_changed;
+
+		data.tlas.acceleration_structure = acceleration_structure;
+
+		info.binding = binding;
+		info.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+		info.descriptorCount = 1;
+		info.stageFlags = VK_SHADER_STAGE_ALL; // TODO: allow for different shader stages
+		info.pImmutableSamplers = nullptr;
+	}
+
+	/*
+	 */
+	// raytrace pipeline state
+	void Device::clearBindSets(
+		render::RayTracePipeline raytrace_pipeline
+	)
+	{
+		if (raytrace_pipeline == SCAPES_NULL_HANDLE)
+			return;
+
+		RayTracePipeline *vk_raytrace_pipeline = reinterpret_cast<RayTracePipeline *>(raytrace_pipeline);
+
+		for (uint32_t i = 0; i < RayTracePipeline::MAX_BIND_SETS; ++i)
+			vk_raytrace_pipeline->bind_sets[i] = nullptr;
+
+		vk_raytrace_pipeline->num_bind_sets = 0;
+
+		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
+		vk_raytrace_pipeline->pipeline_layout = VK_NULL_HANDLE;
+	}
+
+	void Device::setBindSet(render::RayTracePipeline raytrace_pipeline, uint8_t binding, render::BindSet bind_set)
+	{
+		assert(binding < RayTracePipeline::MAX_BIND_SETS);
+
+		if (raytrace_pipeline == SCAPES_NULL_HANDLE)
+			return;
+
+		RayTracePipeline *vk_raytrace_pipeline = reinterpret_cast<RayTracePipeline *>(raytrace_pipeline);
+		BindSet *vk_bind_set = reinterpret_cast<BindSet *>(bind_set);
+
+		vk_raytrace_pipeline->bind_sets[binding] = vk_bind_set;
+		vk_raytrace_pipeline->num_bind_sets = std::max<uint32_t>(vk_raytrace_pipeline->num_bind_sets, binding + 1);
+
+		// TODO: better invalidation (there might be case where we only need to invalidate pipeline but keep pipeline layout)
+		vk_raytrace_pipeline->pipeline_layout = VK_NULL_HANDLE;
+	}
+
+	void Device::clearRaygenShaders(render::RayTracePipeline raytrace_pipeline)
+	{
+		if (raytrace_pipeline == SCAPES_NULL_HANDLE)
+			return;
+
+		RayTracePipeline *vk_raytrace_pipeline = reinterpret_cast<RayTracePipeline *>(raytrace_pipeline);
+
+		for (uint32_t i = 0; i < RayTracePipeline::MAX_RAYGEN_SHADERS; ++i)
+			vk_raytrace_pipeline->raygen_shaders[i] = VK_NULL_HANDLE;
+
+		vk_raytrace_pipeline->num_raygen_shaders = 0;
+		vk_raytrace_pipeline->pipeline = VK_NULL_HANDLE;
+	}
+
+	void Device::addRaygenShader(render::RayTracePipeline raytrace_pipeline, render::Shader shader)
+	{
+		if (raytrace_pipeline == SCAPES_NULL_HANDLE)
+			return;
+
+		if (shader == SCAPES_NULL_HANDLE)
+			return;
+
+		RayTracePipeline *vk_raytrace_pipeline = reinterpret_cast<RayTracePipeline *>(raytrace_pipeline);
+		assert(vk_raytrace_pipeline->num_raygen_shaders <= RayTracePipeline::MAX_RAYGEN_SHADERS);
+
+		Shader *vk_shader = reinterpret_cast<Shader *>(shader);
+		assert(vk_shader->type == render::ShaderType::RAY_GENERATION);
+
+		vk_raytrace_pipeline->raygen_shaders[vk_raytrace_pipeline->num_raygen_shaders] = vk_shader->module;
+		vk_raytrace_pipeline->num_raygen_shaders++;
+		vk_raytrace_pipeline->pipeline = VK_NULL_HANDLE;
+	}
+
+	void Device::clearHitGroupShaders(render::RayTracePipeline raytrace_pipeline)
+	{
+		if (raytrace_pipeline == SCAPES_NULL_HANDLE)
+			return;
+
+		RayTracePipeline *vk_raytrace_pipeline = reinterpret_cast<RayTracePipeline *>(raytrace_pipeline);
+
+		for (uint32_t i = 0; i < RayTracePipeline::MAX_HITGROUP_SHADERS; ++i)
+		{
+			vk_raytrace_pipeline->intersection_shaders[i] = VK_NULL_HANDLE;
+			vk_raytrace_pipeline->anyhit_shaders[i] = VK_NULL_HANDLE;
+			vk_raytrace_pipeline->closesthit_shaders[i] = VK_NULL_HANDLE;
+		}
+
+		vk_raytrace_pipeline->num_hitgroup_shaders = 0;
+		vk_raytrace_pipeline->pipeline = VK_NULL_HANDLE;
+	}
+
+	void Device::addHitGroupShader(
+		render::RayTracePipeline raytrace_pipeline,
+		render::Shader intersection_shader,
+		render::Shader anyhit_shader,
+		render::Shader closesthit_shader
+	)
+	{
+		if (raytrace_pipeline == SCAPES_NULL_HANDLE)
+			return;
+
+		if (intersection_shader == SCAPES_NULL_HANDLE && anyhit_shader == SCAPES_NULL_HANDLE && closesthit_shader == SCAPES_NULL_HANDLE)
+			return;
+
+		RayTracePipeline *vk_raytrace_pipeline = reinterpret_cast<RayTracePipeline *>(raytrace_pipeline);
+		assert(vk_raytrace_pipeline->num_hitgroup_shaders <= RayTracePipeline::MAX_HITGROUP_SHADERS);
+
+		Shader *vk_intersection_shader = reinterpret_cast<Shader *>(intersection_shader);
+		Shader *vk_anyhit_shader = reinterpret_cast<Shader *>(anyhit_shader);
+		Shader *vk_closesthit_shader = reinterpret_cast<Shader *>(closesthit_shader);
+
+		assert(vk_intersection_shader == nullptr || vk_intersection_shader->type == render::ShaderType::INTERSECTION);
+		assert(vk_anyhit_shader == nullptr || vk_anyhit_shader->type == render::ShaderType::ANY_HIT);
+		assert(vk_closesthit_shader == nullptr || vk_closesthit_shader->type == render::ShaderType::CLOSEST_HIT);
+
+		VkShaderModule intersection_module = (vk_intersection_shader) ? vk_intersection_shader->module : VK_NULL_HANDLE;
+		VkShaderModule anyhit_module = (vk_anyhit_shader) ? vk_anyhit_shader->module : VK_NULL_HANDLE;
+		VkShaderModule closesthit_module = (vk_closesthit_shader) ? vk_closesthit_shader->module : VK_NULL_HANDLE;
+
+		vk_raytrace_pipeline->intersection_shaders[vk_raytrace_pipeline->num_hitgroup_shaders] = intersection_module;
+		vk_raytrace_pipeline->anyhit_shaders[vk_raytrace_pipeline->num_hitgroup_shaders] = anyhit_module;
+		vk_raytrace_pipeline->closesthit_shaders[vk_raytrace_pipeline->num_hitgroup_shaders] = closesthit_module;
+		vk_raytrace_pipeline->num_hitgroup_shaders++;
+		vk_raytrace_pipeline->pipeline = VK_NULL_HANDLE;
+	}
+
+	void Device::clearMissShaders(render::RayTracePipeline raytrace_pipeline)
+	{
+		if (raytrace_pipeline == SCAPES_NULL_HANDLE)
+			return;
+
+		RayTracePipeline *vk_raytrace_pipeline = reinterpret_cast<RayTracePipeline *>(raytrace_pipeline);
+
+		for (uint32_t i = 0; i < RayTracePipeline::MAX_MISS_SHADERS; ++i)
+			vk_raytrace_pipeline->miss_shaders[i] = VK_NULL_HANDLE;
+
+		vk_raytrace_pipeline->num_miss_shaders = 0;
+		vk_raytrace_pipeline->pipeline = VK_NULL_HANDLE;
+	}
+
+	void Device::addMissShader(render::RayTracePipeline raytrace_pipeline, render::Shader shader)
+	{
+		if (raytrace_pipeline == SCAPES_NULL_HANDLE)
+			return;
+
+		if (shader == SCAPES_NULL_HANDLE)
+			return;
+
+		RayTracePipeline *vk_raytrace_pipeline = reinterpret_cast<RayTracePipeline *>(raytrace_pipeline);
+		assert(vk_raytrace_pipeline->num_miss_shaders <= RayTracePipeline::MAX_MISS_SHADERS);
+
+		Shader *vk_shader = reinterpret_cast<Shader *>(shader);
+		assert(vk_shader->type == render::ShaderType::MISS);
+
+		vk_raytrace_pipeline->miss_shaders[vk_raytrace_pipeline->num_miss_shaders] = vk_shader->module;
+		vk_raytrace_pipeline->num_miss_shaders++;
+		vk_raytrace_pipeline->pipeline = VK_NULL_HANDLE;
 	}
 
 	/*
@@ -2352,12 +2654,74 @@ namespace scapes::foundation::render::vulkan
 
 	void Device::traceRays(
 		render::CommandBuffer command_buffer,
-		render::RayTracePipeline pipeline,
+		render::RayTracePipeline raytrace_pipeline,
 		uint32_t width,
 		uint32_t height,
-		uint32_t depth
+		uint32_t depth,
+		uint32_t raygen_shader_index
 	)
 	{
+		SCAPES_PROFILER();
 
+		if (command_buffer == SCAPES_NULL_HANDLE)
+			return;
+
+		CommandBuffer *vk_command_buffer = reinterpret_cast<CommandBuffer *>(command_buffer);
+		RayTracePipeline *vk_raytrace_pipeline = reinterpret_cast<RayTracePipeline *>(raytrace_pipeline);
+
+		flush(raytrace_pipeline);
+
+		VkPipeline pipeline = vk_raytrace_pipeline->pipeline;
+		VkPipelineLayout pipeline_layout = vk_raytrace_pipeline->pipeline_layout;
+
+		uint32_t sbt_handle_size = context->getSBTHandleSizeAligned();
+
+		VkStridedDeviceAddressRegionKHR raygen_sbt_buffer_entry{};
+		raygen_sbt_buffer_entry.deviceAddress = vk_raytrace_pipeline->sbt_raygen_begin + raygen_shader_index * sbt_handle_size;
+		raygen_sbt_buffer_entry.stride = sbt_handle_size;
+		raygen_sbt_buffer_entry.size = sbt_handle_size;
+
+		VkStridedDeviceAddressRegionKHR miss_sbt_buffer_entry{};
+		miss_sbt_buffer_entry.deviceAddress = vk_raytrace_pipeline->sbt_miss_begin;
+		miss_sbt_buffer_entry.stride = sbt_handle_size;
+		miss_sbt_buffer_entry.size = sbt_handle_size;
+
+		VkStridedDeviceAddressRegionKHR hitgroup_sbt_buffer_entry{};
+		hitgroup_sbt_buffer_entry.deviceAddress = vk_raytrace_pipeline->sbt_hitgroup_begin;
+		hitgroup_sbt_buffer_entry.stride = sbt_handle_size;
+		hitgroup_sbt_buffer_entry.size = sbt_handle_size;
+
+		VkStridedDeviceAddressRegionKHR callable_sbt_buffer_entry{};
+
+		vkCmdBindPipeline(vk_command_buffer->command_buffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, pipeline);
+
+		if (vk_raytrace_pipeline->num_bind_sets > 0)
+		{
+			VkDescriptorSet sets[GraphicsPipeline::MAX_BIND_SETS];
+			for (uint32_t i = 0; i < vk_raytrace_pipeline->num_bind_sets; ++i)
+				sets[i] = vk_raytrace_pipeline->bind_sets[i]->set;
+
+			vkCmdBindDescriptorSets(
+				vk_command_buffer->command_buffer,
+				VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+				pipeline_layout,
+				0,
+				vk_raytrace_pipeline->num_bind_sets,
+				sets,
+				0,
+				nullptr
+			);
+		}
+
+		vkCmdTraceRaysKHR(
+			vk_command_buffer->command_buffer,
+			&raygen_sbt_buffer_entry,
+			&miss_sbt_buffer_entry,
+			&hitgroup_sbt_buffer_entry,
+			&callable_sbt_buffer_entry,
+			width,
+			height,
+			depth
+		);
 	}
 }

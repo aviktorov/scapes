@@ -25,6 +25,23 @@ namespace scapes::foundation::render::vulkan
 		SCAPES_INLINE bool hasRayTracing() const { return has_ray_tracing; }
 		SCAPES_INLINE bool hasRayQuery() const { return has_ray_query; }
 
+		SCAPES_INLINE uint32_t getSBTHandleAlignment() const { return ray_tracing_properties.shaderGroupHandleAlignment; }
+		SCAPES_INLINE uint32_t getSBTHandleSize() const { return ray_tracing_properties.shaderGroupHandleSize; }
+		SCAPES_INLINE uint32_t getSBTHandleSizeAligned() const
+		{
+			const uint32_t size = ray_tracing_properties.shaderGroupHandleSize;
+			const uint32_t mask = ray_tracing_properties.shaderGroupHandleAlignment - 1;
+
+			return (size + mask) & ~mask;
+		}
+
+		SCAPES_INLINE uint32_t getSBTBaseSizeAligned(uint32_t size) const
+		{
+			const uint32_t mask = ray_tracing_properties.shaderGroupBaseAlignment - 1;
+
+			return (size + mask) & ~mask;
+		}
+
 	public:
 		void init(const char *application_name, const char *engine_name);
 		void shutdown();
@@ -43,6 +60,8 @@ namespace scapes::foundation::render::vulkan
 		bool has_acceleration_structure {false};
 		bool has_ray_tracing {false};
 		bool has_ray_query {false};
+
+		VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_properties;
 
 		VkInstance instance {VK_NULL_HANDLE};
 

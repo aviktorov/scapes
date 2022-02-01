@@ -573,6 +573,22 @@ namespace scapes::foundation::render::vulkan
 		return VK_SAMPLE_COUNT_1_BIT;
 	}
 
+	VkPhysicalDeviceRayTracingPipelinePropertiesKHR Utils::getRayTracingPipelineProperties(
+		VkPhysicalDevice physicalDevice
+	)
+	{
+		VkPhysicalDeviceRayTracingPipelinePropertiesKHR raytracing_properties = {};
+		raytracing_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+
+		VkPhysicalDeviceProperties2 properties;
+		properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		properties.pNext = &raytracing_properties;
+
+		vkGetPhysicalDeviceProperties2(physicalDevice, &properties);
+
+		return raytracing_properties;
+	}
+
 	/*
 	 */
 	VkFormat Utils::selectOptimalImageFormat(

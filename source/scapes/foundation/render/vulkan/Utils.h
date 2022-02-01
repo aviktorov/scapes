@@ -109,6 +109,10 @@ namespace scapes::foundation::render::vulkan
 			VkPhysicalDevice physicalDevice
 		);
 
+		static VkPhysicalDeviceRayTracingPipelinePropertiesKHR getRayTracingPipelineProperties(
+			VkPhysicalDevice physicalDevice
+		);
+
 		static VkFormat selectOptimalImageFormat(
 			VkPhysicalDevice physicalDevice,
 			const std::vector<VkFormat> &candidates,

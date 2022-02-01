@@ -17,6 +17,23 @@ namespace scapes::foundation::render::vulkan
 		clear();
 	}
 
+	VkPipelineLayout PipelineLayoutCache::fetch(const RayTracePipeline *raytrace_pipeline)
+	{
+		uint8_t push_constants_size = 0;
+		uint8_t num_bind_sets = raytrace_pipeline->num_bind_sets;
+
+		VkDescriptorSetLayout layouts[RayTracePipeline::MAX_BIND_SETS];
+		for (uint8_t i = 0; i < num_bind_sets; ++i)
+		{
+			BindSet *bind_set = raytrace_pipeline->bind_sets[i];
+			assert(bind_set);
+
+			layouts[i] = bind_set->set_layout;
+		}
+
+		return fetch(num_bind_sets, layouts, push_constants_size);
+	}
+
 	VkPipelineLayout PipelineLayoutCache::fetch(const GraphicsPipeline *graphics_pipeline)
 	{
 		uint8_t push_constants_size = graphics_pipeline->push_constants_size;
@@ -31,7 +48,20 @@ namespace scapes::foundation::render::vulkan
 			layouts[i] = bind_set->set_layout;
 		}
 
-		uint64_t hash = getHash(num_bind_sets, layouts, push_constants_size);
+		return fetch(num_bind_sets, layouts, push_constants_size);
+	}
+
+	void PipelineLayoutCache::clear()
+	{
+		for (auto it = cache.begin(); it != cache.end(); ++it)
+			vkDestroyPipelineLayout(context->getDevice(), it->second, nullptr);
+
+		cache.clear();
+	}
+
+	VkPipelineLayout PipelineLayoutCache::fetch(uint8_t num_layouts, const VkDescriptorSetLayout *layouts, uint8_t push_constants_size)
+	{
+		uint64_t hash = getHash(num_layouts, layouts, push_constants_size);
 
 		auto it = cache.find(hash);
 		if (it != cache.end())
@@ -39,7 +69,7 @@ namespace scapes::foundation::render::vulkan
 
 		PipelineLayoutBuilder builder;
 
-		for (uint8_t i = 0; i < num_bind_sets; ++i)
+		for (uint8_t i = 0; i < num_layouts; ++i)
 			builder.addDescriptorSetLayout(layouts[i]);
 
 		if (push_constants_size > 0)
@@ -49,14 +79,6 @@ namespace scapes::foundation::render::vulkan
 
 		cache[hash] = result;
 		return result;
-	}
-
-	void PipelineLayoutCache::clear()
-	{
-		for (auto it = cache.begin(); it != cache.end(); ++it)
-			vkDestroyPipelineLayout(context->getDevice(), it->second, nullptr);
-
-		cache.clear();
 	}
 
 	uint64_t PipelineLayoutCache::getHash(uint8_t num_layouts, const VkDescriptorSetLayout *layouts, uint8_t push_constants_size) const
