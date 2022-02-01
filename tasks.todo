@@ -73,9 +73,12 @@ PBR Sandbox:
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
             ☐ Think about having ResourceWatcher<T>
+    Stream 87:
+        ☐ Add support for storage images
+        ☐ Troubleshoot raytracing command
     Stream 86:
-        ☐ Create raytracing pipeline abstraction
-        ☐ Try to compile raygen/anyhit/closesthit/miss shaders
+        ✔ Create raytracing pipeline abstraction @done (2/1/2022, 11:49:29 PM)
+        ✔ Try to compile raygen/anyhit/closesthit/miss shaders @done (2/2/2022, 3:33:14 AM)
     Stream 85:
         ✔ Add necessary raytracing extentions to Vulkan backend @done (1/16/2022, 8:02:43 PM)
         ✔ Create acceleration structure abstraction @done (1/17/2022, 1:55:01 AM)
