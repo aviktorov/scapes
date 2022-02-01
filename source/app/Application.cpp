@@ -25,6 +25,75 @@
 
 using namespace scapes;
 
+/* TODO: remove later
+ */
+foundation::render::BottomLevelAccelerationStructure blas = SCAPES_NULL_HANDLE;
+foundation::render::TopLevelAccelerationStructure tlas = SCAPES_NULL_HANDLE;
+foundation::render::BindSet bindings = SCAPES_NULL_HANDLE;
+foundation::render::RayTracePipeline pipeline = SCAPES_NULL_HANDLE;
+
+static void initRaytracing(foundation::render::Device *device, visual::API *visual_api, visual::RenderGraph *render_graph)
+{
+	visual::ShaderHandle rgen = visual_api->loadShader("shaders/test/test.rgen", foundation::render::ShaderType::RAY_GENERATION);
+	visual::ShaderHandle miss = visual_api->loadShader("shaders/test/test.miss", foundation::render::ShaderType::MISS);
+	visual::ShaderHandle closest_hit = visual_api->loadShader("shaders/test/test.chit", foundation::render::ShaderType::CLOSEST_HIT);
+
+	foundation::math::vec3 vertices[] =
+	{
+		{ 1.0f,  1.0f, 0.0f },
+		{-1.0f,  1.0f, 0.0f },
+		{ 0.0f, -1.0f, 0.0f }
+	};
+
+	foundation::math::mat4 transform = foundation::math::mat4(1.0f);
+
+	uint32_t indices[] = { 0, 1, 2 };
+
+	foundation::render::AccelerationStructureGeometry geometry = {};
+	geometry.num_vertices = 3;
+	geometry.vertex_format = foundation::render::Format::R32G32B32_SFLOAT;
+	geometry.vertices = vertices;
+	geometry.index_format = foundation::render::IndexFormat::UINT32;
+	geometry.num_indices = 3;
+	geometry.indices = indices;
+	memcpy(geometry.transform, &transform, sizeof(float) * 16);
+
+	blas = device->createBottomLevelAccelerationStructure(1, &geometry);
+
+	foundation::render::AccelerationStructureInstance instance = {};
+	instance.blas = blas;
+	memcpy(instance.transform, &transform, sizeof(float) * 16);
+
+	tlas = device->createTopLevelAccelerationStructure(1, &instance);
+
+	bindings = device->createBindSet();
+	device->bindTopLevelAccelerationStructure(bindings, 0, tlas);
+
+	pipeline = device->createRayTracePipeline();
+	device->setBindSet(pipeline, 0, bindings);
+	device->setBindSet(pipeline, 1, render_graph->getGroupBindings("Camera"));
+	device->addRaygenShader(pipeline, rgen->shader);
+	device->addMissShader(pipeline, miss->shader);
+	device->addHitGroupShader(pipeline, SCAPES_NULL_HANDLE, SCAPES_NULL_HANDLE, closest_hit->shader);
+
+	device->flush(pipeline);
+}
+
+static void shutdownRaytracing(foundation::render::Device *device)
+{
+	device->destroyTopLevelAccelerationStructure(tlas);
+	tlas = SCAPES_NULL_HANDLE;
+
+	device->destroyBottomLevelAccelerationStructure(blas);
+	blas = SCAPES_NULL_HANDLE;
+
+	device->destroyRayTracePipeline(pipeline);
+	pipeline = SCAPES_NULL_HANDLE;
+
+	device->destroyBindSet(bindings);
+	bindings = SCAPES_NULL_HANDLE;
+}
+
 /*
  */
 void Application::run()
@@ -35,7 +104,9 @@ void Application::run()
 	initSwapChain();
 	initRenderScene();
 	initRenderers();
+	initRaytracing(device, visual_api, render_graph);
 	mainloop();
+	shutdownRaytracing(device);
 	shutdownRenderers();
 	shutdownRenderScene();
 	shutdownSwapChain();
@@ -241,18 +312,15 @@ void Application::render()
 	foundation::render::CommandBuffer command_buffer = swap_chain->acquire();
 
 	if (!command_buffer)
-	{
-		recreateSwapChain();
 		return;
-	}
 
 	device->resetCommandBuffer(command_buffer);
 	device->beginCommandBuffer(command_buffer);
-
 	render_graph->render(command_buffer);
 
-	device->endCommandBuffer(command_buffer);
+	// device->traceRays(command_buffer, pipeline, 64, 64, 1);
 
+	device->endCommandBuffer(command_buffer);
 	device->submitSyncked(command_buffer, swap_chain->getBackend());
 
 	if (!swap_chain->present(command_buffer) || window_resized)
