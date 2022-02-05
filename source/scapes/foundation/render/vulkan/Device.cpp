@@ -896,7 +896,7 @@ namespace scapes::foundation::render::vulkan
 
 			VkDeviceSize vertex_buffer_size = Utils::getVertexSize(geometry.vertex_format) * geometry.num_vertices;
 			VkDeviceSize index_buffer_size = Utils::getIndexSize(geometry.index_format) * geometry.num_indices;
-			VkDeviceSize transform_buffer_size = sizeof(float) * 16;
+			VkDeviceSize transform_buffer_size = sizeof(VkTransformMatrixKHR);
 
 			VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 			VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
@@ -932,12 +932,13 @@ namespace scapes::foundation::render::vulkan
 			num_allocations++;
 
 			// create transform buffer
+			VkTransformMatrixKHR transform = Utils::getTransformMatrix(geometry.transform);
 			VkDeviceOrHostAddressConstKHR transform_buffer_address = {};
 			VkBuffer transform_buffer = VK_NULL_HANDLE;
 			VmaAllocation transform_buffer_memory = VK_NULL_HANDLE;
 
 			Utils::createBuffer(context, transform_buffer_size, usage_flags, memory_usage, transform_buffer, transform_buffer_memory);
-			Utils::fillHostVisibleBuffer(context, transform_buffer_memory, transform_buffer_size, geometry.transform);
+			Utils::fillHostVisibleBuffer(context, transform_buffer_memory, transform_buffer_size, &transform);
 
 			allocated_buffers[num_allocations] = transform_buffer;
 			allocated_vram[num_allocations] = transform_buffer_memory;
@@ -970,6 +971,9 @@ namespace scapes::foundation::render::vulkan
 
 		if (!Utils::createAccelerationStructure(context, type, build_flags, num_geometries, vk_geometries, max_primitives, result))
 		{
+			for (size_t i = 0; i < num_allocations; ++i)
+				vmaDestroyBuffer(context->getVRAMAllocator(), allocated_buffers[i], allocated_vram[i]);
+
 			destroyBottomLevelAccelerationStructure(reinterpret_cast<render::BottomLevelAccelerationStructure>(result));
 			return SCAPES_NULL_HANDLE;
 		}
@@ -1005,7 +1009,7 @@ namespace scapes::foundation::render::vulkan
 			vk_instance.mask = 0xFF;
 			vk_instance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
 			vk_instance.accelerationStructureReference = blas->device_address;
-			// TODO: copy transform matrix
+			vk_instance.transform = Utils::getTransformMatrix(instance.transform);
 
 			VkDeviceSize instance_size = sizeof(VkAccelerationStructureInstanceKHR);
 			VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
@@ -1632,6 +1636,7 @@ namespace scapes::foundation::render::vulkan
 		if (vk_raytrace_pipeline->pipeline == VK_NULL_HANDLE)
 		{
 			vmaDestroyBuffer(context->getVRAMAllocator(), vk_raytrace_pipeline->sbt_buffer, vk_raytrace_pipeline->sbt_memory);
+
 			vk_raytrace_pipeline->sbt_memory = VK_NULL_HANDLE;
 			vk_raytrace_pipeline->sbt_buffer = VK_NULL_HANDLE;
 
@@ -2697,7 +2702,7 @@ namespace scapes::foundation::render::vulkan
 
 		if (vk_raytrace_pipeline->num_bind_sets > 0)
 		{
-			VkDescriptorSet sets[GraphicsPipeline::MAX_BIND_SETS];
+			VkDescriptorSet sets[RayTracePipeline::MAX_BIND_SETS];
 			for (uint32_t i = 0; i < vk_raytrace_pipeline->num_bind_sets; ++i)
 				sets[i] = vk_raytrace_pipeline->bind_sets[i]->set;
 

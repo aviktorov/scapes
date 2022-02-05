@@ -13,6 +13,10 @@ namespace scapes::foundation::render::vulkan
 	class Utils
 	{
 	public:
+		static VkTransformMatrixKHR getTransformMatrix(
+			const float col_major_matrix[16]
+		);
+
 		static VkSamplerAddressMode getSamplerAddressMode(
 			SamplerWrapMode mode
 		);

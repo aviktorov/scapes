@@ -9,6 +9,30 @@ namespace scapes::foundation::render::vulkan
 {
 	/*
 	 */
+	VkTransformMatrixKHR Utils::getTransformMatrix(
+		const float col_major_matrix[16]
+	)
+	{
+		VkTransformMatrixKHR result = {};
+
+		result.matrix[0][0] = col_major_matrix[0];
+		result.matrix[0][1] = col_major_matrix[4];
+		result.matrix[0][2] = col_major_matrix[8];
+		result.matrix[0][3] = col_major_matrix[12];
+		result.matrix[1][0] = col_major_matrix[1];
+		result.matrix[1][1] = col_major_matrix[5];
+		result.matrix[1][2] = col_major_matrix[9];
+		result.matrix[1][3] = col_major_matrix[13];
+		result.matrix[2][0] = col_major_matrix[2];
+		result.matrix[2][1] = col_major_matrix[6];
+		result.matrix[2][2] = col_major_matrix[10];
+		result.matrix[2][3] = col_major_matrix[14];
+
+		return result;
+	}
+
+	/*
+	 */
 	VkSamplerAddressMode Utils::getSamplerAddressMode(
 		SamplerWrapMode mode
 	)

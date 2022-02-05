@@ -54,6 +54,7 @@ namespace scapes::foundation::render::vulkan
 		{
 			MAX_COMBINED_IMAGE_SAMPLERS = 32,
 			MAX_UNIFORM_BUFFERS = 32,
+			MAX_ACCELERATION_STRUCTURES = 32,
 			MAX_DESCRIPTOR_SETS = 512,
 		};
 

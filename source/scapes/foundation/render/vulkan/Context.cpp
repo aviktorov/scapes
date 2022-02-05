@@ -221,8 +221,12 @@ namespace scapes::foundation::render::vulkan
 
 		device_features.pNext = &buffer_device_address_info;
 		buffer_device_address_info.pNext = &acceleration_structure_info;
-		acceleration_structure_info.pNext = &raytracing_pipeline_info;
-		raytracing_pipeline_info.pNext = &rayquery_info;
+
+		if (has_ray_tracing)
+			acceleration_structure_info.pNext = &raytracing_pipeline_info;
+
+		if (has_ray_query)
+			raytracing_pipeline_info.pNext = &rayquery_info;
 
 		// next two parameters are ignored, but it's still good to pass layers for backward compatibility
 #if SCAPES_VULKAN_USE_VALIDATION_LAYERS
@@ -251,11 +255,13 @@ namespace scapes::foundation::render::vulkan
 			throw std::runtime_error("Can't create command pool");
 
 		// Create descriptor pools
-		std::array<VkDescriptorPoolSize, 2> descriptor_pool_sizes = {};
+		std::array<VkDescriptorPoolSize, 3> descriptor_pool_sizes = {};
 		descriptor_pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptor_pool_sizes[0].descriptorCount = MAX_UNIFORM_BUFFERS;
 		descriptor_pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		descriptor_pool_sizes[1].descriptorCount = MAX_COMBINED_IMAGE_SAMPLERS;
+		descriptor_pool_sizes[2].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+		descriptor_pool_sizes[2].descriptorCount = MAX_ACCELERATION_STRUCTURES;
 
 		VkDescriptorPoolCreateInfo descriptor_pool_info = {};
 		descriptor_pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
