@@ -3,6 +3,8 @@
 
 // Bindings
 layout(set = 0, binding = 0) uniform accelerationStructureEXT tlas;
+layout(set = 0, binding = 1, rgba8) uniform image2D image;
+
 layout(set = 1, binding = 0) uniform Camera
 {
 	mat4 view;
@@ -23,22 +25,30 @@ void main()
 	const float tmin = 0.001f;
 	const float tmax = 10000.0f;
 
+	// uv
 	const vec2 center = vec2(gl_LaunchIDEXT.xy) + vec2(0.5f);
 	const vec2 uv = center / vec2(gl_LaunchSizeEXT.xy);
 
+	// gen
 	vec2 d = uv * 2.0f - vec2(1.0f);
 
-	payload_color = vec3(0.0f);
+	vec4 origin_ws = camera.iview * vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	origin_ws.xyz /= origin_ws.w;
 
-	vec3 origin_ws = vec3(camera.iview * vec4(0.0f, 0.0f, 0.0f, 1.0f));
-	vec3 target_ws = vec3(camera.iview * camera.iprojection * vec4(d.x, d.y, 1.0f, 1.0f));
-	vec3 direction_ws = normalize(target_ws - origin_ws);
+	vec4 target_ws = camera.iview * camera.iprojection * vec4(d.x, d.y, 1.0f, 1.0f);
+	target_ws.xyz /= target_ws.w;
+
+	vec3 direction_ws = normalize(target_ws.xyz - origin_ws.xyz);
 
 	uint ray_type = 0;
 	uint num_ray_types = 0;
 	uint miss_index = 0;
 
-	traceRayEXT(tlas, gl_RayFlagsOpaqueEXT, 0xff, ray_type, num_ray_types, miss_index, origin_ws, tmin, direction_ws, tmax, 0);
+	// trace
+	payload_color = vec3(0.0f);
+
+	traceRayEXT(tlas, gl_RayFlagsOpaqueEXT, 0xff, ray_type, num_ray_types, miss_index, origin_ws.xyz, tmin, direction_ws, tmax, 0);
 
 	// store
+	imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(payload_color, 1.0));
 }

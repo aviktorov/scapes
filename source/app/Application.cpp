@@ -31,6 +31,8 @@ foundation::render::BottomLevelAccelerationStructure rt_blas = SCAPES_NULL_HANDL
 foundation::render::TopLevelAccelerationStructure rt_tlas = SCAPES_NULL_HANDLE;
 foundation::render::BindSet rt_bindings = SCAPES_NULL_HANDLE;
 foundation::render::RayTracePipeline rt_pipeline = SCAPES_NULL_HANDLE;
+foundation::render::StorageImage rt_image = SCAPES_NULL_HANDLE;
+uint32_t rt_size = 512;
 
 static void initRaytracing(foundation::render::Device *device, visual::API *visual_api, visual::RenderGraph *render_graph)
 {
@@ -66,8 +68,11 @@ static void initRaytracing(foundation::render::Device *device, visual::API *visu
 
 	rt_tlas = device->createTopLevelAccelerationStructure(1, &instance);
 
+	rt_image = device->createStorageImage(rt_size, rt_size, foundation::render::Format::R8G8B8A8_UNORM);
+
 	rt_bindings = device->createBindSet();
 	device->bindTopLevelAccelerationStructure(rt_bindings, 0, rt_tlas);
+	device->bindStorageImage(rt_bindings, 1, rt_image);
 
 	rt_pipeline = device->createRayTracePipeline();
 	device->setBindSet(rt_pipeline, 0, rt_bindings);
@@ -86,6 +91,9 @@ static void shutdownRaytracing(foundation::render::Device *device)
 
 	device->destroyBottomLevelAccelerationStructure(rt_blas);
 	rt_blas = SCAPES_NULL_HANDLE;
+
+	device->destroyStorageImage(rt_image);
+	rt_image = SCAPES_NULL_HANDLE;
 
 	device->destroyRayTracePipeline(rt_pipeline);
 	rt_pipeline = SCAPES_NULL_HANDLE;
@@ -262,6 +270,14 @@ void Application::update()
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
 
+	ImGui::Begin("RT");
+
+	ImTextureID rt_image_id = imgui_pass->fetchStorageImageID(rt_image);
+
+	ImGui::Image(rt_image_id, ImVec2(static_cast<float>(rt_size), static_cast<float>(rt_size)));
+
+	ImGui::End();
+
 	ImGui::Begin("GBuffer");
 
 	ImTextureID base_color_id = imgui_pass->fetchTextureID(render_graph->getRenderBufferTexture("GBufferBaseColor"));
@@ -318,7 +334,7 @@ void Application::render()
 	device->beginCommandBuffer(command_buffer);
 
 	render_graph->render(command_buffer);
-	device->traceRays(command_buffer, rt_pipeline, 64, 64, 1);
+	device->traceRays(command_buffer, rt_pipeline, rt_size, rt_size, 1);
 
 	device->endCommandBuffer(command_buffer);
 	device->submitSyncked(command_buffer, swap_chain->getBackend());
@@ -629,6 +645,7 @@ void Application::recreateSwapChain()
 	swap_chain->recreate();
 	render_graph->setSwapChain(swap_chain->getBackend());
 	imgui_pass->invalidateTextureIDs();
+	imgui_pass->invalidateStorageImageIDs();
 	render_graph->resize(width, height);
 	application_state.first_frame = true;
 }
