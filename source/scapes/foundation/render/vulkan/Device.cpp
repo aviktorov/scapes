@@ -608,6 +608,55 @@ namespace scapes::foundation::render::vulkan
 		return reinterpret_cast<render::Texture>(result);
 	}
 
+	render::StorageImage Device::createStorageImage(
+		uint32_t width,
+		uint32_t height,
+		Format format
+	)
+	{
+		assert(width != 0 && height != 0 && "Invalid texture size");
+
+		Texture *result = new Texture();
+		result->type = VK_IMAGE_TYPE_2D;
+		result->format = Utils::getFormat(format);
+		result->width = width;
+		result->height = height;
+		result->depth = 1;
+		result->num_mipmaps = 1;
+		result->num_layers = 1;
+		result->samples = VK_SAMPLE_COUNT_1_BIT;
+		result->tiling = VK_IMAGE_TILING_OPTIMAL;
+		result->flags = 0;
+		result->image_view_cache = new ImageViewCache(context);
+		result->sampler = Utils::createSampler(context, 0, result->num_mipmaps);
+
+		VkImageUsageFlags usage_flags = Utils::getImageUsageFlags(result->format) | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+
+		Utils::createImage(
+			context,
+			result->type,
+			result->width, result->height, result->depth,
+			result->num_mipmaps, result->num_layers,
+			result->samples, result->format, result->tiling,
+			VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | usage_flags,
+			result->flags,
+			result->image,
+			result->memory
+		);
+
+		Utils::transitionImageLayout(
+			context,
+			result->image,
+			result->format,
+			VK_IMAGE_LAYOUT_UNDEFINED,
+			VK_IMAGE_LAYOUT_GENERAL,
+			0, result->num_mipmaps,
+			0, result->num_layers
+		);
+
+		return reinterpret_cast<render::StorageImage>(result);
+	}
+
 	render::FrameBuffer Device::createFrameBuffer(
 		uint32_t num_attachments,
 		const FrameBufferAttachment *attachments
@@ -1179,6 +1228,29 @@ namespace scapes::foundation::render::vulkan
 		vk_texture = nullptr;
 	}
 
+	void Device::destroyStorageImage(render::StorageImage image)
+	{
+		if (image == SCAPES_NULL_HANDLE)
+			return;
+
+		Texture *vk_image = reinterpret_cast<Texture *>(image);
+
+		vmaDestroyImage(context->getVRAMAllocator(), vk_image->image, vk_image->memory);
+
+		vk_image->image = VK_NULL_HANDLE;
+		vk_image->memory = VK_NULL_HANDLE;
+		vk_image->format = VK_FORMAT_UNDEFINED;
+
+		vkDestroySampler(context->getDevice(), vk_image->sampler, nullptr);
+		vk_image->sampler = VK_NULL_HANDLE;
+
+		delete vk_image->image_view_cache;
+		vk_image->image_view_cache = nullptr;
+
+		delete vk_image;
+		vk_image = nullptr;
+	}
+
 	void Device::destroyFrameBuffer(render::FrameBuffer frame_buffer)
 	{
 		if (frame_buffer == SCAPES_NULL_HANDLE)
@@ -1562,9 +1634,10 @@ namespace scapes::foundation::render::vulkan
 			switch (descriptor_type)
 			{
 				case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 				{
 					VkDescriptorImageInfo info = {};
-					info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					info.imageLayout = data.texture.layout;
 					info.imageView = data.texture.view;
 					info.sampler = data.texture.sampler;
 
@@ -1921,6 +1994,49 @@ namespace scapes::foundation::render::vulkan
 	void Device::bindTexture(
 		render::BindSet bind_set,
 		uint32_t binding,
+		render::StorageImage image
+	)
+	{
+		assert(binding < BindSet::MAX_BINDINGS);
+
+		if (bind_set == SCAPES_NULL_HANDLE)
+			return;
+
+		BindSet *vk_bind_set = reinterpret_cast<BindSet *>(bind_set);
+		Texture *vk_image = reinterpret_cast<Texture *>(image);
+
+		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
+		BindSet::Data &data = vk_bind_set->binding_data[binding];
+
+		VkImageView view = VK_NULL_HANDLE;
+		VkSampler sampler = VK_NULL_HANDLE;
+
+		if (vk_image)
+		{
+			view = vk_image->image_view_cache->fetch(vk_image);
+			sampler = vk_image->sampler;
+		}
+
+		bool texture_changed = (data.texture.view != view) || (data.texture.sampler != sampler);
+		bool type_changed = (info.descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+		vk_bind_set->binding_used[binding] = (vk_image != nullptr);
+		vk_bind_set->binding_dirty[binding] = type_changed || texture_changed;
+
+		data.texture.view = view;
+		data.texture.sampler = sampler;
+		data.texture.layout = VK_IMAGE_LAYOUT_GENERAL;
+
+		info.binding = binding;
+		info.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		info.descriptorCount = 1;
+		info.stageFlags = VK_SHADER_STAGE_ALL; // TODO: allow for different shader stages
+		info.pImmutableSamplers = nullptr;
+	}
+
+	void Device::bindTexture(
+		render::BindSet bind_set,
+		uint32_t binding,
 		render::Texture texture,
 		uint32_t base_mip,
 		uint32_t num_mipmaps,
@@ -1956,6 +2072,7 @@ namespace scapes::foundation::render::vulkan
 
 		data.texture.view = view;
 		data.texture.sampler = sampler;
+		data.texture.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 		info.binding = binding;
 		info.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1998,6 +2115,45 @@ namespace scapes::foundation::render::vulkan
 
 		info.binding = binding;
 		info.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+		info.descriptorCount = 1;
+		info.stageFlags = VK_SHADER_STAGE_ALL; // TODO: allow for different shader stages
+		info.pImmutableSamplers = nullptr;
+	}
+
+	void Device::bindStorageImage(
+		render::BindSet bind_set,
+		uint32_t binding,
+		render::StorageImage image
+	)
+	{
+		assert(binding < BindSet::MAX_BINDINGS);
+
+		if (bind_set == SCAPES_NULL_HANDLE)
+			return;
+
+		BindSet *vk_bind_set = reinterpret_cast<BindSet *>(bind_set);
+		Texture *vk_image = reinterpret_cast<Texture *>(image);
+
+		VkDescriptorSetLayoutBinding &info = vk_bind_set->bindings[binding];
+		BindSet::Data &data = vk_bind_set->binding_data[binding];
+
+		VkImageView view = VK_NULL_HANDLE;
+
+		if (vk_image)
+			view = vk_image->image_view_cache->fetch(vk_image);
+
+		bool texture_changed = (data.texture.view != view);
+		bool type_changed = (info.descriptorType != VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+
+		vk_bind_set->binding_used[binding] = (vk_image != nullptr);
+		vk_bind_set->binding_dirty[binding] = type_changed || texture_changed;
+
+		data.texture.view = view;
+		data.texture.sampler = VK_NULL_HANDLE;
+		data.texture.layout = VK_IMAGE_LAYOUT_GENERAL;
+
+		info.binding = binding;
+		info.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 		info.descriptorCount = 1;
 		info.stageFlags = VK_SHADER_STAGE_ALL; // TODO: allow for different shader stages
 		info.pImmutableSamplers = nullptr;

@@ -135,6 +135,7 @@ namespace scapes::foundation::render::vulkan
 		{
 			struct Texture
 			{
+				VkImageLayout layout;
 				VkImageView view;
 				VkSampler sampler;
 			} texture;
@@ -365,6 +366,12 @@ namespace scapes::foundation::render::vulkan
 			uint32_t num_data_mipmaps = 1
 		) final;
 
+		render::StorageImage createStorageImage(
+			uint32_t width,
+			uint32_t height,
+			Format format
+		) final;
+
 		render::FrameBuffer createFrameBuffer(
 			uint32_t num_attachments,
 			const FrameBufferAttachment *attachments
@@ -434,6 +441,7 @@ namespace scapes::foundation::render::vulkan
 		void destroyVertexBuffer(render::VertexBuffer vertex_buffer) final;
 		void destroyIndexBuffer(render::IndexBuffer index_buffer) final;
 		void destroyTexture(render::Texture texture) final;
+		void destroyStorageImage(render::StorageImage image) final;
 		void destroyFrameBuffer(render::FrameBuffer frame_buffer) final;
 		void destroyRenderPass(render::RenderPass render_pass) final;
 		void destroyCommandBuffer(render::CommandBuffer command_buffer) final;
@@ -505,6 +513,12 @@ namespace scapes::foundation::render::vulkan
 		void bindTexture(
 			render::BindSet bind_set,
 			uint32_t binding,
+			render::StorageImage image
+		) final;
+
+		void bindTexture(
+			render::BindSet bind_set,
+			uint32_t binding,
 			render::Texture texture,
 			uint32_t base_mip,
 			uint32_t num_mips,
@@ -516,6 +530,12 @@ namespace scapes::foundation::render::vulkan
 			render::BindSet bind_set,
 			uint32_t binding,
 			render::TopLevelAccelerationStructure tlas
+		) final;
+
+		void bindStorageImage(
+			render::BindSet bind_set,
+			uint32_t binding,
+			render::StorageImage image
 		) final;
 
 	public:
