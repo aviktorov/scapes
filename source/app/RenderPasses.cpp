@@ -1085,12 +1085,36 @@ ImTextureID RenderPassImGui::fetchTextureID(foundation::render::Texture texture)
 	return reinterpret_cast<ImTextureID>(bind_set);
 }
 
+ImTextureID RenderPassImGui::fetchStorageImageID(foundation::render::StorageImage image)
+{
+	auto it = registered_images.find(image);
+	if (it != registered_images.end())
+		return it->second;
+
+	foundation::render::BindSet bind_set = device->createBindSet();
+	device->bindTexture(bind_set, 0, image);
+
+	registered_images.insert(std::make_pair(image, bind_set));
+
+	return reinterpret_cast<ImTextureID>(bind_set);
+}
+
+/*
+ */
 void RenderPassImGui::invalidateTextureIDs()
 {
 	for (auto &it : registered_textures)
 		device->destroyBindSet(it.second);
 
 	registered_textures.clear();
+}
+
+void RenderPassImGui::invalidateStorageImageIDs()
+{
+	for (auto &it : registered_images)
+		device->destroyBindSet(it.second);
+
+	registered_images.clear();
 }
 
 /*

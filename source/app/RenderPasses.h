@@ -252,7 +252,10 @@ public:
 
 public:
 	ImTextureID fetchTextureID(scapes::foundation::render::Texture texture);
+	ImTextureID fetchStorageImageID(scapes::foundation::render::StorageImage image);
+
 	void invalidateTextureIDs();
+	void invalidateStorageImageIDs();
 
 	SCAPES_INLINE void setImGuiContext(ImGuiContext *c) { context = c; }
 	SCAPES_INLINE const ImGuiContext *getImGuiContext() const { return context; }
@@ -277,6 +280,7 @@ private:
 
 	scapes::foundation::render::BindSet font_bind_set {SCAPES_NULL_HANDLE};
 	std::map<scapes::foundation::render::Texture, scapes::foundation::render::BindSet> registered_textures;
+	std::map<scapes::foundation::render::StorageImage, scapes::foundation::render::BindSet> registered_images;
 };
 
 template <>
