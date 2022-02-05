@@ -27,16 +27,16 @@ using namespace scapes;
 
 /* TODO: remove later
  */
-foundation::render::BottomLevelAccelerationStructure blas = SCAPES_NULL_HANDLE;
-foundation::render::TopLevelAccelerationStructure tlas = SCAPES_NULL_HANDLE;
-foundation::render::BindSet bindings = SCAPES_NULL_HANDLE;
-foundation::render::RayTracePipeline pipeline = SCAPES_NULL_HANDLE;
+foundation::render::BottomLevelAccelerationStructure rt_blas = SCAPES_NULL_HANDLE;
+foundation::render::TopLevelAccelerationStructure rt_tlas = SCAPES_NULL_HANDLE;
+foundation::render::BindSet rt_bindings = SCAPES_NULL_HANDLE;
+foundation::render::RayTracePipeline rt_pipeline = SCAPES_NULL_HANDLE;
 
 static void initRaytracing(foundation::render::Device *device, visual::API *visual_api, visual::RenderGraph *render_graph)
 {
 	visual::ShaderHandle rgen = visual_api->loadShader("shaders/test/test.rgen", foundation::render::ShaderType::RAY_GENERATION);
-	visual::ShaderHandle miss = visual_api->loadShader("shaders/test/test.miss", foundation::render::ShaderType::MISS);
-	visual::ShaderHandle closest_hit = visual_api->loadShader("shaders/test/test.chit", foundation::render::ShaderType::CLOSEST_HIT);
+	visual::ShaderHandle miss = visual_api->loadShader("shaders/test/test.rmiss", foundation::render::ShaderType::MISS);
+	visual::ShaderHandle closest_hit = visual_api->loadShader("shaders/test/test.rchit", foundation::render::ShaderType::CLOSEST_HIT);
 
 	foundation::math::vec3 vertices[] =
 	{
@@ -58,40 +58,40 @@ static void initRaytracing(foundation::render::Device *device, visual::API *visu
 	geometry.indices = indices;
 	memcpy(geometry.transform, &transform, sizeof(float) * 16);
 
-	blas = device->createBottomLevelAccelerationStructure(1, &geometry);
+	rt_blas = device->createBottomLevelAccelerationStructure(1, &geometry);
 
 	foundation::render::AccelerationStructureInstance instance = {};
-	instance.blas = blas;
+	instance.blas = rt_blas;
 	memcpy(instance.transform, &transform, sizeof(float) * 16);
 
-	tlas = device->createTopLevelAccelerationStructure(1, &instance);
+	rt_tlas = device->createTopLevelAccelerationStructure(1, &instance);
 
-	bindings = device->createBindSet();
-	device->bindTopLevelAccelerationStructure(bindings, 0, tlas);
+	rt_bindings = device->createBindSet();
+	device->bindTopLevelAccelerationStructure(rt_bindings, 0, rt_tlas);
 
-	pipeline = device->createRayTracePipeline();
-	device->setBindSet(pipeline, 0, bindings);
-	device->setBindSet(pipeline, 1, render_graph->getGroupBindings("Camera"));
-	device->addRaygenShader(pipeline, rgen->shader);
-	device->addMissShader(pipeline, miss->shader);
-	device->addHitGroupShader(pipeline, SCAPES_NULL_HANDLE, SCAPES_NULL_HANDLE, closest_hit->shader);
+	rt_pipeline = device->createRayTracePipeline();
+	device->setBindSet(rt_pipeline, 0, rt_bindings);
+	device->setBindSet(rt_pipeline, 1, render_graph->getGroupBindings("Camera"));
+	device->addRaygenShader(rt_pipeline, rgen->shader);
+	device->addMissShader(rt_pipeline, miss->shader);
+	device->addHitGroupShader(rt_pipeline, SCAPES_NULL_HANDLE, SCAPES_NULL_HANDLE, closest_hit->shader);
 
-	device->flush(pipeline);
+	device->flush(rt_pipeline);
 }
 
 static void shutdownRaytracing(foundation::render::Device *device)
 {
-	device->destroyTopLevelAccelerationStructure(tlas);
-	tlas = SCAPES_NULL_HANDLE;
+	device->destroyTopLevelAccelerationStructure(rt_tlas);
+	rt_tlas = SCAPES_NULL_HANDLE;
 
-	device->destroyBottomLevelAccelerationStructure(blas);
-	blas = SCAPES_NULL_HANDLE;
+	device->destroyBottomLevelAccelerationStructure(rt_blas);
+	rt_blas = SCAPES_NULL_HANDLE;
 
-	device->destroyRayTracePipeline(pipeline);
-	pipeline = SCAPES_NULL_HANDLE;
+	device->destroyRayTracePipeline(rt_pipeline);
+	rt_pipeline = SCAPES_NULL_HANDLE;
 
-	device->destroyBindSet(bindings);
-	bindings = SCAPES_NULL_HANDLE;
+	device->destroyBindSet(rt_bindings);
+	rt_bindings = SCAPES_NULL_HANDLE;
 }
 
 /*
@@ -316,9 +316,9 @@ void Application::render()
 
 	device->resetCommandBuffer(command_buffer);
 	device->beginCommandBuffer(command_buffer);
-	render_graph->render(command_buffer);
 
-	// device->traceRays(command_buffer, pipeline, 64, 64, 1);
+	render_graph->render(command_buffer);
+	device->traceRays(command_buffer, rt_pipeline, 64, 64, 1);
 
 	device->endCommandBuffer(command_buffer);
 	device->submitSyncked(command_buffer, swap_chain->getBackend());
@@ -450,7 +450,7 @@ void Application::initRenderScene()
 	application_resources->init();
 
 	importer = new SceneImporter(world, visual_api);
-	importer->importCGLTF("assets/scenes/blender_splash/blender_splash.glb", application_resources);
+	importer->importCGLTF("assets/scenes/sphere.glb", application_resources);
 
 	sky_light = foundation::game::Entity(world);
 	sky_light.addComponent<visual::components::SkyLight>(

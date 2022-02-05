@@ -986,6 +986,7 @@ namespace scapes::foundation::render::vulkan
 		VkBuildAccelerationStructureFlagBitsKHR build_flags,
 		uint32_t num_geometries,
 		const VkAccelerationStructureGeometryKHR *geometries,
+		const VkAccelerationStructureBuildRangeInfoKHR *ranges,
 		AccelerationStructure *result
 	)
 	{
@@ -1007,13 +1008,7 @@ namespace scapes::foundation::render::vulkan
 		build_info.dstAccelerationStructure = result->acceleration_structure;
 		build_info.scratchData.deviceAddress = Utils::getBufferDeviceAddress(context, scratch_buffer);
 
-		VkAccelerationStructureBuildRangeInfoKHR build_range_info = {};
-		build_range_info.primitiveCount = 1;
-		build_range_info.primitiveOffset = 0;
-		build_range_info.firstVertex = 0;
-		build_range_info.transformOffset = 0;
-
-		VkAccelerationStructureBuildRangeInfoKHR *build_ranges[] = { &build_range_info };
+		const VkAccelerationStructureBuildRangeInfoKHR *build_ranges[] = { ranges };
 
 		VkCommandBuffer command_buffer = Utils::beginSingleTimeCommands(context);
 

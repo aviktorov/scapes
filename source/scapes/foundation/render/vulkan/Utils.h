@@ -225,6 +225,7 @@ namespace scapes::foundation::render::vulkan
 			VkBuildAccelerationStructureFlagBitsKHR build_flags,
 			uint32_t num_geometries,
 			const VkAccelerationStructureGeometryKHR *geometries,
+			const VkAccelerationStructureBuildRangeInfoKHR *ranges,
 			AccelerationStructure *result
 		);
 

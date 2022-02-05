@@ -886,6 +886,7 @@ namespace scapes::foundation::render::vulkan
 		VkBuffer allocated_buffers[AccelerationStructure::MAX_GEOMETRIES * 3];
 		VmaAllocation allocated_vram[AccelerationStructure::MAX_GEOMETRIES * 3];
 		VkAccelerationStructureGeometryKHR vk_geometries[AccelerationStructure::MAX_GEOMETRIES];
+		VkAccelerationStructureBuildRangeInfoKHR vk_ranges[AccelerationStructure::MAX_GEOMETRIES];
 		uint32_t max_primitives[AccelerationStructure::MAX_GEOMETRIES];
 
 		uint32_t num_allocations = 0;
@@ -951,7 +952,7 @@ namespace scapes::foundation::render::vulkan
 			vk_geometry = {};
 			vk_geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 			vk_geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-			vk_geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // TODO: different flags for transparent geometry
+			vk_geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // TODO: make it available to modify via API
 			vk_geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
 			vk_geometry.geometry.triangles.vertexFormat = Utils::getFormat(geometry.vertex_format);
 			vk_geometry.geometry.triangles.vertexData = vertex_buffer_address;
@@ -961,7 +962,14 @@ namespace scapes::foundation::render::vulkan
 			vk_geometry.geometry.triangles.indexData = index_buffer_address;
 			vk_geometry.geometry.triangles.transformData = transform_buffer_address;
 
-			max_primitives[i] = geometry.num_vertices / 3;
+			VkAccelerationStructureBuildRangeInfoKHR &vk_range = vk_ranges[i];
+			vk_range = {};
+			vk_range.primitiveCount = geometry.num_indices / 3;
+			vk_range.primitiveOffset = 0;
+			vk_range.firstVertex = 0;
+			vk_range.transformOffset = 0;
+
+			max_primitives[i] = geometry.num_indices / 3;
 		}
 
 		AccelerationStructure *result = new AccelerationStructure();
@@ -978,7 +986,7 @@ namespace scapes::foundation::render::vulkan
 			return SCAPES_NULL_HANDLE;
 		}
 
-		Utils::buildAccelerationStructure(context, type, build_flags, num_geometries, vk_geometries, result);
+		Utils::buildAccelerationStructure(context, type, build_flags, num_geometries, vk_geometries, vk_ranges, result);
 
 		for (size_t i = 0; i < num_allocations; ++i)
 			vmaDestroyBuffer(context->getVRAMAllocator(), allocated_buffers[i], allocated_vram[i]);
@@ -996,6 +1004,7 @@ namespace scapes::foundation::render::vulkan
 		std::vector<VkBuffer> allocated_buffers;
 		std::vector<VmaAllocation> allocated_vram;
 		std::vector<VkAccelerationStructureGeometryKHR> vk_geometries;
+		std::vector<VkAccelerationStructureBuildRangeInfoKHR> vk_ranges;
 		std::vector<uint32_t> max_primitives;
 
 		for (uint32_t i = 0; i < num_instances; ++i)
@@ -1004,8 +1013,8 @@ namespace scapes::foundation::render::vulkan
 			const AccelerationStructure *blas = reinterpret_cast<const AccelerationStructure *>(instance.blas);
 
 			VkAccelerationStructureInstanceKHR vk_instance = {};
-			vk_instance.instanceCustomIndex = 0;
-			vk_instance.instanceShaderBindingTableRecordOffset = 0;
+			vk_instance.instanceCustomIndex = 0; // TODO: make it available to modify via API
+			vk_instance.instanceShaderBindingTableRecordOffset = 0; // TODO: make it available to modify via API
 			vk_instance.mask = 0xFF;
 			vk_instance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
 			vk_instance.accelerationStructureReference = blas->device_address;
@@ -1031,11 +1040,18 @@ namespace scapes::foundation::render::vulkan
 			VkAccelerationStructureGeometryKHR vk_geometry = {};
 			vk_geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 			vk_geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-			vk_geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // TODO: different flags for transparent geometry
+			vk_geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // TODO: make it available to modify via API
 			vk_geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
 			vk_geometry.geometry.instances.arrayOfPointers = VK_FALSE;
 			vk_geometry.geometry.instances.data = instance_buffer_address;
 
+			VkAccelerationStructureBuildRangeInfoKHR vk_range = {};
+			vk_range.primitiveCount = 1;
+			vk_range.primitiveOffset = 0;
+			vk_range.firstVertex = 0;
+			vk_range.transformOffset = 0;
+
+			vk_ranges.push_back(vk_range);
 			vk_geometries.push_back(vk_geometry);
 			max_primitives.push_back(1);
 		}
@@ -1051,7 +1067,7 @@ namespace scapes::foundation::render::vulkan
 			return SCAPES_NULL_HANDLE;
 		}
 
-		Utils::buildAccelerationStructure(context, type, build_flags, num_instances, vk_geometries.data(), result);
+		Utils::buildAccelerationStructure(context, type, build_flags, num_instances, vk_geometries.data(), vk_ranges.data(), result);
 
 		for (size_t i = 0; i < allocated_vram.size(); ++i)
 			vmaDestroyBuffer(context->getVRAMAllocator(), allocated_buffers[i], allocated_vram[i]);
@@ -1647,22 +1663,24 @@ namespace scapes::foundation::render::vulkan
 		{
 			const uint32_t num_groups = vk_raytrace_pipeline->num_raygen_shaders + vk_raytrace_pipeline->num_miss_shaders + vk_raytrace_pipeline->num_hitgroup_shaders;
 			const uint32_t sbt_handle_size_aligned = context->getSBTHandleSizeAligned();
+			const uint32_t sbt_handle_size = context->getSBTHandleSize();
 
-			const uint32_t sbt_src_raygen_size = vk_raytrace_pipeline->num_raygen_shaders * sbt_handle_size_aligned;
-			const uint32_t sbt_dst_raygen_size = context->getSBTBaseSizeAligned(sbt_src_raygen_size);
+			const uint32_t sbt_src_raygen_size = vk_raytrace_pipeline->num_raygen_shaders * sbt_handle_size;
+			const uint32_t sbt_dst_raygen_size = context->getSBTBaseSizeAligned(vk_raytrace_pipeline->num_raygen_shaders * sbt_handle_size_aligned);
 
-			const uint32_t sbt_src_miss_size = vk_raytrace_pipeline->num_miss_shaders * sbt_handle_size_aligned;
-			const uint32_t sbt_dst_miss_size = context->getSBTBaseSizeAligned(sbt_src_miss_size);
+			const uint32_t sbt_src_miss_size = vk_raytrace_pipeline->num_miss_shaders * sbt_handle_size;
+			const uint32_t sbt_dst_miss_size = context->getSBTBaseSizeAligned(vk_raytrace_pipeline->num_miss_shaders * sbt_handle_size_aligned);
 
-			const uint32_t sbt_src_hitgroup_size = vk_raytrace_pipeline->num_hitgroup_shaders * sbt_handle_size_aligned;
-			const uint32_t sbt_dst_hitgroup_size = context->getSBTBaseSizeAligned(sbt_src_hitgroup_size);
+			const uint32_t sbt_src_hitgroup_size = vk_raytrace_pipeline->num_hitgroup_shaders * sbt_handle_size;
+			const uint32_t sbt_dst_hitgroup_size = context->getSBTBaseSizeAligned(vk_raytrace_pipeline->num_hitgroup_shaders * sbt_handle_size_aligned);
 
-			const uint32_t sbt_size = sbt_dst_raygen_size + sbt_dst_miss_size + sbt_dst_hitgroup_size;
+			const uint32_t sbt_aligned_size = sbt_dst_raygen_size + sbt_dst_miss_size + sbt_dst_hitgroup_size;
+			const uint32_t sbt_size = sbt_src_raygen_size + sbt_src_miss_size + sbt_src_hitgroup_size;
 
 			// Create buffer
 			Utils::createBuffer(
 				context,
-				sbt_size,
+				sbt_aligned_size,
 				VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
 				VMA_MEMORY_USAGE_CPU_TO_GPU,
 				vk_raytrace_pipeline->sbt_buffer,
@@ -1689,9 +1707,35 @@ namespace scapes::foundation::render::vulkan
 			uint8_t *src_miss_begin = src_raygen_begin + sbt_src_raygen_size;
 			uint8_t *src_hitgroup_begin = src_miss_begin + sbt_src_miss_size;
 
-			memcpy(dst_raygen_begin, src_raygen_begin, vk_raytrace_pipeline->num_raygen_shaders * sbt_handle_size_aligned);
-			memcpy(dst_miss_begin, shader_handle_storage, vk_raytrace_pipeline->num_miss_shaders * sbt_handle_size_aligned);
-			memcpy(dst_hitgroup_begin, shader_handle_storage, vk_raytrace_pipeline->num_hitgroup_shaders * sbt_handle_size_aligned);
+			uint8_t *dst = dst_raygen_begin;
+			uint8_t *src = src_raygen_begin;
+
+			for (uint8_t i = 0; i < vk_raytrace_pipeline->num_raygen_shaders; ++i)
+			{
+				memcpy(dst, src, sbt_handle_size);
+				dst += sbt_handle_size_aligned;
+				src += sbt_handle_size;
+			}
+
+			dst = dst_miss_begin;
+			src = src_miss_begin;
+
+			for (uint8_t i = 0; i < vk_raytrace_pipeline->num_miss_shaders; ++i)
+			{
+				memcpy(dst, src, sbt_handle_size);
+				dst += sbt_handle_size_aligned;
+				src += sbt_handle_size;
+			}
+
+			dst = dst_hitgroup_begin;
+			src = src_hitgroup_begin;
+
+			for (uint8_t i = 0; i < vk_raytrace_pipeline->num_hitgroup_shaders; ++i)
+			{
+				memcpy(dst, src, sbt_handle_size);
+				dst += sbt_handle_size_aligned;
+				src += sbt_handle_size;
+			}
 
 			vmaUnmapMemory(context->getVRAMAllocator(), vk_raytrace_pipeline->sbt_memory);
 
