@@ -74,12 +74,13 @@ PBR Sandbox:
             ☐ Add naive FileWatcher for resource auto reloading
             ☐ Think about having ResourceWatcher<T>
     Stream 88:
-        ☐ Try to get rid of StorageImage opaque struct
         ☐ Improve BLAS / TLAS creation
             ☐ Add support for opaque / transparent flags
             ☐ Add support for instance indices
             ☐ Upload all TLAS instance info to a single buffer and then use it
             ☐ Use existing VB / IB from meshes instead of raw CPU data
+    Offscreen 3:
+        ✔ Try to get rid of StorageImage opaque struct @done (3/22/2022, 12:52:14 AM)
     Stream 87:
         ✔ Add support for storage images @done (2/6/2022, 1:12:14 AM)
         ✔ Troubleshoot raytracing command @done (2/5/2022, 11:52:20 PM)
