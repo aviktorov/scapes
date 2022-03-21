@@ -257,7 +257,6 @@ namespace scapes::foundation::render
 	typedef struct VertexBuffer_t *VertexBuffer;
 	typedef struct IndexBuffer_t *IndexBuffer;
 	typedef struct Texture_t *Texture;
-	typedef struct StorageImage_t *StorageImage;
 	typedef struct FrameBuffer_t *FrameBuffer;
 	typedef struct RenderPass_t *RenderPass;
 	typedef struct CommandBuffer_t *CommandBuffer;
@@ -413,7 +412,7 @@ namespace scapes::foundation::render
 			uint32_t num_data_mipmaps = 1
 		) = 0;
 
-		virtual StorageImage createStorageImage(
+		virtual Texture createTextureStorage(
 			uint32_t width,
 			uint32_t height,
 			Format format
@@ -488,7 +487,6 @@ namespace scapes::foundation::render
 		virtual void destroyVertexBuffer(VertexBuffer vertex_buffer) = 0;
 		virtual void destroyIndexBuffer(IndexBuffer index_buffer) = 0;
 		virtual void destroyTexture(Texture texture) = 0;
-		virtual void destroyStorageImage(StorageImage image) = 0;
 		virtual void destroyFrameBuffer(FrameBuffer frame_buffer) = 0;
 		virtual void destroyRenderPass(RenderPass render_pass) = 0;
 		virtual void destroyCommandBuffer(CommandBuffer command_buffer) = 0;
@@ -559,12 +557,6 @@ namespace scapes::foundation::render
 		virtual void bindTexture(
 			BindSet bind_set,
 			uint32_t binding,
-			StorageImage image
-		) = 0;
-
-		virtual void bindTexture(
-			BindSet bind_set,
-			uint32_t binding,
 			Texture texture,
 			uint32_t base_mip,
 			uint32_t num_mips,
@@ -581,7 +573,7 @@ namespace scapes::foundation::render
 		virtual void bindStorageImage(
 			BindSet bind_set,
 			uint32_t binding,
-			StorageImage image
+			Texture texture
 		) = 0;
 
 	public:

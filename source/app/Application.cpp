@@ -31,7 +31,7 @@ foundation::render::BottomLevelAccelerationStructure rt_blas = SCAPES_NULL_HANDL
 foundation::render::TopLevelAccelerationStructure rt_tlas = SCAPES_NULL_HANDLE;
 foundation::render::BindSet rt_bindings = SCAPES_NULL_HANDLE;
 foundation::render::RayTracePipeline rt_pipeline = SCAPES_NULL_HANDLE;
-foundation::render::StorageImage rt_image = SCAPES_NULL_HANDLE;
+foundation::render::Texture rt_image = SCAPES_NULL_HANDLE;
 uint32_t rt_size = 512;
 
 static void initRaytracing(foundation::render::Device *device, visual::API *visual_api, visual::RenderGraph *render_graph)
@@ -68,7 +68,7 @@ static void initRaytracing(foundation::render::Device *device, visual::API *visu
 
 	rt_tlas = device->createTopLevelAccelerationStructure(1, &instance);
 
-	rt_image = device->createStorageImage(rt_size, rt_size, foundation::render::Format::R8G8B8A8_UNORM);
+	rt_image = device->createTextureStorage(rt_size, rt_size, foundation::render::Format::R8G8B8A8_UNORM);
 
 	rt_bindings = device->createBindSet();
 	device->bindTopLevelAccelerationStructure(rt_bindings, 0, rt_tlas);
@@ -92,7 +92,7 @@ static void shutdownRaytracing(foundation::render::Device *device)
 	device->destroyBottomLevelAccelerationStructure(rt_blas);
 	rt_blas = SCAPES_NULL_HANDLE;
 
-	device->destroyStorageImage(rt_image);
+	device->destroyTexture(rt_image);
 	rt_image = SCAPES_NULL_HANDLE;
 
 	device->destroyRayTracePipeline(rt_pipeline);
@@ -272,7 +272,7 @@ void Application::update()
 
 	ImGui::Begin("RT");
 
-	ImTextureID rt_image_id = imgui_pass->fetchStorageImageID(rt_image);
+	ImTextureID rt_image_id = imgui_pass->fetchTextureID(rt_image);
 
 	ImGui::Image(rt_image_id, ImVec2(static_cast<float>(rt_size), static_cast<float>(rt_size)));
 
@@ -645,7 +645,6 @@ void Application::recreateSwapChain()
 	swap_chain->recreate();
 	render_graph->setSwapChain(swap_chain->getBackend());
 	imgui_pass->invalidateTextureIDs();
-	imgui_pass->invalidateStorageImageIDs();
 	render_graph->resize(width, height);
 	application_state.first_frame = true;
 }

@@ -54,6 +54,7 @@ namespace scapes::foundation::render::vulkan
 		VkImageTiling tiling {VK_IMAGE_TILING_OPTIMAL};
 		VkSampleCountFlagBits samples {VK_SAMPLE_COUNT_1_BIT};
 		VkImageCreateFlags flags {0};
+		VkImageLayout layout {VK_IMAGE_LAYOUT_UNDEFINED};
 		ImageViewCache *image_view_cache {nullptr};
 	};
 
@@ -366,7 +367,7 @@ namespace scapes::foundation::render::vulkan
 			uint32_t num_data_mipmaps = 1
 		) final;
 
-		render::StorageImage createStorageImage(
+		render::Texture createTextureStorage(
 			uint32_t width,
 			uint32_t height,
 			Format format
@@ -441,7 +442,6 @@ namespace scapes::foundation::render::vulkan
 		void destroyVertexBuffer(render::VertexBuffer vertex_buffer) final;
 		void destroyIndexBuffer(render::IndexBuffer index_buffer) final;
 		void destroyTexture(render::Texture texture) final;
-		void destroyStorageImage(render::StorageImage image) final;
 		void destroyFrameBuffer(render::FrameBuffer frame_buffer) final;
 		void destroyRenderPass(render::RenderPass render_pass) final;
 		void destroyCommandBuffer(render::CommandBuffer command_buffer) final;
@@ -513,12 +513,6 @@ namespace scapes::foundation::render::vulkan
 		void bindTexture(
 			render::BindSet bind_set,
 			uint32_t binding,
-			render::StorageImage image
-		) final;
-
-		void bindTexture(
-			render::BindSet bind_set,
-			uint32_t binding,
 			render::Texture texture,
 			uint32_t base_mip,
 			uint32_t num_mips,
@@ -535,7 +529,7 @@ namespace scapes::foundation::render::vulkan
 		void bindStorageImage(
 			render::BindSet bind_set,
 			uint32_t binding,
-			render::StorageImage image
+			render::Texture texture
 		) final;
 
 	public:
