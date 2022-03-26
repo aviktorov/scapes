@@ -957,60 +957,54 @@ namespace scapes::foundation::render::vulkan
 			}
 		}
 
-		VkBuffer allocated_buffers[AccelerationStructure::MAX_GEOMETRIES];
-		VmaAllocation allocated_vram[AccelerationStructure::MAX_GEOMETRIES];
+		// create transform buffer
+		VkBuffer transform_buffer = VK_NULL_HANDLE;
+		VmaAllocation transform_vram = VK_NULL_HANDLE;
+		VkDeviceOrHostAddressConstKHR transform_buffer_base_address = {};
+		VkDeviceSize transform_buffer_size = sizeof(VkTransformMatrixKHR) * num_geometries;
+
+		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+		VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+		VkTransformMatrixKHR transforms[AccelerationStructure::MAX_GEOMETRIES];
+		
+		for (uint32_t i = 0; i < num_geometries; ++i)
+			transforms[i] = Utils::getTransformMatrix(geometries[i].transform);
+
+		Utils::createBuffer(context, transform_buffer_size, usage_flags, memory_usage, transform_buffer, transform_vram);
+		Utils::fillHostVisibleBuffer(context, transform_vram, transform_buffer_size, transforms);
+
+		transform_buffer_base_address.deviceAddress = Utils::getBufferDeviceAddress(context, transform_buffer);
+
+		// fill data
 		VkAccelerationStructureGeometryKHR vk_geometries[AccelerationStructure::MAX_GEOMETRIES];
 		VkAccelerationStructureBuildRangeInfoKHR vk_ranges[AccelerationStructure::MAX_GEOMETRIES];
 		uint32_t max_primitives[AccelerationStructure::MAX_GEOMETRIES];
-
-		uint32_t num_allocations = 0;
 
 		for (uint32_t i = 0; i < num_geometries; ++i)
 		{
 			const AccelerationStructureGeometry &geometry = geometries[i];
 
-			// get vertex buffer
-			VkDeviceOrHostAddressConstKHR vertex_buffer_address = {};
 			const VertexBuffer *vertex_buffer = reinterpret_cast<const VertexBuffer *>(geometry.vertex_buffer);
-			vertex_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, vertex_buffer->buffer);
-
-			// get index buffer
-			VkDeviceOrHostAddressConstKHR index_buffer_address = {};
 			const IndexBuffer *index_buffer = reinterpret_cast<const IndexBuffer *>(geometry.index_buffer);
-			index_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, index_buffer->buffer);
-
-			// create transform buffer
-			VkDeviceSize transform_buffer_size = sizeof(VkTransformMatrixKHR);
-
-			VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-			VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-
-			VkTransformMatrixKHR transform = Utils::getTransformMatrix(geometry.transform);
-			VkDeviceOrHostAddressConstKHR transform_buffer_address = {};
-			VkBuffer transform_buffer = VK_NULL_HANDLE;
-			VmaAllocation transform_buffer_memory = VK_NULL_HANDLE;
-
-			Utils::createBuffer(context, transform_buffer_size, usage_flags, memory_usage, transform_buffer, transform_buffer_memory);
-			Utils::fillHostVisibleBuffer(context, transform_buffer_memory, transform_buffer_size, &transform);
-
-			allocated_buffers[num_allocations] = transform_buffer;
-			allocated_vram[num_allocations] = transform_buffer_memory;
-
-			transform_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, transform_buffer);
-
-			num_allocations++;
 
 			VkFormat attribute_format = vertex_buffer->attribute_formats[geometry.position_attribute_index];
 			uint32_t attribute_offset = vertex_buffer->attribute_offsets[geometry.position_attribute_index];
 
-			vertex_buffer_address.deviceAddress += attribute_offset;
+			VkDeviceOrHostAddressConstKHR vertex_buffer_address = {};
+			vertex_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, vertex_buffer->buffer) + attribute_offset;
 
-			// fill data
+			VkDeviceOrHostAddressConstKHR index_buffer_address = {};
+			index_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, index_buffer->buffer);
+
+			VkDeviceOrHostAddressConstKHR transform_buffer_address = transform_buffer_base_address;
+			transform_buffer_address.deviceAddress += sizeof(VkTransformMatrixKHR) * i;
+
 			VkAccelerationStructureGeometryKHR &vk_geometry = vk_geometries[i];
 			vk_geometry = {};
 			vk_geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 			vk_geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-			vk_geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // TODO: make it available to modify via API
+			vk_geometry.flags = VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
 			vk_geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
 			vk_geometry.geometry.triangles.vertexFormat = attribute_format;
 			vk_geometry.geometry.triangles.vertexData = vertex_buffer_address;
@@ -1037,8 +1031,7 @@ namespace scapes::foundation::render::vulkan
 
 		if (!Utils::createAccelerationStructure(context, type, build_flags, num_geometries, vk_geometries, max_primitives, result))
 		{
-			for (size_t i = 0; i < num_allocations; ++i)
-				vmaDestroyBuffer(context->getVRAMAllocator(), allocated_buffers[i], allocated_vram[i]);
+			vmaDestroyBuffer(context->getVRAMAllocator(), transform_buffer, transform_vram);
 
 			destroyBottomLevelAccelerationStructure(reinterpret_cast<render::BottomLevelAccelerationStructure>(result));
 			return SCAPES_NULL_HANDLE;
@@ -1046,9 +1039,7 @@ namespace scapes::foundation::render::vulkan
 
 		Utils::buildAccelerationStructure(context, type, build_flags, num_geometries, vk_geometries, vk_ranges, result);
 
-		for (size_t i = 0; i < num_allocations; ++i)
-			vmaDestroyBuffer(context->getVRAMAllocator(), allocated_buffers[i], allocated_vram[i]);
-
+		vmaDestroyBuffer(context->getVRAMAllocator(), transform_buffer, transform_vram);
 		result->device_address = Utils::getBufferDeviceAddress(context, result->buffer);
 
 		return reinterpret_cast<render::BottomLevelAccelerationStructure>(result);
@@ -1059,76 +1050,80 @@ namespace scapes::foundation::render::vulkan
 		const AccelerationStructureInstance *instances
 	)
 	{
-		std::vector<VkBuffer> allocated_buffers;
-		std::vector<VmaAllocation> allocated_vram;
-		std::vector<VkAccelerationStructureGeometryKHR> vk_geometries;
-		std::vector<VkAccelerationStructureBuildRangeInfoKHR> vk_ranges;
-		std::vector<uint32_t> max_primitives;
+		// create instance buffer
+		VkDeviceSize instance_size = sizeof(VkAccelerationStructureInstanceKHR) * num_instances;
+		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+		VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+		VkBuffer instance_buffer = VK_NULL_HANDLE;
+		VmaAllocation instance_buffer_memory = VK_NULL_HANDLE;
+
+		Utils::createBuffer(context, instance_size, usage_flags, memory_usage, instance_buffer, instance_buffer_memory);
+
+		void *instance_ptr = nullptr;
+		if (vmaMapMemory(context->getVRAMAllocator(), instance_buffer_memory, &instance_ptr) != VK_SUCCESS)
+		{
+			std::cout << "Device::createTopLevelAccelerationStructure(): failed to map memory for instance buffer" << std::endl;
+			vmaDestroyBuffer(context->getVRAMAllocator(), instance_buffer, instance_buffer_memory);
+			return SCAPES_NULL_HANDLE;
+		}
+		assert(instance_ptr);
+
+		VkDeviceOrHostAddressConstKHR instance_buffer_address = {};
+		instance_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, instance_buffer);
 
 		for (uint32_t i = 0; i < num_instances; ++i)
 		{
 			const AccelerationStructureInstance &instance = instances[i];
 			const AccelerationStructure *blas = reinterpret_cast<const AccelerationStructure *>(instance.blas);
+			VkAccelerationStructureInstanceKHR *instance_data = reinterpret_cast<VkAccelerationStructureInstanceKHR *>(instance_ptr);
 
-			VkAccelerationStructureInstanceKHR vk_instance = {};
-			vk_instance.instanceCustomIndex = 0; // TODO: make it available to modify via API
-			vk_instance.instanceShaderBindingTableRecordOffset = 0; // TODO: make it available to modify via API
-			vk_instance.mask = 0xFF;
-			vk_instance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+			VkAccelerationStructureInstanceKHR &vk_instance = instance_data[i];
+			vk_instance.instanceCustomIndex = instance.custom_index;
+			vk_instance.instanceShaderBindingTableRecordOffset = instance.offset;
+			vk_instance.mask = instance.mask;
+			vk_instance.flags = 0;
 			vk_instance.accelerationStructureReference = blas->device_address;
 			vk_instance.transform = Utils::getTransformMatrix(instance.transform);
 
-			VkDeviceSize instance_size = sizeof(VkAccelerationStructureInstanceKHR);
-			VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-			VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+			if (!instance.culling)
+				vk_instance.flags |= VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
 
-			// create instance buffer
-			VkDeviceOrHostAddressConstKHR instance_buffer_address = {};
-			VkBuffer instance_buffer = VK_NULL_HANDLE;
-			VmaAllocation instance_buffer_memory = VK_NULL_HANDLE;
-
-			Utils::createBuffer(context, instance_size, usage_flags, memory_usage, instance_buffer, instance_buffer_memory);
-			Utils::fillHostVisibleBuffer(context, instance_buffer_memory, instance_size, &vk_instance);
-
-			instance_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, instance_buffer);
-
-			allocated_buffers.push_back(instance_buffer);
-			allocated_vram.push_back(instance_buffer_memory);
-
-			VkAccelerationStructureGeometryKHR vk_geometry = {};
-			vk_geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-			vk_geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-			vk_geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // TODO: make it available to modify via API
-			vk_geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-			vk_geometry.geometry.instances.arrayOfPointers = VK_FALSE;
-			vk_geometry.geometry.instances.data = instance_buffer_address;
-
-			VkAccelerationStructureBuildRangeInfoKHR vk_range = {};
-			vk_range.primitiveCount = 1;
-			vk_range.primitiveOffset = 0;
-			vk_range.firstVertex = 0;
-			vk_range.transformOffset = 0;
-
-			vk_ranges.push_back(vk_range);
-			vk_geometries.push_back(vk_geometry);
-			max_primitives.push_back(1);
+			if (instance.opaque)
+				vk_instance.flags |= VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR;
 		}
+
+		vmaUnmapMemory(context->getVRAMAllocator(), instance_buffer_memory);
+		instance_ptr = nullptr;
+
+		VkAccelerationStructureGeometryKHR vk_geometry = {};
+		vk_geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+		vk_geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+		vk_geometry.flags = VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
+		vk_geometry.geometry.instances.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+		vk_geometry.geometry.instances.arrayOfPointers = VK_FALSE;
+		vk_geometry.geometry.instances.data = instance_buffer_address;
+
+		VkAccelerationStructureBuildRangeInfoKHR vk_range = {};
+		vk_range.primitiveCount = num_instances;
+		vk_range.primitiveOffset = 0;
+		vk_range.firstVertex = 0;
+		vk_range.transformOffset = 0;
 
 		AccelerationStructure *result = new AccelerationStructure();
 
 		VkAccelerationStructureTypeKHR type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
 		VkBuildAccelerationStructureFlagBitsKHR build_flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR; // TODO: pass as an argument
 
-		if (!Utils::createAccelerationStructure(context, type, build_flags, num_instances, vk_geometries.data(), max_primitives.data(), result))
+		uint32_t max_primitive = num_instances;
+		if (!Utils::createAccelerationStructure(context, type, build_flags, 1, &vk_geometry, &max_primitive, result))
 		{
 			destroyTopLevelAccelerationStructure(reinterpret_cast<render::TopLevelAccelerationStructure>(result));
 			return SCAPES_NULL_HANDLE;
 		}
 
-		Utils::buildAccelerationStructure(context, type, build_flags, num_instances, vk_geometries.data(), vk_ranges.data(), result);
-
-		for (size_t i = 0; i < allocated_vram.size(); ++i)
-			vmaDestroyBuffer(context->getVRAMAllocator(), allocated_buffers[i], allocated_vram[i]);
+		Utils::buildAccelerationStructure(context, type, build_flags, 1, &vk_geometry, &vk_range, result);
+		vmaDestroyBuffer(context->getVRAMAllocator(), instance_buffer, instance_buffer_memory);
 
 		result->device_address = Utils::getBufferDeviceAddress(context, result->buffer);
 

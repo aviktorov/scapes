@@ -69,21 +69,31 @@ static void initRaytracing(foundation::render::Device *device, visual::API *visu
 
 	rt_ib = device->createIndexBuffer(foundation::render::BufferType::STATIC, foundation::render::IndexFormat::UINT32, 3, indices);
 
-	foundation::math::mat4 transform = foundation::math::mat4(1.0f);
+	foundation::math::mat4 transform1 = foundation::math::mat4(1.0f);
+	foundation::math::mat4 transform2 = foundation::math::translate(transform1, foundation::math::vec3(0.0f, 0.0f, 1.0f));
+	foundation::math::mat4 transform3 = foundation::math::translate(transform1, foundation::math::vec3(1.0f, 0.0f, 0.0f));
 
-	foundation::render::AccelerationStructureGeometry geometry = {};
-	geometry.position_attribute_index = 1;
-	geometry.vertex_buffer = rt_vb;
-	geometry.index_buffer = rt_ib;
-	memcpy(geometry.transform, &transform, sizeof(float) * 16);
+	foundation::render::AccelerationStructureGeometry geometries[] =
+	{
+		{ 1, rt_vb, rt_ib },
+		{ 1, rt_vb, rt_ib },
+	};
 
-	rt_blas = device->createBottomLevelAccelerationStructure(1, &geometry);
+	memcpy(geometries[0].transform, &transform1, sizeof(float) * 16);
+	memcpy(geometries[1].transform, &transform2, sizeof(float) * 16);
 
-	foundation::render::AccelerationStructureInstance instance = {};
-	instance.blas = rt_blas;
-	memcpy(instance.transform, &transform, sizeof(float) * 16);
+	rt_blas = device->createBottomLevelAccelerationStructure(2, geometries);
 
-	rt_tlas = device->createTopLevelAccelerationStructure(1, &instance);
+	foundation::render::AccelerationStructureInstance instances[]
+	{
+		{ rt_blas },
+		{ rt_blas },
+	};
+
+	memcpy(instances[0].transform, &transform1, sizeof(float) * 16);
+	memcpy(instances[1].transform, &transform3, sizeof(float) * 16);
+
+	rt_tlas = device->createTopLevelAccelerationStructure(2, instances);
 
 	rt_image = device->createTextureStorage(rt_size, rt_size, foundation::render::Format::R8G8B8A8_UNORM);
 

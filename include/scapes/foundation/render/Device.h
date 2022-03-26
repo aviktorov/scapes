@@ -326,13 +326,17 @@ namespace scapes::foundation::render
 		uint8_t position_attribute_index {0};
 		VertexBuffer vertex_buffer {SCAPES_NULL_HANDLE};
 		IndexBuffer index_buffer {SCAPES_NULL_HANDLE};
-
 		float transform[16];
 	};
 
 	struct AccelerationStructureInstance
 	{
 		BottomLevelAccelerationStructure blas {SCAPES_NULL_HANDLE};
+		uint32_t custom_index {0};
+		uint32_t offset {0};
+		uint8_t mask {0xFF};
+		bool opaque {true};
+		bool culling {false};
 		float transform[16];
 	};
 
