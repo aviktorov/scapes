@@ -323,13 +323,9 @@ namespace scapes::foundation::render
 
 	struct AccelerationStructureGeometry
 	{
-		Format vertex_format {Format::UNDEFINED};
-		uint32_t num_vertices {0};
-		void *vertices {nullptr};
-
-		IndexFormat index_format {IndexFormat::UINT32};
-		uint32_t num_indices {0};
-		void *indices {nullptr};
+		uint8_t position_attribute_index {0};
+		VertexBuffer vertex_buffer {SCAPES_NULL_HANDLE};
+		IndexBuffer index_buffer {SCAPES_NULL_HANDLE};
 
 		float transform[16];
 	};

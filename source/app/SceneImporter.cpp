@@ -137,7 +137,6 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 		mapped_textures.insert({&image, texture});
 	}
 
-
 	// import materials
 	std::map<const cgltf_material*, visual::RenderMaterialHandle > mapped_materials;
 

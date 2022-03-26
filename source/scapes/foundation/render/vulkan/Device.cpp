@@ -392,7 +392,7 @@ namespace scapes::foundation::render::vulkan
 			result->attribute_offsets[i] = attributes[i].offset;
 		}
 
-		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 		VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_UNKNOWN;
 
 		if (type == BufferType::STATIC)
@@ -433,7 +433,7 @@ namespace scapes::foundation::render::vulkan
 		result->index_type = Utils::getIndexType(index_format);
 		result->num_indices = num_indices;
 
-		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 		VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_UNKNOWN;
 
 		if (type == BufferType::STATIC)
@@ -938,8 +938,27 @@ namespace scapes::foundation::render::vulkan
 	{
 		assert(num_geometries <= AccelerationStructure::MAX_GEOMETRIES);
 
-		VkBuffer allocated_buffers[AccelerationStructure::MAX_GEOMETRIES * 3];
-		VmaAllocation allocated_vram[AccelerationStructure::MAX_GEOMETRIES * 3];
+		for (uint32_t i = 0; i < num_geometries; ++i)
+		{
+			const AccelerationStructureGeometry &geometry = geometries[i];
+
+			const VertexBuffer *vertex_buffer = reinterpret_cast<const VertexBuffer *>(geometries[i].vertex_buffer);
+			if (geometry.position_attribute_index >= vertex_buffer->num_attributes)
+			{
+				std::cerr << "Device::createBottomLevelAccelerationStructure(): invalid position attribute index" << std::endl;
+				return nullptr;
+			}
+
+			VkFormat position_attribute_format = vertex_buffer->attribute_formats[geometry.position_attribute_index];
+			if (position_attribute_format != VK_FORMAT_R32G32B32_SFLOAT)
+			{
+				std::cerr << "Device::createBottomLevelAccelerationStructure(): invalid vertex buffer format" << std::endl;
+				return SCAPES_NULL_HANDLE;
+			}
+		}
+
+		VkBuffer allocated_buffers[AccelerationStructure::MAX_GEOMETRIES];
+		VmaAllocation allocated_vram[AccelerationStructure::MAX_GEOMETRIES];
 		VkAccelerationStructureGeometryKHR vk_geometries[AccelerationStructure::MAX_GEOMETRIES];
 		VkAccelerationStructureBuildRangeInfoKHR vk_ranges[AccelerationStructure::MAX_GEOMETRIES];
 		uint32_t max_primitives[AccelerationStructure::MAX_GEOMETRIES];
@@ -950,44 +969,22 @@ namespace scapes::foundation::render::vulkan
 		{
 			const AccelerationStructureGeometry &geometry = geometries[i];
 
-			VkDeviceSize vertex_buffer_size = Utils::getVertexSize(geometry.vertex_format) * geometry.num_vertices;
-			VkDeviceSize index_buffer_size = Utils::getIndexSize(geometry.index_format) * geometry.num_indices;
+			// get vertex buffer
+			VkDeviceOrHostAddressConstKHR vertex_buffer_address = {};
+			const VertexBuffer *vertex_buffer = reinterpret_cast<const VertexBuffer *>(geometry.vertex_buffer);
+			vertex_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, vertex_buffer->buffer);
+
+			// get index buffer
+			VkDeviceOrHostAddressConstKHR index_buffer_address = {};
+			const IndexBuffer *index_buffer = reinterpret_cast<const IndexBuffer *>(geometry.index_buffer);
+			index_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, index_buffer->buffer);
+
+			// create transform buffer
 			VkDeviceSize transform_buffer_size = sizeof(VkTransformMatrixKHR);
 
 			VkBufferUsageFlags usage_flags = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 			VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-			// create vertex buffer
-			VkDeviceOrHostAddressConstKHR vertex_buffer_address = {};
-			VkBuffer vertex_buffer = VK_NULL_HANDLE;
-			VmaAllocation vertex_buffer_memory = VK_NULL_HANDLE;
-
-			Utils::createBuffer(context, vertex_buffer_size, usage_flags, memory_usage, vertex_buffer, vertex_buffer_memory);
-			Utils::fillHostVisibleBuffer(context, vertex_buffer_memory, vertex_buffer_size, geometry.vertices);
-
-			vertex_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, vertex_buffer);
-
-			allocated_buffers[num_allocations] = vertex_buffer;
-			allocated_vram[num_allocations] = vertex_buffer_memory;
-
-			num_allocations++;
-
-			// create index buffer
-			VkDeviceOrHostAddressConstKHR index_buffer_address = {};
-			VkBuffer index_buffer = VK_NULL_HANDLE;
-			VmaAllocation index_buffer_memory = VK_NULL_HANDLE;
-
-			Utils::createBuffer(context, index_buffer_size, usage_flags, memory_usage, index_buffer, index_buffer_memory);
-			Utils::fillHostVisibleBuffer(context, index_buffer_memory, index_buffer_size, geometry.indices);
-
-			index_buffer_address.deviceAddress = Utils::getBufferDeviceAddress(context, index_buffer);
-
-			allocated_buffers[num_allocations] = index_buffer;
-			allocated_vram[num_allocations] = index_buffer_memory;
-
-			num_allocations++;
-
-			// create transform buffer
 			VkTransformMatrixKHR transform = Utils::getTransformMatrix(geometry.transform);
 			VkDeviceOrHostAddressConstKHR transform_buffer_address = {};
 			VkBuffer transform_buffer = VK_NULL_HANDLE;
@@ -1003,28 +1000,34 @@ namespace scapes::foundation::render::vulkan
 
 			num_allocations++;
 
+			VkFormat attribute_format = vertex_buffer->attribute_formats[geometry.position_attribute_index];
+			uint32_t attribute_offset = vertex_buffer->attribute_offsets[geometry.position_attribute_index];
+
+			vertex_buffer_address.deviceAddress += attribute_offset;
+
+			// fill data
 			VkAccelerationStructureGeometryKHR &vk_geometry = vk_geometries[i];
 			vk_geometry = {};
 			vk_geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
 			vk_geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
 			vk_geometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // TODO: make it available to modify via API
 			vk_geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-			vk_geometry.geometry.triangles.vertexFormat = Utils::getFormat(geometry.vertex_format);
+			vk_geometry.geometry.triangles.vertexFormat = attribute_format;
 			vk_geometry.geometry.triangles.vertexData = vertex_buffer_address;
-			vk_geometry.geometry.triangles.vertexStride = Utils::getVertexSize(geometry.vertex_format);
+			vk_geometry.geometry.triangles.vertexStride = vertex_buffer->vertex_size;
 			vk_geometry.geometry.triangles.maxVertex = 3;
-			vk_geometry.geometry.triangles.indexType = Utils::getIndexType(geometry.index_format);
+			vk_geometry.geometry.triangles.indexType = index_buffer->index_type;
 			vk_geometry.geometry.triangles.indexData = index_buffer_address;
 			vk_geometry.geometry.triangles.transformData = transform_buffer_address;
 
 			VkAccelerationStructureBuildRangeInfoKHR &vk_range = vk_ranges[i];
 			vk_range = {};
-			vk_range.primitiveCount = geometry.num_indices / 3;
+			vk_range.primitiveCount = index_buffer->num_indices / 3;
 			vk_range.primitiveOffset = 0;
 			vk_range.firstVertex = 0;
 			vk_range.transformOffset = 0;
 
-			max_primitives[i] = geometry.num_indices / 3;
+			max_primitives[i] = index_buffer->num_indices / 3;
 		}
 
 		AccelerationStructure *result = new AccelerationStructure();

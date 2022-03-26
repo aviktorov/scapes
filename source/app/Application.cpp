@@ -32,6 +32,8 @@ foundation::render::TopLevelAccelerationStructure rt_tlas = SCAPES_NULL_HANDLE;
 foundation::render::BindSet rt_bindings = SCAPES_NULL_HANDLE;
 foundation::render::RayTracePipeline rt_pipeline = SCAPES_NULL_HANDLE;
 foundation::render::Texture rt_image = SCAPES_NULL_HANDLE;
+foundation::render::VertexBuffer rt_vb = SCAPES_NULL_HANDLE;
+foundation::render::IndexBuffer rt_ib = SCAPES_NULL_HANDLE;
 uint32_t rt_size = 512;
 
 static void initRaytracing(foundation::render::Device *device, visual::API *visual_api, visual::RenderGraph *render_graph)
@@ -40,24 +42,39 @@ static void initRaytracing(foundation::render::Device *device, visual::API *visu
 	visual::ShaderHandle miss = visual_api->loadShader("shaders/test/test.rmiss", foundation::render::ShaderType::MISS);
 	visual::ShaderHandle closest_hit = visual_api->loadShader("shaders/test/test.rchit", foundation::render::ShaderType::CLOSEST_HIT);
 
-	foundation::math::vec3 vertices[] =
+	struct Vertex
 	{
-		{ 1.0f,  1.0f, 0.0f },
-		{-1.0f,  1.0f, 0.0f },
-		{ 0.0f, -1.0f, 0.0f }
+		foundation::math::vec3 normal;
+		foundation::math::vec3 position;
+		foundation::math::vec2 uv;
 	};
 
-	foundation::math::mat4 transform = foundation::math::mat4(1.0f);
+	Vertex vertices[] =
+	{
+		{ { 0.0f, 1.0f, 0.0f }, {  1.0f,  1.0f, 0.0f }, { 0.0f, 0.0f } },
+		{ { 0.0f, 1.0f, 0.0f }, { -1.0f,  1.0f, 0.0f }, { 0.0f, 0.0f } },
+		{ { 0.0f, 1.0f, 0.0f }, {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f } },
+	};
+
+	foundation::render::VertexAttribute attributes[] =
+	{
+		{ foundation::render::Format::R32G32B32_SFLOAT, offsetof(Vertex, normal) },
+		{ foundation::render::Format::R32G32B32_SFLOAT, offsetof(Vertex, position) },
+		{ foundation::render::Format::R32G32_SFLOAT, offsetof(Vertex, uv) },
+	};
+
+	rt_vb = device->createVertexBuffer(foundation::render::BufferType::STATIC, sizeof(Vertex), 3, 3, attributes, vertices);
 
 	uint32_t indices[] = { 0, 1, 2 };
 
+	rt_ib = device->createIndexBuffer(foundation::render::BufferType::STATIC, foundation::render::IndexFormat::UINT32, 3, indices);
+
+	foundation::math::mat4 transform = foundation::math::mat4(1.0f);
+
 	foundation::render::AccelerationStructureGeometry geometry = {};
-	geometry.num_vertices = 3;
-	geometry.vertex_format = foundation::render::Format::R32G32B32_SFLOAT;
-	geometry.vertices = vertices;
-	geometry.index_format = foundation::render::IndexFormat::UINT32;
-	geometry.num_indices = 3;
-	geometry.indices = indices;
+	geometry.position_attribute_index = 1;
+	geometry.vertex_buffer = rt_vb;
+	geometry.index_buffer = rt_ib;
 	memcpy(geometry.transform, &transform, sizeof(float) * 16);
 
 	rt_blas = device->createBottomLevelAccelerationStructure(1, &geometry);
@@ -86,6 +103,12 @@ static void initRaytracing(foundation::render::Device *device, visual::API *visu
 
 static void shutdownRaytracing(foundation::render::Device *device)
 {
+	device->destroyVertexBuffer(rt_vb);
+	rt_vb = SCAPES_NULL_HANDLE;
+
+	device->destroyIndexBuffer(rt_ib);
+	rt_ib = SCAPES_NULL_HANDLE;
+
 	device->destroyTopLevelAccelerationStructure(rt_tlas);
 	rt_tlas = SCAPES_NULL_HANDLE;
 
