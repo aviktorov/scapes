@@ -70,15 +70,16 @@ PBR Sandbox:
         ☐ Directional light & shadows
         ☐ First person camera (WASD controls & mouse aim)
         ☐ Add camera component
+    Stream 88:
         ☐ Resource REPL
             ☐ Add naive FileWatcher for resource auto reloading
             ☐ Think about having ResourceWatcher<T>
-    Stream 88:
-        ☐ Improve BLAS / TLAS creation
-            ☐ Add support for opaque / transparent flags
-            ☐ Add support for instance indices
-            ☐ Upload all TLAS instance info to a single buffer and then use it
-            ☐ Use existing VB / IB from meshes instead of raw CPU data
+    Offscreen 4:
+        ✔ Improve BLAS / TLAS creation @done (3/27/2022, 1:36:41 AM)
+            ✔ Add support for opaque / transparent flags @done (3/27/2022, 1:36:39 AM)
+            ✔ Add support for instance indices @done (3/27/2022, 1:21:10 AM)
+            ✔ Upload all TLAS instance info to a single buffer and then use it @done (3/27/2022, 12:58:50 AM)
+            ✔ Use existing VB / IB from meshes instead of raw CPU data @done (3/27/2022, 12:15:17 AM)
     Offscreen 3:
         ✔ Try to get rid of StorageImage opaque struct @done (3/22/2022, 12:52:14 AM)
     Stream 87:
