@@ -8,7 +8,7 @@ namespace scapes::foundation::resources::impl
 	class ResourcePool
 	{
 	public:
-		ResourcePool(size_t type_size, size_t type_alignment);
+		ResourcePool(size_t element_size);
 		virtual ~ResourcePool();
 
 		void *allocate();
@@ -31,9 +31,6 @@ namespace scapes::foundation::resources::impl
 
 		std::vector<Page> pages;
 
-		size_t type_size {0};
-		size_t type_alignment {0};
-		size_t generation_stride {0};
-		size_t stride {0};
+		size_t element_size {0};
 	};
 }

@@ -96,9 +96,10 @@ namespace scapes::foundation
 	namespace resources
 	{
 		// TODO: get rid of this once we'll have fully-fledged classes for timestamps and generations
-		typedef int timestamp_t;
-		typedef int generation_t;
+		typedef uint32_t timestamp_t;
+		typedef uint32_t generation_t;
 
+		struct ResourceMetadata;
 		template <typename T> class ResourceHandle;
 
 		class ResourceManager;

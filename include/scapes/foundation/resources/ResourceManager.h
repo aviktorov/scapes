@@ -11,8 +11,15 @@ template <typename T> struct ResourcePipeline { };
 namespace scapes::foundation::resources
 {
 	// TODO: better types
-	typedef int timestamp_t;
-	typedef int generation_t;
+	typedef uint32_t timestamp_t;
+	typedef uint32_t generation_t;
+
+	struct ResourceMetadata
+	{
+		generation_t generation {0};
+		timestamp_t timestamp {0};
+		const char *type_name {nullptr};
+	};
 
 	template <typename T>
 	class ResourceHandle
@@ -38,16 +45,18 @@ namespace scapes::foundation::resources
 			if (generation != getGeneration())
 				return nullptr;
 
-			return reinterpret_cast<T*>(memory);
+			return reinterpret_cast<T *>(reinterpret_cast<uint8_t *>(memory) + sizeof(ResourceMetadata));
 		}
+
+		SCAPES_INLINE void *getMemory() const { return memory; }
 
 		timestamp_t getMTime() const
 		{
 			if (!memory)
 				return 0;
 
-			const uint8_t *data = reinterpret_cast<const uint8_t *>(memory) + sizeof(T);
-			return *reinterpret_cast<const timestamp_t *>(data);
+			const ResourceMetadata *metadata = reinterpret_cast<const ResourceMetadata *>(memory);
+			return metadata->timestamp;
 		}
 
 		T *operator->() const { return get(); }
@@ -66,8 +75,8 @@ namespace scapes::foundation::resources
 			if (!memory)
 				return 0;
 
-			const uint8_t *data = reinterpret_cast<const uint8_t *>(memory) + sizeof(T) + sizeof(timestamp_t);
-			return *reinterpret_cast<const generation_t *>(data);
+			const ResourceMetadata *metadata = reinterpret_cast<const ResourceMetadata *>(memory);
+			return metadata->generation;
 		}
 
 	private:
@@ -89,9 +98,16 @@ namespace scapes::foundation::resources
 		template <typename T>
 		ResourceHandle<T> create()
 		{
-			void *memory = allocate(TypeTraits<T>::name, sizeof(T), alignof(T));
+			void *memory = allocate(TypeTraits<T>::name, sizeof(T) + sizeof(ResourceMetadata));
 			assert(memory);
-			new (memory) T();
+
+			ResourceMetadata *meta = reinterpret_cast<ResourceMetadata *>(memory);
+			meta->generation++;
+			meta->timestamp = 0;
+			meta->type_name = TypeTraits<T>::name;
+
+			void *resource_memory = reinterpret_cast<uint8_t *>(memory) + sizeof(ResourceMetadata);
+			new (resource_memory) T();
 
 			return ResourceHandle<T>(memory);
 		}
@@ -115,7 +131,6 @@ namespace scapes::foundation::resources
 			stream->read(data, sizeof(uint8_t), size);
 			file_system->close(stream);
 
-			
 			ResourceHandle<T> resource = importFromMemory<T>(data, size, std::forward<Arguments>(params)...);
 			delete[] data;
 
@@ -137,11 +152,11 @@ namespace scapes::foundation::resources
 			ResourcePipeline<T>::destroy(this, resource, std::forward<Arguments>(params)...);
 			resource.get()->~T();
 
-			deallocate(resource.get(), TypeTraits<T>::name, sizeof(T), alignof(T));
+			deallocate(resource.getMemory(), TypeTraits<T>::name, sizeof(T) + sizeof(ResourceMetadata));
 		}
 
 	protected:
-		virtual void *allocate(const char *type_name, size_t type_size, size_t type_alignment) = 0;
-		virtual void deallocate(void *memory, const char *type_name, size_t type_size, size_t type_alignment) = 0;
+		virtual void *allocate(const char *type_name, size_t type_size) = 0;
+		virtual void deallocate(void *memory, const char *type_name, size_t type_size) = 0;
 	};
 }

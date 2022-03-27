@@ -6,15 +6,10 @@ namespace scapes::foundation::resources::impl
 {
 	/*
 	 */
-	ResourcePool::ResourcePool(size_t type_size, size_t type_alignment)
-		: type_size(type_size), type_alignment(type_alignment)
+	ResourcePool::ResourcePool(size_t element_size)
+		: element_size(element_size)
 	{
-		stride = type_size;
-		stride += sizeof(timestamp_t);
-		stride += sizeof(generation_t);
-
-		generation_stride = type_size;
-		generation_stride += sizeof(timestamp_t);
+		assert(element_size > 0);
 	}
 
 	ResourcePool::~ResourcePool()
@@ -22,14 +17,12 @@ namespace scapes::foundation::resources::impl
 		for (auto &page : pages)
 		{
 			assert(page.free_elements_mask == INITIAL_FREE_MASK);
-			delete page.memory;
+			free(page.memory);
 		}
 
 		pages.clear();
 
-		stride = 0;
-		type_size = 0;
-		type_alignment = 0;
+		element_size = 0;
 	}
 
 	/*
@@ -53,8 +46,8 @@ namespace scapes::foundation::resources::impl
 		if (page == nullptr)
 		{
 			Page new_page;
-			new_page.memory = malloc(stride * ELEMENTS_IN_PAGE);
-			memset(new_page.memory, 0, stride * ELEMENTS_IN_PAGE);
+			new_page.memory = malloc(element_size * ELEMENTS_IN_PAGE);
+			memset(new_page.memory, 0, element_size * ELEMENTS_IN_PAGE);
 			new_page.free_elements_mask = INITIAL_FREE_MASK;
 
 			pages.push_back(new_page);
@@ -71,17 +64,13 @@ namespace scapes::foundation::resources::impl
 			uint64_t mask = static_cast<uint64_t>(1) << i;
 			if (mask & page->free_elements_mask)
 			{
-				memory = reinterpret_cast<uint8_t*>(page->memory) + stride * i;
+				memory = reinterpret_cast<uint8_t*>(page->memory) + element_size * i;
 				page->free_elements_mask &= ~mask;
 				break;
 			}
 		}
 
 		assert(memory);
-
-		timestamp_t *generation = reinterpret_cast<timestamp_t*>(reinterpret_cast<uint8_t*>(memory) + generation_stride);
-		(*generation)++;
-
 		return memory;
 	}
 
@@ -96,12 +85,12 @@ namespace scapes::foundation::resources::impl
 			Page &page = pages[i];
 
 			size_t page_start = reinterpret_cast<size_t>(page.memory);
-			size_t page_end = page_start + ELEMENTS_IN_PAGE * stride;
+			size_t page_end = page_start + ELEMENTS_IN_PAGE * element_size;
 
 			if (page_memory >= page_start && page_memory < page_end)
 			{
-				assert((page_memory - page_start) % stride == 0);
-				size_t element_index = (page_memory - page_start) / stride;
+				assert((page_memory - page_start) % element_size == 0);
+				size_t element_index = (page_memory - page_start) / element_size;
 
 				page.free_elements_mask |= static_cast<uint64_t>(1) << element_index;
 				break;

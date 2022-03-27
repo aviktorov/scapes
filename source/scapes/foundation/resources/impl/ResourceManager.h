@@ -16,11 +16,11 @@ namespace scapes::foundation::resources::impl
 
 		SCAPES_INLINE io::FileSystem *getFileSystem() const final { return file_system; }
 	private:
-		void *allocate(const char *type_name, size_t type_size, size_t type_alignment) final;
-		void deallocate(void *memory, const char *type_name, size_t type_size, size_t type_alignment) final;
+		void *allocate(const char *type_name, size_t type_size) final;
+		void deallocate(void *memory, const char *type_name, size_t type_size) final;
 
 	private:
-		ResourcePool *fetchPool(const char *type_name, size_t type_size, size_t type_alignment);
+		ResourcePool *fetchPool(const char *type_name, size_t type_size);
 
 	private:
 		io::FileSystem *file_system;
