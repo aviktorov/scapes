@@ -85,19 +85,19 @@ namespace scapes::visual
 	APIImpl::~APIImpl()
 	{
 		for (TextureHandle handle : managed_textures)
-			resource_manager->destroy(handle, device);
+			resource_manager->destroy(handle);
 
 		for (ShaderHandle handle : managed_shaders)
-			resource_manager->destroy(handle, device);
+			resource_manager->destroy(handle);
 
 		for (MeshHandle handle : managed_meshes)
-			resource_manager->destroy(handle, device);
+			resource_manager->destroy(handle);
 
 		for (RenderMaterialHandle handle : managed_render_materials)
-			resource_manager->destroy(handle, device);
+			resource_manager->destroy(handle);
 
 		for (IBLTextureHandle handle : managed_ibl_textures)
-			resource_manager->destroy(handle, device);
+			resource_manager->destroy(handle);
 
 		managed_textures.clear();
 		managed_shaders.clear();
@@ -179,7 +179,7 @@ namespace scapes::visual
 		size_t size
 	)
 	{
-		TextureHandle result = resource_manager->importFromMemory<resources::Texture>(data, size, device);
+		TextureHandle result = resource_manager->importFromMemory<resources::Texture>(data, size);
 		if (result.get())
 			managed_textures.push_back(result);
 
@@ -195,7 +195,7 @@ namespace scapes::visual
 		if (it != uri_texture_lookup.end())
 			return it->second;
 
-		TextureHandle result = resource_manager->import<resources::Texture>(uri, device);
+		TextureHandle result = resource_manager->import<resources::Texture>(uri);
 
 		if (result.get())
 		{
@@ -224,7 +224,7 @@ namespace scapes::visual
 		foundation::render::ShaderType shader_type
 	)
 	{
-		ShaderHandle result = resource_manager->importFromMemory<resources::Shader>(data, size, shader_type, device, compiler);
+		ShaderHandle result = resource_manager->importFromMemory<resources::Shader>(data, size, shader_type);
 		if (result.get())
 			managed_shaders.push_back(result);
 
@@ -241,7 +241,7 @@ namespace scapes::visual
 		if (it != uri_shader_lookup.end())
 			return it->second;
 
-		ShaderHandle result = resource_manager->import<resources::Shader>(uri, shader_type, device, compiler);
+		ShaderHandle result = resource_manager->import<resources::Shader>(uri, shader_type);
 
 		if (result.get())
 		{
@@ -375,7 +375,7 @@ namespace scapes::visual
 		const IBLTextureCreateData &create_data
 	)
 	{
-		TextureHandle hdri_texture = resource_manager->import<resources::Texture>(uri, device);
+		TextureHandle hdri_texture = resource_manager->import<resources::Texture>(uri);
 		if (hdri_texture.get() == nullptr)
 			return IBLTextureHandle();
 
@@ -446,8 +446,8 @@ namespace scapes::visual
 		);
 		renderer.shutdown();
 
-		resource_manager->destroy(hdri_texture, device);
-		resource_manager->destroy(temp_cubemap, device);
+		resource_manager->destroy(hdri_texture);
+		resource_manager->destroy(temp_cubemap);
 
 		IBLTextureHandle result = resource_manager->create<resources::IBLTexture>();
 

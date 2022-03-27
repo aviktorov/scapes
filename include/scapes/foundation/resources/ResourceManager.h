@@ -6,7 +6,7 @@
 #include <scapes/foundation/Fwd.h>
 #include <scapes/foundation/io/FileSystem.h>
 
-template <typename T> struct ResourcePipeline { };
+template <typename T> struct ResourceTraits { };
 
 namespace scapes::foundation::resources
 {
@@ -98,7 +98,8 @@ namespace scapes::foundation::resources
 		template <typename T>
 		ResourceHandle<T> create()
 		{
-			void *memory = allocate(TypeTraits<T>::name, sizeof(T) + sizeof(ResourceMetadata));
+			size_t size = ResourceTraits<T>::size() + sizeof(ResourceMetadata);
+			void *memory = allocate(TypeTraits<T>::name, size);
 			assert(memory);
 
 			ResourceMetadata *meta = reinterpret_cast<ResourceMetadata *>(memory);
@@ -106,8 +107,16 @@ namespace scapes::foundation::resources
 			meta->timestamp = 0;
 			meta->type_name = TypeTraits<T>::name;
 
+			ResourceVTable *vtable = fetchVTable(TypeTraits<T>::name);
+			assert(vtable);
+
+			vtable->destroy = ResourceTraits<T>::destroy;
+			vtable->create = ResourceTraits<T>::create;
+
 			void *resource_memory = reinterpret_cast<uint8_t *>(memory) + sizeof(ResourceMetadata);
-			new (resource_memory) T();
+			assert(resource_memory);
+
+			vtable->create(this, resource_memory);
 
 			return ResourceHandle<T>(memory);
 		}
@@ -141,22 +150,35 @@ namespace scapes::foundation::resources
 		ResourceHandle<T> importFromMemory(const uint8_t *data, size_t size, Arguments&&... params)
 		{
 			ResourceHandle<T> resource = create<T>();
-			ResourcePipeline<T>::process(this, resource, data, size, std::forward<Arguments>(params)...);
+			ResourceTraits<T>::importFromMemory(this, resource.get(), data, size, std::forward<Arguments>(params)...);
 
 			return resource;
 		}
 
-		template <typename T, typename... Arguments>
-		void destroy(ResourceHandle<T> resource, Arguments&&... params)
+		template <typename T>
+		void destroy(ResourceHandle<T> resource)
 		{
-			ResourcePipeline<T>::destroy(this, resource, std::forward<Arguments>(params)...);
-			resource.get()->~T();
+			ResourceVTable *vtable = fetchVTable(TypeTraits<T>::name);
+			T *resource_memory = resource.get();
+			assert(resource_memory);
 
-			deallocate(resource.getMemory(), TypeTraits<T>::name, sizeof(T) + sizeof(ResourceMetadata));
+			vtable->destroy(this, resource_memory);
+
+			deallocate(resource.getMemory(), TypeTraits<T>::name);
 		}
 
 	protected:
-		virtual void *allocate(const char *type_name, size_t type_size) = 0;
-		virtual void deallocate(void *memory, const char *type_name, size_t type_size) = 0;
+		struct ResourceVTable
+		{
+			using CreateFuncPtr = void (*)(ResourceManager *, void *);
+			using DestroyFuncPtr = void (*)(ResourceManager *, void *);
+
+			DestroyFuncPtr destroy {nullptr};
+			CreateFuncPtr create {nullptr};
+		};
+
+		virtual ResourceVTable *fetchVTable(const char *type_name) = 0;
+		virtual void *allocate(const char *type_name, size_t size) = 0;
+		virtual void deallocate(void *memory, const char *type_name) = 0;
 	};
 }

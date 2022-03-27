@@ -15,15 +15,19 @@ namespace scapes::foundation::resources::impl
 		~ResourceManager() final;
 
 		SCAPES_INLINE io::FileSystem *getFileSystem() const final { return file_system; }
-	private:
-		void *allocate(const char *type_name, size_t type_size) final;
-		void deallocate(void *memory, const char *type_name, size_t type_size) final;
 
 	private:
-		ResourcePool *fetchPool(const char *type_name, size_t type_size);
+		ResourceVTable *fetchVTable(const char *type_name) final;
+		void *allocate(const char *type_name, size_t size) final;
+		void deallocate(void *memory, const char *type_name) final;
+
+	private:
+		ResourcePool *fetchPool(const char *type_name, size_t size);
+		ResourcePool *getPool(const char *type_name) const;
 
 	private:
 		io::FileSystem *file_system;
 		std::map<const char *, ResourcePool *> pools;
+		std::map<const char *, ResourceVTable *> vtables;
 	};
 }

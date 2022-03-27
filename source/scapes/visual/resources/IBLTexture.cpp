@@ -5,18 +5,32 @@ using namespace scapes::visual;
 
 /*
  */
-void ::ResourcePipeline<resources::IBLTexture>::destroy(
+size_t ResourceTraits<resources::IBLTexture>::size()
+{
+	return sizeof(resources::IBLTexture);
+}
+
+void ResourceTraits<resources::IBLTexture>::create(
 	foundation::resources::ResourceManager *resource_manager,
-	IBLTextureHandle handle,
-	foundation::render::Device *device
+	void *memory
 )
 {
-	resources::IBLTexture *texture = handle.get();
+	resources::IBLTexture *texture = reinterpret_cast<resources::IBLTexture *>(memory);
 
-	resource_manager->destroy(texture->prefiltered_specular_cubemap, device);
-	resource_manager->destroy(texture->diffuse_irradiance_cubemap, device);
+	*texture = {};
+}
 
-	device->destroyBindSet(texture->bindings);
+void ResourceTraits<resources::IBLTexture>::destroy(
+	foundation::resources::ResourceManager *resource_manager,
+	void *memory
+)
+{
+	resources::IBLTexture *texture = reinterpret_cast<resources::IBLTexture *>(memory);
+
+	// resource_manager->destroy(texture->prefiltered_specular_cubemap, device);
+	// resource_manager->destroy(texture->diffuse_irradiance_cubemap, device);
+
+	// device->destroyBindSet(texture->bindings);
 
 	*texture = {};
 }

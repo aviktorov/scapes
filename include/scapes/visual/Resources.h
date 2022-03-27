@@ -31,9 +31,11 @@ namespace scapes::visual::resources
 	};
 
 	template <>
-	struct ::ResourcePipeline<IBLTexture>
+	struct ::ResourceTraits<IBLTexture>
 	{
-		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, IBLTextureHandle handle, foundation::render::Device *device);
+		static SCAPES_API size_t size();
+		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
 	};
 
 	/*
@@ -67,9 +69,11 @@ namespace scapes::visual::resources
 	};
 
 	template <>
-	struct ::ResourcePipeline<Mesh>
+	struct ::ResourceTraits<Mesh>
 	{
-		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, MeshHandle handle, foundation::render::Device *device);
+		static SCAPES_API size_t size();
+		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
 	};
 
 	/*
@@ -90,9 +94,11 @@ namespace scapes::visual::resources
 	};
 
 	template <>
-	struct ::ResourcePipeline<RenderMaterial>
+	struct ::ResourceTraits<RenderMaterial>
 	{
-		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, RenderMaterialHandle handle, foundation::render::Device *device);
+		static SCAPES_API size_t size();
+		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
 	};
 
 	/*
@@ -110,10 +116,12 @@ namespace scapes::visual::resources
 	};
 
 	template <>
-	struct ::ResourcePipeline<Shader>
+	struct ::ResourceTraits<Shader>
 	{
-		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, ShaderHandle handle, foundation::render::Device *device);
-		static SCAPES_API bool process(foundation::resources::ResourceManager *resource_manager, ShaderHandle handle, const uint8_t *data, size_t size, foundation::render::ShaderType type, foundation::render::Device *device, foundation::shaders::Compiler *compiler);
+		static SCAPES_API size_t size();
+		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API bool importFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size, foundation::render::ShaderType type);
 	};
 
 	/*
@@ -137,9 +145,11 @@ namespace scapes::visual::resources
 	};
 
 	template <>
-	struct ::ResourcePipeline<Texture>
+	struct ::ResourceTraits<Texture>
 	{
-		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, TextureHandle handle, foundation::render::Device *device);
-		static SCAPES_API bool process(foundation::resources::ResourceManager *resource_manager, TextureHandle handle, const uint8_t *data, size_t size, foundation::render::Device *device);
+		static SCAPES_API size_t size();
+		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API bool importFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
 	};
 }

@@ -5,14 +5,29 @@ using namespace scapes::visual;
 
 /*
  */
-void ResourcePipeline<resources::RenderMaterial>::destroy(
+size_t ResourceTraits<resources::RenderMaterial>::size()
+{
+	return sizeof(resources::RenderMaterial);
+}
+
+void ResourceTraits<resources::RenderMaterial>::create(
 	foundation::resources::ResourceManager *resource_manager,
-	RenderMaterialHandle handle,
-	foundation::render::Device *device
+	void *memory
 )
 {
-	resources::RenderMaterial *render_material = handle.get();
+	resources::RenderMaterial *render_material = reinterpret_cast<resources::RenderMaterial *>(memory);
 
-	device->destroyBindSet(render_material->bindings);
+	*render_material = {};
+}
+
+void ResourceTraits<resources::RenderMaterial>::destroy(
+	foundation::resources::ResourceManager *resource_manager,
+	void *memory
+)
+{
+	resources::RenderMaterial *render_material = reinterpret_cast<resources::RenderMaterial *>(memory);
+
+	// device->destroyBindSet(render_material->bindings);
+
 	*render_material = {};
 }

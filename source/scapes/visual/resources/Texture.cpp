@@ -44,15 +44,29 @@ static foundation::render::Format deduceFormat(size_t pixel_size, int channels)
 
 /*
  */
-void ResourcePipeline<resources::Texture>::destroy(
+size_t ResourceTraits<resources::Texture>::size()
+{
+	return sizeof(resources::Texture);
+}
+
+void ResourceTraits<resources::Texture>::create(
 	foundation::resources::ResourceManager *resource_manager,
-	TextureHandle handle,
-	foundation::render::Device *device
+	void *memory
 )
 {
-	resources::Texture *texture = handle.get();
+	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
 
-	device->destroyTexture(texture->gpu_data);
+	*texture = {};
+}
+
+void ResourceTraits<resources::Texture>::destroy(
+	foundation::resources::ResourceManager *resource_manager,
+	void *memory
+)
+{
+	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
+
+	// device->destroyTexture(texture->gpu_data);
 
 	// TODO: use subresource pools
 	stbi_image_free(texture->cpu_data);
@@ -60,12 +74,11 @@ void ResourcePipeline<resources::Texture>::destroy(
 	*texture = {};
 }
 
-bool ResourcePipeline<resources::Texture>::process(
+bool ResourceTraits<resources::Texture>::importFromMemory(
 	foundation::resources::ResourceManager *resource_manager,
-	TextureHandle handle,
+	void *memory,
 	const uint8_t *data,
-	size_t size,
-	foundation::render::Device *device
+	size_t size
 )
 {
 	SCAPES_PROFILER();
@@ -113,22 +126,22 @@ bool ResourcePipeline<resources::Texture>::process(
 
 	size_t image_size = width * height * channels * pixel_size;
 
-	resources::Texture *result = handle.get();
-	result->width = width;
-	result->height = height;
-	result->mip_levels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
-	result->layers = 1;
-	result->format = deduceFormat(pixel_size, channels);
+	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
+	texture->width = width;
+	texture->height = height;
+	texture->mip_levels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
+	texture->layers = 1;
+	texture->format = deduceFormat(pixel_size, channels);
 
 	{
 		SCAPES_PROFILER_N("ResourcePipeline<Texture>::upload_to_gpu");
-		result->cpu_data = reinterpret_cast<unsigned char*>(stb_pixels);
-		result->gpu_data = device->createTexture2D(result->width, result->height, result->mip_levels, result->format, result->cpu_data);
+		texture->cpu_data = reinterpret_cast<unsigned char*>(stb_pixels);
+		// texture->gpu_data = device->createTexture2D(texture->width, texture->height, texture->mip_levels, texture->format, texture->cpu_data);
 	}
 
 	{
 		SCAPES_PROFILER_N("ResourcePipeline<Texture>::generate_2d_mipmaps");
-		device->generateTexture2DMipmaps(result->gpu_data);
+		// device->generateTexture2DMipmaps(texture->gpu_data);
 	}
 
 	return true;
