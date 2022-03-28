@@ -12,12 +12,14 @@ size_t ResourceTraits<resources::IBLTexture>::size()
 
 void ResourceTraits<resources::IBLTexture>::create(
 	foundation::resources::ResourceManager *resource_manager,
-	void *memory
+	void *memory,
+	foundation::render::Device *device
 )
 {
 	resources::IBLTexture *texture = reinterpret_cast<resources::IBLTexture *>(memory);
 
 	*texture = {};
+	texture->device = device;
 }
 
 void ResourceTraits<resources::IBLTexture>::destroy(
@@ -26,11 +28,13 @@ void ResourceTraits<resources::IBLTexture>::destroy(
 )
 {
 	resources::IBLTexture *texture = reinterpret_cast<resources::IBLTexture *>(memory);
+	foundation::render::Device *device = texture->device;
 
-	// resource_manager->destroy(texture->prefiltered_specular_cubemap, device);
-	// resource_manager->destroy(texture->diffuse_irradiance_cubemap, device);
+	assert(device);
 
-	// device->destroyBindSet(texture->bindings);
+	device->destroyTexture(texture->prefiltered_specular_cubemap);
+	device->destroyTexture(texture->diffuse_irradiance_cubemap);
+	device->destroyBindSet(texture->bindings);
 
 	*texture = {};
 }

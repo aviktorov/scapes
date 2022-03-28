@@ -121,7 +121,7 @@ namespace scapes::visual
 		uint32_t num_data_mipmaps
 	)
 	{
-		TextureHandle result = resource_manager->create<resources::Texture>();
+		TextureHandle result = resource_manager->create<resources::Texture>(device);
 
 		result->format = format;
 		result->width = width;
@@ -160,7 +160,7 @@ namespace scapes::visual
 		uint32_t num_data_mipmaps
 	)
 	{
-		TextureHandle result = resource_manager->create<resources::Texture>();
+		TextureHandle result = resource_manager->create<resources::Texture>(device);
 
 		result->format = format;
 		result->width = size;
@@ -179,7 +179,7 @@ namespace scapes::visual
 		size_t size
 	)
 	{
-		TextureHandle result = resource_manager->importFromMemory<resources::Texture>(data, size);
+		TextureHandle result = resource_manager->importFromMemory<resources::Texture>(data, size, device);
 		if (result.get())
 			managed_textures.push_back(result);
 
@@ -195,7 +195,7 @@ namespace scapes::visual
 		if (it != uri_texture_lookup.end())
 			return it->second;
 
-		TextureHandle result = resource_manager->import<resources::Texture>(uri);
+		TextureHandle result = resource_manager->import<resources::Texture>(uri, device);
 
 		if (result.get())
 		{
@@ -224,7 +224,7 @@ namespace scapes::visual
 		foundation::render::ShaderType shader_type
 	)
 	{
-		ShaderHandle result = resource_manager->importFromMemory<resources::Shader>(data, size, shader_type);
+		ShaderHandle result = resource_manager->importFromMemory<resources::Shader>(data, size, shader_type, device, compiler);
 		if (result.get())
 			managed_shaders.push_back(result);
 
@@ -241,7 +241,7 @@ namespace scapes::visual
 		if (it != uri_shader_lookup.end())
 			return it->second;
 
-		ShaderHandle result = resource_manager->import<resources::Shader>(uri, shader_type);
+		ShaderHandle result = resource_manager->import<resources::Shader>(uri, shader_type, device, compiler);
 
 		if (result.get())
 		{
@@ -271,7 +271,7 @@ namespace scapes::visual
 		uint32_t *indices
 	)
 	{
-		MeshHandle result = resource_manager->create<resources::Mesh>();
+		MeshHandle result = resource_manager->create<resources::Mesh>(device);
 
 		result->num_vertices = num_vertices;
 		result->num_indices = num_indices;
@@ -292,7 +292,7 @@ namespace scapes::visual
 		float size
 	)
 	{
-		MeshHandle result = resource_manager->create<resources::Mesh>();
+		MeshHandle result = resource_manager->create<resources::Mesh>(device);
 
 		result->num_vertices = 4;
 		result->num_indices = 6;
@@ -331,7 +331,7 @@ namespace scapes::visual
 		float size
 	)
 	{
-		MeshHandle result = resource_manager->create<resources::Mesh>();
+		MeshHandle result = resource_manager->create<resources::Mesh>(device);
 
 		result->num_vertices = 8;
 		result->num_indices = 36;
@@ -375,38 +375,38 @@ namespace scapes::visual
 		const IBLTextureCreateData &create_data
 	)
 	{
-		TextureHandle hdri_texture = resource_manager->import<resources::Texture>(uri);
+		TextureHandle hdri_texture = resource_manager->import<resources::Texture>(uri, device);
 		if (hdri_texture.get() == nullptr)
 			return IBLTextureHandle();
 
 		uint32_t mips = static_cast<int>(std::floor(std::log2(create_data.cubemap_size)) + 1);
 
-		TextureHandle diffuse_irradiance = resource_manager->create<resources::Texture>();
-		diffuse_irradiance->format = create_data.format;
-		diffuse_irradiance->width = create_data.cubemap_size;
-		diffuse_irradiance->height = create_data.cubemap_size;
-		diffuse_irradiance->mip_levels = 1;
-		diffuse_irradiance->layers = 6;
-		diffuse_irradiance->gpu_data = device->createTextureCube(create_data.cubemap_size, 1, create_data.format);
+		resources::Texture diffuse_irradiance = {};
+		diffuse_irradiance.format = create_data.format;
+		diffuse_irradiance.width = create_data.cubemap_size;
+		diffuse_irradiance.height = create_data.cubemap_size;
+		diffuse_irradiance.mip_levels = 1;
+		diffuse_irradiance.layers = 6;
+		diffuse_irradiance.gpu_data = device->createTextureCube(create_data.cubemap_size, 1, create_data.format);
 
-		TextureHandle temp_cubemap = resource_manager->create<resources::Texture>();
-		temp_cubemap->format = create_data.format;
-		temp_cubemap->width = create_data.cubemap_size;
-		temp_cubemap->height = create_data.cubemap_size;
-		temp_cubemap->mip_levels = 1;
-		temp_cubemap->layers = 6;
-		temp_cubemap->gpu_data = device->createTextureCube(create_data.cubemap_size, 1, create_data.format);
+		resources::Texture temp_cubemap = {};
+		temp_cubemap.format = create_data.format;
+		temp_cubemap.width = create_data.cubemap_size;
+		temp_cubemap.height = create_data.cubemap_size;
+		temp_cubemap.mip_levels = 1;
+		temp_cubemap.layers = 6;
+		temp_cubemap.gpu_data = device->createTextureCube(create_data.cubemap_size, 1, create_data.format);
 
-		TextureHandle prefiltered_specular = resource_manager->create<resources::Texture>();
-		prefiltered_specular->format = create_data.format;
-		prefiltered_specular->width = create_data.cubemap_size;
-		prefiltered_specular->height = create_data.cubemap_size;
-		prefiltered_specular->mip_levels = mips;
-		prefiltered_specular->layers = 6;
-		prefiltered_specular->gpu_data = device->createTextureCube(create_data.cubemap_size, mips, create_data.format);
+		resources::Texture prefiltered_specular = {};
+		prefiltered_specular.format = create_data.format;
+		prefiltered_specular.width = create_data.cubemap_size;
+		prefiltered_specular.height = create_data.cubemap_size;
+		prefiltered_specular.mip_levels = mips;
+		prefiltered_specular.layers = 6;
+		prefiltered_specular.gpu_data = device->createTextureCube(create_data.cubemap_size, mips, create_data.format);
 
 		CubemapRenderer renderer(device);
-		renderer.init(temp_cubemap.get(), 0);
+		renderer.init(&temp_cubemap, 0);
 		renderer.render(
 			unit_cube.get(),
 			create_data.cubemap_vertex.get(),
@@ -416,50 +416,51 @@ namespace scapes::visual
 		);
 		renderer.shutdown();
 
-		for (uint32_t mip = 0; mip < prefiltered_specular->mip_levels; ++mip)
+		resource_manager->destroy(hdri_texture);
+
+		for (uint32_t mip = 0; mip < prefiltered_specular.mip_levels; ++mip)
 		{
-			float roughness = static_cast<float>(mip) / prefiltered_specular->mip_levels;
+			float roughness = static_cast<float>(mip) / prefiltered_specular.mip_levels;
 
 			uint8_t size = static_cast<uint8_t>(sizeof(float));
 			const uint8_t *data = reinterpret_cast<const uint8_t *>(&roughness);
 
-			renderer.init(prefiltered_specular.get(), mip);
+			renderer.init(&prefiltered_specular, mip);
 			renderer.render(
 				unit_cube.get(),
 				create_data.cubemap_vertex.get(),
 				create_data.cubemap_geometry.get(),
 				create_data.prefiltered_specular_fragment.get(),
-				temp_cubemap.get(),
+				&temp_cubemap,
 				size,
 				data
 			);
 			renderer.shutdown();
 		}
 
-		renderer.init(diffuse_irradiance.get(), 0);
+		renderer.init(&diffuse_irradiance, 0);
 		renderer.render(
 			unit_cube.get(),
 			create_data.cubemap_vertex.get(),
 			create_data.cubemap_geometry.get(),
 			create_data.diffuse_irradiance_fragment.get(),
-			temp_cubemap.get()
+			&temp_cubemap
 		);
 		renderer.shutdown();
 
-		resource_manager->destroy(hdri_texture);
-		resource_manager->destroy(temp_cubemap);
+		device->destroyTexture(temp_cubemap.gpu_data);
 
-		IBLTextureHandle result = resource_manager->create<resources::IBLTexture>();
+		IBLTextureHandle result = resource_manager->create<resources::IBLTexture>(device);
 
-		result->diffuse_irradiance_cubemap = diffuse_irradiance;
-		result->prefiltered_specular_cubemap = prefiltered_specular;
+		result->diffuse_irradiance_cubemap = diffuse_irradiance.gpu_data;
+		result->prefiltered_specular_cubemap = prefiltered_specular.gpu_data;
 
 		result->baked_brdf = create_data.baked_brdf;
 
 		result->bindings = device->createBindSet();
 		device->bindTexture(result->bindings, 0, result->baked_brdf->gpu_data);
-		device->bindTexture(result->bindings, 1, result->prefiltered_specular_cubemap->gpu_data);
-		device->bindTexture(result->bindings, 2, result->diffuse_irradiance_cubemap->gpu_data);
+		device->bindTexture(result->bindings, 1, result->prefiltered_specular_cubemap);
+		device->bindTexture(result->bindings, 2, result->diffuse_irradiance_cubemap);
 
 		managed_ibl_textures.push_back(result);
 		return result;
@@ -472,7 +473,7 @@ namespace scapes::visual
 		TextureHandle metalness
 	)
 	{
-		RenderMaterialHandle result = resource_manager->create<resources::RenderMaterial>();
+		RenderMaterialHandle result = resource_manager->create<resources::RenderMaterial>(device);
 
 		result->albedo = albedo;
 		result->normal = normal;

@@ -12,12 +12,14 @@ size_t ResourceTraits<resources::RenderMaterial>::size()
 
 void ResourceTraits<resources::RenderMaterial>::create(
 	foundation::resources::ResourceManager *resource_manager,
-	void *memory
+	void *memory,
+	foundation::render::Device *device
 )
 {
 	resources::RenderMaterial *render_material = reinterpret_cast<resources::RenderMaterial *>(memory);
 
 	*render_material = {};
+	render_material->device = device;
 }
 
 void ResourceTraits<resources::RenderMaterial>::destroy(
@@ -26,8 +28,11 @@ void ResourceTraits<resources::RenderMaterial>::destroy(
 )
 {
 	resources::RenderMaterial *render_material = reinterpret_cast<resources::RenderMaterial *>(memory);
+	foundation::render::Device *device = render_material->device;
 
-	// device->destroyBindSet(render_material->bindings);
+	assert(device);
+
+	device->destroyBindSet(render_material->bindings);
 
 	*render_material = {};
 }

@@ -14,12 +14,18 @@ size_t ResourceTraits<resources::Shader>::size()
 
 void ResourceTraits<resources::Shader>::create(
 	foundation::resources::ResourceManager *resource_manager,
-	void *memory
+	void *memory,
+	foundation::render::ShaderType type,
+	foundation::render::Device *device,
+	foundation::shaders::Compiler *compiler
 )
 {
 	resources::Shader *shader = reinterpret_cast<resources::Shader *>(memory);
 
 	*shader = {};
+	shader->type = type;
+	shader->device = device;
+	shader->compiler = compiler;
 }
 
 void ResourceTraits<resources::Shader>::destroy(
@@ -28,8 +34,11 @@ void ResourceTraits<resources::Shader>::destroy(
 )
 {
 	resources::Shader *shader = reinterpret_cast<resources::Shader *>(memory);
+	foundation::render::Device *device = shader->device;
 
-	// device->destroyShader(shader->shader);
+	assert(device);
+
+	device->destroyShader(shader->shader);
 
 	*shader = {};
 }
@@ -38,8 +47,7 @@ bool ResourceTraits<resources::Shader>::importFromMemory(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,
 	const uint8_t *data,
-	size_t size,
-	foundation::render::ShaderType type
+	size_t size
 )
 {
 	SCAPES_PROFILER();
@@ -47,27 +55,30 @@ bool ResourceTraits<resources::Shader>::importFromMemory(
 	resources::Shader *shader = reinterpret_cast<resources::Shader *>(memory);
 	assert(shader);
 
-	shader->type = type;
-	shader->shader = nullptr;
+	foundation::render::Device *device = shader->device;
+	assert(device);
+
+	foundation::shaders::Compiler *compiler = shader->compiler;
+	assert(compiler);
 
 	foundation::shaders::ShaderIL *il = nullptr;
 	
 	{
 		SCAPES_PROFILER_N("ResourcePipeline<Shader>::compile_to_spirv");
-		// il = compiler->createShaderIL(static_cast<foundation::shaders::ShaderType>(type), static_cast<uint32_t>(size), reinterpret_cast<const char *>(data));
+		il = compiler->createShaderIL(static_cast<foundation::shaders::ShaderType>(shader->type), static_cast<uint32_t>(size), reinterpret_cast<const char *>(data));
 	}
 
 	if (il != nullptr)
 	{
 		SCAPES_PROFILER_N("ResourcePipeline<Shader>::create_from_spirv");
-		// shader->shader = device->createShaderFromIL(
-		// 	static_cast<foundation::render::ShaderType>(il->type),
-		// 	static_cast<foundation::render::ShaderILType>(il->il_type),
-		// 	il->bytecode_size,
-		// 	il->bytecode_data
-		// );
+		shader->shader = device->createShaderFromIL(
+			static_cast<foundation::render::ShaderType>(il->type),
+			static_cast<foundation::render::ShaderILType>(il->il_type),
+			il->bytecode_size,
+			il->bytecode_data
+		);
 	}
 
-	// compiler->releaseShaderIL(il);
+	compiler->releaseShaderIL(il);
 	return shader->shader != nullptr;
 }

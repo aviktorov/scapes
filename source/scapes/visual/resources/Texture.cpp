@@ -51,12 +51,14 @@ size_t ResourceTraits<resources::Texture>::size()
 
 void ResourceTraits<resources::Texture>::create(
 	foundation::resources::ResourceManager *resource_manager,
-	void *memory
+	void *memory,
+	foundation::render::Device *device
 )
 {
 	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
 
 	*texture = {};
+	texture->device = device;
 }
 
 void ResourceTraits<resources::Texture>::destroy(
@@ -65,8 +67,11 @@ void ResourceTraits<resources::Texture>::destroy(
 )
 {
 	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
+	foundation::render::Device *device = texture->device;
 
-	// device->destroyTexture(texture->gpu_data);
+	assert(device);
+
+	device->destroyTexture(texture->gpu_data);
 
 	// TODO: use subresource pools
 	stbi_image_free(texture->cpu_data);
@@ -133,15 +138,18 @@ bool ResourceTraits<resources::Texture>::importFromMemory(
 	texture->layers = 1;
 	texture->format = deduceFormat(pixel_size, channels);
 
+	foundation::render::Device *device = texture->device;
+	assert(device);
+
 	{
 		SCAPES_PROFILER_N("ResourcePipeline<Texture>::upload_to_gpu");
 		texture->cpu_data = reinterpret_cast<unsigned char*>(stb_pixels);
-		// texture->gpu_data = device->createTexture2D(texture->width, texture->height, texture->mip_levels, texture->format, texture->cpu_data);
+		texture->gpu_data = device->createTexture2D(texture->width, texture->height, texture->mip_levels, texture->format, texture->cpu_data);
 	}
 
 	{
 		SCAPES_PROFILER_N("ResourcePipeline<Texture>::generate_2d_mipmaps");
-		// device->generateTexture2DMipmaps(texture->gpu_data);
+		device->generateTexture2DMipmaps(texture->gpu_data);
 	}
 
 	return true;

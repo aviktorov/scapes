@@ -95,8 +95,8 @@ namespace scapes::foundation::resources
 		virtual io::FileSystem *getFileSystem() const = 0;
 
 	public:
-		template <typename T>
-		ResourceHandle<T> create()
+		template <typename T, typename... Arguments>
+		ResourceHandle<T> create(Arguments &&...params)
 		{
 			size_t size = ResourceTraits<T>::size() + sizeof(ResourceMetadata);
 			void *memory = allocate(TypeTraits<T>::name, size);
@@ -111,18 +111,17 @@ namespace scapes::foundation::resources
 			assert(vtable);
 
 			vtable->destroy = ResourceTraits<T>::destroy;
-			vtable->create = ResourceTraits<T>::create;
 
 			void *resource_memory = reinterpret_cast<uint8_t *>(memory) + sizeof(ResourceMetadata);
 			assert(resource_memory);
 
-			vtable->create(this, resource_memory);
+			ResourceTraits<T>::create(this, resource_memory, std::forward<Arguments>(params)...);
 
 			return ResourceHandle<T>(memory);
 		}
 
 		template <typename T, typename... Arguments>
-		ResourceHandle<T> import(const io::URI &uri, Arguments&&... params)
+		ResourceHandle<T> import(const io::URI &uri, Arguments &&...params)
 		{
 			io::FileSystem *file_system = getFileSystem();
 			assert(file_system);
@@ -147,10 +146,10 @@ namespace scapes::foundation::resources
 		}
 
 		template <typename T, typename... Arguments>
-		ResourceHandle<T> importFromMemory(const uint8_t *data, size_t size, Arguments&&... params)
+		ResourceHandle<T> importFromMemory(const uint8_t *data, size_t size, Arguments &&...params)
 		{
-			ResourceHandle<T> resource = create<T>();
-			ResourceTraits<T>::importFromMemory(this, resource.get(), data, size, std::forward<Arguments>(params)...);
+			ResourceHandle<T> resource = create<T, Arguments...>(std::forward<Arguments>(params)...);
+			ResourceTraits<T>::importFromMemory(this, resource.get(), data, size);
 
 			return resource;
 		}
@@ -170,11 +169,9 @@ namespace scapes::foundation::resources
 	protected:
 		struct ResourceVTable
 		{
-			using CreateFuncPtr = void (*)(ResourceManager *, void *);
 			using DestroyFuncPtr = void (*)(ResourceManager *, void *);
 
 			DestroyFuncPtr destroy {nullptr};
-			CreateFuncPtr create {nullptr};
 		};
 
 		virtual ResourceVTable *fetchVTable(const char *type_name) = 0;

@@ -15,12 +15,14 @@ size_t ResourceTraits<resources::Mesh>::size()
 
 void ResourceTraits<resources::Mesh>::create(
 	foundation::resources::ResourceManager *resource_manager,
-	void *memory
+	void *memory,
+	foundation::render::Device *device
 )
 {
 	resources::Mesh *mesh = reinterpret_cast<resources::Mesh *>(memory);
 
 	*mesh = {};
+	mesh->device = device;
 }
 
 void ResourceTraits<resources::Mesh>::destroy(
@@ -29,9 +31,12 @@ void ResourceTraits<resources::Mesh>::destroy(
 )
 {
 	resources::Mesh *mesh = reinterpret_cast<resources::Mesh *>(memory);
+	foundation::render::Device *device = mesh->device;
 
-	// device->destroyVertexBuffer(mesh->vertex_buffer);
-	// device->destroyIndexBuffer(mesh->index_buffer);
+	assert(device);
+
+	device->destroyVertexBuffer(mesh->vertex_buffer);
+	device->destroyIndexBuffer(mesh->index_buffer);
 
 	// TODO: use subresource pools
 	delete[] mesh->vertices;

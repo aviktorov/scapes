@@ -17,11 +17,11 @@ namespace scapes::visual::resources
 		// TODO: move to skylight
 		TextureHandle baked_brdf;
 
-		// TODO: make it explicit that IBL owns this textures (could be just raw render::backend::Texture pointers?)
-		TextureHandle prefiltered_specular_cubemap;
-		TextureHandle diffuse_irradiance_cubemap;
+		foundation::render::Texture prefiltered_specular_cubemap {SCAPES_NULL_HANDLE};
+		foundation::render::Texture diffuse_irradiance_cubemap {SCAPES_NULL_HANDLE};
 
 		foundation::render::BindSet bindings {SCAPES_NULL_HANDLE};
+		foundation::render::Device *device {nullptr};
 	};
 
 	template <>
@@ -34,7 +34,7 @@ namespace scapes::visual::resources
 	struct ::ResourceTraits<IBLTexture>
 	{
 		static SCAPES_API size_t size();
-		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
 	};
 
@@ -60,6 +60,7 @@ namespace scapes::visual::resources
 
 		foundation::render::VertexBuffer vertex_buffer {SCAPES_NULL_HANDLE};
 		foundation::render::IndexBuffer index_buffer {SCAPES_NULL_HANDLE};
+		foundation::render::Device *device {nullptr};
 	};
 
 	template <>
@@ -72,7 +73,7 @@ namespace scapes::visual::resources
 	struct ::ResourceTraits<Mesh>
 	{
 		static SCAPES_API size_t size();
-		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
 	};
 
@@ -85,6 +86,7 @@ namespace scapes::visual::resources
 		TextureHandle roughness;
 		TextureHandle metalness;
 		foundation::render::BindSet bindings {SCAPES_NULL_HANDLE};
+		foundation::render::Device *device {nullptr};
 	};
 
 	template <>
@@ -97,7 +99,7 @@ namespace scapes::visual::resources
 	struct ::ResourceTraits<RenderMaterial>
 	{
 		static SCAPES_API size_t size();
-		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
 	};
 
@@ -107,6 +109,8 @@ namespace scapes::visual::resources
 	{
 		foundation::render::Shader shader {SCAPES_NULL_HANDLE};
 		foundation::render::ShaderType type {foundation::render::ShaderType::FRAGMENT};
+		foundation::render::Device *device {nullptr};
+		foundation::shaders::Compiler *compiler {nullptr};
 	};
 
 	template <>
@@ -119,9 +123,15 @@ namespace scapes::visual::resources
 	struct ::ResourceTraits<Shader>
 	{
 		static SCAPES_API size_t size();
-		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void create(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			foundation::render::ShaderType type,
+			foundation::render::Device *device,
+			foundation::shaders::Compiler *compiler
+		);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
-		static SCAPES_API bool importFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size, foundation::render::ShaderType type);
+		static SCAPES_API bool importFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
 	};
 
 	/*
@@ -136,6 +146,7 @@ namespace scapes::visual::resources
 
 		unsigned char *cpu_data {nullptr};
 		foundation::render::Texture gpu_data {SCAPES_NULL_HANDLE};
+		foundation::render::Device *device {nullptr};
 	};
 
 	template <>
@@ -148,7 +159,7 @@ namespace scapes::visual::resources
 	struct ::ResourceTraits<Texture>
 	{
 		static SCAPES_API size_t size();
-		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
 		static SCAPES_API bool importFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
 	};
