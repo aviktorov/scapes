@@ -139,11 +139,5 @@ namespace scapes::visual
 
 		std::map<std::string, ShaderHandle> uri_shader_lookup;
 		std::map<ShaderHandle, std::string, HandleCompare<ShaderHandle>> shader_uri_lookup;
-
-		std::vector<TextureHandle> managed_textures;
-		std::vector<ShaderHandle> managed_shaders;
-		std::vector<MeshHandle> managed_meshes;
-		std::vector<RenderMaterialHandle> managed_render_materials;
-		std::vector<IBLTextureHandle> managed_ibl_textures;
 	};
 }

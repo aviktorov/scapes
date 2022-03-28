@@ -97,4 +97,31 @@ namespace scapes::foundation::resources::impl
 			}
 		}
 	}
+
+	void ResourcePool::clear()
+	{
+		for (size_t i = 0; i < pages.size(); ++i)
+		{
+			Page &page = pages[i];
+			page.free_elements_mask = INITIAL_FREE_MASK;
+		}
+	}
+
+	void ResourcePool::traverse(std::function<void (void *)> func)
+	{
+		for (size_t i = 0; i < pages.size(); ++i)
+		{
+			Page &page = pages[i];
+
+			for (int j = 0; j < ELEMENTS_IN_PAGE; ++j)
+			{
+				uint64_t mask = static_cast<uint64_t>(1) << j;
+				if (mask & page.free_elements_mask)
+					continue;
+
+				void *memory = reinterpret_cast<uint8_t*>(page.memory) + element_size * j;
+				func(memory);
+			}
+		}
+	}
 }

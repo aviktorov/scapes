@@ -111,6 +111,7 @@ namespace scapes::foundation::resources
 			assert(vtable);
 
 			vtable->destroy = ResourceTraits<T>::destroy;
+			vtable->offset = sizeof(ResourceMetadata);
 
 			void *resource_memory = reinterpret_cast<uint8_t *>(memory) + sizeof(ResourceMetadata);
 			assert(resource_memory);
@@ -172,6 +173,7 @@ namespace scapes::foundation::resources
 			using DestroyFuncPtr = void (*)(ResourceManager *, void *);
 
 			DestroyFuncPtr destroy {nullptr};
+			size_t offset {0};
 		};
 
 		virtual ResourceVTable *fetchVTable(const char *type_name) = 0;

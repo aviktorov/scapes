@@ -2,6 +2,7 @@
 
 #include <scapes/Common.h>
 #include <vector>
+#include <functional>
 
 namespace scapes::foundation::resources::impl
 {
@@ -13,6 +14,8 @@ namespace scapes::foundation::resources::impl
 
 		void *allocate();
 		void deallocate(const void *memory);
+		void clear();
+		void traverse(std::function<void (void *)> func);
 
 	private:
 		enum : uint64_t

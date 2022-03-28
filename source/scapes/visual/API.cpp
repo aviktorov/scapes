@@ -84,27 +84,6 @@ namespace scapes::visual
 
 	APIImpl::~APIImpl()
 	{
-		for (TextureHandle handle : managed_textures)
-			resource_manager->destroy(handle);
-
-		for (ShaderHandle handle : managed_shaders)
-			resource_manager->destroy(handle);
-
-		for (MeshHandle handle : managed_meshes)
-			resource_manager->destroy(handle);
-
-		for (RenderMaterialHandle handle : managed_render_materials)
-			resource_manager->destroy(handle);
-
-		for (IBLTextureHandle handle : managed_ibl_textures)
-			resource_manager->destroy(handle);
-
-		managed_textures.clear();
-		managed_shaders.clear();
-		managed_meshes.clear();
-		managed_render_materials.clear();
-		managed_ibl_textures.clear();
-
 		uri_shader_lookup.clear();
 		shader_uri_lookup.clear();
 
@@ -129,8 +108,6 @@ namespace scapes::visual
 		result->mip_levels = num_mips;
 		result->layers = 1;
 		result->gpu_data = device->createTexture2D(width, height, num_mips, format, data, num_data_mipmaps);
-
-		managed_textures.push_back(result);
 
 		return result;
 	}
@@ -169,8 +146,6 @@ namespace scapes::visual
 		result->layers = 6;
 		result->gpu_data = device->createTextureCube(size, num_mips, format, data, num_data_mipmaps);
 
-		managed_textures.push_back(result);
-
 		return result;
 	}
 
@@ -180,8 +155,6 @@ namespace scapes::visual
 	)
 	{
 		TextureHandle result = resource_manager->importFromMemory<resources::Texture>(data, size, device);
-		if (result.get())
-			managed_textures.push_back(result);
 
 		return result;
 	}
@@ -199,7 +172,6 @@ namespace scapes::visual
 
 		if (result.get())
 		{
-			managed_textures.push_back(result);
 			uri_texture_lookup.insert({uri_string, result});
 			texture_uri_lookup.insert({result, uri_string});
 		}
@@ -225,8 +197,6 @@ namespace scapes::visual
 	)
 	{
 		ShaderHandle result = resource_manager->importFromMemory<resources::Shader>(data, size, shader_type, device, compiler);
-		if (result.get())
-			managed_shaders.push_back(result);
 
 		return result;
 	}
@@ -245,7 +215,6 @@ namespace scapes::visual
 
 		if (result.get())
 		{
-			managed_shaders.push_back(result);
 			uri_shader_lookup.insert({uri_string, result});
 			shader_uri_lookup.insert({result, uri_string});
 		}
@@ -284,7 +253,6 @@ namespace scapes::visual
 		memcpy(result->indices, indices, sizeof(uint32_t) * result->num_indices);
 		uploadToGPU(device, result);
 
-		managed_meshes.push_back(result);
 		return result;
 	}
 
@@ -323,7 +291,6 @@ namespace scapes::visual
 		memcpy(result->indices, quad_indices, sizeof(uint32_t) * result->num_indices);
 		uploadToGPU(device, result);
 
-		managed_meshes.push_back(result);
 		return result;
 	}
 
@@ -366,7 +333,6 @@ namespace scapes::visual
 		memcpy(result->indices, skybox_indices, sizeof(uint32_t) * result->num_indices);
 		uploadToGPU(device, result);
 
-		managed_meshes.push_back(result);
 		return result;
 	}
 
@@ -462,7 +428,6 @@ namespace scapes::visual
 		device->bindTexture(result->bindings, 1, result->prefiltered_specular_cubemap);
 		device->bindTexture(result->bindings, 2, result->diffuse_irradiance_cubemap);
 
-		managed_ibl_textures.push_back(result);
 		return result;
 	}
 
@@ -486,7 +451,6 @@ namespace scapes::visual
 		device->bindTexture(result->bindings, 2, result->roughness->gpu_data);
 		device->bindTexture(result->bindings, 3, result->metalness->gpu_data);
 
-		managed_render_materials.push_back(result);
 		return result;
 	}
 }

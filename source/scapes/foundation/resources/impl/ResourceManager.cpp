@@ -14,7 +14,23 @@ namespace scapes::foundation::resources::impl
 	ResourceManager::~ResourceManager()
 	{
 		for (auto it : pools)
+		{
+			auto vtable_it = vtables.find(it.first);
+			assert(vtable_it != vtables.end());
+
+			ResourceVTable *vtable = vtable_it->second;
+			assert(vtable);
+
+			it.second->traverse(
+				[this, vtable](void *memory)
+				{
+					uint8_t *memory_ptr = reinterpret_cast<uint8_t *>(memory) + vtable->offset;
+					vtable->destroy(this, memory_ptr);
+				}
+			);
+			it.second->clear();
 			delete it.second;
+		}
 
 		for (auto it : vtables)
 			delete it.second;
