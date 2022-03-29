@@ -102,7 +102,7 @@ void ApplicationResources::init()
 
 	for (int i = 0; i < config::ibl_textures.size(); ++i)
 	{
-		scapes::visual::IBLTextureHandle ibl_texture = visual_api->importIBLTexture(config::ibl_textures[i], create_data);
+		scapes::visual::IBLTextureHandle ibl_texture = visual_api->loadIBLTexture(config::ibl_textures[i], create_data);
 		loaded_ibl_textures.push_back(ibl_texture);
 	}
 }

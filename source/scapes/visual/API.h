@@ -100,7 +100,7 @@ namespace scapes::visual
 			float size
 		) final;
 
-		IBLTextureHandle importIBLTexture(
+		IBLTextureHandle loadIBLTexture(
 			const foundation::io::URI &uri,
 			const IBLTextureCreateData &create_data
 		) final;
@@ -133,11 +133,5 @@ namespace scapes::visual
 
 		scapes::visual::MeshHandle unit_quad;
 		scapes::visual::MeshHandle unit_cube;
-
-		std::map<std::string, TextureHandle> uri_texture_lookup;
-		std::map<TextureHandle, std::string, HandleCompare<TextureHandle>> texture_uri_lookup;
-
-		std::map<std::string, ShaderHandle> uri_shader_lookup;
-		std::map<ShaderHandle, std::string, HandleCompare<ShaderHandle>> shader_uri_lookup;
 	};
 }

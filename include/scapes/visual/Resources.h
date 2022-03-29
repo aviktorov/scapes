@@ -131,7 +131,7 @@ namespace scapes::visual::resources
 			foundation::shaders::Compiler *compiler
 		);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
-		static SCAPES_API bool importFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
+		static SCAPES_API bool loadFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
 	};
 
 	/*
@@ -161,6 +161,6 @@ namespace scapes::visual::resources
 		static SCAPES_API size_t size();
 		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
-		static SCAPES_API bool importFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
+		static SCAPES_API bool loadFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
 	};
 }

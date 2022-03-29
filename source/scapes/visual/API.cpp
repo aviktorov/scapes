@@ -84,11 +84,6 @@ namespace scapes::visual
 
 	APIImpl::~APIImpl()
 	{
-		uri_shader_lookup.clear();
-		shader_uri_lookup.clear();
-
-		uri_texture_lookup.clear();
-		texture_uri_lookup.clear();
 	}
 
 	TextureHandle APIImpl::createTexture2D(
@@ -154,7 +149,7 @@ namespace scapes::visual
 		size_t size
 	)
 	{
-		TextureHandle result = resource_manager->importFromMemory<resources::Texture>(data, size, device);
+		TextureHandle result = resource_manager->loadFromMemory<resources::Texture>(data, size, device);
 
 		return result;
 	}
@@ -163,31 +158,14 @@ namespace scapes::visual
 		const foundation::io::URI &uri
 	)
 	{
-		std::string uri_string = std::string(uri);
-		auto it = uri_texture_lookup.find(uri_string);
-		if (it != uri_texture_lookup.end())
-			return it->second;
-
-		TextureHandle result = resource_manager->import<resources::Texture>(uri, device);
-
-		if (result.get())
-		{
-			uri_texture_lookup.insert({uri_string, result});
-			texture_uri_lookup.insert({result, uri_string});
-		}
-
-		return result;
+		return resource_manager->fetch<resources::Texture>(uri, device);
 	}
 
 	foundation::io::URI APIImpl::getTextureUri(
 		TextureHandle handle
 	) const
 	{
-		auto it = texture_uri_lookup.find(handle);
-		if (it == texture_uri_lookup.end())
-			return nullptr;
-
-		return it->second.c_str();
+		return resource_manager->getUri(handle);
 	}
 
 	ShaderHandle APIImpl::loadShaderFromMemory(
@@ -196,7 +174,7 @@ namespace scapes::visual
 		foundation::render::ShaderType shader_type
 	)
 	{
-		ShaderHandle result = resource_manager->importFromMemory<resources::Shader>(data, size, shader_type, device, compiler);
+		ShaderHandle result = resource_manager->loadFromMemory<resources::Shader>(data, size, shader_type, device, compiler);
 
 		return result;
 	}
@@ -206,31 +184,14 @@ namespace scapes::visual
 		foundation::render::ShaderType shader_type
 	)
 	{
-		std::string uri_string = std::string(uri);
-		auto it = uri_shader_lookup.find(uri_string);
-		if (it != uri_shader_lookup.end())
-			return it->second;
-
-		ShaderHandle result = resource_manager->import<resources::Shader>(uri, shader_type, device, compiler);
-
-		if (result.get())
-		{
-			uri_shader_lookup.insert({uri_string, result});
-			shader_uri_lookup.insert({result, uri_string});
-		}
-
-		return result;
+		return resource_manager->fetch<resources::Shader>(uri, shader_type, device, compiler);
 	}
 
 	foundation::io::URI APIImpl::getShaderUri(
 		ShaderHandle handle
 	) const
 	{
-		auto it = shader_uri_lookup.find(handle);
-		if (it == shader_uri_lookup.end())
-			return nullptr;
-
-		return it->second.c_str();
+		return resource_manager->getUri(handle);
 	}
 
 	MeshHandle APIImpl::createMesh(
@@ -336,12 +297,12 @@ namespace scapes::visual
 		return result;
 	}
 
-	IBLTextureHandle APIImpl::importIBLTexture(
+	IBLTextureHandle APIImpl::loadIBLTexture(
 		const foundation::io::URI &uri,
 		const IBLTextureCreateData &create_data
 	)
 	{
-		TextureHandle hdri_texture = resource_manager->import<resources::Texture>(uri, device);
+		TextureHandle hdri_texture = resource_manager->load<resources::Texture>(uri, device);
 		if (hdri_texture.get() == nullptr)
 			return IBLTextureHandle();
 

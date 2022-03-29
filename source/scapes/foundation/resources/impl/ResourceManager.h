@@ -2,7 +2,7 @@
 
 #include <scapes/foundation/resources/ResourceManager.h>
 
-#include <map>
+#include <unordered_map>
 
 namespace scapes::foundation::resources::impl
 {
@@ -17,6 +17,11 @@ namespace scapes::foundation::resources::impl
 		SCAPES_INLINE io::FileSystem *getFileSystem() const final { return file_system; }
 
 	private:
+		bool linkMemory(void *memory, const io::URI &uri) final;
+		bool unlinkMemory(void *memory) final;
+		void *getLinkedMemory(const io::URI &uri) const final;
+		io::URI getLinkedUri(void *memory) const final;
+
 		ResourceVTable *fetchVTable(const char *type_name) final;
 		void *allocate(const char *type_name, size_t size) final;
 		void deallocate(void *memory, const char *type_name) final;
@@ -27,7 +32,10 @@ namespace scapes::foundation::resources::impl
 
 	private:
 		io::FileSystem *file_system;
-		std::map<const char *, ResourcePool *> pools;
-		std::map<const char *, ResourceVTable *> vtables;
+		std::unordered_map<size_t, ResourcePool *> pools;
+		std::unordered_map<size_t, ResourceVTable *> vtables;
+
+		std::unordered_map<size_t, io::URI> uri_by_resource;
+		std::unordered_map<size_t, std::vector<void *>> resources_by_uri;
 	};
 }

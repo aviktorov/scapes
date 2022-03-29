@@ -43,7 +43,7 @@ void ResourceTraits<resources::Shader>::destroy(
 	*shader = {};
 }
 
-bool ResourceTraits<resources::Shader>::importFromMemory(
+bool ResourceTraits<resources::Shader>::loadFromMemory(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,
 	const uint8_t *data,
@@ -64,13 +64,13 @@ bool ResourceTraits<resources::Shader>::importFromMemory(
 	foundation::shaders::ShaderIL *il = nullptr;
 	
 	{
-		SCAPES_PROFILER_N("ResourcePipeline<Shader>::compile_to_spirv");
+		SCAPES_PROFILER_N("ResourcePipeline<Shader>::loadFromMemory(): compile_to_spirv");
 		il = compiler->createShaderIL(static_cast<foundation::shaders::ShaderType>(shader->type), static_cast<uint32_t>(size), reinterpret_cast<const char *>(data));
 	}
 
 	if (il != nullptr)
 	{
-		SCAPES_PROFILER_N("ResourcePipeline<Shader>::create_from_spirv");
+		SCAPES_PROFILER_N("ResourcePipeline<Shader>::loadFromMemory(): create_from_spirv");
 		shader->shader = device->createShaderFromIL(
 			static_cast<foundation::render::ShaderType>(il->type),
 			static_cast<foundation::render::ShaderILType>(il->il_type),

@@ -108,7 +108,7 @@ namespace scapes::visual
 			float size
 		) = 0;
 
-		virtual IBLTextureHandle importIBLTexture(
+		virtual IBLTextureHandle loadIBLTexture(
 			const foundation::io::URI &uri,
 			const IBLTextureCreateData &create_data
 		) = 0;

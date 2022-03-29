@@ -37,18 +37,27 @@ namespace scapes::foundation::resources
 
 		}
 
-		SCAPES_INLINE T *get() const
+		SCAPES_INLINE bool isValid() const
 		{
 			if (!memory)
-				return nullptr;
+				return false;
 
-			if (generation != getGeneration())
+			if (generation != getMemoryGeneration())
+				return false;
+
+			return true;
+		}
+
+		SCAPES_INLINE T *get() const
+		{
+			if (!isValid())
 				return nullptr;
 
 			return reinterpret_cast<T *>(reinterpret_cast<uint8_t *>(memory) + sizeof(ResourceMetadata));
 		}
 
-		SCAPES_INLINE void *getMemory() const { return memory; }
+		SCAPES_INLINE void *getRaw() const { return memory; }
+		SCAPES_INLINE generation_t getGeneration() const { return generation; }
 
 		timestamp_t getMTime() const
 		{
@@ -67,10 +76,10 @@ namespace scapes::foundation::resources
 		ResourceHandle(void *memory)
 			: memory(memory)
 		{
-			generation = getGeneration();
+			generation = getMemoryGeneration();
 		}
 
-		SCAPES_INLINE generation_t getGeneration() const
+		SCAPES_INLINE generation_t getMemoryGeneration() const
 		{
 			if (!memory)
 				return 0;
@@ -121,8 +130,35 @@ namespace scapes::foundation::resources
 			return ResourceHandle<T>(memory);
 		}
 
+		template <typename T>
+		bool link(const ResourceHandle<T> &handle, const io::URI &uri)
+		{
+			return linkMemory(handle.getRaw(), uri);
+		}
+
+		template <typename T>
+		bool unlink(const ResourceHandle<T> &handle)
+		{
+			return unlinkMemory(handle.getRaw());
+		}
+
+		template <typename T>
+		io::URI getUri(const ResourceHandle<T> &handle)
+		{
+			return getLinkedUri(handle.getRaw());
+		}
+
 		template <typename T, typename... Arguments>
-		ResourceHandle<T> import(const io::URI &uri, Arguments &&...params)
+		ResourceHandle<T> fetch(const io::URI &uri, Arguments &&...params)
+		{
+			if (void *memory = getLinkedMemory(uri); memory)
+				return ResourceHandle<T>(memory);
+
+			return load<T, Arguments...>(uri, std::forward<Arguments>(params)...);
+		}
+
+		template <typename T, typename... Arguments>
+		ResourceHandle<T> load(const io::URI &uri, Arguments &&...params)
 		{
 			io::FileSystem *file_system = getFileSystem();
 			assert(file_system);
@@ -130,7 +166,7 @@ namespace scapes::foundation::resources
 			io::Stream *stream = file_system->open(uri, "rb");
 			if (!stream)
 			{
-				Log::error("ResourceManager::import(): can't open \"%s\" file\n", uri);
+				Log::error("ResourceManager::load(): can't open \"%s\" file\n", uri);
 				return ResourceHandle<T>();
 			}
 
@@ -140,17 +176,18 @@ namespace scapes::foundation::resources
 			stream->read(data, sizeof(uint8_t), size);
 			file_system->close(stream);
 
-			ResourceHandle<T> resource = importFromMemory<T>(data, size, std::forward<Arguments>(params)...);
+			ResourceHandle<T> resource = loadFromMemory<T>(data, size, std::forward<Arguments>(params)...);
 			delete[] data;
 
+			link<T>(resource, uri);
 			return resource;
 		}
 
 		template <typename T, typename... Arguments>
-		ResourceHandle<T> importFromMemory(const uint8_t *data, size_t size, Arguments &&...params)
+		ResourceHandle<T> loadFromMemory(const uint8_t *data, size_t size, Arguments &&...params)
 		{
 			ResourceHandle<T> resource = create<T, Arguments...>(std::forward<Arguments>(params)...);
-			ResourceTraits<T>::importFromMemory(this, resource.get(), data, size);
+			ResourceTraits<T>::loadFromMemory(this, resource.get(), data, size);
 
 			return resource;
 		}
@@ -164,7 +201,7 @@ namespace scapes::foundation::resources
 
 			vtable->destroy(this, resource_memory);
 
-			deallocate(resource.getMemory(), TypeTraits<T>::name);
+			deallocate(resource.getRaw(), TypeTraits<T>::name);
 		}
 
 	protected:
@@ -175,6 +212,11 @@ namespace scapes::foundation::resources
 			DestroyFuncPtr destroy {nullptr};
 			size_t offset {0};
 		};
+
+		virtual bool linkMemory(void *memory, const io::URI &uri) = 0;
+		virtual bool unlinkMemory(void *memory) = 0;
+		virtual void *getLinkedMemory(const io::URI &uri) const = 0;
+		virtual io::URI getLinkedUri(void *memory) const = 0;
 
 		virtual ResourceVTable *fetchVTable(const char *type_name) = 0;
 		virtual void *allocate(const char *type_name, size_t size) = 0;

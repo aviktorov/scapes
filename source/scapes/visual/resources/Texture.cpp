@@ -79,7 +79,7 @@ void ResourceTraits<resources::Texture>::destroy(
 	*texture = {};
 }
 
-bool ResourceTraits<resources::Texture>::importFromMemory(
+bool ResourceTraits<resources::Texture>::loadFromMemory(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,
 	const uint8_t *data,
@@ -94,7 +94,7 @@ bool ResourceTraits<resources::Texture>::importFromMemory(
 
 	if (stbi_info_from_memory(data, static_cast<int>(size), &width, &height, &channels) == 0)
 	{
-		std::cerr << "ResourcePipeline<Texture>::process(): unsupported image format" << std::endl;
+		std::cerr << "ResourcePipeline<Texture>::loadFromMemory(): unsupported image format" << std::endl;
 		return false;
 	}
 
@@ -105,14 +105,14 @@ bool ResourceTraits<resources::Texture>::importFromMemory(
 	
 	if (stbi_is_hdr_from_memory(data, static_cast<int>(size)))
 	{
-		SCAPES_PROFILER_N("ResourcePipeline<Texture>::import_stb_hdr_image");
+		SCAPES_PROFILER_N("ResourcePipeline<Texture>::loadFromMemory(): import_stb_hdr_image");
 
 		stb_pixels = stbi_loadf_from_memory(data, static_cast<int>(size), &width, &height, &channels, desired_components);
 		pixel_size = sizeof(float);
 	}
 	else
 	{
-		SCAPES_PROFILER_N("ResourcePipeline<Texture>::import_stb_regular_image");
+		SCAPES_PROFILER_N("ResourcePipeline<Texture>::loadFromMemory(): import_stb_regular_image");
 
 		stb_pixels = stbi_load_from_memory(data, static_cast<int>(size), &width, &height, &channels, desired_components);
 		pixel_size = sizeof(stbi_uc);
@@ -120,7 +120,7 @@ bool ResourceTraits<resources::Texture>::importFromMemory(
 
 	if (!stb_pixels)
 	{
-		std::cerr << "ResourcePipeline<Texture>::process(): " << stbi_failure_reason() << std::endl;
+		std::cerr << "ResourcePipeline<Texture>::loadFromMemory(): " << stbi_failure_reason() << std::endl;
 		return false;
 	}
 
@@ -142,13 +142,13 @@ bool ResourceTraits<resources::Texture>::importFromMemory(
 	assert(device);
 
 	{
-		SCAPES_PROFILER_N("ResourcePipeline<Texture>::upload_to_gpu");
+		SCAPES_PROFILER_N("ResourcePipeline<Texture>::loadFromMemory(): upload_to_gpu");
 		texture->cpu_data = reinterpret_cast<unsigned char*>(stb_pixels);
 		texture->gpu_data = device->createTexture2D(texture->width, texture->height, texture->mip_levels, texture->format, texture->cpu_data);
 	}
 
 	{
-		SCAPES_PROFILER_N("ResourcePipeline<Texture>::generate_2d_mipmaps");
+		SCAPES_PROFILER_N("ResourcePipeline<Texture>::loadFromMemory(): generate_2d_mipmaps");
 		device->generateTexture2DMipmaps(texture->gpu_data);
 	}
 
