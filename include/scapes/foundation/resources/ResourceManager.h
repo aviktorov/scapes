@@ -17,7 +17,6 @@ namespace scapes::foundation::resources
 	struct ResourceMetadata
 	{
 		generation_t generation {0};
-		timestamp_t timestamp {0};
 		hash_t hash {0};
 		const char *type_name {nullptr};
 	};
@@ -60,13 +59,13 @@ namespace scapes::foundation::resources
 		SCAPES_INLINE void *getRaw() const { return memory; }
 		SCAPES_INLINE generation_t getGeneration() const { return generation; }
 
-		timestamp_t getMTime() const
+		hash_t getHash() const
 		{
 			if (!memory)
 				return 0;
 
 			const ResourceMetadata *metadata = reinterpret_cast<const ResourceMetadata *>(memory);
-			return metadata->timestamp;
+			return metadata->hash;
 		}
 
 		T *operator->() const { return get(); }
@@ -114,7 +113,7 @@ namespace scapes::foundation::resources
 
 			ResourceMetadata *meta = reinterpret_cast<ResourceMetadata *>(memory);
 			meta->generation++;
-			meta->timestamp = 0;
+			meta->hash = 0;
 			meta->type_name = TypeTraits<T>::name;
 
 			ResourceVTable *vtable = fetchVTable(TypeTraits<T>::name);
