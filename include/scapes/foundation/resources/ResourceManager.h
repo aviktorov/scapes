@@ -11,13 +11,14 @@ template <typename T> struct ResourceTraits { };
 namespace scapes::foundation::resources
 {
 	// TODO: better types
-	typedef uint32_t timestamp_t;
+	typedef uint32_t hash_t;
 	typedef uint32_t generation_t;
 
 	struct ResourceMetadata
 	{
 		generation_t generation {0};
 		timestamp_t timestamp {0};
+		hash_t hash {0};
 		const char *type_name {nullptr};
 	};
 
@@ -195,7 +196,11 @@ namespace scapes::foundation::resources
 		template <typename T>
 		void destroy(ResourceHandle<T> resource)
 		{
-			ResourceVTable *vtable = fetchVTable(TypeTraits<T>::name);
+			ResourceMetadata *metadata = reinterpret_cast<ResourceMetadata *>(resource.getRaw());
+			assert(metadata);
+
+			ResourceVTable *vtable = fetchVTable(metadata->type_name);
+
 			T *resource_memory = resource.get();
 			assert(resource_memory);
 
