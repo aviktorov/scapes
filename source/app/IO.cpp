@@ -56,16 +56,11 @@ uint64_t ApplicationStream::size() const
 	return static_cast<uint64_t>(size);
 }
 
-
 /*
  */
 ApplicationFileSystem::ApplicationFileSystem(const char *root) : root_path(root)
 {
-	std::replace(root_path.begin(), root_path.end(), '\\', '/');
-
-	size_t pos = root_path.rfind('/');
-	if (pos == std::string::npos)
-		root_path += '/';
+	root_path = std::filesystem::u8path(root);
 }
 
 ApplicationFileSystem::~ApplicationFileSystem()
@@ -75,11 +70,13 @@ ApplicationFileSystem::~ApplicationFileSystem()
 
 scapes::foundation::io::Stream *ApplicationFileSystem::open(const scapes::foundation::io::URI &uri, const char *mode)
 {
-	const char *offset = strstr(uri, root_path.c_str());
-	std::string resolved_path = (offset != uri) ? root_path + uri : uri;
+	std::filesystem::path path = std::filesystem::u8path(uri);
+
+	if (!path.is_absolute())
+		path = root_path / path;
 
 	FILE *file = nullptr;
-	fopen_s(&file, resolved_path.c_str(), mode);
+	fopen_s(&file, path.u8string().c_str(), mode);
 	if (!file)
 		return nullptr;
 

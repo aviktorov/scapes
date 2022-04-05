@@ -80,8 +80,44 @@ static foundation::math::mat4 getNodeTransform(const cgltf_node *node)
 
 /*
  */
-SceneImporter::SceneImporter(foundation::game::World *world, visual::API *visual_api)
-	: world(world), visual_api(visual_api)
+cgltf_result readCGLTF(const cgltf_memory_options *memory_options, const cgltf_file_options *file_options, const char *path, cgltf_size *size, void **data)
+{
+	foundation::io::FileSystem *file_system = reinterpret_cast<foundation::io::FileSystem *>(file_options->user_data);
+	assert(file_system);
+
+	foundation::io::URI uri = path;
+	foundation::io::Stream *stream = file_system->open(uri, "rb");
+	if (!stream)
+	{
+		foundation::Log::error("readCGLTF(): can't open \"%s\" file\n", uri);
+		return cgltf_result_file_not_found;
+	}
+
+	if (size)
+	{
+		*size = static_cast<size_t>(stream->size());
+
+		if (data)
+		{
+			*data = malloc(*size * sizeof(uint8_t));
+			stream->read(*data, sizeof(uint8_t), *size);
+		}
+	}
+
+	file_system->close(stream);
+
+	return cgltf_result_success;
+}
+
+void releaseCGLTF(const cgltf_memory_options *memory_options, const cgltf_file_options *file_options, void *data)
+{
+	free(data);
+}
+
+/*
+ */
+SceneImporter::SceneImporter(foundation::game::World *world, foundation::io::FileSystem *file_system, visual::API *visual_api)
+	: world(world), file_system(file_system), visual_api(visual_api)
 {
 }
 
@@ -95,6 +131,10 @@ SceneImporter::~SceneImporter()
 bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resources)
 {
 	cgltf_options options = {};
+	options.file.read = readCGLTF;
+	options.file.release = releaseCGLTF;
+	options.file.user_data = file_system;
+
 	cgltf_data *data = nullptr;
 	cgltf_result result = cgltf_parse_file(&options, path, &data);
 	if (result != cgltf_result_success)

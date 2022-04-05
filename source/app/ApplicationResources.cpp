@@ -9,12 +9,12 @@ namespace config
 {
 	// Shaders
 	static std::vector<const char *> shaders = {
-		"assets/shaders/common/Default.vert",
-		"assets/shaders/common/DefaultCubemap.geom",
-		"assets/shaders/render_graph/utils/EquirectangularProjection.frag",
-		"assets/shaders/render_graph/utils/PrefilteredSpecularCubemap.frag",
-		"assets/shaders/render_graph/utils/DiffuseIrradianceCubemap.frag",
-		"assets/shaders/render_graph/utils/BakedBRDF.frag",
+		"shaders/common/Default.vert",
+		"shaders/common/DefaultCubemap.geom",
+		"shaders/render_graph/utils/EquirectangularProjection.frag",
+		"shaders/render_graph/utils/PrefilteredSpecularCubemap.frag",
+		"shaders/render_graph/utils/DiffuseIrradianceCubemap.frag",
+		"shaders/render_graph/utils/BakedBRDF.frag",
 	};
 
 	static std::vector<scapes::foundation::render::ShaderType> shader_types = {
@@ -28,10 +28,10 @@ namespace config
 
 	// Textures
 	static std::vector<const char *> ibl_textures = {
-		"assets/textures/environment/debug.jpg",
-		"assets/textures/environment/arctic.hdr",
-		"assets/textures/environment/umbrellas.hdr",
-		"assets/textures/environment/shanghai_bund_4k.hdr",
+		"textures/environment/debug.jpg",
+		"textures/environment/arctic.hdr",
+		"textures/environment/umbrellas.hdr",
+		"textures/environment/shanghai_bund_4k.hdr",
 	};
 }
 

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <scapes/foundation/io/FileSystem.h>
+
 #include <string>
+#include <filesystem>
 
 class ApplicationStream : public scapes::foundation::io::Stream
 {
@@ -30,5 +32,5 @@ public:
 	bool close(scapes::foundation::io::Stream *stream) final;
 
 private:
-	std::string root_path;
+	std::filesystem::path root_path;
 };
