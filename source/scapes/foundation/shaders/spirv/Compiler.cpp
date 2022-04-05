@@ -126,6 +126,44 @@ namespace scapes::foundation::shaders::spirv
 		shaderc_compiler_release(compiler);
 	}
 
+	uint64_t Compiler::getHash(
+		ShaderType type,
+		uint32_t size,
+		const char *data,
+		const io::URI &uri
+	)
+	{
+		SCAPES_PROFILER();
+
+		const char *path = (uri) ? uri : "memory";
+
+		// preprocess shader
+		shaderc_compilation_result_t preprocess_result = nullptr;
+		{
+			SCAPES_PROFILER_N("Compiler::getHash(): preprocess");
+			preprocess_result = shaderc_compile_into_preprocessed_text(
+				compiler,
+				data, size,
+				shaderc::getShaderKind(type),
+				path,
+				"main",
+				options
+			);
+		}
+
+		size_t code_length = shaderc_result_get_length(preprocess_result);
+		const char *code_data = shaderc_result_get_bytes(preprocess_result);
+
+		uint64_t hash = 0;
+		{
+			SCAPES_PROFILER_N("Compiler::getHash(): check hash");
+			hash = cache.getHash(type, code_data, code_length);
+		}
+
+		shaderc_result_release(preprocess_result);
+		return hash;
+	}
+
 	shaders::ShaderIL *Compiler::createShaderIL(
 		ShaderType type,
 		uint32_t size,
@@ -140,7 +178,7 @@ namespace scapes::foundation::shaders::spirv
 		// preprocess shader
 		shaderc_compilation_result_t preprocess_result = nullptr;
 		{
-			SCAPES_PROFILER_N("shaders::spirv::Compiler::preprocess");
+			SCAPES_PROFILER_N("Compiler::createShaderIL(): preprocess");
 			preprocess_result = shaderc_compile_into_preprocessed_text(
 				compiler,
 				data, size,
@@ -157,7 +195,7 @@ namespace scapes::foundation::shaders::spirv
 		// check cache
 		uint64_t hash = 0;
 		{
-			SCAPES_PROFILER_N("shaders::spirv::Compiler::check hash");
+			SCAPES_PROFILER_N("Compiler::createShaderIL(): check hash");
 			hash = cache.getHash(type, code_data, code_length);
 
 			ShaderIL *cache_entry = cache.get(hash);
@@ -171,7 +209,7 @@ namespace scapes::foundation::shaders::spirv
 		// compile preprocessed shader
 		shaderc_compilation_result_t compilation_result = nullptr;
 		{
-			SCAPES_PROFILER_N("shaders::spirv::Compiler::compile");
+			SCAPES_PROFILER_N("Compiler::createShaderIL(): compile");
 			compilation_result = shaderc_compile_into_spv(
 				compiler,
 				code_data, code_length,

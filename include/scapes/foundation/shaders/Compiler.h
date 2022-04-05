@@ -53,6 +53,13 @@ namespace scapes::foundation::shaders
 		virtual ~Compiler() { }
 
 	public:
+		virtual uint64_t getHash(
+			ShaderType type,
+			uint32_t size,
+			const char *data,
+			const io::URI &uri = nullptr
+		) = 0;
+
 		virtual ShaderIL *createShaderIL(
 			ShaderType type,
 			uint32_t size,

@@ -13,6 +13,13 @@ namespace scapes::foundation::shaders::spirv
 		Compiler(io::FileSystem *file_system);
 		~Compiler() final;
 
+		uint64_t getHash(
+			ShaderType type,
+			uint32_t size,
+			const char *data,
+			const io::URI &uri = nullptr
+		) override;
+
 		ShaderIL *createShaderIL(
 			ShaderType type,
 			uint32_t size,
