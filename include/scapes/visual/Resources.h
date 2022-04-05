@@ -35,6 +35,8 @@ namespace scapes::visual::resources
 	{
 		static SCAPES_API size_t size();
 		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
+		static SCAPES_API foundation::resources::hash_t fetchHash(foundation::resources::ResourceManager *resource_manager, const foundation::io::URI &uri);
+		static SCAPES_API bool reload(foundation::resources::ResourceManager *resource_manager, void *memory, const foundation::io::URI &uri);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
 	};
 
@@ -74,6 +76,8 @@ namespace scapes::visual::resources
 	{
 		static SCAPES_API size_t size();
 		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
+		static SCAPES_API foundation::resources::hash_t fetchHash(foundation::resources::ResourceManager *resource_manager, const foundation::io::URI &uri);
+		static SCAPES_API bool reload(foundation::resources::ResourceManager *resource_manager, void *memory, const foundation::io::URI &uri);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
 	};
 
@@ -100,6 +104,8 @@ namespace scapes::visual::resources
 	{
 		static SCAPES_API size_t size();
 		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
+		static SCAPES_API foundation::resources::hash_t fetchHash(foundation::resources::ResourceManager *resource_manager, const foundation::io::URI &uri);
+		static SCAPES_API bool reload(foundation::resources::ResourceManager *resource_manager, void *memory, const foundation::io::URI &uri);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
 	};
 
@@ -130,7 +136,10 @@ namespace scapes::visual::resources
 			foundation::render::Device *device,
 			foundation::shaders::Compiler *compiler
 		);
+
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API foundation::resources::hash_t fetchHash(foundation::resources::ResourceManager *resource_manager, const foundation::io::URI &uri);
+		static SCAPES_API bool reload(foundation::resources::ResourceManager *resource_manager, void *memory, const foundation::io::URI &uri);
 		static SCAPES_API bool loadFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
 	};
 
@@ -161,6 +170,8 @@ namespace scapes::visual::resources
 		static SCAPES_API size_t size();
 		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
 		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API foundation::resources::hash_t fetchHash(foundation::resources::ResourceManager *resource_manager, const foundation::io::URI &uri);
+		static SCAPES_API bool reload(foundation::resources::ResourceManager *resource_manager, void *memory, const foundation::io::URI &uri);
 		static SCAPES_API bool loadFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
 	};
 }

@@ -79,6 +79,23 @@ void ResourceTraits<resources::Texture>::destroy(
 	*texture = {};
 }
 
+foundation::resources::hash_t ResourceTraits<resources::Texture>::fetchHash(
+	foundation::resources::ResourceManager *resource_manager,
+	const foundation::io::URI &uri
+)
+{
+	return 0;
+}
+
+bool ResourceTraits<resources::Texture>::reload(
+	foundation::resources::ResourceManager *resource_manager,
+	void *memory,
+	const foundation::io::URI &uri
+)
+{
+	return false;
+}
+
 bool ResourceTraits<resources::Texture>::loadFromMemory(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,

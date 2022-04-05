@@ -25,8 +25,8 @@ namespace scapes::foundation::resources::impl
 			it.second->traverse(
 				[this, vtable](void *memory)
 				{
-					uint8_t *memory_ptr = reinterpret_cast<uint8_t *>(memory) + vtable->offset;
-					vtable->destroy(this, memory_ptr);
+					uint8_t *resource_ptr = reinterpret_cast<uint8_t *>(memory) + vtable->offset;
+					vtable->destroy(this, resource_ptr);
 				}
 			);
 			it.second->clear();
@@ -41,6 +41,52 @@ namespace scapes::foundation::resources::impl
 
 		uri_by_resource.clear();
 		resources_by_uri.clear();
+	}
+
+	/*
+	 */
+	void ResourceManager::update(float dt)
+	{
+		for (auto resource_it : resources_by_uri)
+		{
+			std::vector<void *> &resources = resource_it.second;
+			assert(resources.size() > 0);
+
+			uint64_t uri_hash = 0;
+			common::HashUtils::combine(uri_hash, resources.front());
+
+			auto uri_it = uri_by_resource.find(uri_hash);
+			assert(uri_it != uri_by_resource.end());
+
+			const io::URI &uri = uri_it->second;
+
+			for (auto memory : resources)
+			{
+				const char *type_name = ResourceManager::getTypeName(memory);
+				assert(type_name);
+
+				uint64_t type_hash = 0;
+				common::HashUtils::combine(type_hash, std::string_view(type_name));
+
+				auto vtable_it = vtables.find(type_hash);
+				assert(vtable_it != vtables.end());
+
+				ResourceVTable *vtable = vtable_it->second;
+
+				hash_t resource_hash = ResourceManager::getHash(memory);
+				hash_t file_hash = vtable->fetchHash(this, uri);
+
+				if (file_hash == resource_hash)
+					continue;
+
+				uint8_t *resource_ptr = reinterpret_cast<uint8_t *>(memory) + vtable->offset;
+
+				if (!vtable->reload(this, resource_ptr, uri))
+					continue;
+
+				ResourceManager::setHash(memory, resource_hash);
+			}
+		}
 	}
 
 	/*

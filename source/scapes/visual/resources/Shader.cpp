@@ -43,6 +43,23 @@ void ResourceTraits<resources::Shader>::destroy(
 	*shader = {};
 }
 
+foundation::resources::hash_t ResourceTraits<resources::Shader>::fetchHash(
+	foundation::resources::ResourceManager *resource_manager,
+	const foundation::io::URI &uri
+)
+{
+	return 0;
+}
+
+bool ResourceTraits<resources::Shader>::reload(
+	foundation::resources::ResourceManager *resource_manager,
+	void *memory,
+	const foundation::io::URI &uri
+)
+{
+	return false;
+}
+
 bool ResourceTraits<resources::Shader>::loadFromMemory(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,

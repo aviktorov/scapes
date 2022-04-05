@@ -44,3 +44,20 @@ void ResourceTraits<resources::Mesh>::destroy(
 
 	*mesh = {};
 }
+
+foundation::resources::hash_t ResourceTraits<resources::Mesh>::fetchHash(
+	foundation::resources::ResourceManager *resource_manager,
+	const foundation::io::URI &uri
+)
+{
+	return 0;
+}
+
+bool ResourceTraits<resources::Mesh>::reload(
+	foundation::resources::ResourceManager *resource_manager,
+	void *memory,
+	const foundation::io::URI &uri
+)
+{
+	return false;
+}

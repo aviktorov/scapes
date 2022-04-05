@@ -352,6 +352,8 @@ void Application::update()
 		visual::components::SkyLight &comp = sky_light.getComponent<visual::components::SkyLight>();
 		comp.ibl_environment = application_resources->getIBLTexture(application_state.current_environment);
 	}
+
+	resource_manager->update(0.0f);
 }
 
 /*

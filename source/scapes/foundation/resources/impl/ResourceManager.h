@@ -15,6 +15,7 @@ namespace scapes::foundation::resources::impl
 		~ResourceManager() final;
 
 		SCAPES_INLINE io::FileSystem *getFileSystem() const final { return file_system; }
+		void update(float dt) final;
 
 	private:
 		bool linkMemory(void *memory, const io::URI &uri) final;
@@ -31,7 +32,7 @@ namespace scapes::foundation::resources::impl
 		ResourcePool *getPool(const char *type_name) const;
 
 	private:
-		io::FileSystem *file_system;
+		io::FileSystem *file_system {nullptr};
 		std::unordered_map<size_t, ResourcePool *> pools;
 		std::unordered_map<size_t, ResourceVTable *> vtables;
 

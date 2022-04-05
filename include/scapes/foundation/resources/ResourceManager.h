@@ -102,6 +102,7 @@ namespace scapes::foundation::resources
 		virtual ~ResourceManager() { }
 
 		virtual io::FileSystem *getFileSystem() const = 0;
+		virtual void update(float dt) = 0;
 
 	public:
 		template <typename T, typename... Arguments>
@@ -120,6 +121,8 @@ namespace scapes::foundation::resources
 			assert(vtable);
 
 			vtable->destroy = ResourceTraits<T>::destroy;
+			vtable->reload = ResourceTraits<T>::reload;
+			vtable->fetchHash = ResourceTraits<T>::fetchHash;
 			vtable->offset = sizeof(ResourceMetadata);
 
 			void *resource_memory = reinterpret_cast<uint8_t *>(memory) + sizeof(ResourceMetadata);
@@ -179,7 +182,15 @@ namespace scapes::foundation::resources
 			ResourceHandle<T> resource = loadFromMemory<T>(data, size, std::forward<Arguments>(params)...);
 			delete[] data;
 
-			link<T>(resource, uri);
+			const ResourceMetadata *metadata = reinterpret_cast<ResourceMetadata *>(resource.getRaw());
+			assert(metadata);
+
+			ResourceVTable *vtable = fetchVTable(metadata->type_name);
+			hash_t hash = vtable->fetchHash(this, uri);
+
+			setHash(resource.getRaw(), hash);
+			linkMemory(resource.getRaw(), uri);
+
 			return resource;
 		}
 
@@ -212,10 +223,38 @@ namespace scapes::foundation::resources
 		struct ResourceVTable
 		{
 			using DestroyFuncPtr = void (*)(ResourceManager *, void *);
+			using ReloadFuncPtr = bool (*)(ResourceManager *, void *, const io::URI &);
+			using FetchHashFuncPtr = hash_t (*)(ResourceManager *, const io::URI &);
 
 			DestroyFuncPtr destroy {nullptr};
+			ReloadFuncPtr reload {nullptr};
+			FetchHashFuncPtr fetchHash {nullptr};
 			size_t offset {0};
 		};
+
+		SCAPES_INLINE static void setHash(void *memory, hash_t hash)
+		{
+			ResourceMetadata *metadata = reinterpret_cast<ResourceMetadata *>(memory);
+			assert(metadata);
+
+			metadata->hash = hash;
+		}
+
+		SCAPES_INLINE static hash_t getHash(void *memory)
+		{
+			ResourceMetadata *metadata = reinterpret_cast<ResourceMetadata *>(memory);
+			assert(metadata);
+
+			return metadata->hash;
+		}
+
+		SCAPES_INLINE static const char *getTypeName(void *memory)
+		{
+			ResourceMetadata *metadata = reinterpret_cast<ResourceMetadata *>(memory);
+			assert(metadata);
+
+			return metadata->type_name;
+		}
 
 		virtual bool linkMemory(void *memory, const io::URI &uri) = 0;
 		virtual bool unlinkMemory(void *memory) = 0;

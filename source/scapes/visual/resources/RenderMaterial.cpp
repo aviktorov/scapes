@@ -36,3 +36,20 @@ void ResourceTraits<resources::RenderMaterial>::destroy(
 
 	*render_material = {};
 }
+
+foundation::resources::hash_t ResourceTraits<resources::RenderMaterial>::fetchHash(
+	foundation::resources::ResourceManager *resource_manager,
+	const foundation::io::URI &uri
+)
+{
+	return 0;
+}
+
+bool ResourceTraits<resources::RenderMaterial>::reload(
+	foundation::resources::ResourceManager *resource_manager,
+	void *memory,
+	const foundation::io::URI &uri
+)
+{
+	return false;
+}
