@@ -113,19 +113,6 @@ namespace scapes::visual
 		) final;
 
 	private:
-		template<typename HandleType>
-		struct HandleCompare
-		{
-			SCAPES_INLINE bool operator()(
-				const HandleType &h0,
-				const HandleType &h1
-			) const
-			{
-				return h0.get() < h1.get();
-			}
-		};
-
-	private:
 		foundation::resources::ResourceManager *resource_manager {nullptr};
 		foundation::game::World *world {nullptr};
 		foundation::render::Device *device {nullptr};
