@@ -44,7 +44,7 @@ ParameterGroup:
   - { name: MinStepMultiplier, type: float, value: 0.25 }
   - { name: MaxStepMultiplier, type: float, value: 4.0 }
   textures:
-  - { name: Noise, path: assets/textures/blue_noise.png }
+  - { name: Noise, path: textures/blue_noise.png }
 
 ---
 RenderBuffers:
@@ -89,7 +89,7 @@ RenderPass:
   output_colors:
   - { name: CompositeOld, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
   - { name: SSROld, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
-  vertex_shader: assets/shaders/common/Default.vert
+  vertex_shader: shaders/common/Default.vert
 
 ---
 RenderPass:
@@ -103,8 +103,8 @@ RenderPass:
   - { name: GBufferShading, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
   - { name: GBufferVelocity, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
   output_depthstencil: { name: GBufferDepth, load_op: CLEAR, clear_depthstencil: "1.0, 0" }
-  vertex_shader: assets/shaders/render_graph/passes/gbuffer/GBuffer.vert
-  fragment_shader: assets/shaders/render_graph/passes/gbuffer/GBuffer.frag
+  vertex_shader: shaders/render_graph/passes/gbuffer/GBuffer.vert
+  fragment_shader: shaders/render_graph/passes/gbuffer/GBuffer.frag
 
 ---
 RenderPass:
@@ -114,8 +114,8 @@ RenderPass:
   input_renderbuffers: [ GBufferNormal, GBufferDepth ]
   output_colors:
   - { name: SSAORough, load_op: DONT_CARE }
-  vertex_shader: assets/shaders/common/Default.vert
-  fragment_shader: assets/shaders/render_graph/passes/ssao/SSAO.frag
+  vertex_shader: shaders/common/Default.vert
+  fragment_shader: shaders/render_graph/passes/ssao/SSAO.frag
 
 ---
 RenderPass:
@@ -124,8 +124,8 @@ RenderPass:
   input_renderbuffers: [ SSAORough ]
   output_colors:
   - { name: SSAO, load_op: DONT_CARE }
-  vertex_shader: assets/shaders/common/Default.vert
-  fragment_shader: assets/shaders/render_graph/passes/ssao_blur/SSAOBlur.frag
+  vertex_shader: shaders/common/Default.vert
+  fragment_shader: shaders/render_graph/passes/ssao_blur/SSAOBlur.frag
 
 ---
 RenderPass:
@@ -137,8 +137,8 @@ RenderPass:
   output_colors:
   - { name: LBufferDiffuse, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
   - { name: LBufferSpecular, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
-  vertex_shader: assets/shaders/common/Default.vert
-  fragment_shader: assets/shaders/render_graph/passes/lbuffer/LBufferSkylight.frag
+  vertex_shader: shaders/common/Default.vert
+  fragment_shader: shaders/render_graph/passes/lbuffer/LBufferSkylight.frag
 
 ---
 RenderPass:
@@ -148,8 +148,8 @@ RenderPass:
   input_renderbuffers: [ GBufferNormal, GBufferShading, GBufferDepth ]
   output_colors:
   - { name: SSRTrace, load_op: DONT_CARE }
-  vertex_shader: assets/shaders/common/Default.vert
-  fragment_shader: assets/shaders/render_graph/passes/ssr_trace/SSRTrace.frag
+  vertex_shader: shaders/common/Default.vert
+  fragment_shader: shaders/render_graph/passes/ssr_trace/SSRTrace.frag
 
 ---
 RenderPass:
@@ -160,8 +160,8 @@ RenderPass:
   output_colors:
   - { name: SSR, load_op: DONT_CARE }
   - { name: SSRVelocity, load_op: DONT_CARE }
-  vertex_shader: assets/shaders/common/Default.vert
-  fragment_shader: assets/shaders/render_graph/passes/ssr_resolve/SSRResolve.frag
+  vertex_shader: shaders/common/Default.vert
+  fragment_shader: shaders/render_graph/passes/ssr_resolve/SSRResolve.frag
 
 ---
 RenderPass:
@@ -170,8 +170,8 @@ RenderPass:
   input_renderbuffers: [ SSR, SSRVelocity, SSROld ]
   output_colors:
   - { name: SSRTAA, load_op: DONT_CARE }
-  vertex_shader: assets/shaders/common/Default.vert
-  fragment_shader: assets/shaders/render_graph/passes/temporal_filter/TemporalFilter.frag
+  vertex_shader: shaders/common/Default.vert
+  fragment_shader: shaders/render_graph/passes/temporal_filter/TemporalFilter.frag
 
 ---
 RenderPass:
@@ -180,8 +180,8 @@ RenderPass:
   input_renderbuffers: [ LBufferDiffuse, LBufferSpecular, SSAO, SSRTAA ]
   output_colors:
   - { name: Composite, load_op: DONT_CARE }
-  vertex_shader: assets/shaders/common/Default.vert
-  fragment_shader: assets/shaders/render_graph/passes/composite/Composite.frag
+  vertex_shader: shaders/common/Default.vert
+  fragment_shader: shaders/render_graph/passes/composite/Composite.frag
 
 ---
 RenderPass:
@@ -190,8 +190,8 @@ RenderPass:
   input_renderbuffers: [ Composite, GBufferVelocity, CompositeOld ]
   output_colors:
   - { name: CompositeTAA, load_op: DONT_CARE }
-  vertex_shader: assets/shaders/common/Default.vert
-  fragment_shader: assets/shaders/render_graph/passes/temporal_filter/TemporalFilter.frag
+  vertex_shader: shaders/common/Default.vert
+  fragment_shader: shaders/render_graph/passes/temporal_filter/TemporalFilter.frag
 
 ---
 RenderPass:
@@ -200,8 +200,8 @@ RenderPass:
   input_renderbuffers: [ CompositeTAA ]
   output_colors:
   - { name: Color, load_op: DONT_CARE }
-  vertex_shader: assets/shaders/common/Default.vert
-  fragment_shader: assets/shaders/render_graph/passes/tonemap/Tonemap.frag
+  vertex_shader: shaders/common/Default.vert
+  fragment_shader: shaders/render_graph/passes/tonemap/Tonemap.frag
 
 ---
 RenderPass:
@@ -209,16 +209,16 @@ RenderPass:
   type: RenderPassPost
   input_renderbuffers: [ Color ]
   output_swapchain: { load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
-  vertex_shader: assets/shaders/common/Default.vert
-  fragment_shader: assets/shaders/render_graph/passes/gamma/Gamma.frag
+  vertex_shader: shaders/common/Default.vert
+  fragment_shader: shaders/render_graph/passes/gamma/Gamma.frag
 
 ---
 RenderPass:
   name: ImGui
   type: RenderPassImGui
   output_swapchain: { load_op: LOAD }
-  vertex_shader: assets/shaders/render_graph/passes/imgui/ImGui.vert
-  fragment_shader: assets/shaders/render_graph/passes/imgui/ImGui.frag
+  vertex_shader: shaders/render_graph/passes/imgui/ImGui.vert
+  fragment_shader: shaders/render_graph/passes/imgui/ImGui.frag
 
 ---
 RenderPass:
