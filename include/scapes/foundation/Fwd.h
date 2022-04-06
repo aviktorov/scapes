@@ -28,11 +28,9 @@ namespace scapes::foundation
 
 	namespace io
 	{
-		// TODO: get rid of this once we'll have fully-fledged URI class
-		typedef const char * URI;
-
 		enum class SeekOrigin : uint8_t;
 
+		class URI;
 		class FileSystem;
 		class Stream;
 	}

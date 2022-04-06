@@ -515,8 +515,8 @@ namespace scapes::visual
 					texture_node["name"] << texture->name.c_str();
 
 					const foundation::io::URI &uri = api->getTextureUri(texture->texture);
-					if (uri != nullptr)
-						texture_node["path"] << uri;
+					if (!uri.empty())
+						texture_node["path"] << uri.c_str();
 				}
 			}
 		}

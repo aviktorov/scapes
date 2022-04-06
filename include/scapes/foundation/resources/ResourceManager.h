@@ -11,7 +11,7 @@ template <typename T> struct ResourceTraits { };
 namespace scapes::foundation::resources
 {
 	// TODO: better types
-	typedef uint32_t hash_t;
+	typedef uint64_t hash_t;
 	typedef uint32_t generation_t;
 
 	struct ResourceMetadata
@@ -186,7 +186,7 @@ namespace scapes::foundation::resources
 			assert(metadata);
 
 			ResourceVTable *vtable = fetchVTable(metadata->type_name);
-			hash_t hash = vtable->fetchHash(this, uri);
+			hash_t hash = vtable->fetchHash(this, file_system, resource.get(), uri);
 
 			setHash(resource.getRaw(), hash);
 			linkMemory(resource.getRaw(), uri);
@@ -223,8 +223,8 @@ namespace scapes::foundation::resources
 		struct ResourceVTable
 		{
 			using DestroyFuncPtr = void (*)(ResourceManager *, void *);
-			using ReloadFuncPtr = bool (*)(ResourceManager *, void *, const io::URI &);
-			using FetchHashFuncPtr = hash_t (*)(ResourceManager *, const io::URI &);
+			using ReloadFuncPtr = bool (*)(ResourceManager *, io::FileSystem *, void *, const io::URI &);
+			using FetchHashFuncPtr = hash_t (*)(ResourceManager *, io::FileSystem *, void *, const io::URI &);
 
 			DestroyFuncPtr destroy {nullptr};
 			ReloadFuncPtr reload {nullptr};

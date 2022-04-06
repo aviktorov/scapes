@@ -34,10 +34,27 @@ namespace scapes::visual::resources
 	struct ::ResourceTraits<IBLTexture>
 	{
 		static SCAPES_API size_t size();
-		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
-		static SCAPES_API foundation::resources::hash_t fetchHash(foundation::resources::ResourceManager *resource_manager, const foundation::io::URI &uri);
-		static SCAPES_API bool reload(foundation::resources::ResourceManager *resource_manager, void *memory, const foundation::io::URI &uri);
-		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void create(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			foundation::render::Device *device
+		);
+		static SCAPES_API foundation::resources::hash_t fetchHash(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API bool reload(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API void destroy(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory
+		);
 	};
 
 	/*
@@ -75,10 +92,27 @@ namespace scapes::visual::resources
 	struct ::ResourceTraits<Mesh>
 	{
 		static SCAPES_API size_t size();
-		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
-		static SCAPES_API foundation::resources::hash_t fetchHash(foundation::resources::ResourceManager *resource_manager, const foundation::io::URI &uri);
-		static SCAPES_API bool reload(foundation::resources::ResourceManager *resource_manager, void *memory, const foundation::io::URI &uri);
-		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void create(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			foundation::render::Device *device
+		);
+		static SCAPES_API foundation::resources::hash_t fetchHash(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API bool reload(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API void destroy(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory
+		);
 	};
 
 	/*
@@ -103,10 +137,31 @@ namespace scapes::visual::resources
 	struct ::ResourceTraits<RenderMaterial>
 	{
 		static SCAPES_API size_t size();
-		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
-		static SCAPES_API foundation::resources::hash_t fetchHash(foundation::resources::ResourceManager *resource_manager, const foundation::io::URI &uri);
-		static SCAPES_API bool reload(foundation::resources::ResourceManager *resource_manager, void *memory, const foundation::io::URI &uri);
-		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
+		static SCAPES_API void create(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			TextureHandle albedo,
+			TextureHandle normal,
+			TextureHandle roughness,
+			TextureHandle metalness,
+			foundation::render::Device *device
+		);
+		static SCAPES_API foundation::resources::hash_t fetchHash(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API bool reload(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API void destroy(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory
+		);
 	};
 
 	/*
@@ -136,11 +191,28 @@ namespace scapes::visual::resources
 			foundation::render::Device *device,
 			foundation::shaders::Compiler *compiler
 		);
-
-		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
-		static SCAPES_API foundation::resources::hash_t fetchHash(foundation::resources::ResourceManager *resource_manager, const foundation::io::URI &uri);
-		static SCAPES_API bool reload(foundation::resources::ResourceManager *resource_manager, void *memory, const foundation::io::URI &uri);
-		static SCAPES_API bool loadFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
+		static SCAPES_API void destroy(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory
+		);
+		static SCAPES_API foundation::resources::hash_t fetchHash(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API bool reload(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API bool loadFromMemory(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			const uint8_t *data,
+			size_t size
+		);
 	};
 
 	/*
@@ -168,10 +240,32 @@ namespace scapes::visual::resources
 	struct ::ResourceTraits<Texture>
 	{
 		static SCAPES_API size_t size();
-		static SCAPES_API void create(foundation::resources::ResourceManager *resource_manager, void *memory, foundation::render::Device *device);
-		static SCAPES_API void destroy(foundation::resources::ResourceManager *resource_manager, void *memory);
-		static SCAPES_API foundation::resources::hash_t fetchHash(foundation::resources::ResourceManager *resource_manager, const foundation::io::URI &uri);
-		static SCAPES_API bool reload(foundation::resources::ResourceManager *resource_manager, void *memory, const foundation::io::URI &uri);
-		static SCAPES_API bool loadFromMemory(foundation::resources::ResourceManager *resource_manager, void *memory, const uint8_t *data, size_t size);
+		static SCAPES_API void create(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			foundation::render::Device *device
+		);
+		static SCAPES_API void destroy(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory
+		);
+		static SCAPES_API foundation::resources::hash_t fetchHash(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API bool reload(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API bool loadFromMemory(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			const uint8_t *data,
+			size_t size
+		);
 	};
 }

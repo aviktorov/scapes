@@ -151,6 +151,21 @@ void RenderPassGraphicsBase::init()
 
 	graphics_pipeline = device->createGraphicsPipeline();
 
+	onInit();
+}
+
+void RenderPassGraphicsBase::shutdown()
+{
+	onShutdown();
+
+	clear();
+}
+
+void RenderPassGraphicsBase::render(foundation::render::CommandBuffer command_buffer)
+{
+	if (!canRender())
+		return;
+
 	device->clearShaders(graphics_pipeline);
 
 	if (vertex_shader.get())
@@ -168,22 +183,6 @@ void RenderPassGraphicsBase::init()
 	if (fragment_shader.get())
 		device->setShader(graphics_pipeline, fragment_shader->type, fragment_shader->shader);
 
-	onInit();
-}
-
-void RenderPassGraphicsBase::shutdown()
-{
-	onShutdown();
-
-	clear();
-}
-
-void RenderPassGraphicsBase::render(foundation::render::CommandBuffer command_buffer)
-{
-	if (!canRender())
-		return;
-
-	// TODO: cache this?
 	device->clearBindSets(graphics_pipeline);
 
 	uint8_t current_binding = 0;
@@ -213,7 +212,6 @@ void RenderPassGraphicsBase::render(foundation::render::CommandBuffer command_bu
 
 	if (render_pass_offscreen)
 	{
-		// TODO: cache this?
 		const char *render_buffers[32];
 		uint32_t num_render_buffers = 0;
 
@@ -503,10 +501,10 @@ void RenderPassGraphicsBase::serializeShader(yaml::NodeRef node, const char *nam
 	assert(visual_api);
 
 	const foundation::io::URI &uri = visual_api->getShaderUri(handle);
-	if (uri == nullptr)
+	if (uri.empty())
 		return;
 
-	node[yaml::to_csubstr(name)] << uri;
+	node[yaml::to_csubstr(name)] << uri.c_str();
 };
 
 /*

@@ -73,18 +73,16 @@ namespace scapes::foundation::resources::impl
 
 				ResourceVTable *vtable = vtable_it->second;
 
+				uint8_t *resource_ptr = reinterpret_cast<uint8_t *>(memory) + vtable->offset;
+
 				hash_t resource_hash = ResourceManager::getHash(memory);
-				hash_t file_hash = vtable->fetchHash(this, uri);
+				hash_t file_hash = vtable->fetchHash(this, file_system, resource_ptr, uri);
 
 				if (file_hash == resource_hash)
 					continue;
 
-				uint8_t *resource_ptr = reinterpret_cast<uint8_t *>(memory) + vtable->offset;
-
-				if (!vtable->reload(this, resource_ptr, uri))
-					continue;
-
-				ResourceManager::setHash(memory, resource_hash);
+				vtable->reload(this, file_system, resource_ptr, uri);
+				ResourceManager::setHash(memory, file_hash);
 			}
 		}
 	}
@@ -103,14 +101,14 @@ namespace scapes::foundation::resources::impl
 		if (it != uri_by_resource.end())
 		{
 			const io::URI &current_uri = it->second;
-			if (strcmp(uri, current_uri) == 0)
+			if (uri == current_uri)
 				return false;
 
 			unlinkMemory(memory);
 		}
 
 		uint64_t uri_hash = 0;
-		common::HashUtils::combine(uri_hash, std::string_view(uri));
+		common::HashUtils::combine(uri_hash, std::string_view(uri.c_str()));
 
 		resources_by_uri[uri_hash].push_back(memory);
 		uri_by_resource[memory_hash] = uri;
@@ -134,7 +132,7 @@ namespace scapes::foundation::resources::impl
 		const io::URI &uri = uri_it->second;
 
 		uint64_t uri_hash = 0;
-		common::HashUtils::combine(uri_hash, std::string_view(uri));
+		common::HashUtils::combine(uri_hash, std::string_view(uri.c_str()));
 
 		auto resource_it = resources_by_uri.find(uri_hash);
 		assert(resource_it != resources_by_uri.end());
@@ -153,7 +151,7 @@ namespace scapes::foundation::resources::impl
 	void *ResourceManager::getLinkedMemory(const io::URI &uri) const
 	{
 		uint64_t uri_hash = 0;
-		common::HashUtils::combine(uri_hash, std::string_view(uri));
+		common::HashUtils::combine(uri_hash, std::string_view(uri.c_str()));
 
 		auto it = resources_by_uri.find(uri_hash);
 		if (it == resources_by_uri.end())

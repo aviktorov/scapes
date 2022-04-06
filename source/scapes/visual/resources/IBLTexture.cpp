@@ -41,6 +41,8 @@ void ResourceTraits<resources::IBLTexture>::destroy(
 
 foundation::resources::hash_t ResourceTraits<resources::IBLTexture>::fetchHash(
 	foundation::resources::ResourceManager *resource_manager,
+	foundation::io::FileSystem *file_system,
+	void *memory,
 	const foundation::io::URI &uri
 )
 {
@@ -49,6 +51,7 @@ foundation::resources::hash_t ResourceTraits<resources::IBLTexture>::fetchHash(
 
 bool ResourceTraits<resources::IBLTexture>::reload(
 	foundation::resources::ResourceManager *resource_manager,
+	foundation::io::FileSystem *file_system,
 	void *memory,
 	const foundation::io::URI &uri
 )

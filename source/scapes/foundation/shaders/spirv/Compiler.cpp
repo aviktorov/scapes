@@ -128,14 +128,28 @@ namespace scapes::foundation::shaders::spirv
 
 	uint64_t Compiler::getHash(
 		ShaderType type,
-		uint32_t size,
-		const char *data,
 		const io::URI &uri
 	)
 	{
 		SCAPES_PROFILER();
 
-		const char *path = (uri) ? uri : "memory";
+		assert(!uri.empty());
+		assert(file_system);
+
+		foundation::io::Stream *stream = file_system->open(uri, "rb");
+		if (!stream)
+		{
+			foundation::Log::error("Compiler::getHash(): can't open \"%s\" file\n", uri.c_str());
+			return false;
+		}
+
+		size_t size = static_cast<size_t>(stream->size());
+
+		uint8_t *data = new uint8_t[size];
+		stream->read(data, sizeof(uint8_t), size);
+		file_system->close(stream);
+
+		const char *path = uri.c_str();
 
 		// preprocess shader
 		shaderc_compilation_result_t preprocess_result = nullptr;
@@ -143,7 +157,8 @@ namespace scapes::foundation::shaders::spirv
 			SCAPES_PROFILER_N("Compiler::getHash(): preprocess");
 			preprocess_result = shaderc_compile_into_preprocessed_text(
 				compiler,
-				data, size,
+				reinterpret_cast<const char *>(data),
+				size,
 				shaderc::getShaderKind(type),
 				path,
 				"main",
@@ -161,6 +176,8 @@ namespace scapes::foundation::shaders::spirv
 		}
 
 		shaderc_result_release(preprocess_result);
+		delete[] data;
+
 		return hash;
 	}
 
@@ -173,7 +190,7 @@ namespace scapes::foundation::shaders::spirv
 	{
 		SCAPES_PROFILER();
 
-		const char *path = (uri) ? uri : "memory";
+		const char *path = (uri.empty()) ? "memory" : uri.c_str();
 
 		// preprocess shader
 		shaderc_compilation_result_t preprocess_result = nullptr;
@@ -181,7 +198,8 @@ namespace scapes::foundation::shaders::spirv
 			SCAPES_PROFILER_N("Compiler::createShaderIL(): preprocess");
 			preprocess_result = shaderc_compile_into_preprocessed_text(
 				compiler,
-				data, size,
+				data,
+				size,
 				shaderc::getShaderKind(type),
 				path,
 				"main",

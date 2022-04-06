@@ -3,7 +3,11 @@
 #include "IO.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cassert>
+
+#include <sys/types.h>
+#include <sys/stat.h>
 
 /*
  */
@@ -70,7 +74,7 @@ ApplicationFileSystem::~ApplicationFileSystem()
 
 scapes::foundation::io::Stream *ApplicationFileSystem::open(const scapes::foundation::io::URI &uri, const char *mode)
 {
-	std::filesystem::path path = std::filesystem::u8path(uri);
+	std::filesystem::path path = std::filesystem::u8path(uri.c_str());
 
 	if (!path.is_absolute())
 		path = root_path / path;
@@ -89,4 +93,18 @@ bool ApplicationFileSystem::close(scapes::foundation::io::Stream *stream)
 	delete stream;
 
 	return true;
+}
+
+uint64_t ApplicationFileSystem::mtime(const scapes::foundation::io::URI &uri)
+{
+	std::filesystem::path path = std::filesystem::u8path(uri.c_str());
+
+	if (!path.is_absolute())
+		path = root_path / path;
+
+	struct stat info;
+	if (stat(path.u8string().c_str(), &info) != 0)
+		return 0;
+
+	return static_cast<uint64_t>(info.st_mtime);
 }
