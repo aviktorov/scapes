@@ -1,12 +1,118 @@
 #include "shaders/spirv/Compiler.h"
+#include "HashUtils.h"
 
 #include <scapes/foundation/Log.h>
 #include <scapes/foundation/io/FileSystem.h>
 
 #include <scapes/foundation/profiler/Profiler.h>
 
+#include <sstream>
+#include <set>
+
 namespace scapes::foundation::shaders::spirv
 {
+	namespace parser
+	{
+		static bool getContents(const io::URI &uri, io::FileSystem *file_system, std::string &result)
+		{
+			io::Stream *file = file_system->open(uri, "rb");
+			if (file == nullptr)
+			{
+				Log::error("parser::getContents(): can't get data from \"%s\"\n", uri.c_str());
+				return false;
+			}
+			uint64_t size = file->size();
+			uint8_t *data = new uint8_t[size];
+
+			file->seek(0, io::SeekOrigin::SET);
+			file->read(data, sizeof(uint8_t), size);
+
+			file_system->close(file);
+
+			result.clear();
+			result.append(reinterpret_cast<const char *>(data), size);
+
+			delete[] data;
+			return true;
+		}
+
+		static int parseString(const char *source, std::string &result)
+		{
+			const char *s = source;
+			assert(s);
+
+			if (strchr("\n\r", *s))
+				return 0;
+
+			if (*s != '"' && *s != '<')
+				return 0;
+
+			char end = (*s == '<') ? '>' : *s;
+			s++;
+
+			std::stringstream stream;
+			while (*s)
+			{
+				if (strchr("\n\r", *s))
+					return 0;
+
+				if (*s == end)
+				{
+					s++;
+					break;
+				}
+				stream << *s;
+				s++;
+			}
+
+			result = stream.str();
+			return static_cast<int>(s - source);
+		}
+
+		static bool parseIncludes(const char *source, io::FileSystem *file_system, std::set<std::string> &includes)
+		{
+			const char *s = source;
+
+			while (*s)
+			{
+				s = strstr(s, "#include");
+
+				if (s == nullptr)
+					return true;
+
+				s += 8;
+
+				while (*s && strchr(" \t", *s))
+					s++;
+
+				std::string include_path;
+				s += parseString(s, include_path);
+
+				if (include_path.empty())
+					return false;
+
+				if (includes.find(include_path) != includes.end())
+				{
+					s++;
+					continue;
+				}
+
+				includes.insert(include_path);
+
+				std::string include_source;
+				if (!getContents(include_path.c_str(), file_system, include_source))
+					return false;
+
+				if (!parseIncludes(include_source.c_str(), file_system, includes))
+					return false;
+
+				s++;
+			}
+
+			return true;
+		}
+	}
+
 	namespace shaderc
 	{
 		static shaderc_shader_kind getShaderKind(ShaderType type)
@@ -136,47 +242,30 @@ namespace scapes::foundation::shaders::spirv
 		assert(!uri.empty());
 		assert(file_system);
 
-		foundation::io::Stream *stream = file_system->open(uri, "rb");
-		if (!stream)
+		std::string source;
 		{
-			foundation::Log::error("Compiler::getHash(): can't open \"%s\" file\n", uri.c_str());
-			return false;
+			SCAPES_PROFILER_N("Compiler::getHash(): load shader source");
+			if (!parser::getContents(uri.c_str(), file_system, source))
+				return 0;
 		}
 
-		size_t size = static_cast<size_t>(stream->size());
-
-		uint8_t *data = new uint8_t[size];
-		stream->read(data, sizeof(uint8_t), size);
-		file_system->close(stream);
-
-		const char *path = uri.c_str();
-
-		// preprocess shader
-		shaderc_compilation_result_t preprocess_result = nullptr;
+		std::set<std::string> includes;
+		includes.insert(uri.c_str());
 		{
-			SCAPES_PROFILER_N("Compiler::getHash(): preprocess");
-			preprocess_result = shaderc_compile_into_preprocessed_text(
-				compiler,
-				reinterpret_cast<const char *>(data),
-				size,
-				shaderc::getShaderKind(type),
-				path,
-				"main",
-				options
-			);
+			SCAPES_PROFILER_N("Compiler::getHash(): extract includes");
+			if (!parser::parseIncludes(source.c_str(), file_system, includes))
+				return 0;
 		}
-
-		size_t code_length = shaderc_result_get_length(preprocess_result);
-		const char *code_data = shaderc_result_get_bytes(preprocess_result);
 
 		uint64_t hash = 0;
 		{
-			SCAPES_PROFILER_N("Compiler::getHash(): check hash");
-			hash = cache.getHash(type, code_data, code_length);
+			SCAPES_PROFILER_N("Compiler::getHash(): hash");
+			for (auto path : includes)
+			{
+				uint64_t mtime = file_system->mtime(io::URI(path.c_str()));
+				common::HashUtils::combine(hash, mtime);
+			}
 		}
-
-		shaderc_result_release(preprocess_result);
-		delete[] data;
 
 		return hash;
 	}
