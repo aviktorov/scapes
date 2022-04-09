@@ -108,22 +108,19 @@ bool ResourceTraits<resources::Texture>::reload(
 	resources::Texture temp = {};
 	temp.device = texture->device;
 
-	foundation::io::Stream *stream = file_system->open(uri, "rb");
-	if (!stream)
+	size_t size = 0;
+	uint8_t *data = reinterpret_cast<uint8_t *>(file_system->map(uri, size));
+
+	if (!data)
 	{
 		foundation::Log::error("ResourceTraits<Texture>::reload(): can't open \"%s\" file\n", uri.c_str());
 		return false;
 	}
 
-	size_t size = static_cast<size_t>(stream->size());
-
-	uint8_t *data = new uint8_t[size];
-	stream->read(data, sizeof(uint8_t), size);
-	file_system->close(stream);
-
 	bool success = loadFromMemory(resource_manager, &temp, data, size);
 
-	delete[] data;
+	file_system->unmap(data);
+
 	if (!success)
 		return false;
 

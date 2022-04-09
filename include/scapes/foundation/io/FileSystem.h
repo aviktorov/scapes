@@ -70,6 +70,8 @@ namespace scapes::foundation::io
 
 		virtual Stream *open(const URI &path, const char *mode) = 0;
 		virtual bool close(Stream *stream) = 0;
+		virtual void *map(const URI &path, size_t &size) = 0;
+		virtual bool unmap(void *data) = 0;
 		virtual uint64_t mtime(const URI &path) = 0;
 	};
 }

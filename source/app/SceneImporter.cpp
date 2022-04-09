@@ -86,32 +86,31 @@ cgltf_result readCGLTF(const cgltf_memory_options *memory_options, const cgltf_f
 	assert(file_system);
 
 	foundation::io::URI uri = path;
-	foundation::io::Stream *stream = file_system->open(uri, "rb");
-	if (!stream)
+
+	size_t file_size = 0;
+	void *file_data = file_system->map(uri, file_size);
+
+	if (!file_data)
 	{
 		foundation::Log::error("readCGLTF(): can't open \"%s\" file\n", uri);
 		return cgltf_result_file_not_found;
 	}
 
 	if (size)
-	{
-		*size = static_cast<size_t>(stream->size());
+		*size = static_cast<cgltf_size>(file_size);
 
-		if (data)
-		{
-			*data = malloc(*size * sizeof(uint8_t));
-			stream->read(*data, sizeof(uint8_t), *size);
-		}
-	}
-
-	file_system->close(stream);
+	if (data)
+		*data = file_data;
 
 	return cgltf_result_success;
 }
 
 void releaseCGLTF(const cgltf_memory_options *memory_options, const cgltf_file_options *file_options, void *data)
 {
-	free(data);
+	foundation::io::FileSystem *file_system = reinterpret_cast<foundation::io::FileSystem *>(file_options->user_data);
+	assert(file_system);
+
+	file_system->unmap(data);
 }
 
 /*

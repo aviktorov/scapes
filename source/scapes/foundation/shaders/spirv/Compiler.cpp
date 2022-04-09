@@ -15,24 +15,19 @@ namespace scapes::foundation::shaders::spirv
 	{
 		static bool getContents(const io::URI &uri, io::FileSystem *file_system, std::string &result)
 		{
-			io::Stream *file = file_system->open(uri, "rb");
-			if (file == nullptr)
+			size_t size = 0;
+			void *data = file_system->map(uri, size);
+
+			if (!data)
 			{
 				Log::error("parser::getContents(): can't get data from \"%s\"\n", uri.c_str());
 				return false;
 			}
-			uint64_t size = file->size();
-			uint8_t *data = new uint8_t[size];
-
-			file->seek(0, io::SeekOrigin::SET);
-			file->read(data, sizeof(uint8_t), size);
-
-			file_system->close(file);
 
 			result.clear();
 			result.append(reinterpret_cast<const char *>(data), size);
 
-			delete[] data;
+			file_system->unmap(data);
 			return true;
 		}
 
@@ -151,6 +146,7 @@ namespace scapes::foundation::shaders::spirv
 		{
 			SCAPES_PROFILER();
 			io::FileSystem *file_system = reinterpret_cast<io::FileSystem *>(user_data);
+			assert(file_system);
 
 			shaderc_include_result *result = new shaderc_include_result();
 			result->user_data = user_data;
@@ -176,20 +172,14 @@ namespace scapes::foundation::shaders::spirv
 
 			std::string target_path = target_dir + std::string(requested_source);
 
-			io::Stream *file = file_system->open(target_path.c_str(), "rb");
+			size_t size = 0;
+			void *data = file_system->map(target_path.c_str(), size);
 
-			if (!file)
+			if (!data)
 			{
 				Log::error("shaderc::include_resolver(): can't load include at \"%s\"\n", target_path.c_str());
 				return result;
 			}
-
-			size_t file_size = static_cast<size_t>(file->size());
-			char *buffer = new char[file_size];
-
-			file->seek(0, io::SeekOrigin::SET);
-			file->read(buffer, sizeof(char), file_size);
-			file_system->close(file);
 
 			char *path = new char[target_path.size() + 1];
 			memcpy(path, target_path.c_str(), target_path.size());
@@ -197,18 +187,23 @@ namespace scapes::foundation::shaders::spirv
 
 			result->source_name = path;
 			result->source_name_length = target_path.size() + 1;
-			result->content = buffer;
-			result->content_length = file_size;
+			result->content = reinterpret_cast<const char *>(data);
+			result->content_length = size;
 
 			return result;
 		}
 
-		static void includeResultReleaser(void *userData, shaderc_include_result *result)
+		static void includeResultReleaser(void *user_data, shaderc_include_result *result)
 		{
 			SCAPES_PROFILER();
 
-			delete result->source_name;
-			delete result->content;
+			io::FileSystem *file_system = reinterpret_cast<io::FileSystem *>(user_data);
+			assert(file_system);
+
+			// NOTE: here we use const_cast because we're sure we mapped this memory via file system
+			file_system->unmap(const_cast<char*>(result->content));
+
+			delete[] result->source_name;
 			delete result;
 		}
 	}

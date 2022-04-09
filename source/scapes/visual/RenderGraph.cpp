@@ -359,25 +359,20 @@ namespace scapes::visual
 	 */
 	bool RenderGraphImpl::load(const foundation::io::URI &uri)
 	{
-		foundation::io::Stream *file = file_system->open(uri, "rb");
-		if (!file)
+		size_t size = 0;
+		uint8_t *data = reinterpret_cast<uint8_t *>(file_system->map(uri, size));
+
+		if (!data)
 		{
 			foundation::Log::error("RenderGraph::load(): can't open \"%s\" file\n", uri);
 			return false;
 		}
 
-		file->seek(0, foundation::io::SeekOrigin::END);
-		size_t size = file->tell();
-		file->seek(0, foundation::io::SeekOrigin::SET);
-
-		uint8_t *data = new uint8_t[size];
-		file->read(data, sizeof(uint8_t), size);
-		file_system->close(file);
-
 		yaml::csubstr yaml(reinterpret_cast<const char *>(data), size);
 		yaml::Tree &tree = yaml::parse(yaml);
 		bool result = deserialize(tree);
-		delete[] data;
+
+		file_system->unmap(data);
 
 		return result;
 	}
