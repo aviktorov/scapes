@@ -1,6 +1,8 @@
 #include "ResourceManager.h"
 #include "ResourcePool.h"
 
+#include <scapes/foundation/profiler/Profiler.h>
+
 namespace scapes::foundation::resources::impl
 {
 	/*
@@ -46,29 +48,53 @@ namespace scapes::foundation::resources::impl
 	 */
 	void ResourceManager::update(float dt)
 	{
-		for (auto resource_it : resources_by_uri)
+		SCAPES_PROFILER();
+
+		// TODO: memory limit management
+
+		// live reload
+		const uint32_t bucket = frame % max_check_frames;
+
+		for (auto it : pools)
 		{
-			std::vector<ResourceEntry> &resources = resource_it.second;
-			assert(resources.size() > 0);
+			auto vtable_it = vtables.find(it.first);
+			assert(vtable_it != vtables.end());
 
-			const io::URI &uri = resource_it.first;
+			ResourceVTable *vtable = vtable_it->second;
+			assert(vtable);
 
-			for (auto resource : resources)
-			{
-				ResourceVTable *vtable = resource.vtable;
+			int counter = 0;
 
-				uint8_t *resource_ptr = reinterpret_cast<uint8_t *>(resource.memory) + vtable->offset;
+			it.second->traverse(
+				[this, vtable, bucket, &counter](void *memory)
+				{
+					uint64_t memory_hash = 0;
+					common::HashUtils::combine(memory_hash, memory);
 
-				hash_t resource_hash = ResourceManager::getHash(resource.memory);
-				hash_t file_hash = vtable->fetchHash(this, file_system, resource_ptr, uri);
+					auto it = uri_by_resource.find(memory_hash);
+					if (it == uri_by_resource.end())
+						return;
 
-				if (file_hash == resource_hash)
-					continue;
+					if (bucket != (counter++ % max_check_frames))
+						return;
 
-				vtable->reload(this, file_system, resource_ptr, uri);
-				ResourceManager::setHash(resource.memory, file_hash);
-			}
+					const io::URI &uri = it->second;
+
+					uint8_t *resource_ptr = reinterpret_cast<uint8_t *>(memory) + vtable->offset;
+
+					hash_t resource_hash = ResourceManager::getHash(memory);
+					hash_t file_hash = vtable->fetchHash(this, file_system, resource_ptr, uri);
+
+					if (file_hash == resource_hash)
+						return;
+
+					vtable->reload(this, file_system, resource_ptr, uri);
+					ResourceManager::setHash(memory, file_hash);
+				}
+			);
 		}
+
+		frame++;
 	}
 
 	/*

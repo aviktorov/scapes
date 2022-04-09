@@ -53,6 +53,9 @@ namespace scapes::foundation::resources::impl
 		};
 
 	private:
+		uint32_t frame {0};
+		uint32_t max_check_frames {300};
+
 		io::FileSystem *file_system {nullptr};
 		std::unordered_map<size_t, ResourcePool *> pools;
 		std::unordered_map<size_t, ResourceVTable *> vtables;
