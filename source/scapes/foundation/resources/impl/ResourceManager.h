@@ -1,6 +1,7 @@
 #pragma once
 
 #include <scapes/foundation/resources/ResourceManager.h>
+#include "HashUtils.h"
 
 #include <unordered_map>
 
@@ -23,13 +24,33 @@ namespace scapes::foundation::resources::impl
 		void *getLinkedMemory(const io::URI &uri) const final;
 		io::URI getLinkedUri(void *memory) const final;
 
-		ResourceVTable *fetchVTable(const char *type_name) final;
 		void *allocate(const char *type_name, size_t size) final;
 		void deallocate(void *memory, const char *type_name) final;
 
 	private:
+		ResourceVTable *fetchVTable(const char *type_name) final;
+		ResourceVTable *getVTable(const char *type_name);
+
 		ResourcePool *fetchPool(const char *type_name, size_t size);
 		ResourcePool *getPool(const char *type_name) const;
+
+	private:
+		struct ResourceEntry
+		{
+			void *memory {nullptr};
+			ResourceVTable *vtable {nullptr};
+		};
+
+		struct URIHasher
+		{
+			std::size_t operator()(const io::URI &uri) const
+			{
+				uint64_t hash = 0;
+				common::HashUtils::combine(hash, std::string_view(uri.c_str()));
+
+				return static_cast<std::size_t>(hash);
+			}
+		};
 
 	private:
 		io::FileSystem *file_system {nullptr};
@@ -37,6 +58,6 @@ namespace scapes::foundation::resources::impl
 		std::unordered_map<size_t, ResourceVTable *> vtables;
 
 		std::unordered_map<size_t, io::URI> uri_by_resource;
-		std::unordered_map<size_t, std::vector<void *>> resources_by_uri;
+		std::unordered_map<io::URI, std::vector<ResourceEntry>, URIHasher> resources_by_uri;
 	};
 }
