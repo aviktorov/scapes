@@ -55,16 +55,14 @@ namespace scapes::foundation::shaders
 	public:
 		virtual uint64_t getHash(
 			ShaderType type,
-			uint32_t size,
-			const char *data,
-			const io::URI &uri = nullptr
+			const io::URI &uri
 		) = 0;
 
 		virtual ShaderIL *createShaderIL(
 			ShaderType type,
 			uint32_t size,
 			const char *data,
-			const io::URI &uri = nullptr
+			const io::URI &uri
 		) = 0;
 
 		virtual void releaseShaderIL(ShaderIL *il) = 0;

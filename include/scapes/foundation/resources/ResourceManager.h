@@ -11,7 +11,7 @@ template <typename T> struct ResourceTraits { };
 namespace scapes::foundation::resources
 {
 	// TODO: better types
-	typedef uint32_t hash_t;
+	typedef uint64_t hash_t;
 	typedef uint32_t generation_t;
 
 	struct ResourceMetadata
@@ -166,27 +166,23 @@ namespace scapes::foundation::resources
 			io::FileSystem *file_system = getFileSystem();
 			assert(file_system);
 
-			io::Stream *stream = file_system->open(uri, "rb");
-			if (!stream)
+			size_t size = 0;
+			uint8_t *data = reinterpret_cast<uint8_t *>(file_system->map(uri, size));
+
+			if (!data)
 			{
 				Log::error("ResourceManager::load(): can't open \"%s\" file\n", uri);
 				return ResourceHandle<T>();
 			}
 
-			size_t size = static_cast<size_t>(stream->size());
-
-			uint8_t *data = new uint8_t[size];
-			stream->read(data, sizeof(uint8_t), size);
-			file_system->close(stream);
-
 			ResourceHandle<T> resource = loadFromMemory<T>(data, size, std::forward<Arguments>(params)...);
-			delete[] data;
+			file_system->unmap(data);
 
 			const ResourceMetadata *metadata = reinterpret_cast<ResourceMetadata *>(resource.getRaw());
 			assert(metadata);
 
 			ResourceVTable *vtable = fetchVTable(metadata->type_name);
-			hash_t hash = vtable->fetchHash(this, uri);
+			hash_t hash = vtable->fetchHash(this, file_system, resource.get(), uri);
 
 			setHash(resource.getRaw(), hash);
 			linkMemory(resource.getRaw(), uri);
@@ -223,8 +219,8 @@ namespace scapes::foundation::resources
 		struct ResourceVTable
 		{
 			using DestroyFuncPtr = void (*)(ResourceManager *, void *);
-			using ReloadFuncPtr = bool (*)(ResourceManager *, void *, const io::URI &);
-			using FetchHashFuncPtr = hash_t (*)(ResourceManager *, const io::URI &);
+			using ReloadFuncPtr = bool (*)(ResourceManager *, io::FileSystem *, void *, const io::URI &);
+			using FetchHashFuncPtr = hash_t (*)(ResourceManager *, io::FileSystem *, void *, const io::URI &);
 
 			DestroyFuncPtr destroy {nullptr};
 			ReloadFuncPtr reload {nullptr};

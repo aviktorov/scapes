@@ -1,6 +1,7 @@
 #include "ResourceManager.h"
 #include "ResourcePool.h"
-#include "HashUtils.h"
+
+#include <scapes/foundation/profiler/Profiler.h>
 
 namespace scapes::foundation::resources::impl
 {
@@ -47,46 +48,53 @@ namespace scapes::foundation::resources::impl
 	 */
 	void ResourceManager::update(float dt)
 	{
-		for (auto resource_it : resources_by_uri)
+		SCAPES_PROFILER();
+
+		// TODO: memory limit management
+
+		// live reload
+		const uint32_t bucket = frame % max_check_frames;
+
+		for (auto it : pools)
 		{
-			std::vector<void *> &resources = resource_it.second;
-			assert(resources.size() > 0);
+			auto vtable_it = vtables.find(it.first);
+			assert(vtable_it != vtables.end());
 
-			uint64_t uri_hash = 0;
-			common::HashUtils::combine(uri_hash, resources.front());
+			ResourceVTable *vtable = vtable_it->second;
+			assert(vtable);
 
-			auto uri_it = uri_by_resource.find(uri_hash);
-			assert(uri_it != uri_by_resource.end());
+			int counter = 0;
 
-			const io::URI &uri = uri_it->second;
+			it.second->traverse(
+				[this, vtable, bucket, &counter](void *memory)
+				{
+					uint64_t memory_hash = 0;
+					common::HashUtils::combine(memory_hash, memory);
 
-			for (auto memory : resources)
-			{
-				const char *type_name = ResourceManager::getTypeName(memory);
-				assert(type_name);
+					auto it = uri_by_resource.find(memory_hash);
+					if (it == uri_by_resource.end())
+						return;
 
-				uint64_t type_hash = 0;
-				common::HashUtils::combine(type_hash, std::string_view(type_name));
+					if (bucket != (counter++ % max_check_frames))
+						return;
 
-				auto vtable_it = vtables.find(type_hash);
-				assert(vtable_it != vtables.end());
+					const io::URI &uri = it->second;
 
-				ResourceVTable *vtable = vtable_it->second;
+					uint8_t *resource_ptr = reinterpret_cast<uint8_t *>(memory) + vtable->offset;
 
-				hash_t resource_hash = ResourceManager::getHash(memory);
-				hash_t file_hash = vtable->fetchHash(this, uri);
+					hash_t resource_hash = ResourceManager::getHash(memory);
+					hash_t file_hash = vtable->fetchHash(this, file_system, resource_ptr, uri);
 
-				if (file_hash == resource_hash)
-					continue;
+					if (file_hash == resource_hash)
+						return;
 
-				uint8_t *resource_ptr = reinterpret_cast<uint8_t *>(memory) + vtable->offset;
-
-				if (!vtable->reload(this, resource_ptr, uri))
-					continue;
-
-				ResourceManager::setHash(memory, resource_hash);
-			}
+					vtable->reload(this, file_system, resource_ptr, uri);
+					ResourceManager::setHash(memory, file_hash);
+				}
+			);
 		}
+
+		frame++;
 	}
 
 	/*
@@ -103,16 +111,22 @@ namespace scapes::foundation::resources::impl
 		if (it != uri_by_resource.end())
 		{
 			const io::URI &current_uri = it->second;
-			if (strcmp(uri, current_uri) == 0)
+			if (uri == current_uri)
 				return false;
 
 			unlinkMemory(memory);
 		}
 
-		uint64_t uri_hash = 0;
-		common::HashUtils::combine(uri_hash, std::string_view(uri));
+		const char *type_name = ResourceManager::getTypeName(memory);
 
-		resources_by_uri[uri_hash].push_back(memory);
+		ResourceEntry entry = {};
+		entry.memory = memory;
+		entry.vtable = getVTable(type_name);
+
+		assert(entry.memory);
+		assert(entry.vtable);
+
+		resources_by_uri[uri].push_back(entry);
 		uri_by_resource[memory_hash] = uri;
 
 		return true;
@@ -133,15 +147,20 @@ namespace scapes::foundation::resources::impl
 
 		const io::URI &uri = uri_it->second;
 
-		uint64_t uri_hash = 0;
-		common::HashUtils::combine(uri_hash, std::string_view(uri));
-
-		auto resource_it = resources_by_uri.find(uri_hash);
+		auto resource_it = resources_by_uri.find(uri);
 		assert(resource_it != resources_by_uri.end());
 
-		std::vector<void *> &resources = resource_it->second;
+		std::vector<ResourceEntry> &resources = resource_it->second;
 
-		resources.erase(std::remove(resources.begin(), resources.end(), memory), resources.end());
+		for (auto it = resources.begin(); it != resources.end(); ++it)
+		{
+			if (it->memory == memory)
+			{
+				resources.erase(it);
+				break;
+			}
+		}
+
 		if (resources.empty())
 			resources_by_uri.erase(resource_it);
 
@@ -152,14 +171,11 @@ namespace scapes::foundation::resources::impl
 
 	void *ResourceManager::getLinkedMemory(const io::URI &uri) const
 	{
-		uint64_t uri_hash = 0;
-		common::HashUtils::combine(uri_hash, std::string_view(uri));
-
-		auto it = resources_by_uri.find(uri_hash);
+		auto it = resources_by_uri.find(uri);
 		if (it == resources_by_uri.end())
 			return nullptr;
 
-		return it->second.front();
+		return it->second.front().memory;
 	}
 
 	io::URI ResourceManager::getLinkedUri(void *memory) const
@@ -172,6 +188,25 @@ namespace scapes::foundation::resources::impl
 			return nullptr;
 
 		return it->second;
+	}
+
+	/*
+	 */
+	void *ResourceManager::allocate(const char *type_name, size_t type_size)
+	{
+		ResourcePool *pool = fetchPool(type_name, type_size);
+		assert(pool);
+
+		return pool->allocate();
+	}
+
+	void ResourceManager::deallocate(void *memory, const char *type_name)
+	{
+		ResourcePool *pool = getPool(type_name);
+		assert(pool);
+
+		pool->deallocate(memory);
+		unlinkMemory(memory);
 	}
 
 	/*
@@ -195,21 +230,16 @@ namespace scapes::foundation::resources::impl
 		return result;
 	}
 
-	void *ResourceManager::allocate(const char *type_name, size_t type_size)
+	ResourceManager::ResourceVTable *ResourceManager::getVTable(const char *type_name)
 	{
-		ResourcePool *pool = fetchPool(type_name, type_size);
-		assert(pool);
+		uint64_t hash = 0;
+		common::HashUtils::combine(hash, std::string_view(type_name));
 
-		return pool->allocate();
-	}
+		auto it = vtables.find(hash);
+		if (it == vtables.end())
+			return nullptr;
 
-	void ResourceManager::deallocate(void *memory, const char *type_name)
-	{
-		ResourcePool *pool = getPool(type_name);
-		assert(pool);
-
-		pool->deallocate(memory);
-		unlinkMemory(memory);
+		return it->second;
 	}
 
 	/*

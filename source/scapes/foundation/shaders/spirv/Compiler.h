@@ -15,16 +15,14 @@ namespace scapes::foundation::shaders::spirv
 
 		uint64_t getHash(
 			ShaderType type,
-			uint32_t size,
-			const char *data,
-			const io::URI &uri = nullptr
+			const io::URI &uri
 		) override;
 
 		ShaderIL *createShaderIL(
 			ShaderType type,
 			uint32_t size,
 			const char *data,
-			const io::URI &uri = nullptr
+			const io::URI &uri
 		) override;
 
 		void releaseShaderIL(ShaderIL *il) override;

@@ -81,19 +81,54 @@ void ResourceTraits<resources::Texture>::destroy(
 
 foundation::resources::hash_t ResourceTraits<resources::Texture>::fetchHash(
 	foundation::resources::ResourceManager *resource_manager,
-	const foundation::io::URI &uri
-)
-{
-	return 0;
-}
-
-bool ResourceTraits<resources::Texture>::reload(
-	foundation::resources::ResourceManager *resource_manager,
+	foundation::io::FileSystem *file_system,
 	void *memory,
 	const foundation::io::URI &uri
 )
 {
-	return false;
+	assert(file_system);
+
+	return file_system->mtime(uri);
+}
+
+bool ResourceTraits<resources::Texture>::reload(
+	foundation::resources::ResourceManager *resource_manager,
+	foundation::io::FileSystem *file_system,
+	void *memory,
+	const foundation::io::URI &uri
+)
+{
+	assert(file_system);
+
+	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
+	foundation::render::Device *device = texture->device;
+
+	assert(device);
+
+	resources::Texture temp = {};
+	temp.device = texture->device;
+
+	size_t size = 0;
+	uint8_t *data = reinterpret_cast<uint8_t *>(file_system->map(uri, size));
+
+	if (!data)
+	{
+		foundation::Log::error("ResourceTraits<Texture>::reload(): can't open \"%s\" file\n", uri.c_str());
+		return false;
+	}
+
+	bool success = loadFromMemory(resource_manager, &temp, data, size);
+
+	file_system->unmap(data);
+
+	if (!success)
+		return false;
+
+	destroy(resource_manager, memory);
+	*texture = temp;
+
+	foundation::Log::message("ResourceTraits<Texture>::reload(): file \"%s\" reloaded successfully\n", uri.c_str());
+	return true;
 }
 
 bool ResourceTraits<resources::Texture>::loadFromMemory(

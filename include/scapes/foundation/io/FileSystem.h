@@ -1,13 +1,46 @@
 #pragma once
 
 #include <scapes/Common.h>
+#include <cstdlib>
+#include <cstring>
 
 namespace scapes::foundation::io
 {
-	// TODO: make this full-fledged class that wraps
-	//       different protocols (i.e. file://, guid://, http://, https://, etc.)
-	typedef const char * URI;
+	class URI
+	{
+	public:
+		URI()
+		{
+			data[0] = '\x0';
+		}
+		URI(const char *str)
+		{
+			size_t len = strlen(str);
+			assert(len < 2048);
+			memcpy(data, str, sizeof(char) * (len + 1));
+		}
+		URI(const URI &uri)
+		{
+			memcpy(data, uri.data, sizeof(char) * 2048);
+		}
+		URI &operator=(const URI &uri)
+		{
+			memcpy(data, uri.data, sizeof(char) * 2048);
+			return *this;
+		}
 
+		bool operator==(const URI &uri) const
+		{
+			return strcmp(data, uri.data) == 0;
+		}
+
+		SCAPES_INLINE const char *c_str() const { return data; }
+		SCAPES_INLINE bool empty() const { return data[0] == '\0'; }
+
+	private:
+		char data[2048];
+	};
+	
 	enum class SeekOrigin : uint8_t
 	{
 		SET = 0,
@@ -37,5 +70,8 @@ namespace scapes::foundation::io
 
 		virtual Stream *open(const URI &path, const char *mode) = 0;
 		virtual bool close(Stream *stream) = 0;
+		virtual void *map(const URI &path, size_t &size) = 0;
+		virtual bool unmap(void *data) = 0;
+		virtual uint64_t mtime(const URI &path) = 0;
 	};
 }

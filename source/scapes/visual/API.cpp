@@ -399,18 +399,13 @@ namespace scapes::visual
 		TextureHandle metalness
 	)
 	{
-		RenderMaterialHandle result = resource_manager->create<resources::RenderMaterial>(device);
-
-		result->albedo = albedo;
-		result->normal = normal;
-		result->roughness = roughness;
-		result->metalness = metalness;
-
-		result->bindings = device->createBindSet();
-		device->bindTexture(result->bindings, 0, result->albedo->gpu_data);
-		device->bindTexture(result->bindings, 1, result->normal->gpu_data);
-		device->bindTexture(result->bindings, 2, result->roughness->gpu_data);
-		device->bindTexture(result->bindings, 3, result->metalness->gpu_data);
+		RenderMaterialHandle result = resource_manager->create<resources::RenderMaterial>(
+			albedo,
+			normal,
+			roughness,
+			metalness,
+			device
+		);
 
 		return result;
 	}

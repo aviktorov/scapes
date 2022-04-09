@@ -47,6 +47,8 @@ void ResourceTraits<resources::Mesh>::destroy(
 
 foundation::resources::hash_t ResourceTraits<resources::Mesh>::fetchHash(
 	foundation::resources::ResourceManager *resource_manager,
+	foundation::io::FileSystem *file_system,
+	void *memory,
 	const foundation::io::URI &uri
 )
 {
@@ -55,6 +57,7 @@ foundation::resources::hash_t ResourceTraits<resources::Mesh>::fetchHash(
 
 bool ResourceTraits<resources::Mesh>::reload(
 	foundation::resources::ResourceManager *resource_manager,
+	foundation::io::FileSystem *file_system,
 	void *memory,
 	const foundation::io::URI &uri
 )

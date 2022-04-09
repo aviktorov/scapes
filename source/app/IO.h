@@ -30,6 +30,9 @@ public:
 
 	scapes::foundation::io::Stream *open(const scapes::foundation::io::URI &uri, const char *mode) final;
 	bool close(scapes::foundation::io::Stream *stream) final;
+	void *map(const scapes::foundation::io::URI &path, size_t &size) final;
+	bool unmap(void *data) final;
+	uint64_t mtime(const scapes::foundation::io::URI &uri) final;
 
 private:
 	std::filesystem::path root_path;

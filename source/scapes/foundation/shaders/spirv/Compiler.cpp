@@ -1,12 +1,113 @@
 #include "shaders/spirv/Compiler.h"
+#include "HashUtils.h"
 
 #include <scapes/foundation/Log.h>
 #include <scapes/foundation/io/FileSystem.h>
 
 #include <scapes/foundation/profiler/Profiler.h>
 
+#include <sstream>
+#include <set>
+
 namespace scapes::foundation::shaders::spirv
 {
+	namespace parser
+	{
+		static bool getContents(const io::URI &uri, io::FileSystem *file_system, std::string &result)
+		{
+			size_t size = 0;
+			void *data = file_system->map(uri, size);
+
+			if (!data)
+			{
+				Log::error("parser::getContents(): can't get data from \"%s\"\n", uri.c_str());
+				return false;
+			}
+
+			result.clear();
+			result.append(reinterpret_cast<const char *>(data), size);
+
+			file_system->unmap(data);
+			return true;
+		}
+
+		static int parseString(const char *source, std::string &result)
+		{
+			const char *s = source;
+			assert(s);
+
+			if (strchr("\n\r", *s))
+				return 0;
+
+			if (*s != '"' && *s != '<')
+				return 0;
+
+			char end = (*s == '<') ? '>' : *s;
+			s++;
+
+			std::stringstream stream;
+			while (*s)
+			{
+				if (strchr("\n\r", *s))
+					return 0;
+
+				if (*s == end)
+				{
+					s++;
+					break;
+				}
+				stream << *s;
+				s++;
+			}
+
+			result = stream.str();
+			return static_cast<int>(s - source);
+		}
+
+		static bool parseIncludes(const char *source, io::FileSystem *file_system, std::set<std::string> &includes)
+		{
+			const char *s = source;
+
+			while (*s)
+			{
+				s = strstr(s, "#include");
+
+				if (s == nullptr)
+					return true;
+
+				s += 8;
+
+				while (*s && strchr(" \t", *s))
+					s++;
+
+				std::string include_path;
+				s += parseString(s, include_path);
+
+				if (include_path.empty())
+					return false;
+
+				if (includes.find(include_path) != includes.end())
+				{
+					s++;
+					continue;
+				}
+
+				includes.insert(include_path);
+
+				std::string include_source;
+				if (!getContents(include_path.c_str(), file_system, include_source))
+					return false;
+
+				if (!parseIncludes(include_source.c_str(), file_system, includes))
+					return false;
+
+				s++;
+			}
+
+			return true;
+		}
+	}
+
 	namespace shaderc
 	{
 		static shaderc_shader_kind getShaderKind(ShaderType type)
@@ -45,6 +146,7 @@ namespace scapes::foundation::shaders::spirv
 		{
 			SCAPES_PROFILER();
 			io::FileSystem *file_system = reinterpret_cast<io::FileSystem *>(user_data);
+			assert(file_system);
 
 			shaderc_include_result *result = new shaderc_include_result();
 			result->user_data = user_data;
@@ -70,20 +172,14 @@ namespace scapes::foundation::shaders::spirv
 
 			std::string target_path = target_dir + std::string(requested_source);
 
-			io::Stream *file = file_system->open(target_path.c_str(), "rb");
+			size_t size = 0;
+			void *data = file_system->map(target_path.c_str(), size);
 
-			if (!file)
+			if (!data)
 			{
 				Log::error("shaderc::include_resolver(): can't load include at \"%s\"\n", target_path.c_str());
 				return result;
 			}
-
-			size_t file_size = static_cast<size_t>(file->size());
-			char *buffer = new char[file_size];
-
-			file->seek(0, io::SeekOrigin::SET);
-			file->read(buffer, sizeof(char), file_size);
-			file_system->close(file);
 
 			char *path = new char[target_path.size() + 1];
 			memcpy(path, target_path.c_str(), target_path.size());
@@ -91,18 +187,23 @@ namespace scapes::foundation::shaders::spirv
 
 			result->source_name = path;
 			result->source_name_length = target_path.size() + 1;
-			result->content = buffer;
-			result->content_length = file_size;
+			result->content = reinterpret_cast<const char *>(data);
+			result->content_length = size;
 
 			return result;
 		}
 
-		static void includeResultReleaser(void *userData, shaderc_include_result *result)
+		static void includeResultReleaser(void *user_data, shaderc_include_result *result)
 		{
 			SCAPES_PROFILER();
 
-			delete result->source_name;
-			delete result->content;
+			io::FileSystem *file_system = reinterpret_cast<io::FileSystem *>(user_data);
+			assert(file_system);
+
+			// NOTE: here we use const_cast because we're sure we mapped this memory via file system
+			file_system->unmap(const_cast<char*>(result->content));
+
+			delete[] result->source_name;
 			delete result;
 		}
 	}
@@ -128,39 +229,39 @@ namespace scapes::foundation::shaders::spirv
 
 	uint64_t Compiler::getHash(
 		ShaderType type,
-		uint32_t size,
-		const char *data,
 		const io::URI &uri
 	)
 	{
 		SCAPES_PROFILER();
 
-		const char *path = (uri) ? uri : "memory";
+		assert(!uri.empty());
+		assert(file_system);
 
-		// preprocess shader
-		shaderc_compilation_result_t preprocess_result = nullptr;
+		std::string source;
 		{
-			SCAPES_PROFILER_N("Compiler::getHash(): preprocess");
-			preprocess_result = shaderc_compile_into_preprocessed_text(
-				compiler,
-				data, size,
-				shaderc::getShaderKind(type),
-				path,
-				"main",
-				options
-			);
+			SCAPES_PROFILER_N("Compiler::getHash(): load shader source");
+			if (!parser::getContents(uri.c_str(), file_system, source))
+				return 0;
 		}
 
-		size_t code_length = shaderc_result_get_length(preprocess_result);
-		const char *code_data = shaderc_result_get_bytes(preprocess_result);
+		std::set<std::string> includes;
+		includes.insert(uri.c_str());
+		{
+			SCAPES_PROFILER_N("Compiler::getHash(): extract includes");
+			if (!parser::parseIncludes(source.c_str(), file_system, includes))
+				return 0;
+		}
 
 		uint64_t hash = 0;
 		{
-			SCAPES_PROFILER_N("Compiler::getHash(): check hash");
-			hash = cache.getHash(type, code_data, code_length);
+			SCAPES_PROFILER_N("Compiler::getHash(): hash");
+			for (auto path : includes)
+			{
+				uint64_t mtime = file_system->mtime(io::URI(path.c_str()));
+				common::HashUtils::combine(hash, mtime);
+			}
 		}
 
-		shaderc_result_release(preprocess_result);
 		return hash;
 	}
 
@@ -173,7 +274,7 @@ namespace scapes::foundation::shaders::spirv
 	{
 		SCAPES_PROFILER();
 
-		const char *path = (uri) ? uri : "memory";
+		const char *path = (uri.empty()) ? "memory" : uri.c_str();
 
 		// preprocess shader
 		shaderc_compilation_result_t preprocess_result = nullptr;
@@ -181,7 +282,8 @@ namespace scapes::foundation::shaders::spirv
 			SCAPES_PROFILER_N("Compiler::createShaderIL(): preprocess");
 			preprocess_result = shaderc_compile_into_preprocessed_text(
 				compiler,
-				data, size,
+				data,
+				size,
 				shaderc::getShaderKind(type),
 				path,
 				"main",
