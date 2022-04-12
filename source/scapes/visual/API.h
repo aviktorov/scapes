@@ -16,6 +16,8 @@ namespace scapes::visual
 	{
 	public:
 		APIImpl(
+			const foundation::io::URI &default_vertex_shader_uri,
+			const foundation::io::URI &default_cubemap_geometry_shader_uri,
 			foundation::resources::ResourceManager *resource_manager,
 			foundation::game::World *world,
 			foundation::render::Device *device,
@@ -28,6 +30,8 @@ namespace scapes::visual
 		SCAPES_INLINE foundation::game::World *getWorld() const final { return world; }
 		SCAPES_INLINE foundation::render::Device *getDevice() const final { return device; }
 		SCAPES_INLINE foundation::shaders::Compiler *getCompiler() const final { return compiler; }
+
+		SCAPES_INLINE ShaderHandle getDefaultVertexShader() const final { return default_vertex; }
 
 		SCAPES_INLINE MeshHandle getUnitQuad() const final { return unit_quad; }
 		SCAPES_INLINE MeshHandle getUnitCube() const final { return unit_cube; }
@@ -46,11 +50,8 @@ namespace scapes::visual
 			uint32_t num_data_mipmaps = 1
 		) final;
 
-		TextureHandle createTexture2D(
-			foundation::render::Format format,
-			uint32_t width,
-			uint32_t height,
-			ShaderHandle vertex_shader,
+		void renderTexture2D(
+			TextureHandle target,
 			ShaderHandle fragment_shader
 		) final;
 
@@ -60,6 +61,15 @@ namespace scapes::visual
 			uint32_t num_mips,
 			const void *data = nullptr,
 			uint32_t num_data_mipmaps = 1
+		) final;
+
+		void renderTextureCube(
+			TextureHandle target,
+			uint32_t target_mip,
+			ShaderHandle fragment_shader,
+			TextureHandle input_texture,
+			size_t size = 0,
+			const void *data = nullptr
 		) final;
 
 		TextureHandle loadTextureFromMemory(
@@ -120,6 +130,9 @@ namespace scapes::visual
 		foundation::game::World *world {nullptr};
 		foundation::render::Device *device {nullptr};
 		foundation::shaders::Compiler *compiler {nullptr};
+
+		ShaderHandle default_vertex;
+		ShaderHandle default_cubemap_geometry;
 
 		MeshHandle unit_quad;
 		MeshHandle unit_cube;

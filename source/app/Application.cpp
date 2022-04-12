@@ -495,7 +495,14 @@ void Application::initRenderScene()
 	resource_manager = foundation::resources::ResourceManager::create(file_system);
 
 	world = foundation::game::World::create();
-	visual_api = visual::API::create(resource_manager, world, device, compiler);
+	visual_api = visual::API::create(
+		"shaders/common/Default.vert",
+		"shaders/common/DefaultCubemap.geom",
+		resource_manager,
+		world,
+		device,
+		compiler
+	);
 
 	application_resources = new ApplicationResources(visual_api);
 	application_resources->init();

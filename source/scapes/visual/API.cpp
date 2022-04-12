@@ -15,13 +15,15 @@ namespace scapes::visual
 	/*
 	 */
 	API *API::create(
+		const foundation::io::URI &default_vertex_shader_uri,
+		const foundation::io::URI &default_cubemap_geometry_shader_uri,
 		foundation::resources::ResourceManager *resource_manager,
 		foundation::game::World *world,
 		foundation::render::Device *device,
 		foundation::shaders::Compiler *compiler
 	)
 	{
-		return new APIImpl(resource_manager, world, device, compiler);
+		return new APIImpl(default_vertex_shader_uri, default_cubemap_geometry_shader_uri, resource_manager, world, device, compiler);
 	}
 
 	void API::destroy(API *api)
@@ -71,6 +73,8 @@ namespace scapes::visual
 	/*
 	 */
 	APIImpl::APIImpl(
+		const foundation::io::URI &default_vertex_shader_uri,
+		const foundation::io::URI &default_cubemap_geometry_shader_uri,
 		foundation::resources::ResourceManager *resource_manager,
 		foundation::game::World *world,
 		foundation::render::Device *device,
@@ -78,6 +82,9 @@ namespace scapes::visual
 	)
 		: resource_manager(resource_manager), world(world), device(device), compiler(compiler)
 	{
+		default_vertex = loadShader(default_vertex_shader_uri, foundation::render::ShaderType::VERTEX);
+		default_cubemap_geometry = loadShader(default_cubemap_geometry_shader_uri, foundation::render::ShaderType::GEOMETRY);
+
 		unit_quad = generateMeshQuad(2.0f);
 		unit_cube = generateMeshCube(2.0f);
 
@@ -112,21 +119,14 @@ namespace scapes::visual
 		return result;
 	}
 
-	TextureHandle APIImpl::createTexture2D(
-		foundation::render::Format format,
-		uint32_t width,
-		uint32_t height,
-		ShaderHandle vertex_shader,
+	void APIImpl::renderTexture2D(
+		TextureHandle target,
 		ShaderHandle fragment_shader
 	)
 	{
-		TextureHandle result = createTexture2D(format, width, height, 1);
-
 		Texture2DRenderer renderer(device);
-		renderer.init(result.get());
-		renderer.render(unit_quad.get(), vertex_shader.get(), fragment_shader.get());
-
-		return result;
+		renderer.init(target.get());
+		renderer.render(unit_quad.get(), default_vertex.get(), fragment_shader.get());
 	}
 
 	TextureHandle APIImpl::createTextureCube(
@@ -147,6 +147,28 @@ namespace scapes::visual
 		result->gpu_data = device->createTextureCube(size, num_mips, format, data, num_data_mipmaps);
 
 		return result;
+	}
+
+	void APIImpl::renderTextureCube(
+		TextureHandle target,
+		uint32_t target_mip,
+		ShaderHandle fragment_shader,
+		TextureHandle input_texture,
+		size_t size,
+		const void *data
+	)
+	{
+		CubemapRenderer renderer(device);
+		renderer.init(target.get(), target_mip);
+		renderer.render(
+			unit_cube.get(),
+			default_vertex.get(),
+			default_cubemap_geometry.get(),
+			fragment_shader.get(),
+			input_texture.get(),
+			static_cast<uint8_t>(size),
+			reinterpret_cast<const uint8_t *>(data)
+		);
 	}
 
 	TextureHandle APIImpl::loadTextureFromMemory(
@@ -261,8 +283,8 @@ namespace scapes::visual
 		renderer.init(&temp_cubemap, 0);
 		renderer.render(
 			unit_cube.get(),
-			create_data.cubemap_vertex.get(),
-			create_data.cubemap_geometry.get(),
+			default_vertex.get(),
+			default_cubemap_geometry.get(),
 			create_data.equirectangular_projection_fragment.get(),
 			hdri_texture.get()
 		);
@@ -280,8 +302,8 @@ namespace scapes::visual
 			renderer.init(&prefiltered_specular, mip);
 			renderer.render(
 				unit_cube.get(),
-				create_data.cubemap_vertex.get(),
-				create_data.cubemap_geometry.get(),
+				default_vertex.get(),
+				default_cubemap_geometry.get(),
 				create_data.prefiltered_specular_fragment.get(),
 				&temp_cubemap,
 				size,
@@ -293,8 +315,8 @@ namespace scapes::visual
 		renderer.init(&diffuse_irradiance, 0);
 		renderer.render(
 			unit_cube.get(),
-			create_data.cubemap_vertex.get(),
-			create_data.cubemap_geometry.get(),
+			default_vertex.get(),
+			default_cubemap_geometry.get(),
 			create_data.diffuse_irradiance_fragment.get(),
 			&temp_cubemap
 		);

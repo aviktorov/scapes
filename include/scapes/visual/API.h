@@ -11,9 +11,7 @@ namespace scapes::visual
 		uint32_t cubemap_size {128};
 
 		TextureHandle baked_brdf;
-		ShaderHandle cubemap_vertex; // TODO: replace graphics pipeline by compute?
-		ShaderHandle cubemap_geometry;
-		ShaderHandle equirectangular_projection_fragment;
+		ShaderHandle equirectangular_projection_fragment; // TODO: replace graphics pipeline by compute?
 		ShaderHandle prefiltered_specular_fragment;
 		ShaderHandle diffuse_irradiance_fragment;
 	};
@@ -22,6 +20,8 @@ namespace scapes::visual
 	{
 	public:
 		static SCAPES_API API *create(
+			const foundation::io::URI &default_vertex_shader_uri,
+			const foundation::io::URI &default_cubemap_geometry_shader_uri,
 			foundation::resources::ResourceManager *resource_manager,
 			foundation::game::World *world,
 			foundation::render::Device *device,
@@ -36,6 +36,8 @@ namespace scapes::visual
 		virtual foundation::game::World *getWorld() const = 0;
 		virtual foundation::render::Device *getDevice() const = 0;
 		virtual foundation::shaders::Compiler *getCompiler() const = 0;
+
+		virtual ShaderHandle getDefaultVertexShader() const = 0;
 
 		virtual MeshHandle getUnitQuad() const = 0;
 		virtual MeshHandle getUnitCube() const = 0;
@@ -54,11 +56,8 @@ namespace scapes::visual
 			uint32_t num_data_mipmaps = 1
 		) = 0;
 
-		virtual TextureHandle createTexture2D(
-			foundation::render::Format format,
-			uint32_t width,
-			uint32_t height,
-			ShaderHandle vertex_shader,
+		virtual void renderTexture2D(
+			TextureHandle target,
 			ShaderHandle fragment_shader
 		) = 0;
 
@@ -68,6 +67,15 @@ namespace scapes::visual
 			uint32_t num_mips,
 			const void *data = nullptr,
 			uint32_t num_data_mipmaps = 1
+		) = 0;
+
+		virtual void renderTextureCube(
+			TextureHandle target,
+			uint32_t target_mip,
+			ShaderHandle fragment_shader,
+			TextureHandle input_texture,
+			size_t size = 0,
+			const void *data = nullptr
 		) = 0;
 
 		virtual TextureHandle loadTextureFromMemory(
