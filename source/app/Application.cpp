@@ -500,8 +500,8 @@ void Application::initRenderScene()
 	application_resources = new ApplicationResources(visual_api);
 	application_resources->init();
 
-	importer = new SceneImporter(world, file_system, visual_api);
-	importer->importCGLTF("scenes/sphere.glb", application_resources);
+	importer = new SceneImporter(visual_api);
+	importer->importCGLTF("scenes/sphere.glb");
 
 	sky_light = foundation::game::Entity(world);
 	sky_light.addComponent<visual::components::SkyLight>(

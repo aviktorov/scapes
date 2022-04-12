@@ -2,8 +2,6 @@
 
 #include <scapes/visual/Fwd.h>
 
-class ApplicationResources;
-
 struct cgltf_mesh;
 struct aiMesh;
 
@@ -12,11 +10,11 @@ struct aiMesh;
 class SceneImporter
 {
 public:
-	SceneImporter(scapes::foundation::game::World *world, scapes::foundation::io::FileSystem *file_system, scapes::visual::API *visual_api);
+	SceneImporter(scapes::visual::API *visual_api);
 	~SceneImporter();
 
-	bool importCGLTF(const char *path, ApplicationResources *resources);
-	bool importAssimp(const char *path, ApplicationResources *resources);
+	bool importCGLTF(const char *path);
+	bool importAssimp(const char *path);
 	void clear();
 
 private:
@@ -24,7 +22,5 @@ private:
 	scapes::visual::MeshHandle import_assimp_mesh(const aiMesh *mesh);
 
 private:
-	scapes::foundation::io::FileSystem *file_system {nullptr};
-	scapes::foundation::game::World *world {nullptr};
 	scapes::visual::API *visual_api {nullptr};
 };

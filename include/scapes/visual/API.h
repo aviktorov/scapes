@@ -40,6 +40,11 @@ namespace scapes::visual
 		virtual MeshHandle getUnitQuad() const = 0;
 		virtual MeshHandle getUnitCube() const = 0;
 
+		virtual TextureHandle getWhiteTexture() const = 0;
+		virtual TextureHandle getGreyTexture() const = 0;
+		virtual TextureHandle getBlackTexture() const = 0;
+		virtual TextureHandle getNormalTexture() const = 0;
+
 		virtual TextureHandle createTexture2D(
 			foundation::render::Format format,
 			uint32_t width,
@@ -98,14 +103,6 @@ namespace scapes::visual
 			resources::Mesh::Vertex *vertices,
 			uint32_t num_indices,
 			uint32_t *indices
-		) = 0;
-
-		virtual MeshHandle createMeshQuad(
-			float size
-		) = 0;
-
-		virtual MeshHandle createMeshCube(
-			float size
 		) = 0;
 
 		virtual IBLTextureHandle loadIBLTexture(

@@ -32,6 +32,11 @@ namespace scapes::visual
 		SCAPES_INLINE MeshHandle getUnitQuad() const final { return unit_quad; }
 		SCAPES_INLINE MeshHandle getUnitCube() const final { return unit_cube; }
 
+		SCAPES_INLINE TextureHandle getWhiteTexture() const final { return default_white; }
+		SCAPES_INLINE TextureHandle getGreyTexture() const final { return default_grey; }
+		SCAPES_INLINE TextureHandle getBlackTexture() const final { return default_black; }
+		SCAPES_INLINE TextureHandle getNormalTexture() const final { return default_normal; }
+
 		TextureHandle createTexture2D(
 			foundation::render::Format format,
 			uint32_t width,
@@ -92,14 +97,6 @@ namespace scapes::visual
 			uint32_t *indices
 		) final;
 
-		MeshHandle createMeshQuad(
-			float size
-		) final;
-
-		MeshHandle createMeshCube(
-			float size
-		) final;
-
 		IBLTextureHandle loadIBLTexture(
 			const foundation::io::URI &uri,
 			const IBLTextureCreateData &create_data
@@ -113,12 +110,23 @@ namespace scapes::visual
 		) final;
 
 	private:
+		MeshHandle generateMeshQuad(float size);
+		MeshHandle generateMeshCube(float size);
+
+		TextureHandle generateTexture(uint8_t r, uint8_t g, uint8_t b);
+
+	private:
 		foundation::resources::ResourceManager *resource_manager {nullptr};
 		foundation::game::World *world {nullptr};
 		foundation::render::Device *device {nullptr};
 		foundation::shaders::Compiler *compiler {nullptr};
 
-		scapes::visual::MeshHandle unit_quad;
-		scapes::visual::MeshHandle unit_cube;
+		MeshHandle unit_quad;
+		MeshHandle unit_cube;
+
+		TextureHandle default_white;
+		TextureHandle default_grey;
+		TextureHandle default_black;
+		TextureHandle default_normal;
 	};
 }

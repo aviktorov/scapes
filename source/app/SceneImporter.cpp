@@ -1,5 +1,4 @@
 #include "SceneImporter.h"
-#include "ApplicationResources.h"
 
 #include <scapes/visual/API.h>
 #include <scapes/visual/Resources.h>
@@ -115,8 +114,8 @@ void releaseCGLTF(const cgltf_memory_options *memory_options, const cgltf_file_o
 
 /*
  */
-SceneImporter::SceneImporter(foundation::game::World *world, foundation::io::FileSystem *file_system, visual::API *visual_api)
-	: world(world), file_system(file_system), visual_api(visual_api)
+SceneImporter::SceneImporter(visual::API *visual_api)
+	: visual_api(visual_api)
 {
 }
 
@@ -127,12 +126,12 @@ SceneImporter::~SceneImporter()
 
 /*
  */
-bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resources)
+bool SceneImporter::importCGLTF(const char *path)
 {
 	cgltf_options options = {};
 	options.file.read = readCGLTF;
 	options.file.release = releaseCGLTF;
-	options.file.user_data = file_system;
+	options.file.user_data = visual_api->getResourceManager()->getFileSystem();
 
 	cgltf_data *data = nullptr;
 	cgltf_result result = cgltf_parse_file(&options, path, &data);
@@ -180,10 +179,10 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 	std::map<const cgltf_material*, visual::RenderMaterialHandle > mapped_materials;
 
 	visual::RenderMaterialHandle default_material = visual_api->createRenderMaterial(
-		resources->getDefaultAlbedo(),
-		resources->getDefaultNormal(),
-		resources->getDefaultRoughness(),
-		resources->getDefaultMetalness()
+		visual_api->getGreyTexture(),
+		visual_api->getNormalTexture(),
+		visual_api->getWhiteTexture(),
+		visual_api->getBlackTexture()
 	);
 
 	for (cgltf_size i = 0; i < data->materials_count; ++i)
@@ -195,10 +194,10 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 
 		// TODO: metalness / roughness maps
 
-		visual::TextureHandle albedo = resources->getDefaultAlbedo();
-		visual::TextureHandle normal = resources->getDefaultNormal();
-		visual::TextureHandle roughness = resources->getDefaultRoughness();
-		visual::TextureHandle metalness = resources->getDefaultMetalness();
+		visual::TextureHandle albedo = visual_api->getGreyTexture();
+		visual::TextureHandle normal = visual_api->getNormalTexture();
+		visual::TextureHandle roughness = visual_api->getWhiteTexture();
+		visual::TextureHandle metalness = visual_api->getBlackTexture();
 
 		if (base_color_texture)
 			albedo = mapped_textures[base_color_texture->image];
@@ -222,7 +221,7 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 
 			visual::MeshHandle mesh = it->second;
 
-			foundation::game::Entity entity = foundation::game::Entity(world);
+			foundation::game::Entity entity = foundation::game::Entity(visual_api->getWorld());
 
 			auto mat_it = mapped_materials.find(node->mesh->primitives[0].material);
 
@@ -250,7 +249,7 @@ bool SceneImporter::importCGLTF(const char *path, ApplicationResources *resource
 	return true;
 }
 
-bool SceneImporter::importAssimp(const char *path, ApplicationResources *resources)
+bool SceneImporter::importAssimp(const char *path)
 {
 	Assimp::Importer importer;
 
@@ -303,7 +302,7 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 	}
 
 	// import materials
-	auto import_material_texture = [&mapped_textures, &dir, this, resources](
+	auto import_material_texture = [&mapped_textures, &dir, this](
 		const aiMaterial *material,
 		aiTextureType type,
 		visual::TextureHandle default_texture
@@ -337,10 +336,10 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 	{
 		const aiMaterial *material = scene->mMaterials[i];
 
-		visual::TextureHandle albedo = import_material_texture(material, aiTextureType_DIFFUSE, resources->getDefaultAlbedo());
-		visual::TextureHandle normal = import_material_texture(material, aiTextureType_HEIGHT, resources->getDefaultNormal());
-		visual::TextureHandle roughness = import_material_texture(material, aiTextureType_SHININESS, resources->getDefaultRoughness());
-		visual::TextureHandle metalness = import_material_texture(material, aiTextureType_AMBIENT, resources->getDefaultMetalness());
+		visual::TextureHandle albedo = import_material_texture(material, aiTextureType_DIFFUSE, visual_api->getGreyTexture());
+		visual::TextureHandle normal = import_material_texture(material, aiTextureType_HEIGHT, visual_api->getNormalTexture());
+		visual::TextureHandle roughness = import_material_texture(material, aiTextureType_SHININESS, visual_api->getWhiteTexture());
+		visual::TextureHandle metalness = import_material_texture(material, aiTextureType_AMBIENT, visual_api->getBlackTexture());
 
 		imported_materials.push_back(visual_api->createRenderMaterial(albedo, normal, roughness, metalness));
 	}
@@ -354,7 +353,7 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 			unsigned int mesh_index = root->mMeshes[i];
 			int32_t material_index = static_cast<int32_t>(scene->mMeshes[mesh_index]->mMaterialIndex);
 
-			foundation::game::Entity entity = foundation::game::Entity(world);
+			foundation::game::Entity entity = foundation::game::Entity(visual_api->getWorld());
 
 			entity.addComponent<foundation::components::Transform>(toMat4(transform));
 			entity.addComponent<visual::components::Renderable>(imported_meshes[mesh_index], imported_materials[material_index]);
@@ -380,6 +379,9 @@ bool SceneImporter::importAssimp(const char *path, ApplicationResources *resourc
 
 void SceneImporter::clear()
 {
+	foundation::game::World *world = visual_api->getWorld();
+	assert(world);
+
 	world->clear();
 }
 
