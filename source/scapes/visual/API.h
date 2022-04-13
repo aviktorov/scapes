@@ -41,26 +41,9 @@ namespace scapes::visual
 		SCAPES_INLINE TextureHandle getBlackTexture() const final { return default_black; }
 		SCAPES_INLINE TextureHandle getNormalTexture() const final { return default_normal; }
 
-		TextureHandle createTexture2D(
-			foundation::render::Format format,
-			uint32_t width,
-			uint32_t height,
-			uint32_t num_mips,
-			const void *data = nullptr,
-			uint32_t num_data_mipmaps = 1
-		) final;
-
 		void renderTexture2D(
 			TextureHandle target,
 			ShaderHandle fragment_shader
-		) final;
-
-		TextureHandle createTextureCube(
-			foundation::render::Format format,
-			uint32_t size,
-			uint32_t num_mips,
-			const void *data = nullptr,
-			uint32_t num_data_mipmaps = 1
 		) final;
 
 		void renderTextureCube(

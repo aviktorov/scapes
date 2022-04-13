@@ -73,7 +73,9 @@ void ApplicationResources::init()
 		loaded_shaders.push_back(shader);
 	}
 
-	baked_brdf = visual_api->createTexture2D(scapes::foundation::render::Format::R16G16_SFLOAT, 512, 512, 1);
+	baked_brdf = resource_manager->create<scapes::visual::resources::Texture>(device, scapes::foundation::render::Format::R16G16_SFLOAT, 512, 512);
+
+	baked_brdf->gpu_data = device->createTexture2D(baked_brdf->width, baked_brdf->height, baked_brdf->mip_levels, baked_brdf->format);
 
 	visual_api->renderTexture2D(baked_brdf, loaded_shaders[config::Shaders::BakedBRDFFragment]);
 

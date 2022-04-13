@@ -70,27 +70,6 @@ namespace scapes::visual
 	{
 	}
 
-	TextureHandle APIImpl::createTexture2D(
-		foundation::render::Format format,
-		uint32_t width,
-		uint32_t height,
-		uint32_t num_mips,
-		const void *data,
-		uint32_t num_data_mipmaps
-	)
-	{
-		TextureHandle result = resource_manager->create<resources::Texture>(device);
-
-		result->format = format;
-		result->width = width;
-		result->height = height;
-		result->mip_levels = num_mips;
-		result->layers = 1;
-		result->gpu_data = device->createTexture2D(width, height, num_mips, format, data, num_data_mipmaps);
-
-		return result;
-	}
-
 	void APIImpl::renderTexture2D(
 		TextureHandle target,
 		ShaderHandle fragment_shader
@@ -99,26 +78,6 @@ namespace scapes::visual
 		Texture2DRenderer renderer(device);
 		renderer.init(target.get());
 		renderer.render(unit_quad.get(), default_vertex.get(), fragment_shader.get());
-	}
-
-	TextureHandle APIImpl::createTextureCube(
-		foundation::render::Format format,
-		uint32_t size,
-		uint32_t num_mips,
-		const void *data,
-		uint32_t num_data_mipmaps
-	)
-	{
-		TextureHandle result = resource_manager->create<resources::Texture>(device);
-
-		result->format = format;
-		result->width = size;
-		result->height = size;
-		result->mip_levels = num_mips;
-		result->layers = 6;
-		result->gpu_data = device->createTextureCube(size, num_mips, format, data, num_data_mipmaps);
-
-		return result;
 	}
 
 	void APIImpl::renderTextureCube(
@@ -311,6 +270,16 @@ namespace scapes::visual
 			r, g, b, 255,
 		};
 
-		return createTexture2D(scapes::foundation::render::Format::R8G8B8A8_UNORM, 2, 2, 1, pixels);
+		TextureHandle result = resource_manager->create<resources::Texture>(device);
+
+		result->format = scapes::foundation::render::Format::R8G8B8A8_UNORM;
+		result->width = 2;
+		result->height = 2;
+		result->depth = 1;
+		result->mip_levels = 1;
+		result->layers = 1;
+		result->gpu_data = device->createTexture2D(result->width, result->height, result->mip_levels, result->format, pixels);
+
+		return result;
 	}
 }

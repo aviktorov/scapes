@@ -599,7 +599,8 @@ void Application::initRenderers()
 		data[i] = foundation::math::packHalf2x16(noise);
 	}
 
-	visual::TextureHandle ssao_noise = visual_api->createTexture2D(foundation::render::Format::R16G16_SFLOAT, 4, 4, 1, data);
+	visual::TextureHandle ssao_noise = resource_manager->create<visual::resources::Texture>(device, scapes::foundation::render::Format::R16G16_SFLOAT, 4, 4);
+	ssao_noise->gpu_data = device->createTexture2D(ssao_noise->width, ssao_noise->height, ssao_noise->mip_levels, ssao_noise->format, data);
 
 	foundation::math::vec4 samples[MAX_SSAO_SAMPLES];
 	float inum_samples = 1.0f / static_cast<float>(MAX_SSAO_SAMPLES);

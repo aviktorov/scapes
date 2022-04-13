@@ -61,6 +61,29 @@ void ResourceTraits<resources::Texture>::create(
 	texture->device = device;
 }
 
+void ResourceTraits<resources::Texture>::create(
+	foundation::resources::ResourceManager *resource_manager,
+	void *memory,
+	foundation::render::Device *device,
+	foundation::render::Format format,
+	uint32_t width,
+	uint32_t height,
+	uint32_t mip_levels,
+	uint32_t layers
+)
+{
+	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
+
+	*texture = {};
+	texture->device = device;
+	texture->format = format;
+	texture->width = width;
+	texture->height = height;
+	texture->depth = 1;
+	texture->mip_levels = mip_levels;
+	texture->layers = layers;
+}
+
 void ResourceTraits<resources::Texture>::destroy(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory
@@ -186,6 +209,7 @@ bool ResourceTraits<resources::Texture>::loadFromMemory(
 	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
 	texture->width = width;
 	texture->height = height;
+	texture->depth = 1;
 	texture->mip_levels = static_cast<int>(std::floor(std::log2(std::max(width, height))) + 1);
 	texture->layers = 1;
 	texture->format = deduceFormat(pixel_size, channels);

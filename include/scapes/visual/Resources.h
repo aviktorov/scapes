@@ -234,6 +234,7 @@ namespace scapes::visual::resources
 	{
 		uint32_t width {0};
 		uint32_t height {0};
+		uint32_t depth {0};
 		uint32_t mip_levels {0};
 		uint32_t layers {0};
 		foundation::render::Format format {foundation::render::Format::UNDEFINED};
@@ -257,6 +258,16 @@ namespace scapes::visual::resources
 			foundation::resources::ResourceManager *resource_manager,
 			void *memory,
 			foundation::render::Device *device
+		);
+		static SCAPES_API void create(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			foundation::render::Device *device,
+			foundation::render::Format format,
+			uint32_t width,
+			uint32_t height,
+			uint32_t mip_levels = 1,
+			uint32_t layers = 1
 		);
 		static SCAPES_API void destroy(
 			foundation::resources::ResourceManager *resource_manager,
