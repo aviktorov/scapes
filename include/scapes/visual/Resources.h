@@ -97,11 +97,24 @@ namespace scapes::visual::resources
 			void *memory,
 			foundation::render::Device *device
 		);
+		static SCAPES_API void create(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			foundation::render::Device *device,
+			uint32_t num_vertices,
+			resources::Mesh::Vertex *vertices,
+			uint32_t num_indices,
+			uint32_t *indices
+		);
 		static SCAPES_API foundation::resources::hash_t fetchHash(
 			foundation::resources::ResourceManager *resource_manager,
 			foundation::io::FileSystem *file_system,
 			void *memory,
 			const foundation::io::URI &uri
+		);
+		static SCAPES_API void flushToGPU(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory
 		);
 		static SCAPES_API bool reload(
 			foundation::resources::ResourceManager *resource_manager,

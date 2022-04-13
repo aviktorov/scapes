@@ -10,7 +10,6 @@ struct GLFWwindow;
 class ApplicationFileSystem;
 class ApplicationResources;
 class ImGuiRenderer;
-class SceneImporter;
 class SwapChain;
 class RenderPassImGui;
 class RenderPassPost;
@@ -90,9 +89,9 @@ private:
 	uint32_t width {0};
 	uint32_t height {0};
 
-	SceneImporter *importer {nullptr};
 	scapes::foundation::game::Entity sky_light;
 	scapes::foundation::game::Entity camera;
+	scapes::visual::GlbImporter *importer {nullptr};
 
 	ApplicationResources *application_resources {nullptr};
 	ApplicationFileSystem *file_system {nullptr};

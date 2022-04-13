@@ -33,45 +33,6 @@ namespace scapes::visual
 
 	/*
 	 */
-	static void uploadToGPU(
-		foundation::render::Device *device,
-		MeshHandle mesh
-	)
-	{
-		assert(device);
-		assert(mesh.get());
-		assert(mesh->num_vertices);
-		assert(mesh->num_indices);
-		assert(mesh->vertices);
-		assert(mesh->indices);
-
-		static foundation::render::VertexAttribute mesh_attributes[6] =
-		{
-			{ foundation::render::Format::R32G32B32_SFLOAT, offsetof(resources::Mesh::Vertex, position) },
-			{ foundation::render::Format::R32G32_SFLOAT, offsetof(resources::Mesh::Vertex, uv) },
-			{ foundation::render::Format::R32G32B32A32_SFLOAT, offsetof(resources::Mesh::Vertex, tangent) },
-			{ foundation::render::Format::R32G32B32_SFLOAT, offsetof(resources::Mesh::Vertex, binormal) },
-			{ foundation::render::Format::R32G32B32_SFLOAT, offsetof(resources::Mesh::Vertex, normal) },
-			{ foundation::render::Format::R32G32B32A32_SFLOAT, offsetof(resources::Mesh::Vertex, color) },
-		};
-
-		mesh->vertex_buffer = device->createVertexBuffer(
-			foundation::render::BufferType::STATIC,
-			sizeof(resources::Mesh::Vertex), mesh->num_vertices,
-			6, mesh_attributes,
-			mesh->vertices
-		);
-
-		mesh->index_buffer = device->createIndexBuffer(
-			foundation::render::BufferType::STATIC,
-			foundation::render::IndexFormat::UINT32,
-			mesh->num_indices,
-			mesh->indices
-		);
-	}
-
-	/*
-	 */
 	APIImpl::APIImpl(
 		const foundation::io::URI &default_vertex_shader_uri,
 		const foundation::io::URI &default_cubemap_geometry_shader_uri,
@@ -180,29 +141,6 @@ namespace scapes::visual
 			static_cast<uint8_t>(size),
 			reinterpret_cast<const uint8_t *>(data)
 		);
-	}
-
-	MeshHandle APIImpl::createMesh(
-		uint32_t num_vertices,
-		resources::Mesh::Vertex *vertices,
-		uint32_t num_indices,
-		uint32_t *indices
-	)
-	{
-		MeshHandle result = resource_manager->create<resources::Mesh>(device);
-
-		result->num_vertices = num_vertices;
-		result->num_indices = num_indices;
-
-		// TODO: use subresource pools
-		result->vertices = new resources::Mesh::Vertex[result->num_vertices];
-		result->indices = new uint32_t[result->num_indices];
-
-		memcpy(result->vertices, vertices, sizeof(resources::Mesh::Vertex) * result->num_vertices);
-		memcpy(result->indices, indices, sizeof(uint32_t) * result->num_indices);
-		uploadToGPU(device, result);
-
-		return result;
 	}
 
 	IBLTextureHandle APIImpl::loadIBLTexture(
@@ -327,7 +265,7 @@ namespace scapes::visual
 			1, 0, 2, 3, 2, 0,
 		};
 
-		return createMesh(num_vertices, vertices, num_indices, indices);
+		return resource_manager->create<resources::Mesh>(device, num_vertices, vertices, num_indices, indices);
 	}
 
 	MeshHandle APIImpl::generateMeshCube(float size)
@@ -359,7 +297,7 @@ namespace scapes::visual
 			4, 0, 3, 3, 7, 4, // -z
 		};
 
-		return createMesh(num_vertices, vertices, num_indices, indices);
+		return resource_manager->create<resources::Mesh>(device, num_vertices, vertices, num_indices, indices);
 	}
 
 	/*

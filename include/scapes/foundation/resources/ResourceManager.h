@@ -200,6 +200,12 @@ namespace scapes::foundation::resources
 		}
 
 		template <typename T>
+		void flushToGPU(ResourceHandle<T> resource)
+		{
+			ResourceTraits<T>::flushToGPU(this, resource.get());
+		}
+
+		template <typename T>
 		void destroy(ResourceHandle<T> resource)
 		{
 			ResourceMetadata *metadata = reinterpret_cast<ResourceMetadata *>(resource.getRaw());

@@ -6,6 +6,7 @@ namespace scapes::visual
 {
 	class API;
 	class RenderGraph;
+	class GlbImporter;
 
 	namespace components
 	{

@@ -78,13 +78,6 @@ namespace scapes::visual
 			const void *data = nullptr
 		) = 0;
 
-		virtual MeshHandle createMesh(
-			uint32_t num_vertices,
-			resources::Mesh::Vertex *vertices,
-			uint32_t num_indices,
-			uint32_t *indices
-		) = 0;
-
 		virtual IBLTextureHandle loadIBLTexture(
 			const foundation::io::URI &uri,
 			const IBLTextureCreateData &create_data
