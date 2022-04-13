@@ -383,10 +383,19 @@ void RenderPassGraphicsBase::deserializeShader(yaml::NodeRef node, visual::Shade
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
 
+	foundation::resources::ResourceManager *resource_manager = visual_api->getResourceManager();
+	assert(resource_manager);
+
+	foundation::render::Device *device = visual_api->getDevice();
+	assert(device);
+
+	foundation::shaders::Compiler *compiler = visual_api->getCompiler();
+	assert(compiler);
+
 	yaml::csubstr node_value = node.val();
 	std::string path = std::string(node_value.data(), node_value.size());
 
-	handle = visual_api->loadShader(path.c_str(), shader_type);
+	handle = resource_manager->fetch<visual::resources::Shader>(path.c_str(), shader_type, device, compiler);
 };
 
 /*
@@ -500,7 +509,10 @@ void RenderPassGraphicsBase::serializeShader(yaml::NodeRef node, const char *nam
 	visual::API *visual_api = render_graph->getAPI();
 	assert(visual_api);
 
-	const foundation::io::URI &uri = visual_api->getShaderUri(handle);
+	foundation::resources::ResourceManager *resource_manager = visual_api->getResourceManager();
+	assert(resource_manager);
+
+	const foundation::io::URI &uri = resource_manager->getUri(handle);
 	if (uri.empty())
 		return;
 

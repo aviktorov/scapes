@@ -82,8 +82,19 @@ namespace scapes::visual
 	)
 		: resource_manager(resource_manager), world(world), device(device), compiler(compiler)
 	{
-		default_vertex = loadShader(default_vertex_shader_uri, foundation::render::ShaderType::VERTEX);
-		default_cubemap_geometry = loadShader(default_cubemap_geometry_shader_uri, foundation::render::ShaderType::GEOMETRY);
+		default_vertex = resource_manager->fetch<resources::Shader>(
+			default_vertex_shader_uri,
+			foundation::render::ShaderType::VERTEX,
+			device,
+			compiler
+		);
+
+		default_cubemap_geometry = resource_manager->fetch<resources::Shader>(
+			default_cubemap_geometry_shader_uri,
+			foundation::render::ShaderType::GEOMETRY,
+			device,
+			compiler
+		);
 
 		unit_quad = generateMeshQuad(2.0f);
 		unit_cube = generateMeshCube(2.0f);
@@ -169,56 +180,6 @@ namespace scapes::visual
 			static_cast<uint8_t>(size),
 			reinterpret_cast<const uint8_t *>(data)
 		);
-	}
-
-	TextureHandle APIImpl::loadTextureFromMemory(
-		const uint8_t *data,
-		size_t size
-	)
-	{
-		TextureHandle result = resource_manager->loadFromMemory<resources::Texture>(data, size, device);
-
-		return result;
-	}
-
-	TextureHandle APIImpl::loadTexture(
-		const foundation::io::URI &uri
-	)
-	{
-		return resource_manager->fetch<resources::Texture>(uri, device);
-	}
-
-	foundation::io::URI APIImpl::getTextureUri(
-		TextureHandle handle
-	) const
-	{
-		return resource_manager->getUri(handle);
-	}
-
-	ShaderHandle APIImpl::loadShaderFromMemory(
-		const uint8_t *data,
-		size_t size,
-		foundation::render::ShaderType shader_type
-	)
-	{
-		ShaderHandle result = resource_manager->loadFromMemory<resources::Shader>(data, size, shader_type, device, compiler);
-
-		return result;
-	}
-
-	ShaderHandle APIImpl::loadShader(
-		const foundation::io::URI &uri,
-		foundation::render::ShaderType shader_type
-	)
-	{
-		return resource_manager->fetch<resources::Shader>(uri, shader_type, device, compiler);
-	}
-
-	foundation::io::URI APIImpl::getShaderUri(
-		ShaderHandle handle
-	) const
-	{
-		return resource_manager->getUri(handle);
 	}
 
 	MeshHandle APIImpl::createMesh(
@@ -335,24 +296,6 @@ namespace scapes::visual
 		device->bindTexture(result->bindings, 0, result->baked_brdf->gpu_data);
 		device->bindTexture(result->bindings, 1, result->prefiltered_specular_cubemap);
 		device->bindTexture(result->bindings, 2, result->diffuse_irradiance_cubemap);
-
-		return result;
-	}
-
-	RenderMaterialHandle APIImpl::createRenderMaterial(
-		TextureHandle albedo,
-		TextureHandle normal,
-		TextureHandle roughness,
-		TextureHandle metalness
-	)
-	{
-		RenderMaterialHandle result = resource_manager->create<resources::RenderMaterial>(
-			albedo,
-			normal,
-			roughness,
-			metalness,
-			device
-		);
 
 		return result;
 	}

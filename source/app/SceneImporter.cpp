@@ -128,10 +128,19 @@ SceneImporter::~SceneImporter()
  */
 bool SceneImporter::importCGLTF(const char *path)
 {
+	foundation::resources::ResourceManager *resource_manager = visual_api->getResourceManager();
+	assert(resource_manager);
+
+	foundation::render::Device *device = visual_api->getDevice();
+	assert(device);
+
+	foundation::shaders::Compiler *compiler = visual_api->getCompiler();
+	assert(compiler);
+
 	cgltf_options options = {};
 	options.file.read = readCGLTF;
 	options.file.release = releaseCGLTF;
-	options.file.user_data = visual_api->getResourceManager()->getFileSystem();
+	options.file.user_data = resource_manager->getFileSystem();
 
 	cgltf_data *data = nullptr;
 	cgltf_result result = cgltf_parse_file(&options, path, &data);
@@ -150,7 +159,7 @@ bool SceneImporter::importCGLTF(const char *path)
 	}
 
 	// import meshes
-	std::map<const cgltf_mesh*, visual::MeshHandle > mapped_meshes;
+	std::map<const cgltf_mesh *, visual::MeshHandle> mapped_meshes;
 
 	for (cgltf_size i = 0; i < data->meshes_count; ++i)
 	{
@@ -159,7 +168,7 @@ bool SceneImporter::importCGLTF(const char *path)
 	}
 
 	// import images
-	std::map<const cgltf_image *, visual::TextureHandle > mapped_textures;
+	std::map<const cgltf_image *, visual::TextureHandle> mapped_textures;
 	for (cgltf_size i = 0; i < data->images_count; ++i)
 	{
 		const cgltf_image &image = data->images[i];
@@ -170,19 +179,20 @@ bool SceneImporter::importCGLTF(const char *path)
 		assert(data);
 		assert(size);
 
-		visual::TextureHandle texture = visual_api->loadTextureFromMemory(data, size);
+		visual::TextureHandle texture = resource_manager->loadFromMemory<visual::resources::Texture>(data, size, visual_api->getDevice());
 
 		mapped_textures.insert({&image, texture});
 	}
 
 	// import materials
-	std::map<const cgltf_material*, visual::RenderMaterialHandle > mapped_materials;
+	std::map<const cgltf_material *, visual::RenderMaterialHandle> mapped_materials;
 
-	visual::RenderMaterialHandle default_material = visual_api->createRenderMaterial(
+	visual::RenderMaterialHandle default_material = resource_manager->create<visual::resources::RenderMaterial>(
 		visual_api->getGreyTexture(),
 		visual_api->getNormalTexture(),
 		visual_api->getWhiteTexture(),
-		visual_api->getBlackTexture()
+		visual_api->getBlackTexture(),
+		device
 	);
 
 	for (cgltf_size i = 0; i < data->materials_count; ++i)
@@ -205,13 +215,19 @@ bool SceneImporter::importCGLTF(const char *path)
 		if (normal_texture)
 			normal = mapped_textures[normal_texture->image];
 
-		visual::RenderMaterialHandle render_material = visual_api->createRenderMaterial(albedo, normal, roughness, metalness);
+		visual::RenderMaterialHandle render_material = resource_manager->create<visual::resources::RenderMaterial>(
+			albedo,
+			normal,
+			roughness,
+			metalness,
+			device
+		);
 
 		mapped_materials.insert({&material, render_material});
 	}
 
 	// import nodes
-	std::function<void(const cgltf_node*, const foundation::math::mat4&)> import_node;
+	std::function<void(const cgltf_node *, const foundation::math::mat4 &)> import_node;
 	import_node = [&import_node, &mapped_materials, &mapped_meshes, this, default_material](const cgltf_node *node, const foundation::math::mat4 &transform) -> void
 	{
 		if (node->mesh)
@@ -251,6 +267,15 @@ bool SceneImporter::importCGLTF(const char *path)
 
 bool SceneImporter::importAssimp(const char *path)
 {
+	foundation::resources::ResourceManager *resource_manager = visual_api->getResourceManager();
+	assert(resource_manager);
+
+	foundation::render::Device *device = visual_api->getDevice();
+	assert(device);
+
+	foundation::shaders::Compiler *compiler = visual_api->getCompiler();
+	assert(compiler);
+
 	Assimp::Importer importer;
 
 	const aiScene *scene = importer.ReadFile(path, aiProcessPreset_TargetRealtime_MaxQuality);
@@ -296,13 +321,13 @@ bool SceneImporter::importAssimp(const char *path)
 		path_builder << dir << '/' << scene->mTextures[i]->mFilename.C_Str();
 		const std::string &texture_path = path_builder.str();
 
-		visual::TextureHandle texture = visual_api->loadTexture(texture_path.c_str());
+		visual::TextureHandle texture = resource_manager->fetch<visual::resources::Texture>(texture_path.c_str(), device);
 
 		mapped_textures.insert({texture_path, texture});
 	}
 
 	// import materials
-	auto import_material_texture = [&mapped_textures, &dir, this](
+	auto import_material_texture = [&mapped_textures, &dir, this, resource_manager, device](
 		const aiMaterial *material,
 		aiTextureType type,
 		visual::TextureHandle default_texture
@@ -322,7 +347,7 @@ bool SceneImporter::importAssimp(const char *path)
 		auto it = mapped_textures.find(texture_path);
 		if (it == mapped_textures.end())
 		{
-			visual::TextureHandle texture = visual_api->loadTexture(texture_path.c_str());
+			visual::TextureHandle texture = resource_manager->fetch<visual::resources::Texture>(texture_path.c_str(), device);
 
 			mapped_textures.insert({texture_path, texture});
 			return texture;
@@ -341,7 +366,15 @@ bool SceneImporter::importAssimp(const char *path)
 		visual::TextureHandle roughness = import_material_texture(material, aiTextureType_SHININESS, visual_api->getWhiteTexture());
 		visual::TextureHandle metalness = import_material_texture(material, aiTextureType_AMBIENT, visual_api->getBlackTexture());
 
-		imported_materials.push_back(visual_api->createRenderMaterial(albedo, normal, roughness, metalness));
+		visual::RenderMaterialHandle render_material = resource_manager->create<visual::resources::RenderMaterial>(
+			albedo,
+			normal,
+			roughness,
+			metalness,
+			device
+		);
+
+		imported_materials.push_back(render_material);
 	}
 
 	// import nodes

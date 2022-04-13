@@ -51,10 +51,25 @@ ApplicationResources::~ApplicationResources()
  */
 void ApplicationResources::init()
 {
+	scapes::foundation::resources::ResourceManager *resource_manager = visual_api->getResourceManager();
+	assert(resource_manager);
+
+	scapes::foundation::render::Device *device = visual_api->getDevice();
+	assert(device);
+
+	scapes::foundation::shaders::Compiler *compiler = visual_api->getCompiler();
+	assert(compiler);
+
 	loaded_shaders.reserve(config::shaders.size());
 	for (int i = 0; i < config::shaders.size(); ++i)
 	{
-		scapes::visual::ShaderHandle shader = visual_api->loadShader(config::shaders[i], scapes::foundation::render::ShaderType::FRAGMENT);
+		scapes::visual::ShaderHandle shader = resource_manager->fetch<scapes::visual::resources::Shader>(
+			config::shaders[i],
+			scapes::foundation::render::ShaderType::FRAGMENT,
+			device,
+			compiler
+		);
+
 		loaded_shaders.push_back(shader);
 	}
 
@@ -62,7 +77,6 @@ void ApplicationResources::init()
 
 	visual_api->renderTexture2D(baked_brdf, loaded_shaders[config::Shaders::BakedBRDFFragment]);
 
-	scapes::foundation::render::Device *device = visual_api->getDevice();
 	device->setTextureSamplerWrapMode(baked_brdf->gpu_data, scapes::foundation::render::SamplerWrapMode::CLAMP_TO_EDGE);
 
 	scapes::visual::IBLTextureCreateData create_data = {};

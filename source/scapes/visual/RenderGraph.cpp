@@ -451,6 +451,8 @@ namespace scapes::visual
 
 	yaml::Tree RenderGraphImpl::serialize()
 	{
+		foundation::resources::ResourceManager *resource_manager = api->getResourceManager();
+
 		yaml::Tree tree;
 		yaml::NodeRef root = tree.rootref();
 		root |= yaml::STREAM;
@@ -509,7 +511,7 @@ namespace scapes::visual
 
 					texture_node["name"] << texture->name.c_str();
 
-					const foundation::io::URI &uri = api->getTextureUri(texture->texture);
+					const foundation::io::URI &uri = resource_manager->getUri(texture->texture);
 					if (!uri.empty())
 						texture_node["path"] << uri.c_str();
 				}
@@ -1518,6 +1520,12 @@ namespace scapes::visual
 
 	void RenderGraphImpl::deserializeGroupTexture(const char *group_name, yaml::NodeRef texture_node)
 	{
+		foundation::resources::ResourceManager *resource_manager = api->getResourceManager();
+		assert(resource_manager);
+
+		foundation::render::Device *device = api->getDevice();
+		assert(device);
+
 		std::string texture_name;
 		std::string texture_path;
 
@@ -1545,7 +1553,7 @@ namespace scapes::visual
 		if (texture_path.empty())
 			return;
 
-		TextureHandle handle = api->loadTexture(texture_path.c_str());
+		TextureHandle handle = resource_manager->fetch<resources::Texture>(texture_path.c_str(), device);
 		setGroupTexture(group_name, texture_name.c_str(), handle);
 	}
 

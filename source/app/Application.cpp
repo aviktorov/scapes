@@ -36,11 +36,37 @@ foundation::render::VertexBuffer rt_vb = SCAPES_NULL_HANDLE;
 foundation::render::IndexBuffer rt_ib = SCAPES_NULL_HANDLE;
 uint32_t rt_size = 512;
 
-static void initRaytracing(foundation::render::Device *device, visual::API *visual_api, visual::RenderGraph *render_graph)
+static void initRaytracing(visual::API *visual_api, visual::RenderGraph *render_graph)
 {
-	visual::ShaderHandle rgen = visual_api->loadShader("shaders/test/test.rgen", foundation::render::ShaderType::RAY_GENERATION);
-	visual::ShaderHandle miss = visual_api->loadShader("shaders/test/test.rmiss", foundation::render::ShaderType::MISS);
-	visual::ShaderHandle closest_hit = visual_api->loadShader("shaders/test/test.rchit", foundation::render::ShaderType::CLOSEST_HIT);
+	foundation::resources::ResourceManager *resource_manager = visual_api->getResourceManager();
+	assert(resource_manager);
+
+	foundation::render::Device *device = visual_api->getDevice();
+	assert(device);
+
+	foundation::shaders::Compiler *compiler = visual_api->getCompiler();
+	assert(compiler);
+
+	visual::ShaderHandle rgen = resource_manager->fetch<visual::resources::Shader>(
+		"shaders/test/test.rgen",
+		foundation::render::ShaderType::RAY_GENERATION,
+		device,
+		compiler
+	);
+
+	visual::ShaderHandle miss = resource_manager->fetch<visual::resources::Shader>(
+		"shaders/test/test.rmiss",
+		foundation::render::ShaderType::MISS,
+		device,
+		compiler
+	);
+
+	visual::ShaderHandle closest_hit = resource_manager->fetch<visual::resources::Shader>(
+		"shaders/test/test.rchit",
+		foundation::render::ShaderType::CLOSEST_HIT,
+		device,
+		compiler
+	);
 
 	struct Vertex
 	{
@@ -145,7 +171,7 @@ void Application::run()
 	initSwapChain();
 	initRenderScene();
 	initRenderers();
-	initRaytracing(device, visual_api, render_graph);
+	initRaytracing(visual_api, render_graph);
 	mainloop();
 	shutdownRaytracing(device);
 	shutdownRenderers();

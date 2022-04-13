@@ -72,34 +72,6 @@ namespace scapes::visual
 			const void *data = nullptr
 		) final;
 
-		TextureHandle loadTextureFromMemory(
-			const uint8_t *data,
-			size_t size
-		) final;
-
-		TextureHandle loadTexture(
-			const foundation::io::URI &uri
-		) final;
-
-		foundation::io::URI getTextureUri(
-			TextureHandle handle
-		) const final;
-
-		ShaderHandle loadShaderFromMemory(
-			const uint8_t *data,
-			size_t size,
-			foundation::render::ShaderType shader_type
-		) final;
-
-		ShaderHandle loadShader(
-			const foundation::io::URI &uri,
-			foundation::render::ShaderType shader_type
-		) final;
-
-		foundation::io::URI getShaderUri(
-			ShaderHandle handle
-		) const final;
-
 		MeshHandle createMesh(
 			uint32_t num_vertices,
 			resources::Mesh::Vertex *vertices,
@@ -110,13 +82,6 @@ namespace scapes::visual
 		IBLTextureHandle loadIBLTexture(
 			const foundation::io::URI &uri,
 			const IBLTextureCreateData &create_data
-		) final;
-
-		RenderMaterialHandle createRenderMaterial(
-			TextureHandle albedo,
-			TextureHandle normal,
-			TextureHandle roughness,
-			TextureHandle metalness
 		) final;
 
 	private:
