@@ -9,7 +9,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace scapes::visual
+namespace scapes::visual::impl
 {
 	class ParameterAllocator
 	{
@@ -20,17 +20,17 @@ namespace scapes::visual
 	private:
 	};
 
-	class RenderGraphImpl : public RenderGraph
+	class RenderGraph : public visual::RenderGraph
 	{
 	public:
-		RenderGraphImpl(
+		RenderGraph(
 			foundation::resources::ResourceManager *resource_manager,
 			foundation::render::Device *device,
 			foundation::shaders::Compiler *compiler,
 			foundation::game::World *world,
 			MeshHandle unit_quad
 		);
-		~RenderGraphImpl() final;
+		~RenderGraph() final;
 
 		SCAPES_INLINE foundation::resources::ResourceManager *getResourceManager() const final { return resource_manager; }
 		SCAPES_INLINE foundation::render::Device *getDevice() const final { return device; }

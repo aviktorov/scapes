@@ -28,12 +28,16 @@ file(GLOB COMMON_HEADERS
 
 file(GLOB ROOT_SOURCES
 	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/impl/*.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/*.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/utils/*.cpp
 )
 
 file(GLOB ROOT_HEADERS
 	${CMAKE_CURRENT_SOURCE_DIR}/*.h
+	${CMAKE_CURRENT_SOURCE_DIR}/impl/*.h
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/*.h
+	${CMAKE_CURRENT_SOURCE_DIR}/utils/*.h
 )
 
 # ==================================================================================================

@@ -3,10 +3,8 @@
 #include <scapes/Common.h>
 #include <scapes/visual/Fwd.h>
 
-namespace scapes::visual
+namespace scapes::visual::utils
 {
-	/*
-	 */
 	class Texture2DRenderer
 	{
 	public:

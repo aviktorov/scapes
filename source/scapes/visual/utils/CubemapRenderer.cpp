@@ -7,7 +7,7 @@
 
 using namespace scapes::foundation;
 
-namespace scapes::visual
+namespace scapes::visual::utils
 {
 	/*
 	 */
