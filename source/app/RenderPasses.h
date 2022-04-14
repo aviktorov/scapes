@@ -62,7 +62,7 @@ public:
 	);
 	void removeSwapChainOutput();
 
-	SCAPES_INLINE void setRenderGraph(scapes::visual::RenderGraph *graph) { render_graph = graph; }
+	void setRenderGraph(scapes::visual::RenderGraph *graph);
 	SCAPES_INLINE scapes::visual::RenderGraph *getRenderGraph() { return render_graph; }
 	SCAPES_INLINE const scapes::visual::RenderGraph *getRenderGraph() const { return render_graph; }
 
@@ -131,8 +131,12 @@ protected:
 	bool has_swapchain_output {false};
 
 	scapes::visual::RenderGraph *render_graph {nullptr};
+	scapes::foundation::resources::ResourceManager *resource_manager {nullptr};
 	scapes::foundation::render::Device *device {nullptr};
+	scapes::foundation::shaders::Compiler *compiler {nullptr};
 	scapes::foundation::game::World *world {nullptr};
+
+	scapes::visual::MeshHandle unit_quad;
 
 	scapes::foundation::render::RenderPass render_pass_swapchain {SCAPES_NULL_HANDLE};
 	scapes::foundation::render::RenderPass render_pass_offscreen {SCAPES_NULL_HANDLE};

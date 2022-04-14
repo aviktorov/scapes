@@ -59,14 +59,23 @@ namespace scapes::visual
 	class RenderGraph
 	{
 	public:
-		static SCAPES_API RenderGraph *create(API *api, foundation::io::FileSystem *file_system);
+		static SCAPES_API RenderGraph *create(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::render::Device *device,
+			foundation::shaders::Compiler *compiler,
+			foundation::game::World *world,
+			MeshHandle unit_quad
+		);
 		static SCAPES_API void destroy(RenderGraph *render_graph);
 
 		virtual ~RenderGraph() { }
 
 	public:
-		virtual API *getAPI() const = 0;
-		virtual foundation::io::FileSystem *getFileSystem() const = 0;
+		virtual foundation::resources::ResourceManager *getResourceManager() const = 0;
+		virtual foundation::render::Device *getDevice() const = 0;
+		virtual foundation::shaders::Compiler *getCompiler() const = 0;
+		virtual foundation::game::World *getWorld() const = 0;
+		virtual MeshHandle getUnitQuad() const = 0;
 
 		virtual uint32_t getWidth() const = 0;
 		virtual uint32_t getHeight() const = 0;

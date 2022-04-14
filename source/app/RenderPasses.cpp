@@ -6,8 +6,6 @@
 #include <scapes/foundation/components/Components.h>
 #include <scapes/visual/Components.h>
 
-#include <scapes/visual/API.h>
-
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -129,7 +127,6 @@ namespace c4
  */
 RenderPassGraphicsBase::RenderPassGraphicsBase()
 {
-
 }
 
 RenderPassGraphicsBase::~RenderPassGraphicsBase()
@@ -141,14 +138,6 @@ RenderPassGraphicsBase::~RenderPassGraphicsBase()
  */
 void RenderPassGraphicsBase::init()
 {
-	assert(render_graph);
-
-	visual::API *visual_api = render_graph->getAPI();
-	assert(visual_api);
-
-	device = visual_api->getDevice();
-	world = visual_api->getWorld();
-
 	graphics_pipeline = device->createGraphicsPipeline();
 
 	onInit();
@@ -380,18 +369,6 @@ void RenderPassGraphicsBase::deserializeShader(yaml::NodeRef node, visual::Shade
 	if (!node.has_val())
 		return;
 
-	visual::API *visual_api = render_graph->getAPI();
-	assert(visual_api);
-
-	foundation::resources::ResourceManager *resource_manager = visual_api->getResourceManager();
-	assert(resource_manager);
-
-	foundation::render::Device *device = visual_api->getDevice();
-	assert(device);
-
-	foundation::shaders::Compiler *compiler = visual_api->getCompiler();
-	assert(compiler);
-
 	yaml::csubstr node_value = node.val();
 	std::string path = std::string(node_value.data(), node_value.size());
 
@@ -505,12 +482,6 @@ void RenderPassGraphicsBase::serializeShader(yaml::NodeRef node, const char *nam
 {
 	if (!handle.get())
 		return;
-
-	visual::API *visual_api = render_graph->getAPI();
-	assert(visual_api);
-
-	foundation::resources::ResourceManager *resource_manager = visual_api->getResourceManager();
-	assert(resource_manager);
 
 	const foundation::io::URI &uri = resource_manager->getUri(handle);
 	if (uri.empty())
@@ -645,6 +616,28 @@ void RenderPassGraphicsBase::removeSwapChainOutput()
 
 /*
  */
+void RenderPassGraphicsBase::setRenderGraph(scapes::visual::RenderGraph *graph)
+{
+	render_graph = graph;
+
+	device = nullptr;
+	world = nullptr;
+	resource_manager = nullptr;
+	compiler = nullptr;
+	unit_quad = visual::MeshHandle();
+
+	if (render_graph)
+	{
+		device = render_graph->getDevice();
+		world = render_graph->getWorld();
+		resource_manager = render_graph->getResourceManager();
+		compiler = render_graph->getCompiler();
+		unit_quad = render_graph->getUnitQuad();
+	}
+}
+
+/*
+ */
 void RenderPassGraphicsBase::clear()
 {
 	device->destroyRenderPass(render_pass_offscreen);
@@ -741,12 +734,6 @@ visual::IRenderPass *RenderPassPrepareOld::create(visual::RenderGraph *render_gr
  */
 void RenderPassPrepareOld::onInit()
 {
-	visual::API *visual_api = render_graph->getAPI();
-	assert(visual_api);
-
-	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
-	assert(unit_quad.get());
-
 	device->clearVertexStreams(graphics_pipeline);
 	device->setVertexStream(graphics_pipeline, 0, unit_quad->vertex_buffer);
 }
@@ -758,12 +745,6 @@ void RenderPassPrepareOld::onInvalidate()
 
 void RenderPassPrepareOld::onRender(foundation::render::CommandBuffer command_buffer)
 {
-	visual::API *visual_api = render_graph->getAPI();
-	assert(visual_api);
-
-	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
-	assert(unit_quad.get());
-
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
 		graphics_pipeline,
@@ -858,24 +839,12 @@ visual::IRenderPass *RenderPassLBuffer::create(visual::RenderGraph *render_graph
  */
 void RenderPassLBuffer::onInit()
 {
-	visual::API *visual_api = render_graph->getAPI();
-	assert(visual_api);
-
-	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
-	assert(unit_quad.get());
-
 	device->clearVertexStreams(graphics_pipeline);
 	device->setVertexStream(graphics_pipeline, 0, unit_quad->vertex_buffer);
 }
 
 void RenderPassLBuffer::onRender(foundation::render::CommandBuffer command_buffer)
 {
-	visual::API *visual_api = render_graph->getAPI();
-	assert(visual_api);
-
-	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
-	assert(unit_quad.get());
-
 	auto query = foundation::game::Query<visual::components::SkyLight>(world);
 
 	query.begin();
@@ -934,24 +903,12 @@ visual::IRenderPass *RenderPassPost::create(visual::RenderGraph *render_graph)
  */
 void RenderPassPost::onInit()
 {
-	visual::API *visual_api = render_graph->getAPI();
-	assert(visual_api);
-
-	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
-	assert(unit_quad.get());
-
 	device->clearVertexStreams(graphics_pipeline);
 	device->setVertexStream(graphics_pipeline, 0, unit_quad->vertex_buffer);
 }
 
 void RenderPassPost::onRender(foundation::render::CommandBuffer command_buffer)
 {
-	visual::API *visual_api = render_graph->getAPI();
-	assert(visual_api);
-
-	visual::MeshHandle unit_quad = visual_api->getUnitQuad();
-	assert(unit_quad.get());
-
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
 		graphics_pipeline,

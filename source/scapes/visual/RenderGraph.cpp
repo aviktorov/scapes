@@ -1,7 +1,6 @@
 #include "RenderGraph.h"
 #include "HashUtils.h"
 
-#include <scapes/visual/API.h>
 #include <scapes/foundation/io/FileSystem.h>
 
 #include <algorithm>
@@ -218,9 +217,15 @@ namespace scapes::visual
 
 	/*
 	 */
-	RenderGraph *RenderGraph::create(API *api, foundation::io::FileSystem *file_system)
+	RenderGraph *RenderGraph::create(
+		foundation::resources::ResourceManager *resource_manager,
+		foundation::render::Device *device,
+		foundation::shaders::Compiler *compiler,
+		foundation::game::World *world,
+		MeshHandle unit_quad
+	)
 	{
-		return new RenderGraphImpl(api, file_system);
+		return new RenderGraphImpl(resource_manager, device, compiler, world, unit_quad);
 	}
 
 	void RenderGraph::destroy(RenderGraph *RenderGraph)
@@ -244,8 +249,14 @@ namespace scapes::visual
 
 	/*
 	 */
-	RenderGraphImpl::RenderGraphImpl(API *api, foundation::io::FileSystem *file_system)
-		: api(api), file_system(file_system)
+	RenderGraphImpl::RenderGraphImpl(
+		foundation::resources::ResourceManager *resource_manager,
+		foundation::render::Device *device,
+		foundation::shaders::Compiler *compiler,
+		foundation::game::World *world,
+		MeshHandle unit_quad
+	)
+		: resource_manager(resource_manager), device(device), compiler(compiler), world(world), unit_quad(unit_quad)
 	{
 
 	}
@@ -359,6 +370,9 @@ namespace scapes::visual
 	 */
 	bool RenderGraphImpl::load(const foundation::io::URI &uri)
 	{
+		foundation::io::FileSystem *file_system = resource_manager->getFileSystem();
+		assert(file_system);
+
 		size_t size = 0;
 		uint8_t *data = reinterpret_cast<uint8_t *>(file_system->map(uri, size));
 
@@ -379,6 +393,9 @@ namespace scapes::visual
 
 	bool RenderGraphImpl::save(const foundation::io::URI &uri)
 	{
+		foundation::io::FileSystem *file_system = resource_manager->getFileSystem();
+		assert(file_system);
+
 		foundation::io::Stream *file = file_system->open(uri, "wb");
 		if (!file)
 		{
@@ -451,8 +468,6 @@ namespace scapes::visual
 
 	yaml::Tree RenderGraphImpl::serialize()
 	{
-		foundation::resources::ResourceManager *resource_manager = api->getResourceManager();
-
 		yaml::Tree tree;
 		yaml::NodeRef root = tree.rootref();
 		root |= yaml::STREAM;
@@ -960,8 +975,6 @@ namespace scapes::visual
 		if (it != framebuffer_cache.end())
 			return it->second;
 
-		foundation::render::Device *device = api->getDevice();
-
 		foundation::render::FrameBuffer framebuffer = device->createFrameBuffer(num_attachments, attachments);
 		framebuffer_cache.insert({hash, framebuffer});
 
@@ -1243,8 +1256,6 @@ namespace scapes::visual
 	{
 		assert(group);
 
-		foundation::render::Device *device = api->getDevice();
-
 		// TODO: make sure UBO + BindSet recreated only if
 		// current UBO size is not enough to fit all parameters
 		device->destroyUniformBuffer(group->buffer);
@@ -1263,8 +1274,6 @@ namespace scapes::visual
 
 		if (!group->dirty)
 			return false;
-
-		foundation::render::Device *device = api->getDevice();
 
 		bool should_invalidate = false;
 
@@ -1371,8 +1380,6 @@ namespace scapes::visual
 	{
 		assert(buffer);
 
-		foundation::render::Device *device = api->getDevice();
-
 		device->destroyTexture(buffer->texture);
 		buffer->texture = nullptr;
 
@@ -1386,8 +1393,6 @@ namespace scapes::visual
 
 		if (texture->texture)
 			return false;
-
-		foundation::render::Device *device = api->getDevice();
 
 		assert(texture->bindings == nullptr);
 
@@ -1406,8 +1411,6 @@ namespace scapes::visual
 	 */
 	void RenderGraphImpl::invalidateFrameBufferCache()
 	{
-		foundation::render::Device *device = api->getDevice();
-
 		for (auto &[hash, framebuffer] : framebuffer_cache)
 			device->destroyFrameBuffer(framebuffer);
 
@@ -1520,12 +1523,6 @@ namespace scapes::visual
 
 	void RenderGraphImpl::deserializeGroupTexture(const char *group_name, yaml::NodeRef texture_node)
 	{
-		foundation::resources::ResourceManager *resource_manager = api->getResourceManager();
-		assert(resource_manager);
-
-		foundation::render::Device *device = api->getDevice();
-		assert(device);
-
 		std::string texture_name;
 		std::string texture_path;
 

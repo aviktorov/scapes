@@ -9,7 +9,6 @@
 struct GLFWwindow;
 class ApplicationFileSystem;
 class ApplicationResources;
-class ImGuiRenderer;
 class SwapChain;
 class RenderPassImGui;
 class RenderPassPost;
@@ -108,5 +107,4 @@ private:
 	scapes::foundation::resources::ResourceManager *resource_manager {nullptr};
 
 	scapes::visual::RenderGraph *render_graph {nullptr};
-	scapes::visual::API *visual_api {nullptr};
 };

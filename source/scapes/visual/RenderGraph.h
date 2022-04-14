@@ -23,11 +23,20 @@ namespace scapes::visual
 	class RenderGraphImpl : public RenderGraph
 	{
 	public:
-		RenderGraphImpl(API *api, foundation::io::FileSystem *file_system);
+		RenderGraphImpl(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::render::Device *device,
+			foundation::shaders::Compiler *compiler,
+			foundation::game::World *world,
+			MeshHandle unit_quad
+		);
 		~RenderGraphImpl() final;
 
-		SCAPES_INLINE API *getAPI() const final { return api; }
-		SCAPES_INLINE foundation::io::FileSystem *getFileSystem() const final { return file_system; }
+		SCAPES_INLINE foundation::resources::ResourceManager *getResourceManager() const final { return resource_manager; }
+		SCAPES_INLINE foundation::render::Device *getDevice() const final { return device; }
+		SCAPES_INLINE foundation::shaders::Compiler *getCompiler() const final { return compiler; }
+		SCAPES_INLINE foundation::game::World *getWorld() const final { return world; }
+		SCAPES_INLINE MeshHandle getUnitQuad() const final { return unit_quad; }
 
 		SCAPES_INLINE uint32_t getWidth() const final { return width; }
 		SCAPES_INLINE uint32_t getHeight() const final { return height; }
@@ -183,8 +192,12 @@ namespace scapes::visual
 		void invalidateFrameBufferCache();
 
 	private:
-		API *api {nullptr};
-		foundation::io::FileSystem *file_system {nullptr};
+		foundation::resources::ResourceManager *resource_manager {nullptr};
+		foundation::render::Device *device {nullptr};
+		foundation::shaders::Compiler *compiler {nullptr};
+		foundation::game::World *world {nullptr};
+
+		MeshHandle unit_quad;
 
 		uint32_t width {0};
 		uint32_t height {0};

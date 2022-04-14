@@ -1,6 +1,5 @@
 #include "GlbImporter.h"
 
-#include <scapes/visual/API.h>
 #include <scapes/visual/Resources.h>
 #include <scapes/visual/Components.h>
 

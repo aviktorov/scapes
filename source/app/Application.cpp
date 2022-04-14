@@ -5,7 +5,6 @@
 #include <scapes/foundation/shaders/Compiler.h>
 #include <scapes/foundation/render/Device.h>
 
-#include <scapes/visual/API.h>
 #include <scapes/visual/Components.h>
 #include <scapes/visual/RenderGraph.h>
 
@@ -35,17 +34,13 @@ foundation::render::VertexBuffer rt_vb = SCAPES_NULL_HANDLE;
 foundation::render::IndexBuffer rt_ib = SCAPES_NULL_HANDLE;
 uint32_t rt_size = 512;
 
-static void initRaytracing(visual::API *visual_api, visual::RenderGraph *render_graph)
+static void initRaytracing(
+	foundation::resources::ResourceManager *resource_manager,
+	foundation::render::Device *device,
+	foundation::shaders::Compiler *compiler,
+	visual::RenderGraph *render_graph
+)
 {
-	foundation::resources::ResourceManager *resource_manager = visual_api->getResourceManager();
-	assert(resource_manager);
-
-	foundation::render::Device *device = visual_api->getDevice();
-	assert(device);
-
-	foundation::shaders::Compiler *compiler = visual_api->getCompiler();
-	assert(compiler);
-
 	visual::ShaderHandle rgen = resource_manager->fetch<visual::resources::Shader>(
 		"shaders/test/test.rgen",
 		foundation::render::ShaderType::RAY_GENERATION,
@@ -170,7 +165,7 @@ void Application::run()
 	initSwapChain();
 	initRenderScene();
 	initRenderers();
-	initRaytracing(visual_api, render_graph);
+	initRaytracing(resource_manager, device, compiler, render_graph);
 	mainloop();
 	shutdownRaytracing(device);
 	shutdownRenderers();
@@ -520,14 +515,13 @@ void Application::initRenderScene()
 	resource_manager = foundation::resources::ResourceManager::create(file_system);
 
 	world = foundation::game::World::create();
-	visual_api = visual::API::create(
-		resource_manager,
-		world,
-		device,
-		compiler
-	);
 
-	application_resources = new ApplicationResources(visual_api);
+	application_resources = new ApplicationResources(
+		resource_manager,
+		device,
+		compiler,
+		world
+	);
 	application_resources->init();
 
 	sky_light = foundation::game::Entity(world);
@@ -541,9 +535,6 @@ void Application::shutdownRenderScene()
 	delete application_resources;
 	application_resources = nullptr;
 
-	visual::API::destroy(visual_api);
-	visual_api = nullptr;
-
 	foundation::game::World::destroy(world);
 	world = nullptr;
 
@@ -555,7 +546,14 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	render_graph = visual::RenderGraph::create(visual_api, file_system);
+	render_graph = visual::RenderGraph::create(
+		resource_manager,
+		device,
+		compiler,
+		world,
+		application_resources->getUnitQuad()
+	);
+
 	render_graph->registerRenderPassType<RenderPassPrepareOld>();
 	render_graph->registerRenderPassType<RenderPassGeometry>();
 	render_graph->registerRenderPassType<RenderPassLBuffer>();
