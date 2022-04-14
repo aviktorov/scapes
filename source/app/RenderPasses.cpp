@@ -15,22 +15,24 @@ namespace yaml = scapes::foundation::serde::yaml;
 
 namespace c4
 {
+	namespace hardware = scapes::visual::hardware;
+
 	/*
 	 */
-	static const char *supported_render_pass_load_ops[static_cast<size_t>(scapes::visual::hardware::RenderPassLoadOp::MAX)] =
+	static const char *supported_render_pass_load_ops[static_cast<size_t>(hardware::RenderPassLoadOp::MAX)] =
 	{
 		"LOAD",
 		"CLEAR",
 		"DONT_CARE",
 	};
 
-	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, scapes::visual::hardware::RenderPassLoadOp *load_op)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, hardware::RenderPassLoadOp *load_op)
 	{
-		for (size_t i = 0; i < static_cast<size_t>(scapes::visual::hardware::RenderPassLoadOp::MAX); ++i)
+		for (size_t i = 0; i < static_cast<size_t>(hardware::RenderPassLoadOp::MAX); ++i)
 		{
 			if (buf.compare(supported_render_pass_load_ops[i], strlen(supported_render_pass_load_ops[i])) == 0)
 			{
-				*load_op = static_cast<scapes::visual::hardware::RenderPassLoadOp>(i);
+				*load_op = static_cast<hardware::RenderPassLoadOp>(i);
 				return true;
 			}
 		}
@@ -38,26 +40,26 @@ namespace c4
 		return false;
 	}
 
-	size_t to_chars(yaml::substr buffer, scapes::visual::hardware::RenderPassLoadOp load_op)
+	size_t to_chars(yaml::substr buffer, hardware::RenderPassLoadOp load_op)
 	{
 		return ryml::format(buffer, "{}", supported_render_pass_load_ops[static_cast<size_t>(load_op)]);
 	}
 
 	/*
 	 */
-	static const char *supported_render_pass_store_ops[static_cast<size_t>(scapes::visual::hardware::RenderPassStoreOp::MAX)] =
+	static const char *supported_render_pass_store_ops[static_cast<size_t>(hardware::RenderPassStoreOp::MAX)] =
 	{
 		"STORE",
 		"DONT_CARE",
 	};
 
-	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, scapes::visual::hardware::RenderPassStoreOp *store_op)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, hardware::RenderPassStoreOp *store_op)
 	{
-		for (size_t i = 0; i < static_cast<size_t>(scapes::visual::hardware::RenderPassStoreOp::MAX); ++i)
+		for (size_t i = 0; i < static_cast<size_t>(hardware::RenderPassStoreOp::MAX); ++i)
 		{
 			if (buf.compare(supported_render_pass_store_ops[i], strlen(supported_render_pass_store_ops[i])) == 0)
 			{
-				*store_op = static_cast<scapes::visual::hardware::RenderPassStoreOp>(i);
+				*store_op = static_cast<hardware::RenderPassStoreOp>(i);
 				return true;
 			}
 		}
@@ -65,14 +67,14 @@ namespace c4
 		return false;
 	}
 
-	size_t to_chars(yaml::substr buffer, scapes::visual::hardware::RenderPassStoreOp store_op)
+	size_t to_chars(yaml::substr buffer, hardware::RenderPassStoreOp store_op)
 	{
 		return ryml::format(buffer, "{}", supported_render_pass_store_ops[static_cast<size_t>(store_op)]);
 	}
 
 	/*
 	 */
-	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, scapes::visual::hardware::RenderPassClearColor *clear_color)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, hardware::RenderPassClearColor *clear_color)
 	{
 		size_t ret = yaml::unformat(
 			buf,
@@ -86,7 +88,7 @@ namespace c4
 		return ret != ryml::yml::npos;
 	}
 
-	size_t to_chars(yaml::substr buffer, scapes::visual::hardware::RenderPassClearColor clear_color)
+	size_t to_chars(yaml::substr buffer, hardware::RenderPassClearColor clear_color)
 	{
 		return ryml::format(
 			buffer,
@@ -100,7 +102,7 @@ namespace c4
 
 	/*
 	 */
-	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, scapes::visual::hardware::RenderPassClearDepthStencil *clear_depthstencil)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, hardware::RenderPassClearDepthStencil *clear_depthstencil)
 	{
 		size_t ret = yaml::unformat(
 			buf,
@@ -112,7 +114,7 @@ namespace c4
 		return ret != ryml::yml::npos;
 	}
 
-	size_t to_chars(yaml::substr buffer, scapes::visual::hardware::RenderPassClearDepthStencil clear_depthstencil)
+	size_t to_chars(yaml::substr buffer, hardware::RenderPassClearDepthStencil clear_depthstencil)
 	{
 		return ryml::format(
 			buffer,
@@ -150,7 +152,7 @@ void RenderPassGraphicsBase::shutdown()
 	clear();
 }
 
-void RenderPassGraphicsBase::render(scapes::visual::hardware::CommandBuffer command_buffer)
+void RenderPassGraphicsBase::render(visual::hardware::CommandBuffer command_buffer)
 {
 	if (!canRender())
 		return;
@@ -178,20 +180,20 @@ void RenderPassGraphicsBase::render(scapes::visual::hardware::CommandBuffer comm
 	for (size_t i = 0; i < input_groups.size(); ++i)
 	{
 		const char *group_name = input_groups[i].c_str();
-		scapes::visual::hardware::BindSet bindings = render_graph->getGroupBindings(group_name);
+		visual::hardware::BindSet bindings = render_graph->getGroupBindings(group_name);
 		device->setBindSet(graphics_pipeline, current_binding++, bindings);
 	}
 
 	for (size_t i = 0; i < input_render_buffers.size(); ++i)
 	{
 		const char *texture_name = input_render_buffers[i].c_str();
-		scapes::visual::hardware::BindSet bindings = render_graph->getRenderBufferBindings(texture_name);
+		visual::hardware::BindSet bindings = render_graph->getRenderBufferBindings(texture_name);
 		device->setBindSet(graphics_pipeline, current_binding++, bindings);
 	}
 
 	if (render_pass_swapchain)
 	{
-		scapes::visual::hardware::SwapChain swap_chain = render_graph->getSwapChain();
+		visual::hardware::SwapChain swap_chain = render_graph->getSwapChain();
 		assert(swap_chain != SCAPES_NULL_HANDLE);
 
 		device->beginRenderPass(command_buffer, render_pass_swapchain, swap_chain);
@@ -210,7 +212,7 @@ void RenderPassGraphicsBase::render(scapes::visual::hardware::CommandBuffer comm
 		if (has_depthstencil_output)
 			render_buffers[num_render_buffers++] = depthstencil_output.renderbuffer_name.c_str();
 
-		scapes::visual::hardware::FrameBuffer frame_buffer = render_graph->fetchFrameBuffer(num_render_buffers, render_buffers);
+		visual::hardware::FrameBuffer frame_buffer = render_graph->fetchFrameBuffer(num_render_buffers, render_buffers);
 		assert(frame_buffer != SCAPES_NULL_HANDLE);
 
 		device->beginRenderPass(command_buffer, render_pass_offscreen, frame_buffer);
@@ -283,19 +285,19 @@ bool RenderPassGraphicsBase::deserialize(const yaml::NodeRef node)
 			deserializeSwapChainOutput(child);
 
 		else if (child_key.compare("vertex_shader") == 0)
-			deserializeShader(child, vertex_shader, scapes::visual::hardware::ShaderType::VERTEX);
+			deserializeShader(child, vertex_shader, visual::hardware::ShaderType::VERTEX);
 
 		else if (child_key.compare("tessellation_control_shader") == 0)
-			deserializeShader(child, tessellation_control_shader, scapes::visual::hardware::ShaderType::TESSELLATION_CONTROL);
+			deserializeShader(child, tessellation_control_shader, visual::hardware::ShaderType::TESSELLATION_CONTROL);
 
 		else if (child_key.compare("tessellation_evaluation_shader") == 0)
-			deserializeShader(child, tessellation_evaluation_shader, scapes::visual::hardware::ShaderType::TESSELLATION_EVALUATION);
+			deserializeShader(child, tessellation_evaluation_shader, visual::hardware::ShaderType::TESSELLATION_EVALUATION);
 
 		else if (child_key.compare("geometry_shader") == 0)
-			deserializeShader(child, geometry_shader, scapes::visual::hardware::ShaderType::GEOMETRY);
+			deserializeShader(child, geometry_shader, visual::hardware::ShaderType::GEOMETRY);
 
 		else if (child_key.compare("fragment_shader") == 0)
-			deserializeShader(child, fragment_shader, scapes::visual::hardware::ShaderType::FRAGMENT);
+			deserializeShader(child, fragment_shader, visual::hardware::ShaderType::FRAGMENT);
 	}
 
 	bool result = onDeserialize(node);
@@ -306,10 +308,10 @@ bool RenderPassGraphicsBase::deserialize(const yaml::NodeRef node)
 void RenderPassGraphicsBase::deserializeFrameBufferOutput(yaml::NodeRef node, bool is_depthstencil)
 {
 	std::string name;
-	scapes::visual::hardware::RenderPassLoadOp load_op = scapes::visual::hardware::RenderPassLoadOp::LOAD;
-	scapes::visual::hardware::RenderPassStoreOp store_op = scapes::visual::hardware::RenderPassStoreOp::STORE;
-	scapes::visual::hardware::RenderPassClearColor clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
-	scapes::visual::hardware::RenderPassClearDepthStencil clear_depthstencil = {0.0f, 0};
+	visual::hardware::RenderPassLoadOp load_op = visual::hardware::RenderPassLoadOp::LOAD;
+	visual::hardware::RenderPassStoreOp store_op = visual::hardware::RenderPassStoreOp::STORE;
+	visual::hardware::RenderPassClearColor clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
+	visual::hardware::RenderPassClearDepthStencil clear_depthstencil = {0.0f, 0};
 
 	for (const yaml::NodeRef child : node.children())
 	{
@@ -344,9 +346,9 @@ void RenderPassGraphicsBase::deserializeFrameBufferOutput(yaml::NodeRef node, bo
 
 void RenderPassGraphicsBase::deserializeSwapChainOutput(yaml::NodeRef node)
 {
-	scapes::visual::hardware::RenderPassLoadOp load_op = scapes::visual::hardware::RenderPassLoadOp::LOAD;
-	scapes::visual::hardware::RenderPassStoreOp store_op = scapes::visual::hardware::RenderPassStoreOp::STORE;
-	scapes::visual::hardware::RenderPassClearColor clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
+	visual::hardware::RenderPassLoadOp load_op = visual::hardware::RenderPassLoadOp::LOAD;
+	visual::hardware::RenderPassStoreOp store_op = visual::hardware::RenderPassStoreOp::STORE;
+	visual::hardware::RenderPassClearColor clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
 
 	for (const yaml::NodeRef child : node.children())
 	{
@@ -364,7 +366,7 @@ void RenderPassGraphicsBase::deserializeSwapChainOutput(yaml::NodeRef node)
 	setSwapChainOutput(load_op, store_op, clear_color);
 };
 
-void RenderPassGraphicsBase::deserializeShader(yaml::NodeRef node, visual::ShaderHandle &handle, scapes::visual::hardware::ShaderType shader_type)
+void RenderPassGraphicsBase::deserializeShader(yaml::NodeRef node, visual::ShaderHandle &handle, visual::hardware::ShaderType shader_type)
 {
 	if (!node.has_val())
 		return;
@@ -451,13 +453,13 @@ void RenderPassGraphicsBase::serializeFrameBufferOutput(yaml::NodeRef node, cons
 	node |= yaml::MAP;
 	node["name"] << data.renderbuffer_name.c_str();
 
-	if (data.load_op != scapes::visual::hardware::RenderPassLoadOp::LOAD)
+	if (data.load_op != visual::hardware::RenderPassLoadOp::LOAD)
 		node["load_op"] << data.load_op;
 
-	if (data.store_op != scapes::visual::hardware::RenderPassStoreOp::STORE)
+	if (data.store_op != visual::hardware::RenderPassStoreOp::STORE)
 		node["store_op"] << data.store_op;
 
-	if (data.load_op == scapes::visual::hardware::RenderPassLoadOp::CLEAR)
+	if (data.load_op == visual::hardware::RenderPassLoadOp::CLEAR)
 	{
 		if (is_depthstencil)
 			node["clear_depthstencil"] << data.clear_value.as_depth_stencil;
@@ -471,10 +473,10 @@ void RenderPassGraphicsBase::serializeSwapChainOutput(yaml::NodeRef node, const 
 	node |= yaml::MAP;
 	node["load_op"] << data.load_op;
 
-	if (data.store_op != scapes::visual::hardware::RenderPassStoreOp::STORE)
+	if (data.store_op != visual::hardware::RenderPassStoreOp::STORE)
 		node["store_op"] << data.store_op;
 
-	if (data.load_op == scapes::visual::hardware::RenderPassLoadOp::CLEAR)
+	if (data.load_op == visual::hardware::RenderPassLoadOp::CLEAR)
 		node["clear_color"] << data.clear_value;
 };
 
@@ -538,9 +540,9 @@ void RenderPassGraphicsBase::removeAllInputRenderBuffers()
  */
 void RenderPassGraphicsBase::addColorOutput(
 	const char *name,
-	scapes::visual::hardware::RenderPassLoadOp load_op,
-	scapes::visual::hardware::RenderPassStoreOp store_op,
-	scapes::visual::hardware::RenderPassClearColor clear_value
+	visual::hardware::RenderPassLoadOp load_op,
+	visual::hardware::RenderPassStoreOp store_op,
+	visual::hardware::RenderPassClearColor clear_value
 )
 {
 	FrameBufferOutput output = {};
@@ -574,9 +576,9 @@ void RenderPassGraphicsBase::removeAllColorOutputs()
  */
 void RenderPassGraphicsBase::setDepthStencilOutput(
 	const char *name,
-	scapes::visual::hardware::RenderPassLoadOp load_op,
-	scapes::visual::hardware::RenderPassStoreOp store_op,
-	scapes::visual::hardware::RenderPassClearDepthStencil clear_value
+	visual::hardware::RenderPassLoadOp load_op,
+	visual::hardware::RenderPassStoreOp store_op,
+	visual::hardware::RenderPassClearDepthStencil clear_value
 )
 {
 	depthstencil_output.renderbuffer_name = std::string(name);
@@ -596,9 +598,9 @@ void RenderPassGraphicsBase::removeDepthStencilOutput()
 /*
  */
 void RenderPassGraphicsBase::setSwapChainOutput(
-	scapes::visual::hardware::RenderPassLoadOp load_op,
-	scapes::visual::hardware::RenderPassStoreOp store_op,
-	scapes::visual::hardware::RenderPassClearColor clear_value
+	visual::hardware::RenderPassLoadOp load_op,
+	visual::hardware::RenderPassStoreOp store_op,
+	visual::hardware::RenderPassClearColor clear_value
 )
 {
 	swapchain_output.load_op = load_op;
@@ -616,7 +618,7 @@ void RenderPassGraphicsBase::removeSwapChainOutput()
 
 /*
  */
-void RenderPassGraphicsBase::setRenderGraph(scapes::visual::RenderGraph *graph)
+void RenderPassGraphicsBase::setRenderGraph(visual::RenderGraph *graph)
 {
 	render_graph = graph;
 
@@ -663,11 +665,11 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 	if (color_outputs.size() == 0 && !has_depthstencil_output)
 		return;
 
-	scapes::visual::hardware::RenderPassAttachment attachments[32];
+	visual::hardware::RenderPassAttachment attachments[32];
 	uint32_t color_references[32];
 	uint32_t depthstencil_reference = 0;
 
-	scapes::visual::hardware::RenderPassDescription description;
+	visual::hardware::RenderPassDescription description;
 
 	description.resolve_attachments = nullptr;
 	description.color_attachments = color_references;
@@ -676,14 +678,14 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 	uint32_t num_attachments = 0;
 	for (; num_attachments < color_outputs.size(); ++num_attachments)
 	{
-		scapes::visual::hardware::RenderPassAttachment &attachment = attachments[num_attachments];
+		visual::hardware::RenderPassAttachment &attachment = attachments[num_attachments];
 		const FrameBufferOutput &output = color_outputs[num_attachments];
 		const std::string &texture_name = output.renderbuffer_name;
 
 		attachment.clear_value = output.clear_value;
 		attachment.load_op = output.load_op;
 		attachment.store_op = output.store_op;
-		attachment.samples = scapes::visual::hardware::Multisample::COUNT_1;
+		attachment.samples = visual::hardware::Multisample::COUNT_1;
 		attachment.format = render_graph->getRenderBufferFormat(texture_name.c_str());
 
 		color_references[num_attachments] = num_attachments;
@@ -691,13 +693,13 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 
 	if (has_depthstencil_output)
 	{
-		scapes::visual::hardware::RenderPassAttachment &attachment = attachments[num_attachments];
+		visual::hardware::RenderPassAttachment &attachment = attachments[num_attachments];
 		const std::string &texture_name = depthstencil_output.renderbuffer_name;
 
 		attachment.clear_value = depthstencil_output.clear_value;
 		attachment.load_op = depthstencil_output.load_op;
 		attachment.store_op = depthstencil_output.store_op;
-		attachment.samples = scapes::visual::hardware::Multisample::COUNT_1;
+		attachment.samples = visual::hardware::Multisample::COUNT_1;
 		attachment.format = render_graph->getRenderBufferFormat(texture_name.c_str());
 
 		depthstencil_reference = num_attachments;
@@ -714,7 +716,7 @@ void RenderPassGraphicsBase::createRenderPassSwapChain()
 	if (!has_swapchain_output)
 		return;
 
-	scapes::visual::hardware::SwapChain swap_chain = render_graph->getSwapChain();
+	visual::hardware::SwapChain swap_chain = render_graph->getSwapChain();
 	assert(swap_chain != SCAPES_NULL_HANDLE);
 
 	render_pass_swapchain = device->createRenderPass(swap_chain, swapchain_output.load_op, swapchain_output.store_op, swapchain_output.clear_value);
@@ -743,7 +745,7 @@ void RenderPassPrepareOld::onInvalidate()
 	first_frame = true;
 }
 
-void RenderPassPrepareOld::onRender(scapes::visual::hardware::CommandBuffer command_buffer)
+void RenderPassPrepareOld::onRender(visual::hardware::CommandBuffer command_buffer)
 {
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
@@ -769,12 +771,12 @@ visual::IRenderPass *RenderPassGeometry::create(visual::RenderGraph *render_grap
  */
 void RenderPassGeometry::onInit()
 {
-	device->setCullMode(graphics_pipeline, scapes::visual::hardware::CullMode::BACK);
+	device->setCullMode(graphics_pipeline, visual::hardware::CullMode::BACK);
 	device->setDepthTest(graphics_pipeline, true);
 	device->setDepthWrite(graphics_pipeline, true);
 }
 
-void RenderPassGeometry::onRender(scapes::visual::hardware::CommandBuffer command_buffer)
+void RenderPassGeometry::onRender(visual::hardware::CommandBuffer command_buffer)
 {
 	auto query = foundation::game::Query<visual::components::Transform, visual::components::Renderable>(world);
 
@@ -792,7 +794,7 @@ void RenderPassGeometry::onRender(scapes::visual::hardware::CommandBuffer comman
 			const visual::components::Renderable &renderable = renderables[i];
 			const foundation::math::mat4 &node_transform = transform.transform;
 
-			scapes::visual::hardware::BindSet material_bindings = renderable.material->bindings;
+			visual::hardware::BindSet material_bindings = renderable.material->bindings;
 
 			device->clearVertexStreams(graphics_pipeline);
 			device->setVertexStream(graphics_pipeline, 0, renderable.mesh->vertex_buffer);
@@ -843,7 +845,7 @@ void RenderPassLBuffer::onInit()
 	device->setVertexStream(graphics_pipeline, 0, unit_quad->vertex_buffer);
 }
 
-void RenderPassLBuffer::onRender(scapes::visual::hardware::CommandBuffer command_buffer)
+void RenderPassLBuffer::onRender(visual::hardware::CommandBuffer command_buffer)
 {
 	auto query = foundation::game::Query<visual::components::SkyLight>(world);
 
@@ -907,7 +909,7 @@ void RenderPassPost::onInit()
 	device->setVertexStream(graphics_pipeline, 0, unit_quad->vertex_buffer);
 }
 
-void RenderPassPost::onRender(scapes::visual::hardware::CommandBuffer command_buffer)
+void RenderPassPost::onRender(visual::hardware::CommandBuffer command_buffer)
 {
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
@@ -939,7 +941,7 @@ void RenderPassImGui::onInit()
 	ImGuiIO &io = context->IO;
 	io.Fonts->GetTexDataAsRGBA32(&pixels, reinterpret_cast<int *>(&width), reinterpret_cast<int *>(&height));
 
-	font_texture = device->createTexture2D(width, height, 1, scapes::visual::hardware::Format::R8G8B8A8_UNORM, pixels);
+	font_texture = device->createTexture2D(width, height, 1, visual::hardware::Format::R8G8B8A8_UNORM, pixels);
 	font_bind_set = device->createBindSet();
 	device->bindTexture(font_bind_set, 0, font_texture);
 
@@ -965,7 +967,7 @@ void RenderPassImGui::onShutdown()
 	invalidateTextureIDs();
 }
 
-void RenderPassImGui::onRender(scapes::visual::hardware::CommandBuffer command_buffer)
+void RenderPassImGui::onRender(visual::hardware::CommandBuffer command_buffer)
 {
 	assert(context);
 	assert(context->Viewports.size() > 0);
@@ -1005,7 +1007,7 @@ void RenderPassImGui::onRender(scapes::visual::hardware::CommandBuffer command_b
 				uint32_t base_index = index_offset + command.IdxOffset;
 				int32_t base_vertex = vertex_offset + command.VtxOffset;
 
-				scapes::visual::hardware::BindSet bind_set = reinterpret_cast<scapes::visual::hardware::BindSet>(command.TextureId);
+				visual::hardware::BindSet bind_set = reinterpret_cast<visual::hardware::BindSet>(command.TextureId);
 				device->setBindSet(graphics_pipeline, 0, bind_set);
 
 				float x0 = (command.ClipRect.x - clip_offset.x) * clip_scale.x;
@@ -1038,13 +1040,13 @@ void RenderPassImGui::onRender(scapes::visual::hardware::CommandBuffer command_b
 
 /*
  */
-ImTextureID RenderPassImGui::fetchTextureID(scapes::visual::hardware::Texture texture)
+ImTextureID RenderPassImGui::fetchTextureID(visual::hardware::Texture texture)
 {
 	auto it = registered_textures.find(texture);
 	if (it != registered_textures.end())
 		return it->second;
 
-	scapes::visual::hardware::BindSet bind_set = device->createBindSet();
+	visual::hardware::BindSet bind_set = device->createBindSet();
 	device->bindTexture(bind_set, 0, texture);
 
 	registered_textures.insert(std::make_pair(texture, bind_set));
@@ -1078,16 +1080,16 @@ void RenderPassImGui::updateBuffers(const ImDrawData &draw_data)
 	static_assert(index_size == 2 || index_size == 4, "Wrong ImDrawIdx size");
 	static_assert(vertex_size == 20, "Wrong ImDrawVert size");
 
-	scapes::visual::hardware::IndexFormat index_format = scapes::visual::hardware::IndexFormat::UINT16;
+	visual::hardware::IndexFormat index_format = visual::hardware::IndexFormat::UINT16;
 	if (index_size == 4)
-		index_format = scapes::visual::hardware::IndexFormat::UINT32;
+		index_format = visual::hardware::IndexFormat::UINT32;
 
 	static const uint8_t num_attributes = 3;
-	static scapes::visual::hardware::VertexAttribute attributes[3] =
+	static visual::hardware::VertexAttribute attributes[3] =
 	{
-		{ scapes::visual::hardware::Format::R32G32_SFLOAT, offsetof(ImDrawVert, pos), },
-		{ scapes::visual::hardware::Format::R32G32_SFLOAT, offsetof(ImDrawVert, uv), },
-		{ scapes::visual::hardware::Format::R8G8B8A8_UNORM, offsetof(ImDrawVert, col), },
+		{ visual::hardware::Format::R32G32_SFLOAT, offsetof(ImDrawVert, pos), },
+		{ visual::hardware::Format::R32G32_SFLOAT, offsetof(ImDrawVert, uv), },
+		{ visual::hardware::Format::R8G8B8A8_UNORM, offsetof(ImDrawVert, col), },
 	};
 
 	// resize index buffer
@@ -1096,7 +1098,7 @@ void RenderPassImGui::updateBuffers(const ImDrawData &draw_data)
 		index_buffer_size = index_size * num_indices;
 
 		device->destroyIndexBuffer(indices);
-		indices = device->createIndexBuffer(scapes::visual::hardware::BufferType::DYNAMIC, index_format, num_indices, nullptr);
+		indices = device->createIndexBuffer(visual::hardware::BufferType::DYNAMIC, index_format, num_indices, nullptr);
 	}
 
 	// resize vertex buffer
@@ -1105,7 +1107,7 @@ void RenderPassImGui::updateBuffers(const ImDrawData &draw_data)
 		vertex_buffer_size = vertex_size * num_vertices;
 
 		device->destroyVertexBuffer(vertices);
-		vertices = device->createVertexBuffer(scapes::visual::hardware::BufferType::DYNAMIC, vertex_size, num_vertices, num_attributes, attributes, nullptr);
+		vertices = device->createVertexBuffer(visual::hardware::BufferType::DYNAMIC, vertex_size, num_vertices, num_attributes, attributes, nullptr);
 	}
 
 	ImDrawVert *vertex_data = reinterpret_cast<ImDrawVert *>(device->map(vertices));
@@ -1143,8 +1145,8 @@ void RenderPassImGui::setupRenderState(const ImDrawData &draw_data)
 	device->setPushConstants(graphics_pipeline, sizeof(foundation::math::mat4), &projection);
 
 	device->setBlending(graphics_pipeline, true);
-	device->setBlendFactors(graphics_pipeline, scapes::visual::hardware::BlendFactor::SRC_ALPHA, scapes::visual::hardware::BlendFactor::ONE_MINUS_SRC_ALPHA);
-	device->setCullMode(graphics_pipeline, scapes::visual::hardware::CullMode::NONE);
+	device->setBlendFactors(graphics_pipeline, visual::hardware::BlendFactor::SRC_ALPHA, visual::hardware::BlendFactor::ONE_MINUS_SRC_ALPHA);
+	device->setCullMode(graphics_pipeline, visual::hardware::CullMode::NONE);
 	device->setDepthWrite(graphics_pipeline, false);
 	device->setDepthTest(graphics_pipeline, false);
 }
@@ -1182,7 +1184,7 @@ void RenderPassSwapRenderBuffers::shutdown()
 	clear();
 }
 
-void RenderPassSwapRenderBuffers::render(scapes::visual::hardware::CommandBuffer command_buffer)
+void RenderPassSwapRenderBuffers::render(visual::hardware::CommandBuffer command_buffer)
 {
 	for (const SwapPair &pair : pairs)
 		render_graph->swapRenderBuffers(pair.src.c_str(), pair.dst.c_str());
