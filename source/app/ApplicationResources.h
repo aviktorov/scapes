@@ -25,7 +25,11 @@ private:
 	scapes::visual::API *visual_api {nullptr};
 
 	scapes::visual::TextureHandle baked_brdf;
+	scapes::visual::RenderMaterialHandle default_material;
 
 	std::vector<scapes::visual::ShaderHandle> loaded_shaders;
 	std::vector<scapes::visual::IBLTextureHandle> loaded_ibl_textures;
+
+	scapes::visual::GlbImporter *glb_importer {nullptr};
+	scapes::visual::HdriImporter *hdri_importer {nullptr};
 };

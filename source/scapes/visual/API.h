@@ -16,8 +16,6 @@ namespace scapes::visual
 	{
 	public:
 		APIImpl(
-			const foundation::io::URI &default_vertex_shader_uri,
-			const foundation::io::URI &default_cubemap_geometry_shader_uri,
 			foundation::resources::ResourceManager *resource_manager,
 			foundation::game::World *world,
 			foundation::render::Device *device,
@@ -31,8 +29,6 @@ namespace scapes::visual
 		SCAPES_INLINE foundation::render::Device *getDevice() const final { return device; }
 		SCAPES_INLINE foundation::shaders::Compiler *getCompiler() const final { return compiler; }
 
-		SCAPES_INLINE ShaderHandle getDefaultVertexShader() const final { return default_vertex; }
-
 		SCAPES_INLINE MeshHandle getUnitQuad() const final { return unit_quad; }
 		SCAPES_INLINE MeshHandle getUnitCube() const final { return unit_cube; }
 
@@ -40,25 +36,6 @@ namespace scapes::visual
 		SCAPES_INLINE TextureHandle getGreyTexture() const final { return default_grey; }
 		SCAPES_INLINE TextureHandle getBlackTexture() const final { return default_black; }
 		SCAPES_INLINE TextureHandle getNormalTexture() const final { return default_normal; }
-
-		void renderTexture2D(
-			TextureHandle target,
-			ShaderHandle fragment_shader
-		) final;
-
-		void renderTextureCube(
-			TextureHandle target,
-			uint32_t target_mip,
-			ShaderHandle fragment_shader,
-			TextureHandle input_texture,
-			size_t size = 0,
-			const void *data = nullptr
-		) final;
-
-		IBLTextureHandle loadIBLTexture(
-			const foundation::io::URI &uri,
-			const IBLTextureCreateData &create_data
-		) final;
 
 	private:
 		MeshHandle generateMeshQuad(float size);
@@ -71,9 +48,6 @@ namespace scapes::visual
 		foundation::game::World *world {nullptr};
 		foundation::render::Device *device {nullptr};
 		foundation::shaders::Compiler *compiler {nullptr};
-
-		ShaderHandle default_vertex;
-		ShaderHandle default_cubemap_geometry;
 
 		MeshHandle unit_quad;
 		MeshHandle unit_cube;

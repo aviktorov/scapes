@@ -15,15 +15,13 @@ namespace scapes::visual
 	/*
 	 */
 	API *API::create(
-		const foundation::io::URI &default_vertex_shader_uri,
-		const foundation::io::URI &default_cubemap_geometry_shader_uri,
 		foundation::resources::ResourceManager *resource_manager,
 		foundation::game::World *world,
 		foundation::render::Device *device,
 		foundation::shaders::Compiler *compiler
 	)
 	{
-		return new APIImpl(default_vertex_shader_uri, default_cubemap_geometry_shader_uri, resource_manager, world, device, compiler);
+		return new APIImpl(resource_manager, world, device, compiler);
 	}
 
 	void API::destroy(API *api)
@@ -34,8 +32,6 @@ namespace scapes::visual
 	/*
 	 */
 	APIImpl::APIImpl(
-		const foundation::io::URI &default_vertex_shader_uri,
-		const foundation::io::URI &default_cubemap_geometry_shader_uri,
 		foundation::resources::ResourceManager *resource_manager,
 		foundation::game::World *world,
 		foundation::render::Device *device,
@@ -43,20 +39,6 @@ namespace scapes::visual
 	)
 		: resource_manager(resource_manager), world(world), device(device), compiler(compiler)
 	{
-		default_vertex = resource_manager->fetch<resources::Shader>(
-			default_vertex_shader_uri,
-			foundation::render::ShaderType::VERTEX,
-			device,
-			compiler
-		);
-
-		default_cubemap_geometry = resource_manager->fetch<resources::Shader>(
-			default_cubemap_geometry_shader_uri,
-			foundation::render::ShaderType::GEOMETRY,
-			device,
-			compiler
-		);
-
 		unit_quad = generateMeshQuad(2.0f);
 		unit_cube = generateMeshCube(2.0f);
 
@@ -68,133 +50,6 @@ namespace scapes::visual
 
 	APIImpl::~APIImpl()
 	{
-	}
-
-	void APIImpl::renderTexture2D(
-		TextureHandle target,
-		ShaderHandle fragment_shader
-	)
-	{
-		Texture2DRenderer renderer(device);
-		renderer.init(target.get());
-		renderer.render(unit_quad.get(), default_vertex.get(), fragment_shader.get());
-	}
-
-	void APIImpl::renderTextureCube(
-		TextureHandle target,
-		uint32_t target_mip,
-		ShaderHandle fragment_shader,
-		TextureHandle input_texture,
-		size_t size,
-		const void *data
-	)
-	{
-		CubemapRenderer renderer(device);
-		renderer.init(target.get(), target_mip);
-		renderer.render(
-			unit_cube.get(),
-			default_vertex.get(),
-			default_cubemap_geometry.get(),
-			fragment_shader.get(),
-			input_texture.get(),
-			static_cast<uint8_t>(size),
-			reinterpret_cast<const uint8_t *>(data)
-		);
-	}
-
-	IBLTextureHandle APIImpl::loadIBLTexture(
-		const foundation::io::URI &uri,
-		const IBLTextureCreateData &create_data
-	)
-	{
-		TextureHandle hdri_texture = resource_manager->load<resources::Texture>(uri, device);
-		if (hdri_texture.get() == nullptr)
-			return IBLTextureHandle();
-
-		uint32_t mips = static_cast<int>(std::floor(std::log2(create_data.cubemap_size)) + 1);
-
-		resources::Texture diffuse_irradiance = {};
-		diffuse_irradiance.format = create_data.format;
-		diffuse_irradiance.width = create_data.cubemap_size;
-		diffuse_irradiance.height = create_data.cubemap_size;
-		diffuse_irradiance.mip_levels = 1;
-		diffuse_irradiance.layers = 6;
-		diffuse_irradiance.gpu_data = device->createTextureCube(create_data.cubemap_size, 1, create_data.format);
-
-		resources::Texture temp_cubemap = {};
-		temp_cubemap.format = create_data.format;
-		temp_cubemap.width = create_data.cubemap_size;
-		temp_cubemap.height = create_data.cubemap_size;
-		temp_cubemap.mip_levels = 1;
-		temp_cubemap.layers = 6;
-		temp_cubemap.gpu_data = device->createTextureCube(create_data.cubemap_size, 1, create_data.format);
-
-		resources::Texture prefiltered_specular = {};
-		prefiltered_specular.format = create_data.format;
-		prefiltered_specular.width = create_data.cubemap_size;
-		prefiltered_specular.height = create_data.cubemap_size;
-		prefiltered_specular.mip_levels = mips;
-		prefiltered_specular.layers = 6;
-		prefiltered_specular.gpu_data = device->createTextureCube(create_data.cubemap_size, mips, create_data.format);
-
-		CubemapRenderer renderer(device);
-		renderer.init(&temp_cubemap, 0);
-		renderer.render(
-			unit_cube.get(),
-			default_vertex.get(),
-			default_cubemap_geometry.get(),
-			create_data.equirectangular_projection_fragment.get(),
-			hdri_texture.get()
-		);
-		renderer.shutdown();
-
-		resource_manager->destroy(hdri_texture);
-
-		for (uint32_t mip = 0; mip < prefiltered_specular.mip_levels; ++mip)
-		{
-			float roughness = static_cast<float>(mip) / prefiltered_specular.mip_levels;
-
-			uint8_t size = static_cast<uint8_t>(sizeof(float));
-			const uint8_t *data = reinterpret_cast<const uint8_t *>(&roughness);
-
-			renderer.init(&prefiltered_specular, mip);
-			renderer.render(
-				unit_cube.get(),
-				default_vertex.get(),
-				default_cubemap_geometry.get(),
-				create_data.prefiltered_specular_fragment.get(),
-				&temp_cubemap,
-				size,
-				data
-			);
-			renderer.shutdown();
-		}
-
-		renderer.init(&diffuse_irradiance, 0);
-		renderer.render(
-			unit_cube.get(),
-			default_vertex.get(),
-			default_cubemap_geometry.get(),
-			create_data.diffuse_irradiance_fragment.get(),
-			&temp_cubemap
-		);
-		renderer.shutdown();
-
-		device->destroyTexture(temp_cubemap.gpu_data);
-
-		IBLTextureHandle result = resource_manager->create<resources::IBLTexture>(device);
-
-		result->diffuse_irradiance_cubemap = diffuse_irradiance.gpu_data;
-		result->prefiltered_specular_cubemap = prefiltered_specular.gpu_data;
-
-		result->baked_brdf = create_data.baked_brdf;
-
-		result->bindings = device->createBindSet();
-		device->bindTexture(result->bindings, 0, result->baked_brdf->gpu_data);
-		device->bindTexture(result->bindings, 1, result->prefiltered_specular_cubemap);
-		device->bindTexture(result->bindings, 2, result->diffuse_irradiance_cubemap);
-
-		return result;
 	}
 
 	/*

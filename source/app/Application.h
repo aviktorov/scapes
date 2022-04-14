@@ -91,7 +91,6 @@ private:
 
 	scapes::foundation::game::Entity sky_light;
 	scapes::foundation::game::Entity camera;
-	scapes::visual::GlbImporter *importer {nullptr};
 
 	ApplicationResources *application_resources {nullptr};
 	ApplicationFileSystem *file_system {nullptr};

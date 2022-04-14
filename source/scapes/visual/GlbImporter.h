@@ -18,7 +18,7 @@ namespace scapes::visual::impl
 		);
 		~GlbImporter() final;
 
-		bool import(const char *path, const ImportOptions &options) final;
+		bool import(const foundation::io::URI &uri, RenderMaterialHandle default_material) final;
 
 	private:
 		MeshHandle import_mesh(const cgltf_mesh *mesh);

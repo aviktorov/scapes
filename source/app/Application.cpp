@@ -8,7 +8,6 @@
 #include <scapes/visual/API.h>
 #include <scapes/visual/Components.h>
 #include <scapes/visual/RenderGraph.h>
-#include <scapes/visual/GlbImporter.h>
 
 #include "SwapChain.h"
 #include "RenderPasses.h"
@@ -522,8 +521,6 @@ void Application::initRenderScene()
 
 	world = foundation::game::World::create();
 	visual_api = visual::API::create(
-		"shaders/common/Default.vert",
-		"shaders/common/DefaultCubemap.geom",
 		resource_manager,
 		world,
 		device,
@@ -532,20 +529,6 @@ void Application::initRenderScene()
 
 	application_resources = new ApplicationResources(visual_api);
 	application_resources->init();
-
-	visual::RenderMaterialHandle default_material = resource_manager->create<visual::resources::RenderMaterial>(
-		visual_api->getGreyTexture(),
-		visual_api->getNormalTexture(),
-		visual_api->getWhiteTexture(),
-		visual_api->getBlackTexture(),
-		device
-	);
-
-	visual::GlbImporter::ImportOptions options = {};
-	options.default_material = default_material;
-
-	importer = visual::GlbImporter::create(resource_manager, world, device);
-	importer->import("scenes/sphere.glb", options);
 
 	sky_light = foundation::game::Entity(world);
 	sky_light.addComponent<visual::components::SkyLight>(
@@ -557,9 +540,6 @@ void Application::shutdownRenderScene()
 {
 	delete application_resources;
 	application_resources = nullptr;
-
-	visual::GlbImporter::destroy(importer);
-	importer = nullptr;
 
 	visual::API::destroy(visual_api);
 	visual_api = nullptr;

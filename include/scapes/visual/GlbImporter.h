@@ -10,12 +10,6 @@ namespace scapes::visual
 	class GlbImporter
 	{
 	public:
-		struct ImportOptions
-		{
-			RenderMaterialHandle default_material;
-		};
-
-	public:
 		static SCAPES_API GlbImporter *create(
 			foundation::resources::ResourceManager *resource_manager,
 			foundation::game::World *world,
@@ -26,6 +20,6 @@ namespace scapes::visual
 		virtual ~GlbImporter() { }
 
 	public:
-		virtual bool import(const char *path, const ImportOptions &options) = 0;
+		virtual bool import(const foundation::io::URI &uri, RenderMaterialHandle default_material) = 0;
 	};
 }

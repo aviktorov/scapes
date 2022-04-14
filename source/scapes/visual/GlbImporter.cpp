@@ -136,7 +136,7 @@ namespace scapes::visual::impl
 
 	/*
 	 */
-	bool GlbImporter::import(const char *path, const GlbImporter::ImportOptions &options)
+	bool GlbImporter::import(const foundation::io::URI &uri, RenderMaterialHandle default_material)
 	{
 		cgltf_options parse_options = {};
 		parse_options.file.read = cgltf::read;
@@ -144,14 +144,14 @@ namespace scapes::visual::impl
 		parse_options.file.user_data = resource_manager->getFileSystem();
 
 		cgltf_data *data = nullptr;
-		cgltf_result result = cgltf_parse_file(&parse_options, path, &data);
+		cgltf_result result = cgltf_parse_file(&parse_options, uri.c_str(), &data);
 		if (result != cgltf_result_success)
 		{
 			std::cerr << "GlbImporter::import(): nismogla v parse" << std::endl;
 			return false;
 		}
 
-		result = cgltf_load_buffers(&parse_options, data, path);
+		result = cgltf_load_buffers(&parse_options, data, uri.c_str());
 		if (result != cgltf_result_success)
 		{
 			std::cerr << "GlbImporter::import(): nismogla v buffers" << std::endl;
@@ -197,10 +197,10 @@ namespace scapes::visual::impl
 
 			// TODO: metalness / roughness maps
 
-			visual::TextureHandle albedo = options.default_material->albedo;
-			visual::TextureHandle normal = options.default_material->normal;
-			visual::TextureHandle roughness = options.default_material->roughness;
-			visual::TextureHandle metalness = options.default_material->metalness;
+			visual::TextureHandle albedo = default_material->albedo;
+			visual::TextureHandle normal = default_material->normal;
+			visual::TextureHandle roughness = default_material->roughness;
+			visual::TextureHandle metalness = default_material->metalness;
 
 			if (base_color_texture)
 				albedo = mapped_textures[base_color_texture->image];
@@ -221,7 +221,7 @@ namespace scapes::visual::impl
 
 		// import nodes
 		std::function<void(const cgltf_node *, const foundation::math::mat4 &)> import_node;
-		import_node = [&import_node, &mapped_materials, &mapped_meshes, this, options](const cgltf_node *node, const foundation::math::mat4 &transform) -> void
+		import_node = [&import_node, &mapped_materials, &mapped_meshes, this, default_material](const cgltf_node *node, const foundation::math::mat4 &transform) -> void
 		{
 			if (node->mesh)
 			{
@@ -234,7 +234,7 @@ namespace scapes::visual::impl
 
 				auto mat_it = mapped_materials.find(node->mesh->primitives[0].material);
 
-				visual::RenderMaterialHandle material = (mat_it != mapped_materials.end()) ? mat_it->second : options.default_material;
+				visual::RenderMaterialHandle material = (mat_it != mapped_materials.end()) ? mat_it->second : default_material;
 
 				entity.addComponent<foundation::components::Transform>(transform);
 				entity.addComponent<visual::components::Renderable>(mesh, material);
