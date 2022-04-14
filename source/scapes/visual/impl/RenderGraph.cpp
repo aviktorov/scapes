@@ -7,13 +7,14 @@
 
 namespace yaml = scapes::foundation::serde::yaml;
 namespace math = scapes::foundation::math;
-namespace render = scapes::foundation::render;
 
 namespace c4
 {
+	namespace hardware = scapes::visual::hardware;
+
 	/*
 	 */
-	static const char *supported_render_formats[static_cast<size_t>(render::Format::MAX)] =
+	static const char *supported_render_formats[static_cast<size_t>(hardware::Format::MAX)] =
 	{
 		"UNDEFINED",
 
@@ -37,13 +38,13 @@ namespace c4
 		"D16_UNORM", "D16_UNORM_S8_UINT", "D24_UNORM", "D24_UNORM_S8_UINT", "D32_SFLOAT", "D32_SFLOAT_S8_UINT",
 	};
 
-	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, render::Format *format)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, hardware::Format *format)
 	{
-		for (size_t i = 0; i < static_cast<size_t>(render::Format::MAX); ++i)
+		for (size_t i = 0; i < static_cast<size_t>(hardware::Format::MAX); ++i)
 		{
 			if (buf.compare(supported_render_formats[i], strlen(supported_render_formats[i])) == 0)
 			{
-				*format = static_cast<render::Format>(i);
+				*format = static_cast<hardware::Format>(i);
 				return true;
 			}
 		}
@@ -51,9 +52,9 @@ namespace c4
 		return false;
 	}
 
-	size_t to_chars(yaml::substr buffer, render::Format format)
+	size_t to_chars(yaml::substr buffer, hardware::Format format)
 	{
-		if (format == render::Format::UNDEFINED)
+		if (format == hardware::Format::UNDEFINED)
 			return 0;
 
 		return ryml::format(buffer, "{}", supported_render_formats[static_cast<size_t>(format)]);
@@ -233,8 +234,8 @@ namespace scapes::visual::impl
 	 */
 	RenderGraph::RenderGraph(
 		foundation::resources::ResourceManager *resource_manager,
-		foundation::render::Device *device,
-		foundation::shaders::Compiler *compiler,
+		hardware::Device *device,
+		shaders::Compiler *compiler,
 		foundation::game::World *world,
 		MeshHandle unit_quad
 	)
@@ -321,7 +322,7 @@ namespace scapes::visual::impl
 			pass->invalidate();
 	}
 
-	void RenderGraph::render(foundation::render::CommandBuffer command_buffer)
+	void RenderGraph::render(hardware::CommandBuffer command_buffer)
 	{
 		bool should_invalidate = false;
 
@@ -605,7 +606,7 @@ namespace scapes::visual::impl
 		group_lookup.clear();
 	}
 
-	foundation::render::BindSet RenderGraph::getGroupBindings(const char *name) const
+	hardware::BindSet RenderGraph::getGroupBindings(const char *name) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(name));
@@ -801,7 +802,7 @@ namespace scapes::visual::impl
 
 	/*
 	 */
-	bool RenderGraph::addRenderBuffer(const char *name, foundation::render::Format format, uint32_t downscale)
+	bool RenderGraph::addRenderBuffer(const char *name, hardware::Format format, uint32_t downscale)
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(name));
@@ -879,7 +880,7 @@ namespace scapes::visual::impl
 
 	/*
 	 */
-	foundation::render::Texture RenderGraph::getRenderBufferTexture(const char *name) const
+	hardware::Texture RenderGraph::getRenderBufferTexture(const char *name) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(name));
@@ -892,7 +893,7 @@ namespace scapes::visual::impl
 		return render_buffer->texture;
 	}
 
-	foundation::render::BindSet RenderGraph::getRenderBufferBindings(const char *name) const
+	hardware::BindSet RenderGraph::getRenderBufferBindings(const char *name) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(name));
@@ -905,14 +906,14 @@ namespace scapes::visual::impl
 		return render_buffer->bindings;
 	}
 
-	foundation::render::Format RenderGraph::getRenderBufferFormat(const char *name) const
+	hardware::Format RenderGraph::getRenderBufferFormat(const char *name) const
 	{
 		uint64_t hash = 0;
 		common::HashUtils::combine(hash, std::string_view(name));
 
 		auto it = render_buffer_lookup.find(hash);
 		if (it == render_buffer_lookup.end())
-			return foundation::render::Format::UNDEFINED;
+			return hardware::Format::UNDEFINED;
 
 		RenderBuffer *render_buffer = it->second;
 		return render_buffer->format;
@@ -933,15 +934,15 @@ namespace scapes::visual::impl
 
 	/*
 	 */
-	foundation::render::FrameBuffer RenderGraph::fetchFrameBuffer(uint32_t num_attachments, const char *render_buffer_names[])
+	hardware::FrameBuffer RenderGraph::fetchFrameBuffer(uint32_t num_attachments, const char *render_buffer_names[])
 	{
 		uint64_t hash = 0;
 
-		foundation::render::FrameBufferAttachment attachments[32];
+		hardware::FrameBufferAttachment attachments[32];
 
 		for (uint32_t i = 0; i < num_attachments; ++i)
 		{
-			foundation::render::FrameBufferAttachment &attachment = attachments[i];
+			hardware::FrameBufferAttachment &attachment = attachments[i];
 			attachment.texture = getRenderBufferTexture(render_buffer_names[i]);
 			attachment.base_layer = 0;
 			attachment.base_mip = 0;
@@ -957,7 +958,7 @@ namespace scapes::visual::impl
 		if (it != framebuffer_cache.end())
 			return it->second;
 
-		foundation::render::FrameBuffer framebuffer = device->createFrameBuffer(num_attachments, attachments);
+		hardware::FrameBuffer framebuffer = device->createFrameBuffer(num_attachments, attachments);
 		framebuffer_cache.insert({hash, framebuffer});
 
 		return framebuffer;
@@ -1281,7 +1282,7 @@ namespace scapes::visual::impl
 			device->destroyBindSet(group->bindings);
 
 			group->buffer_size = ubo_size;
-			group->buffer = device->createUniformBuffer(foundation::render::BufferType::DYNAMIC, ubo_size);
+			group->buffer = device->createUniformBuffer(hardware::BufferType::DYNAMIC, ubo_size);
 
 			should_invalidate = true;
 		}
@@ -1321,7 +1322,7 @@ namespace scapes::visual::impl
 		for (GroupTexture *group_texture : group->textures)
 		{
 			TextureHandle handle = group_texture->texture;
-			resources::Texture *texture = handle.get();
+			Texture *texture = handle.get();
 
 			device->bindTexture(group->bindings, binding++, (texture) ? texture->gpu_data : nullptr);
 		}
@@ -1378,7 +1379,7 @@ namespace scapes::visual::impl
 
 		assert(texture->bindings == nullptr);
 
-		foundation::render::Format format = texture->format;
+		hardware::Format format = texture->format;
 		uint32_t texture_width = std::max<uint32_t>(1, width / texture->downscale);
 		uint32_t texture_height = std::max<uint32_t>(1, height / texture->downscale);
 
@@ -1532,7 +1533,7 @@ namespace scapes::visual::impl
 		if (texture_path.empty())
 			return;
 
-		TextureHandle handle = resource_manager->fetch<resources::Texture>(texture_path.c_str(), device);
+		TextureHandle handle = resource_manager->fetch<Texture>(texture_path.c_str(), device);
 		setGroupTexture(group_name, texture_name.c_str(), handle);
 	}
 
@@ -1545,7 +1546,7 @@ namespace scapes::visual::impl
 		for (const yaml::NodeRef renderbuffer_node : renderbuffer_container.siblings())
 		{
 			std::string name;
-			foundation::render::Format format = foundation::render::Format::UNDEFINED;
+			hardware::Format format = hardware::Format::UNDEFINED;
 			uint32_t downscale = 1;
 
 			for (const yaml::NodeRef renderbuffer_child : renderbuffer_node.children())
@@ -1563,7 +1564,7 @@ namespace scapes::visual::impl
 					renderbuffer_child >> downscale;
 			}
 
-			if (!name.empty() && format != foundation::render::Format::UNDEFINED)
+			if (!name.empty() && format != hardware::Format::UNDEFINED)
 				addRenderBuffer(name.c_str(), format, downscale);
 		}
 	}

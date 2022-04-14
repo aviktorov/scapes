@@ -2,10 +2,10 @@
 #include "ApplicationResources.h"
 #include "IO.h"
 
-#include <scapes/foundation/shaders/Compiler.h>
-#include <scapes/foundation/render/Device.h>
+#include <scapes/visual/shaders/Compiler.h>
+#include <scapes/visual/hardware/Device.h>
 
-#include <scapes/visual/Components.h>
+#include <scapes/visual/components/Components.h>
 #include <scapes/visual/RenderGraph.h>
 
 #include "SwapChain.h"
@@ -25,39 +25,39 @@ using namespace scapes;
 
 /* TODO: remove later
  */
-foundation::render::BottomLevelAccelerationStructure rt_blas = SCAPES_NULL_HANDLE;
-foundation::render::TopLevelAccelerationStructure rt_tlas = SCAPES_NULL_HANDLE;
-foundation::render::BindSet rt_bindings = SCAPES_NULL_HANDLE;
-foundation::render::RayTracePipeline rt_pipeline = SCAPES_NULL_HANDLE;
-foundation::render::Texture rt_image = SCAPES_NULL_HANDLE;
-foundation::render::VertexBuffer rt_vb = SCAPES_NULL_HANDLE;
-foundation::render::IndexBuffer rt_ib = SCAPES_NULL_HANDLE;
+scapes::visual::hardware::BottomLevelAccelerationStructure rt_blas = SCAPES_NULL_HANDLE;
+scapes::visual::hardware::TopLevelAccelerationStructure rt_tlas = SCAPES_NULL_HANDLE;
+scapes::visual::hardware::BindSet rt_bindings = SCAPES_NULL_HANDLE;
+scapes::visual::hardware::RayTracePipeline rt_pipeline = SCAPES_NULL_HANDLE;
+scapes::visual::hardware::Texture rt_image = SCAPES_NULL_HANDLE;
+scapes::visual::hardware::VertexBuffer rt_vb = SCAPES_NULL_HANDLE;
+scapes::visual::hardware::IndexBuffer rt_ib = SCAPES_NULL_HANDLE;
 uint32_t rt_size = 512;
 
 static void initRaytracing(
 	foundation::resources::ResourceManager *resource_manager,
-	foundation::render::Device *device,
-	foundation::shaders::Compiler *compiler,
+	scapes::visual::hardware::Device *device,
+	visual::shaders::Compiler *compiler,
 	visual::RenderGraph *render_graph
 )
 {
-	visual::ShaderHandle rgen = resource_manager->fetch<visual::resources::Shader>(
+	visual::ShaderHandle rgen = resource_manager->fetch<visual::Shader>(
 		"shaders/test/test.rgen",
-		foundation::render::ShaderType::RAY_GENERATION,
+		scapes::visual::hardware::ShaderType::RAY_GENERATION,
 		device,
 		compiler
 	);
 
-	visual::ShaderHandle miss = resource_manager->fetch<visual::resources::Shader>(
+	visual::ShaderHandle miss = resource_manager->fetch<visual::Shader>(
 		"shaders/test/test.rmiss",
-		foundation::render::ShaderType::MISS,
+		scapes::visual::hardware::ShaderType::MISS,
 		device,
 		compiler
 	);
 
-	visual::ShaderHandle closest_hit = resource_manager->fetch<visual::resources::Shader>(
+	visual::ShaderHandle closest_hit = resource_manager->fetch<visual::Shader>(
 		"shaders/test/test.rchit",
-		foundation::render::ShaderType::CLOSEST_HIT,
+		scapes::visual::hardware::ShaderType::CLOSEST_HIT,
 		device,
 		compiler
 	);
@@ -76,24 +76,24 @@ static void initRaytracing(
 		{ { 0.0f, 1.0f, 0.0f }, {  0.0f, -1.0f, 0.0f }, { 0.0f, 0.0f } },
 	};
 
-	foundation::render::VertexAttribute attributes[] =
+	scapes::visual::hardware::VertexAttribute attributes[] =
 	{
-		{ foundation::render::Format::R32G32B32_SFLOAT, offsetof(Vertex, normal) },
-		{ foundation::render::Format::R32G32B32_SFLOAT, offsetof(Vertex, position) },
-		{ foundation::render::Format::R32G32_SFLOAT, offsetof(Vertex, uv) },
+		{ scapes::visual::hardware::Format::R32G32B32_SFLOAT, offsetof(Vertex, normal) },
+		{ scapes::visual::hardware::Format::R32G32B32_SFLOAT, offsetof(Vertex, position) },
+		{ scapes::visual::hardware::Format::R32G32_SFLOAT, offsetof(Vertex, uv) },
 	};
 
-	rt_vb = device->createVertexBuffer(foundation::render::BufferType::STATIC, sizeof(Vertex), 3, 3, attributes, vertices);
+	rt_vb = device->createVertexBuffer(scapes::visual::hardware::BufferType::STATIC, sizeof(Vertex), 3, 3, attributes, vertices);
 
 	uint32_t indices[] = { 0, 1, 2 };
 
-	rt_ib = device->createIndexBuffer(foundation::render::BufferType::STATIC, foundation::render::IndexFormat::UINT32, 3, indices);
+	rt_ib = device->createIndexBuffer(scapes::visual::hardware::BufferType::STATIC, scapes::visual::hardware::IndexFormat::UINT32, 3, indices);
 
 	foundation::math::mat4 transform1 = foundation::math::mat4(1.0f);
 	foundation::math::mat4 transform2 = foundation::math::translate(transform1, foundation::math::vec3(0.0f, 0.0f, 1.0f));
 	foundation::math::mat4 transform3 = foundation::math::translate(transform1, foundation::math::vec3(1.0f, 0.0f, 0.0f));
 
-	foundation::render::AccelerationStructureGeometry geometries[] =
+	scapes::visual::hardware::AccelerationStructureGeometry geometries[] =
 	{
 		{ 1, rt_vb, rt_ib },
 		{ 1, rt_vb, rt_ib },
@@ -104,7 +104,7 @@ static void initRaytracing(
 
 	rt_blas = device->createBottomLevelAccelerationStructure(2, geometries);
 
-	foundation::render::AccelerationStructureInstance instances[]
+	scapes::visual::hardware::AccelerationStructureInstance instances[]
 	{
 		{ rt_blas },
 		{ rt_blas },
@@ -115,7 +115,7 @@ static void initRaytracing(
 
 	rt_tlas = device->createTopLevelAccelerationStructure(2, instances);
 
-	rt_image = device->createTextureStorage(rt_size, rt_size, foundation::render::Format::R8G8B8A8_UNORM);
+	rt_image = device->createTextureStorage(rt_size, rt_size, scapes::visual::hardware::Format::R8G8B8A8_UNORM);
 
 	rt_bindings = device->createBindSet();
 	device->bindTopLevelAccelerationStructure(rt_bindings, 0, rt_tlas);
@@ -131,7 +131,7 @@ static void initRaytracing(
 	device->flush(rt_pipeline);
 }
 
-static void shutdownRaytracing(foundation::render::Device *device)
+static void shutdownRaytracing(scapes::visual::hardware::Device *device)
 {
 	device->destroyVertexBuffer(rt_vb);
 	rt_vb = SCAPES_NULL_HANDLE;
@@ -380,7 +380,7 @@ void Application::update()
  */
 void Application::render()
 {
-	foundation::render::CommandBuffer command_buffer = swap_chain->acquire();
+	scapes::visual::hardware::CommandBuffer command_buffer = swap_chain->acquire();
 
 	if (!command_buffer)
 		return;
@@ -577,7 +577,7 @@ void Application::initRenderers()
 		data[i] = foundation::math::packHalf2x16(noise);
 	}
 
-	visual::TextureHandle ssao_noise = resource_manager->create<visual::resources::Texture>(device, scapes::foundation::render::Format::R16G16_SFLOAT, 4, 4);
+	visual::TextureHandle ssao_noise = resource_manager->create<visual::Texture>(device, scapes::visual::hardware::Format::R16G16_SFLOAT, 4, 4);
 	ssao_noise->gpu_data = device->createTexture2D(ssao_noise->width, ssao_noise->height, ssao_noise->mip_levels, ssao_noise->format, data);
 
 	foundation::math::vec4 samples[MAX_SSAO_SAMPLES];
@@ -658,16 +658,16 @@ void Application::initDriver()
 {
 	file_system = new ApplicationFileSystem("assets/");
 
-	device = foundation::render::Device::create("PBR Sandbox", "Scape", foundation::render::Api::VULKAN);
-	compiler = foundation::shaders::Compiler::create(foundation::shaders::ShaderILType::SPIRV, file_system);
+	device = scapes::visual::hardware::Device::create("PBR Sandbox", "Scape", scapes::visual::hardware::Api::VULKAN);
+	compiler = visual::shaders::Compiler::create(visual::shaders::ShaderILType::SPIRV, file_system);
 }
 
 void Application::shutdownDriver()
 {
-	foundation::render::Device::destroy(device);
+	scapes::visual::hardware::Device::destroy(device);
 	device = nullptr;
 
-	foundation::shaders::Compiler::destroy(compiler);
+	visual::shaders::Compiler::destroy(compiler);
 	compiler = nullptr;
 
 	delete file_system;

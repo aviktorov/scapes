@@ -101,8 +101,8 @@ private:
 	SwapChain *swap_chain {nullptr};
 	RenderPassImGui *imgui_pass {nullptr};
 
-	scapes::foundation::render::Device *device {nullptr};
-	scapes::foundation::shaders::Compiler *compiler {nullptr};
+	scapes::visual::hardware::Device *device {nullptr};
+	scapes::visual::shaders::Compiler *compiler {nullptr};
 	scapes::foundation::game::World *world {nullptr};
 	scapes::foundation::resources::ResourceManager *resource_manager {nullptr};
 

@@ -1,34 +1,35 @@
-#include <scapes/visual/Resources.h>
+#include <scapes/visual/IBLTexture.h>
+#include <scapes/visual/hardware/Device.h>
 
 using namespace scapes;
 using namespace scapes::visual;
 
 /*
  */
-size_t ResourceTraits<resources::IBLTexture>::size()
+size_t ResourceTraits<IBLTexture>::size()
 {
-	return sizeof(resources::IBLTexture);
+	return sizeof(IBLTexture);
 }
 
-void ResourceTraits<resources::IBLTexture>::create(
+void ResourceTraits<IBLTexture>::create(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,
-	foundation::render::Device *device
+	scapes::visual::hardware::Device *device
 )
 {
-	resources::IBLTexture *texture = reinterpret_cast<resources::IBLTexture *>(memory);
+	IBLTexture *texture = reinterpret_cast<IBLTexture *>(memory);
 
 	*texture = {};
 	texture->device = device;
 }
 
-void ResourceTraits<resources::IBLTexture>::destroy(
+void ResourceTraits<IBLTexture>::destroy(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory
 )
 {
-	resources::IBLTexture *texture = reinterpret_cast<resources::IBLTexture *>(memory);
-	foundation::render::Device *device = texture->device;
+	IBLTexture *texture = reinterpret_cast<IBLTexture *>(memory);
+	scapes::visual::hardware::Device *device = texture->device;
 
 	assert(device);
 
@@ -39,7 +40,7 @@ void ResourceTraits<resources::IBLTexture>::destroy(
 	*texture = {};
 }
 
-foundation::resources::hash_t ResourceTraits<resources::IBLTexture>::fetchHash(
+foundation::resources::hash_t ResourceTraits<IBLTexture>::fetchHash(
 	foundation::resources::ResourceManager *resource_manager,
 	foundation::io::FileSystem *file_system,
 	void *memory,
@@ -49,7 +50,7 @@ foundation::resources::hash_t ResourceTraits<resources::IBLTexture>::fetchHash(
 	return 0;
 }
 
-bool ResourceTraits<resources::IBLTexture>::reload(
+bool ResourceTraits<IBLTexture>::reload(
 	foundation::resources::ResourceManager *resource_manager,
 	foundation::io::FileSystem *file_system,
 	void *memory,

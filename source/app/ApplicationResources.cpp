@@ -29,14 +29,14 @@ namespace config
 		"shaders/render_graph/utils/BakeBRDF.frag",
 	};
 
-	static std::vector<scapes::foundation::render::ShaderType> shader_types =
+	static std::vector<scapes::visual::hardware::ShaderType> shader_types =
 	{
-		scapes::foundation::render::ShaderType::VERTEX,
-		scapes::foundation::render::ShaderType::GEOMETRY,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
-		scapes::foundation::render::ShaderType::FRAGMENT,
+		scapes::visual::hardware::ShaderType::VERTEX,
+		scapes::visual::hardware::ShaderType::GEOMETRY,
+		scapes::visual::hardware::ShaderType::FRAGMENT,
+		scapes::visual::hardware::ShaderType::FRAGMENT,
+		scapes::visual::hardware::ShaderType::FRAGMENT,
+		scapes::visual::hardware::ShaderType::FRAGMENT,
 	};
 
 	// Textures
@@ -76,7 +76,7 @@ void ApplicationResources::init()
 	default_black = generateTexture(0, 0, 0);
 	default_normal = generateTexture(127, 127, 255);
 
-	default_material = resource_manager->create<scapes::visual::resources::RenderMaterial>(
+	default_material = resource_manager->create<scapes::visual::RenderMaterial>(
 		default_grey,
 		default_normal,
 		default_white,
@@ -87,7 +87,7 @@ void ApplicationResources::init()
 	loaded_shaders.reserve(config::shaders.size());
 	for (int i = 0; i < config::shaders.size(); ++i)
 	{
-		scapes::visual::ShaderHandle shader = resource_manager->fetch<scapes::visual::resources::Shader>(
+		scapes::visual::ShaderHandle shader = resource_manager->fetch<scapes::visual::Shader>(
 			config::shaders[i],
 			config::shader_types[i],
 			device,
@@ -113,11 +113,11 @@ void ApplicationResources::init()
 	options.prefiltered_specular_fragment = loaded_shaders[config::Shaders::PrefilteredSpecularCubemapFragment];
 
 	hdri_importer = scapes::visual::HdriImporter::create(options);
-	baked_brdf = hdri_importer->bakeBRDF(scapes::foundation::render::Format::R16G16_SFLOAT, 512);
+	baked_brdf = hdri_importer->bakeBRDF(scapes::visual::hardware::Format::R16G16_SFLOAT, 512);
 
 	for (int i = 0; i < config::ibl_textures.size(); ++i)
 	{
-		constexpr scapes::foundation::render::Format format = scapes::foundation::render::Format::R32G32B32A32_SFLOAT;
+		constexpr scapes::visual::hardware::Format format = scapes::visual::hardware::Format::R32G32B32A32_SFLOAT;
 		constexpr uint32_t size = 128;
 
 		scapes::visual::IBLTextureHandle ibl_texture = hdri_importer->import(config::ibl_textures[i], format, size, baked_brdf);
@@ -147,8 +147,8 @@ scapes::visual::MeshHandle ApplicationResources::generateMeshQuad(float size)
 	constexpr uint32_t num_vertices = 4;
 	constexpr uint32_t num_indices = 6;
 
-	scapes::visual::resources::Mesh::Vertex vertices[num_vertices];
-	memset(vertices, 0, sizeof(scapes::visual::resources::Mesh::Vertex) * num_vertices);
+	scapes::visual::Mesh::Vertex vertices[num_vertices];
+	memset(vertices, 0, sizeof(scapes::visual::Mesh::Vertex) * num_vertices);
 
 	float half_size = size * 0.5f;
 
@@ -167,7 +167,7 @@ scapes::visual::MeshHandle ApplicationResources::generateMeshQuad(float size)
 		1, 0, 2, 3, 2, 0,
 	};
 
-	return resource_manager->create<scapes::visual::resources::Mesh>(device, num_vertices, vertices, num_indices, indices);
+	return resource_manager->create<scapes::visual::Mesh>(device, num_vertices, vertices, num_indices, indices);
 }
 
 scapes::visual::MeshHandle ApplicationResources::generateMeshCube(float size)
@@ -175,8 +175,8 @@ scapes::visual::MeshHandle ApplicationResources::generateMeshCube(float size)
 	constexpr uint32_t num_vertices = 8;
 	constexpr uint32_t num_indices = 36;
 
-	scapes::visual::resources::Mesh::Vertex vertices[num_vertices];
-	memset(vertices, 0, sizeof(scapes::visual::resources::Mesh::Vertex) * num_vertices);
+	scapes::visual::Mesh::Vertex vertices[num_vertices];
+	memset(vertices, 0, sizeof(scapes::visual::Mesh::Vertex) * num_vertices);
 
 	float half_size = size * 0.5f;
 
@@ -199,7 +199,7 @@ scapes::visual::MeshHandle ApplicationResources::generateMeshCube(float size)
 		4, 0, 3, 3, 7, 4, // -z
 	};
 
-	return resource_manager->create<scapes::visual::resources::Mesh>(device, num_vertices, vertices, num_indices, indices);
+	return resource_manager->create<scapes::visual::Mesh>(device, num_vertices, vertices, num_indices, indices);
 }
 
 /*
@@ -214,9 +214,9 @@ scapes::visual::TextureHandle ApplicationResources::generateTexture(uint8_t r, u
 		r, g, b, 255,
 	};
 
-	scapes::visual::TextureHandle result = resource_manager->create<scapes::visual::resources::Texture>(device);
+	scapes::visual::TextureHandle result = resource_manager->create<scapes::visual::Texture>(device);
 
-	result->format = scapes::foundation::render::Format::R8G8B8A8_UNORM;
+	result->format = scapes::visual::hardware::Format::R8G8B8A8_UNORM;
 	result->width = 2;
 	result->height = 2;
 	result->depth = 1;

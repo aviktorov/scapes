@@ -1,4 +1,4 @@
-#include <scapes/visual/Resources.h>
+#include <scapes/visual/Texture.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -13,7 +13,7 @@ using namespace scapes::visual;
 
 /*
  */
-static foundation::render::Format deduceFormat(size_t pixel_size, int channels)
+static scapes::visual::hardware::Format deduceFormat(size_t pixel_size, int channels)
 {
 	assert(channels > 0 && channels <= 4);
 
@@ -21,10 +21,10 @@ static foundation::render::Format deduceFormat(size_t pixel_size, int channels)
 	{
 		switch (channels)
 		{
-			case 1: return foundation::render::Format::R8_UNORM;
-			case 2: return foundation::render::Format::R8G8_UNORM;
-			case 3: return foundation::render::Format::R8G8B8_UNORM;
-			case 4: return foundation::render::Format::R8G8B8A8_UNORM;
+			case 1: return scapes::visual::hardware::Format::R8_UNORM;
+			case 2: return scapes::visual::hardware::Format::R8G8_UNORM;
+			case 3: return scapes::visual::hardware::Format::R8G8B8_UNORM;
+			case 4: return scapes::visual::hardware::Format::R8G8B8A8_UNORM;
 		}
 	}
 
@@ -32,47 +32,47 @@ static foundation::render::Format deduceFormat(size_t pixel_size, int channels)
 	{
 		switch (channels)
 		{
-			case 1: return foundation::render::Format::R32_SFLOAT;
-			case 2: return foundation::render::Format::R32G32_SFLOAT;
-			case 3: return foundation::render::Format::R32G32B32_SFLOAT;
-			case 4: return foundation::render::Format::R32G32B32A32_SFLOAT;
+			case 1: return scapes::visual::hardware::Format::R32_SFLOAT;
+			case 2: return scapes::visual::hardware::Format::R32G32_SFLOAT;
+			case 3: return scapes::visual::hardware::Format::R32G32B32_SFLOAT;
+			case 4: return scapes::visual::hardware::Format::R32G32B32A32_SFLOAT;
 		}
 	}
 
-	return foundation::render::Format::UNDEFINED;
+	return scapes::visual::hardware::Format::UNDEFINED;
 }
 
 /*
  */
-size_t ResourceTraits<resources::Texture>::size()
+size_t ResourceTraits<Texture>::size()
 {
-	return sizeof(resources::Texture);
+	return sizeof(Texture);
 }
 
-void ResourceTraits<resources::Texture>::create(
+void ResourceTraits<Texture>::create(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,
-	foundation::render::Device *device
+	scapes::visual::hardware::Device *device
 )
 {
-	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
+	Texture *texture = reinterpret_cast<Texture *>(memory);
 
 	*texture = {};
 	texture->device = device;
 }
 
-void ResourceTraits<resources::Texture>::create(
+void ResourceTraits<Texture>::create(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,
-	foundation::render::Device *device,
-	foundation::render::Format format,
+	scapes::visual::hardware::Device *device,
+	scapes::visual::hardware::Format format,
 	uint32_t width,
 	uint32_t height,
 	uint32_t mip_levels,
 	uint32_t layers
 )
 {
-	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
+	Texture *texture = reinterpret_cast<Texture *>(memory);
 
 	*texture = {};
 	texture->device = device;
@@ -84,13 +84,13 @@ void ResourceTraits<resources::Texture>::create(
 	texture->layers = layers;
 }
 
-void ResourceTraits<resources::Texture>::destroy(
+void ResourceTraits<Texture>::destroy(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory
 )
 {
-	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
-	foundation::render::Device *device = texture->device;
+	Texture *texture = reinterpret_cast<Texture *>(memory);
+	scapes::visual::hardware::Device *device = texture->device;
 
 	assert(device);
 
@@ -102,7 +102,7 @@ void ResourceTraits<resources::Texture>::destroy(
 	*texture = {};
 }
 
-foundation::resources::hash_t ResourceTraits<resources::Texture>::fetchHash(
+foundation::resources::hash_t ResourceTraits<Texture>::fetchHash(
 	foundation::resources::ResourceManager *resource_manager,
 	foundation::io::FileSystem *file_system,
 	void *memory,
@@ -114,7 +114,7 @@ foundation::resources::hash_t ResourceTraits<resources::Texture>::fetchHash(
 	return file_system->mtime(uri);
 }
 
-bool ResourceTraits<resources::Texture>::reload(
+bool ResourceTraits<Texture>::reload(
 	foundation::resources::ResourceManager *resource_manager,
 	foundation::io::FileSystem *file_system,
 	void *memory,
@@ -123,12 +123,12 @@ bool ResourceTraits<resources::Texture>::reload(
 {
 	assert(file_system);
 
-	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
-	foundation::render::Device *device = texture->device;
+	Texture *texture = reinterpret_cast<Texture *>(memory);
+	scapes::visual::hardware::Device *device = texture->device;
 
 	assert(device);
 
-	resources::Texture temp = {};
+	Texture temp = {};
 	temp.device = texture->device;
 
 	size_t size = 0;
@@ -154,7 +154,7 @@ bool ResourceTraits<resources::Texture>::reload(
 	return true;
 }
 
-bool ResourceTraits<resources::Texture>::loadFromMemory(
+bool ResourceTraits<Texture>::loadFromMemory(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,
 	const uint8_t *data,
@@ -206,7 +206,7 @@ bool ResourceTraits<resources::Texture>::loadFromMemory(
 
 	size_t image_size = width * height * channels * pixel_size;
 
-	resources::Texture *texture = reinterpret_cast<resources::Texture *>(memory);
+	Texture *texture = reinterpret_cast<Texture *>(memory);
 	texture->width = width;
 	texture->height = height;
 	texture->depth = 1;
@@ -214,7 +214,7 @@ bool ResourceTraits<resources::Texture>::loadFromMemory(
 	texture->layers = 1;
 	texture->format = deduceFormat(pixel_size, channels);
 
-	foundation::render::Device *device = texture->device;
+	scapes::visual::hardware::Device *device = texture->device;
 	assert(device);
 
 	{

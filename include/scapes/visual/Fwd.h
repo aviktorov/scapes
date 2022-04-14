@@ -4,29 +4,90 @@
 
 namespace scapes::visual
 {
-	class RenderGraph;
 	class GlbImporter;
 	class HdriImporter;
 
+	class RenderGraph;
+
+	struct IBLTexture;
+	struct Mesh;
+	struct RenderMaterial;
+	struct Shader;
+	struct Texture;
+
+	typedef foundation::resources::ResourceHandle<IBLTexture> IBLTextureHandle;
+	typedef foundation::resources::ResourceHandle<Mesh> MeshHandle;
+	typedef foundation::resources::ResourceHandle<RenderMaterial> RenderMaterialHandle;
+	typedef foundation::resources::ResourceHandle<Shader> ShaderHandle;
+	typedef foundation::resources::ResourceHandle<Texture> TextureHandle;
+
 	namespace components
 	{
-		struct Transform; // TODO: move to foundation components
+		struct Transform;
 		struct SkyLight;
 		struct Renderable;
 	}
 
-	namespace resources
+	namespace hardware
 	{
-		struct IBLTexture;
-		struct Mesh;
-		struct RenderMaterial;
-		struct Shader;
-		struct Texture;
+		enum class Api : uint8_t;
+		enum class BufferType : uint8_t;
+		enum class RenderPrimitiveType : uint8_t;
+		enum class IndexFormat : uint8_t;
+		enum class Multisample : uint8_t;
+		enum class SamplerWrapMode : uint8_t;
+		enum class Format : uint16_t;
+		enum class RenderPassLoadOp : uint8_t;
+		enum class RenderPassStoreOp : uint8_t;
+		enum class ShaderILType : uint8_t;
+		enum class ShaderType : uint8_t;
+		enum class CommandBufferType : uint8_t;
+		enum class CullMode : uint8_t;
+		enum class DepthCompareFunc : uint8_t;
+		enum class BlendFactor : uint8_t;
+
+		struct VertexBuffer_t;
+		struct IndexBuffer_t;
+		struct Texture_t;
+		struct FrameBuffer_t;
+		struct RenderPass_t;
+		struct CommandBuffer_t;
+		struct UniformBuffer_t;
+		struct Shader_t;
+		struct BindSet_t;
+		struct GraphicsPipeline_t;
+		struct SwapChain_t;
+
+		typedef struct VertexBuffer_t *VertexBuffer;
+		typedef struct IndexBuffer_t *IndexBuffer;
+		typedef struct Texture_t *Texture;
+		typedef struct FrameBuffer_t *FrameBuffer;
+		typedef struct RenderPass_t *RenderPass;
+		typedef struct CommandBuffer_t *CommandBuffer;
+		typedef struct UniformBuffer_t *UniformBuffer;
+		typedef struct Shader_t *Shader;
+		typedef struct BindSet_t *BindSet;
+		typedef struct GraphicsPipeline_t *GraphicsPipeline;
+		typedef struct SwapChain_t *SwapChain;
+
+		struct VertexAttribute;
+		struct FrameBufferAttachment;
+		union RenderPassClearColor;
+		struct RenderPassClearDepthStencil;
+		union RenderPassClearValue;
+		struct RenderPassAttachment;
+		struct RenderPassDescription;
+
+		class Device;
 	}
 
-	typedef foundation::resources::ResourceHandle<resources::IBLTexture> IBLTextureHandle;
-	typedef foundation::resources::ResourceHandle<resources::Mesh> MeshHandle;
-	typedef foundation::resources::ResourceHandle<resources::RenderMaterial> RenderMaterialHandle;
-	typedef foundation::resources::ResourceHandle<resources::Shader> ShaderHandle;
-	typedef foundation::resources::ResourceHandle<resources::Texture> TextureHandle;
+	namespace shaders
+	{
+		enum class ShaderILType : uint8_t;
+		enum class ShaderType : uint8_t;
+
+		struct ShaderIL;
+
+		class Compiler;
+	}
 }

@@ -1,9 +1,8 @@
 #pragma once
 
 #include <scapes/foundation/math/Math.h>
-#include <scapes/foundation/render/Device.h>
+#include <scapes/visual/hardware/Device.h>
 
-#include <scapes/visual/Resources.h>
 #include <scapes/visual/RenderGraph.h>
 
 #include <string>
@@ -21,7 +20,7 @@ public:
 public:
 	void init() final;
 	void shutdown() final;
-	void render(scapes::foundation::render::CommandBuffer command_buffer) final;
+	void render(scapes::visual::hardware::CommandBuffer command_buffer) final;
 	void invalidate() final;
 
 	bool deserialize(const scapes::foundation::serde::yaml::NodeRef node) override;
@@ -39,9 +38,9 @@ public:
 
 	void addColorOutput(
 		const char *name,
-		scapes::foundation::render::RenderPassLoadOp load_op,
-		scapes::foundation::render::RenderPassStoreOp store_op,
-		scapes::foundation::render::RenderPassClearColor clear_value
+		scapes::visual::hardware::RenderPassLoadOp load_op,
+		scapes::visual::hardware::RenderPassStoreOp store_op,
+		scapes::visual::hardware::RenderPassClearColor clear_value
 	);
 
 	void removeColorOutput(const char *name);
@@ -49,16 +48,16 @@ public:
 
 	void setDepthStencilOutput(
 		const char *name,
-		scapes::foundation::render::RenderPassLoadOp load_op,
-		scapes::foundation::render::RenderPassStoreOp store_op,
-		scapes::foundation::render::RenderPassClearDepthStencil clear_value
+		scapes::visual::hardware::RenderPassLoadOp load_op,
+		scapes::visual::hardware::RenderPassStoreOp store_op,
+		scapes::visual::hardware::RenderPassClearDepthStencil clear_value
 	);
 	void removeDepthStencilOutput();
 
 	void setSwapChainOutput(
-		scapes::foundation::render::RenderPassLoadOp load_op,
-		scapes::foundation::render::RenderPassStoreOp store_op,
-		scapes::foundation::render::RenderPassClearColor clear_value
+		scapes::visual::hardware::RenderPassLoadOp load_op,
+		scapes::visual::hardware::RenderPassStoreOp store_op,
+		scapes::visual::hardware::RenderPassClearColor clear_value
 	);
 	void removeSwapChainOutput();
 
@@ -83,7 +82,7 @@ public:
 
 protected:
 	virtual bool canRender() const { return true; }
-	virtual void onRender(scapes::foundation::render::CommandBuffer command_buffer) {}
+	virtual void onRender(scapes::visual::hardware::CommandBuffer command_buffer) {}
 	virtual void onInit() {}
 	virtual void onShutdown() {}
 	virtual void onInvalidate() {};
@@ -94,16 +93,16 @@ protected:
 	struct FrameBufferOutput
 	{
 		std::string renderbuffer_name;
-		scapes::foundation::render::RenderPassLoadOp load_op;
-		scapes::foundation::render::RenderPassStoreOp store_op;
-		scapes::foundation::render::RenderPassClearValue clear_value;
+		scapes::visual::hardware::RenderPassLoadOp load_op;
+		scapes::visual::hardware::RenderPassStoreOp store_op;
+		scapes::visual::hardware::RenderPassClearValue clear_value;
 	};
 
 	struct SwapChainOutput
 	{
-		scapes::foundation::render::RenderPassLoadOp load_op;
-		scapes::foundation::render::RenderPassStoreOp store_op;
-		scapes::foundation::render::RenderPassClearColor clear_value;
+		scapes::visual::hardware::RenderPassLoadOp load_op;
+		scapes::visual::hardware::RenderPassStoreOp store_op;
+		scapes::visual::hardware::RenderPassClearColor clear_value;
 	};
 
 private:
@@ -113,7 +112,7 @@ private:
 
 	void deserializeFrameBufferOutput(scapes::foundation::serde::yaml::NodeRef node, bool is_depthstencil);
 	void deserializeSwapChainOutput(scapes::foundation::serde::yaml::NodeRef node);
-	void deserializeShader(scapes::foundation::serde::yaml::NodeRef node, scapes::visual::ShaderHandle &handle, scapes::foundation::render::ShaderType shader_type);
+	void deserializeShader(scapes::foundation::serde::yaml::NodeRef node, scapes::visual::ShaderHandle &handle, scapes::visual::hardware::ShaderType shader_type);
 
 	void serializeFrameBufferOutput(scapes::foundation::serde::yaml::NodeRef node, const FrameBufferOutput &data, bool is_depthstencil);
 	void serializeSwapChainOutput(scapes::foundation::serde::yaml::NodeRef node, const SwapChainOutput &data);
@@ -132,15 +131,15 @@ protected:
 
 	scapes::visual::RenderGraph *render_graph {nullptr};
 	scapes::foundation::resources::ResourceManager *resource_manager {nullptr};
-	scapes::foundation::render::Device *device {nullptr};
-	scapes::foundation::shaders::Compiler *compiler {nullptr};
+	scapes::visual::hardware::Device *device {nullptr};
+	scapes::visual::shaders::Compiler *compiler {nullptr};
 	scapes::foundation::game::World *world {nullptr};
 
 	scapes::visual::MeshHandle unit_quad;
 
-	scapes::foundation::render::RenderPass render_pass_swapchain {SCAPES_NULL_HANDLE};
-	scapes::foundation::render::RenderPass render_pass_offscreen {SCAPES_NULL_HANDLE};
-	scapes::foundation::render::GraphicsPipeline graphics_pipeline {SCAPES_NULL_HANDLE};
+	scapes::visual::hardware::RenderPass render_pass_swapchain {SCAPES_NULL_HANDLE};
+	scapes::visual::hardware::RenderPass render_pass_offscreen {SCAPES_NULL_HANDLE};
+	scapes::visual::hardware::GraphicsPipeline graphics_pipeline {SCAPES_NULL_HANDLE};
 
 	scapes::visual::ShaderHandle vertex_shader;
 	scapes::visual::ShaderHandle tessellation_control_shader;
@@ -160,7 +159,7 @@ private:
 	bool canRender() const final { return first_frame; }
 	void onInit() final;
 	void onInvalidate() final;
-	void onRender(scapes::foundation::render::CommandBuffer command_buffer) final;
+	void onRender(scapes::visual::hardware::CommandBuffer command_buffer) final;
 
 private:
 	bool first_frame {true};
@@ -184,7 +183,7 @@ public:
 
 private:
 	void onInit() final;
-	void onRender(scapes::foundation::render::CommandBuffer command_buffer) final;
+	void onRender(scapes::visual::hardware::CommandBuffer command_buffer) final;
 	bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) final;
 	bool onSerialize(scapes::foundation::serde::yaml::NodeRef node) final;
 
@@ -210,7 +209,7 @@ public:
 
 private:
 	void onInit() final;
-	void onRender(scapes::foundation::render::CommandBuffer command_buffer) final;
+	void onRender(scapes::visual::hardware::CommandBuffer command_buffer) final;
 	bool onDeserialize(const scapes::foundation::serde::yaml::NodeRef node) final;
 	bool onSerialize(scapes::foundation::serde::yaml::NodeRef node) final;
 
@@ -233,7 +232,7 @@ public:
 
 private:
 	void onInit() final;
-	void onRender(scapes::foundation::render::CommandBuffer command_buffer) final;
+	void onRender(scapes::visual::hardware::CommandBuffer command_buffer) final;
 };
 
 template <>
@@ -255,7 +254,7 @@ public:
 	static scapes::visual::IRenderPass *create(scapes::visual::RenderGraph *render_graph);
 
 public:
-	ImTextureID fetchTextureID(scapes::foundation::render::Texture texture);
+	ImTextureID fetchTextureID(scapes::visual::hardware::Texture texture);
 
 	void invalidateTextureIDs();
 
@@ -266,7 +265,7 @@ public:
 private:
 	void onInit() final;
 	void onShutdown() final;
-	void onRender(scapes::foundation::render::CommandBuffer command_buffer) final;
+	void onRender(scapes::visual::hardware::CommandBuffer command_buffer) final;
 
 	void updateBuffers(const ImDrawData &draw_data);
 	void setupRenderState(const ImDrawData &draw_data);
@@ -274,14 +273,14 @@ private:
 private:
 	ImGuiContext *context {nullptr};
 
-	scapes::foundation::render::Texture font_texture {SCAPES_NULL_HANDLE};
-	scapes::foundation::render::VertexBuffer vertices {SCAPES_NULL_HANDLE};
-	scapes::foundation::render::IndexBuffer indices {SCAPES_NULL_HANDLE};
+	scapes::visual::hardware::Texture font_texture {SCAPES_NULL_HANDLE};
+	scapes::visual::hardware::VertexBuffer vertices {SCAPES_NULL_HANDLE};
+	scapes::visual::hardware::IndexBuffer indices {SCAPES_NULL_HANDLE};
 	size_t index_buffer_size {0};
 	size_t vertex_buffer_size {0};
 
-	scapes::foundation::render::BindSet font_bind_set {SCAPES_NULL_HANDLE};
-	std::map<scapes::foundation::render::Texture, scapes::foundation::render::BindSet> registered_textures;
+	scapes::visual::hardware::BindSet font_bind_set {SCAPES_NULL_HANDLE};
+	std::map<scapes::visual::hardware::Texture, scapes::visual::hardware::BindSet> registered_textures;
 };
 
 template <>
@@ -304,7 +303,7 @@ public:
 public:
 	void init() final;
 	void shutdown() final;
-	void render(scapes::foundation::render::CommandBuffer command_buffer) final;
+	void render(scapes::visual::hardware::CommandBuffer command_buffer) final;
 	void invalidate() final;
 	void clear();
 

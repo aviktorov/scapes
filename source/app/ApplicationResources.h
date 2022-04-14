@@ -2,7 +2,11 @@
 
 #include <vector>
 
-#include <scapes/visual/Resources.h>
+#include <scapes/visual/IBLTexture.h>
+#include <scapes/visual/Mesh.h>
+#include <scapes/visual/RenderMaterial.h>
+#include <scapes/visual/Shader.h>
+#include <scapes/visual/Texture.h>
 
 /*
  */
@@ -11,8 +15,8 @@ class ApplicationResources
 public:
 	ApplicationResources(
 		scapes::foundation::resources::ResourceManager *resource_manager,
-		scapes::foundation::render::Device *device,
-		scapes::foundation::shaders::Compiler *compiler,
+		scapes::visual::hardware::Device *device,
+		scapes::visual::shaders::Compiler *compiler,
 		scapes::foundation::game::World *world
 	)
 		: resource_manager(resource_manager), device(device), compiler(compiler), world(world)
@@ -36,8 +40,8 @@ private:
 
 private:
 	scapes::foundation::resources::ResourceManager *resource_manager {nullptr};
-	scapes::foundation::render::Device *device {nullptr};
-	scapes::foundation::shaders::Compiler *compiler {nullptr};
+	scapes::visual::hardware::Device *device {nullptr};
+	scapes::visual::shaders::Compiler *compiler {nullptr};
 	scapes::foundation::game::World *world {nullptr};
 
 	scapes::visual::MeshHandle unit_quad;

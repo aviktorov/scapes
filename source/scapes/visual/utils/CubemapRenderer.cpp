@@ -1,6 +1,8 @@
 #include "CubemapRenderer.h"
 
-#include <scapes/visual/Resources.h>
+#include <scapes/visual/Mesh.h>
+#include <scapes/visual/Shader.h>
+#include <scapes/visual/Texture.h>
 #include <scapes/foundation/math/Math.h>
 
 #include <algorithm>
@@ -19,7 +21,7 @@ namespace scapes::visual::utils
 
 	/*
 	 */
-	CubemapRenderer::CubemapRenderer(render::Device *device)
+	CubemapRenderer::CubemapRenderer(hardware::Device *device)
 		: device(device)
 	{
 	}
@@ -32,19 +34,19 @@ namespace scapes::visual::utils
 	/*
 	 */
 	void CubemapRenderer::init(
-		const resources::Texture *target_texture,
+		const Texture *target_texture,
 		uint32_t target_mip
 	)
 	{
 		// Create uniform buffers
 		uint32_t ubo_size = sizeof(CubemapFaceData);
-		uniform_buffer = device->createUniformBuffer(render::BufferType::DYNAMIC, ubo_size);
+		uniform_buffer = device->createUniformBuffer(hardware::BufferType::DYNAMIC, ubo_size);
 
 		// Create bind set
 		bind_set = device->createBindSet();
 
 		// Create framebuffer
-		render::FrameBufferAttachment frame_buffer_attachments[1] =
+		hardware::FrameBufferAttachment frame_buffer_attachments[1] =
 		{
 			{ target_texture->gpu_data, target_mip, 0, 6 },
 		};
@@ -52,28 +54,28 @@ namespace scapes::visual::utils
 		frame_buffer = device->createFrameBuffer(1, frame_buffer_attachments);
 
 		// Create render pass
-		render::RenderPassClearValue clear_value;
+		hardware::RenderPassClearValue clear_value;
 		clear_value.as_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-		render::Multisample samples = render::Multisample::COUNT_1;
-		render::RenderPassLoadOp load_op = render::RenderPassLoadOp::CLEAR;
-		render::RenderPassStoreOp store_op = render::RenderPassStoreOp::STORE;
+		hardware::Multisample samples = hardware::Multisample::COUNT_1;
+		hardware::RenderPassLoadOp load_op = hardware::RenderPassLoadOp::CLEAR;
+		hardware::RenderPassStoreOp store_op = hardware::RenderPassStoreOp::STORE;
 
-		render::RenderPassAttachment render_pass_attachments[1] =
+		hardware::RenderPassAttachment render_pass_attachments[1] =
 		{
 			{ target_texture->format, samples, load_op, store_op, clear_value },
 		};
 
 		uint32_t color_attachments[1] = { 0 };
 
-		render::RenderPassDescription render_pass_description = {};
+		hardware::RenderPassDescription render_pass_description = {};
 		render_pass_description.num_color_attachments = 1;
 		render_pass_description.color_attachments = color_attachments;
 
 		render_pass = device->createRenderPass(1, render_pass_attachments, render_pass_description);
 
 		// Create command buffer
-		command_buffer = device->createCommandBuffer(render::CommandBufferType::PRIMARY);
+		command_buffer = device->createCommandBuffer(hardware::CommandBufferType::PRIMARY);
 
 		// Create pipeline state
 		uint32_t target_width = std::max<uint32_t>(1, target_texture->width >> target_mip);
@@ -141,11 +143,11 @@ namespace scapes::visual::utils
 	/*
 	 */
 	void CubemapRenderer::render(
-		const resources::Mesh *mesh,
-		const resources::Shader *vertex_shader,
-		const resources::Shader *geometry_shader,
-		const resources::Shader *fragment_shader,
-		const resources::Texture *input_texture,
+		const Mesh *mesh,
+		const Shader *vertex_shader,
+		const Shader *geometry_shader,
+		const Shader *fragment_shader,
+		const Texture *input_texture,
 		uint8_t push_constants_size,
 		const uint8_t *push_constants_data
 	)
@@ -154,9 +156,9 @@ namespace scapes::visual::utils
 
 		device->setPushConstants(graphics_pipeline, push_constants_size, push_constants_data);
 		device->setBindSet(graphics_pipeline, 0, bind_set);
-		device->setShader(graphics_pipeline, render::ShaderType::VERTEX, vertex_shader->shader);
-		device->setShader(graphics_pipeline, render::ShaderType::GEOMETRY, geometry_shader->shader);
-		device->setShader(graphics_pipeline, render::ShaderType::FRAGMENT, fragment_shader->shader);
+		device->setShader(graphics_pipeline, hardware::ShaderType::VERTEX, vertex_shader->shader);
+		device->setShader(graphics_pipeline, hardware::ShaderType::GEOMETRY, geometry_shader->shader);
+		device->setShader(graphics_pipeline, hardware::ShaderType::FRAGMENT, fragment_shader->shader);
 
 		device->setVertexStream(graphics_pipeline, 0, mesh->vertex_buffer);
 
@@ -164,7 +166,7 @@ namespace scapes::visual::utils
 		device->beginCommandBuffer(command_buffer);
 		device->beginRenderPass(command_buffer, render_pass, frame_buffer);
 
-		device->setCullMode(graphics_pipeline,render::CullMode::NONE);
+		device->setCullMode(graphics_pipeline,hardware::CullMode::NONE);
 
 		device->drawIndexedPrimitiveInstanced(command_buffer, graphics_pipeline, mesh->index_buffer, mesh->num_indices);
 

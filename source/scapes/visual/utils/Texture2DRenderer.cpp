@@ -1,6 +1,8 @@
 #include "Texture2DRenderer.h"
 
-#include <scapes/visual/Resources.h>
+#include <scapes/visual/Mesh.h>
+#include <scapes/visual/Shader.h>
+#include <scapes/visual/Texture.h>
 
 using namespace scapes::foundation;
 
@@ -8,7 +10,7 @@ namespace scapes::visual::utils
 {
 	/*
 	 */
-	Texture2DRenderer::Texture2DRenderer(render::Device *device)
+	Texture2DRenderer::Texture2DRenderer(hardware::Device *device)
 		: device(device)
 	{
 	}
@@ -20,29 +22,29 @@ namespace scapes::visual::utils
 
 	/*
 	 */
-	void Texture2DRenderer::init(const resources::Texture *target_texture)
+	void Texture2DRenderer::init(const Texture *target_texture)
 	{
 		assert(target_texture != nullptr);
 
 		// Create framebuffer
-		render::FrameBufferAttachment frame_buffer_attachments[1] = { target_texture->gpu_data };
+		hardware::FrameBufferAttachment frame_buffer_attachments[1] = { target_texture->gpu_data };
 		frame_buffer = device->createFrameBuffer(1, frame_buffer_attachments);
 
 		// Create render pass
-		render::RenderPassAttachment render_pass_attachments[1] =
+		hardware::RenderPassAttachment render_pass_attachments[1] =
 		{
-			{ target_texture->format, render::Multisample::COUNT_1, render::RenderPassLoadOp::DONT_CARE, render::RenderPassStoreOp::STORE },
+			{ target_texture->format, hardware::Multisample::COUNT_1, hardware::RenderPassLoadOp::DONT_CARE, hardware::RenderPassStoreOp::STORE },
 		};
 
 		uint32_t color_attachments[1] = { 0 };
 
-		render::RenderPassDescription render_pass_description = {};
+		hardware::RenderPassDescription render_pass_description = {};
 		render_pass_description.num_color_attachments = 1;
 		render_pass_description.color_attachments = color_attachments;
 
 		render_pass = device->createRenderPass(1, render_pass_attachments, render_pass_description);
 
-		command_buffer = device->createCommandBuffer(render::CommandBufferType::PRIMARY);
+		command_buffer = device->createCommandBuffer(hardware::CommandBufferType::PRIMARY);
 
 		graphics_pipeline = device->createGraphicsPipeline();
 		device->setViewport(graphics_pipeline, 0, 0, target_texture->width, target_texture->height);
@@ -67,9 +69,9 @@ namespace scapes::visual::utils
 	/*
 	 */
 	void Texture2DRenderer::render(
-		const resources::Mesh *mesh,
-		const resources::Shader *vertex_shader,
-		const resources::Shader *fragment_shader
+		const Mesh *mesh,
+		const Shader *vertex_shader,
+		const Shader *fragment_shader
 	)
 	{
 		assert(vertex_shader != nullptr);
@@ -82,13 +84,13 @@ namespace scapes::visual::utils
 
 		device->clearBindSets(graphics_pipeline);
 		device->clearShaders(graphics_pipeline);
-		device->setShader(graphics_pipeline, render::ShaderType::VERTEX, vertex_shader->shader);
-		device->setShader(graphics_pipeline, render::ShaderType::FRAGMENT, fragment_shader->shader);
+		device->setShader(graphics_pipeline, hardware::ShaderType::VERTEX, vertex_shader->shader);
+		device->setShader(graphics_pipeline, hardware::ShaderType::FRAGMENT, fragment_shader->shader);
 
 		device->clearVertexStreams(graphics_pipeline);
 		device->setVertexStream(graphics_pipeline, 0, mesh->vertex_buffer);
 
-		device->setCullMode(graphics_pipeline,render::CullMode::NONE);
+		device->setCullMode(graphics_pipeline,hardware::CullMode::NONE);
 
 		device->drawIndexedPrimitiveInstanced(command_buffer, graphics_pipeline, mesh->index_buffer, mesh->num_indices);
 

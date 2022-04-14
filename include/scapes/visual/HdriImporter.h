@@ -1,7 +1,10 @@
 #pragma once
 
 #include <scapes/visual/Fwd.h>
-#include <scapes/visual/Resources.h>
+#include <scapes/visual/IBLTexture.h>
+#include <scapes/visual/Mesh.h>
+#include <scapes/visual/Shader.h>
+#include <scapes/visual/Texture.h>
 
 namespace scapes::visual
 {
@@ -14,8 +17,8 @@ namespace scapes::visual
 		{
 			foundation::resources::ResourceManager *resource_manager {nullptr};
 			foundation::game::World *world {nullptr};
-			foundation::render::Device *device {nullptr};
-			foundation::shaders::Compiler *compiler {nullptr};
+			hardware::Device *device {nullptr};
+			shaders::Compiler *compiler {nullptr};
 
 			MeshHandle unit_quad;
 			MeshHandle unit_cube;
@@ -34,7 +37,7 @@ namespace scapes::visual
 		virtual ~HdriImporter() { }
 
 	public:
-		virtual TextureHandle bakeBRDF(foundation::render::Format format, uint32_t size) = 0;
-		virtual IBLTextureHandle import(const foundation::io::URI &uri, foundation::render::Format format, uint32_t size, TextureHandle baked_brdf) = 0;
+		virtual TextureHandle bakeBRDF(hardware::Format format, uint32_t size) = 0;
+		virtual IBLTextureHandle import(const foundation::io::URI &uri, hardware::Format format, uint32_t size, TextureHandle baked_brdf) = 0;
 	};
 }

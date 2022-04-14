@@ -3,8 +3,8 @@
 #include <scapes/foundation/game/World.h>
 #include <scapes/foundation/game/Query.h>
 
-#include <scapes/foundation/components/Components.h>
-#include <scapes/visual/Components.h>
+#include <scapes/visual/components/Components.h>
+#include <scapes/visual/Shader.h>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -17,20 +17,20 @@ namespace c4
 {
 	/*
 	 */
-	static const char *supported_render_pass_load_ops[static_cast<size_t>(foundation::render::RenderPassLoadOp::MAX)] =
+	static const char *supported_render_pass_load_ops[static_cast<size_t>(scapes::visual::hardware::RenderPassLoadOp::MAX)] =
 	{
 		"LOAD",
 		"CLEAR",
 		"DONT_CARE",
 	};
 
-	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, foundation::render::RenderPassLoadOp *load_op)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, scapes::visual::hardware::RenderPassLoadOp *load_op)
 	{
-		for (size_t i = 0; i < static_cast<size_t>(foundation::render::RenderPassLoadOp::MAX); ++i)
+		for (size_t i = 0; i < static_cast<size_t>(scapes::visual::hardware::RenderPassLoadOp::MAX); ++i)
 		{
 			if (buf.compare(supported_render_pass_load_ops[i], strlen(supported_render_pass_load_ops[i])) == 0)
 			{
-				*load_op = static_cast<foundation::render::RenderPassLoadOp>(i);
+				*load_op = static_cast<scapes::visual::hardware::RenderPassLoadOp>(i);
 				return true;
 			}
 		}
@@ -38,26 +38,26 @@ namespace c4
 		return false;
 	}
 
-	size_t to_chars(yaml::substr buffer, foundation::render::RenderPassLoadOp load_op)
+	size_t to_chars(yaml::substr buffer, scapes::visual::hardware::RenderPassLoadOp load_op)
 	{
 		return ryml::format(buffer, "{}", supported_render_pass_load_ops[static_cast<size_t>(load_op)]);
 	}
 
 	/*
 	 */
-	static const char *supported_render_pass_store_ops[static_cast<size_t>(foundation::render::RenderPassStoreOp::MAX)] =
+	static const char *supported_render_pass_store_ops[static_cast<size_t>(scapes::visual::hardware::RenderPassStoreOp::MAX)] =
 	{
 		"STORE",
 		"DONT_CARE",
 	};
 
-	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, foundation::render::RenderPassStoreOp *store_op)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, scapes::visual::hardware::RenderPassStoreOp *store_op)
 	{
-		for (size_t i = 0; i < static_cast<size_t>(foundation::render::RenderPassStoreOp::MAX); ++i)
+		for (size_t i = 0; i < static_cast<size_t>(scapes::visual::hardware::RenderPassStoreOp::MAX); ++i)
 		{
 			if (buf.compare(supported_render_pass_store_ops[i], strlen(supported_render_pass_store_ops[i])) == 0)
 			{
-				*store_op = static_cast<foundation::render::RenderPassStoreOp>(i);
+				*store_op = static_cast<scapes::visual::hardware::RenderPassStoreOp>(i);
 				return true;
 			}
 		}
@@ -65,14 +65,14 @@ namespace c4
 		return false;
 	}
 
-	size_t to_chars(yaml::substr buffer, foundation::render::RenderPassStoreOp store_op)
+	size_t to_chars(yaml::substr buffer, scapes::visual::hardware::RenderPassStoreOp store_op)
 	{
 		return ryml::format(buffer, "{}", supported_render_pass_store_ops[static_cast<size_t>(store_op)]);
 	}
 
 	/*
 	 */
-	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, foundation::render::RenderPassClearColor *clear_color)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, scapes::visual::hardware::RenderPassClearColor *clear_color)
 	{
 		size_t ret = yaml::unformat(
 			buf,
@@ -86,7 +86,7 @@ namespace c4
 		return ret != ryml::yml::npos;
 	}
 
-	size_t to_chars(yaml::substr buffer, foundation::render::RenderPassClearColor clear_color)
+	size_t to_chars(yaml::substr buffer, scapes::visual::hardware::RenderPassClearColor clear_color)
 	{
 		return ryml::format(
 			buffer,
@@ -100,7 +100,7 @@ namespace c4
 
 	/*
 	 */
-	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, foundation::render::RenderPassClearDepthStencil *clear_depthstencil)
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, scapes::visual::hardware::RenderPassClearDepthStencil *clear_depthstencil)
 	{
 		size_t ret = yaml::unformat(
 			buf,
@@ -112,7 +112,7 @@ namespace c4
 		return ret != ryml::yml::npos;
 	}
 
-	size_t to_chars(yaml::substr buffer, foundation::render::RenderPassClearDepthStencil clear_depthstencil)
+	size_t to_chars(yaml::substr buffer, scapes::visual::hardware::RenderPassClearDepthStencil clear_depthstencil)
 	{
 		return ryml::format(
 			buffer,
@@ -150,7 +150,7 @@ void RenderPassGraphicsBase::shutdown()
 	clear();
 }
 
-void RenderPassGraphicsBase::render(foundation::render::CommandBuffer command_buffer)
+void RenderPassGraphicsBase::render(scapes::visual::hardware::CommandBuffer command_buffer)
 {
 	if (!canRender())
 		return;
@@ -178,20 +178,20 @@ void RenderPassGraphicsBase::render(foundation::render::CommandBuffer command_bu
 	for (size_t i = 0; i < input_groups.size(); ++i)
 	{
 		const char *group_name = input_groups[i].c_str();
-		foundation::render::BindSet bindings = render_graph->getGroupBindings(group_name);
+		scapes::visual::hardware::BindSet bindings = render_graph->getGroupBindings(group_name);
 		device->setBindSet(graphics_pipeline, current_binding++, bindings);
 	}
 
 	for (size_t i = 0; i < input_render_buffers.size(); ++i)
 	{
 		const char *texture_name = input_render_buffers[i].c_str();
-		foundation::render::BindSet bindings = render_graph->getRenderBufferBindings(texture_name);
+		scapes::visual::hardware::BindSet bindings = render_graph->getRenderBufferBindings(texture_name);
 		device->setBindSet(graphics_pipeline, current_binding++, bindings);
 	}
 
 	if (render_pass_swapchain)
 	{
-		foundation::render::SwapChain swap_chain = render_graph->getSwapChain();
+		scapes::visual::hardware::SwapChain swap_chain = render_graph->getSwapChain();
 		assert(swap_chain != SCAPES_NULL_HANDLE);
 
 		device->beginRenderPass(command_buffer, render_pass_swapchain, swap_chain);
@@ -210,7 +210,7 @@ void RenderPassGraphicsBase::render(foundation::render::CommandBuffer command_bu
 		if (has_depthstencil_output)
 			render_buffers[num_render_buffers++] = depthstencil_output.renderbuffer_name.c_str();
 
-		foundation::render::FrameBuffer frame_buffer = render_graph->fetchFrameBuffer(num_render_buffers, render_buffers);
+		scapes::visual::hardware::FrameBuffer frame_buffer = render_graph->fetchFrameBuffer(num_render_buffers, render_buffers);
 		assert(frame_buffer != SCAPES_NULL_HANDLE);
 
 		device->beginRenderPass(command_buffer, render_pass_offscreen, frame_buffer);
@@ -283,19 +283,19 @@ bool RenderPassGraphicsBase::deserialize(const yaml::NodeRef node)
 			deserializeSwapChainOutput(child);
 
 		else if (child_key.compare("vertex_shader") == 0)
-			deserializeShader(child, vertex_shader, foundation::render::ShaderType::VERTEX);
+			deserializeShader(child, vertex_shader, scapes::visual::hardware::ShaderType::VERTEX);
 
 		else if (child_key.compare("tessellation_control_shader") == 0)
-			deserializeShader(child, tessellation_control_shader, foundation::render::ShaderType::TESSELLATION_CONTROL);
+			deserializeShader(child, tessellation_control_shader, scapes::visual::hardware::ShaderType::TESSELLATION_CONTROL);
 
 		else if (child_key.compare("tessellation_evaluation_shader") == 0)
-			deserializeShader(child, tessellation_evaluation_shader, foundation::render::ShaderType::TESSELLATION_EVALUATION);
+			deserializeShader(child, tessellation_evaluation_shader, scapes::visual::hardware::ShaderType::TESSELLATION_EVALUATION);
 
 		else if (child_key.compare("geometry_shader") == 0)
-			deserializeShader(child, geometry_shader, foundation::render::ShaderType::GEOMETRY);
+			deserializeShader(child, geometry_shader, scapes::visual::hardware::ShaderType::GEOMETRY);
 
 		else if (child_key.compare("fragment_shader") == 0)
-			deserializeShader(child, fragment_shader, foundation::render::ShaderType::FRAGMENT);
+			deserializeShader(child, fragment_shader, scapes::visual::hardware::ShaderType::FRAGMENT);
 	}
 
 	bool result = onDeserialize(node);
@@ -306,10 +306,10 @@ bool RenderPassGraphicsBase::deserialize(const yaml::NodeRef node)
 void RenderPassGraphicsBase::deserializeFrameBufferOutput(yaml::NodeRef node, bool is_depthstencil)
 {
 	std::string name;
-	foundation::render::RenderPassLoadOp load_op = foundation::render::RenderPassLoadOp::LOAD;
-	foundation::render::RenderPassStoreOp store_op = foundation::render::RenderPassStoreOp::STORE;
-	foundation::render::RenderPassClearColor clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
-	foundation::render::RenderPassClearDepthStencil clear_depthstencil = {0.0f, 0};
+	scapes::visual::hardware::RenderPassLoadOp load_op = scapes::visual::hardware::RenderPassLoadOp::LOAD;
+	scapes::visual::hardware::RenderPassStoreOp store_op = scapes::visual::hardware::RenderPassStoreOp::STORE;
+	scapes::visual::hardware::RenderPassClearColor clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
+	scapes::visual::hardware::RenderPassClearDepthStencil clear_depthstencil = {0.0f, 0};
 
 	for (const yaml::NodeRef child : node.children())
 	{
@@ -344,9 +344,9 @@ void RenderPassGraphicsBase::deserializeFrameBufferOutput(yaml::NodeRef node, bo
 
 void RenderPassGraphicsBase::deserializeSwapChainOutput(yaml::NodeRef node)
 {
-	foundation::render::RenderPassLoadOp load_op = foundation::render::RenderPassLoadOp::LOAD;
-	foundation::render::RenderPassStoreOp store_op = foundation::render::RenderPassStoreOp::STORE;
-	foundation::render::RenderPassClearColor clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
+	scapes::visual::hardware::RenderPassLoadOp load_op = scapes::visual::hardware::RenderPassLoadOp::LOAD;
+	scapes::visual::hardware::RenderPassStoreOp store_op = scapes::visual::hardware::RenderPassStoreOp::STORE;
+	scapes::visual::hardware::RenderPassClearColor clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
 
 	for (const yaml::NodeRef child : node.children())
 	{
@@ -364,7 +364,7 @@ void RenderPassGraphicsBase::deserializeSwapChainOutput(yaml::NodeRef node)
 	setSwapChainOutput(load_op, store_op, clear_color);
 };
 
-void RenderPassGraphicsBase::deserializeShader(yaml::NodeRef node, visual::ShaderHandle &handle, foundation::render::ShaderType shader_type)
+void RenderPassGraphicsBase::deserializeShader(yaml::NodeRef node, visual::ShaderHandle &handle, scapes::visual::hardware::ShaderType shader_type)
 {
 	if (!node.has_val())
 		return;
@@ -372,7 +372,7 @@ void RenderPassGraphicsBase::deserializeShader(yaml::NodeRef node, visual::Shade
 	yaml::csubstr node_value = node.val();
 	std::string path = std::string(node_value.data(), node_value.size());
 
-	handle = resource_manager->fetch<visual::resources::Shader>(path.c_str(), shader_type, device, compiler);
+	handle = resource_manager->fetch<visual::Shader>(path.c_str(), shader_type, device, compiler);
 };
 
 /*
@@ -451,13 +451,13 @@ void RenderPassGraphicsBase::serializeFrameBufferOutput(yaml::NodeRef node, cons
 	node |= yaml::MAP;
 	node["name"] << data.renderbuffer_name.c_str();
 
-	if (data.load_op != foundation::render::RenderPassLoadOp::LOAD)
+	if (data.load_op != scapes::visual::hardware::RenderPassLoadOp::LOAD)
 		node["load_op"] << data.load_op;
 
-	if (data.store_op != foundation::render::RenderPassStoreOp::STORE)
+	if (data.store_op != scapes::visual::hardware::RenderPassStoreOp::STORE)
 		node["store_op"] << data.store_op;
 
-	if (data.load_op == foundation::render::RenderPassLoadOp::CLEAR)
+	if (data.load_op == scapes::visual::hardware::RenderPassLoadOp::CLEAR)
 	{
 		if (is_depthstencil)
 			node["clear_depthstencil"] << data.clear_value.as_depth_stencil;
@@ -471,10 +471,10 @@ void RenderPassGraphicsBase::serializeSwapChainOutput(yaml::NodeRef node, const 
 	node |= yaml::MAP;
 	node["load_op"] << data.load_op;
 
-	if (data.store_op != foundation::render::RenderPassStoreOp::STORE)
+	if (data.store_op != scapes::visual::hardware::RenderPassStoreOp::STORE)
 		node["store_op"] << data.store_op;
 
-	if (data.load_op == foundation::render::RenderPassLoadOp::CLEAR)
+	if (data.load_op == scapes::visual::hardware::RenderPassLoadOp::CLEAR)
 		node["clear_color"] << data.clear_value;
 };
 
@@ -538,9 +538,9 @@ void RenderPassGraphicsBase::removeAllInputRenderBuffers()
  */
 void RenderPassGraphicsBase::addColorOutput(
 	const char *name,
-	foundation::render::RenderPassLoadOp load_op,
-	foundation::render::RenderPassStoreOp store_op,
-	foundation::render::RenderPassClearColor clear_value
+	scapes::visual::hardware::RenderPassLoadOp load_op,
+	scapes::visual::hardware::RenderPassStoreOp store_op,
+	scapes::visual::hardware::RenderPassClearColor clear_value
 )
 {
 	FrameBufferOutput output = {};
@@ -574,9 +574,9 @@ void RenderPassGraphicsBase::removeAllColorOutputs()
  */
 void RenderPassGraphicsBase::setDepthStencilOutput(
 	const char *name,
-	foundation::render::RenderPassLoadOp load_op,
-	foundation::render::RenderPassStoreOp store_op,
-	foundation::render::RenderPassClearDepthStencil clear_value
+	scapes::visual::hardware::RenderPassLoadOp load_op,
+	scapes::visual::hardware::RenderPassStoreOp store_op,
+	scapes::visual::hardware::RenderPassClearDepthStencil clear_value
 )
 {
 	depthstencil_output.renderbuffer_name = std::string(name);
@@ -596,9 +596,9 @@ void RenderPassGraphicsBase::removeDepthStencilOutput()
 /*
  */
 void RenderPassGraphicsBase::setSwapChainOutput(
-	foundation::render::RenderPassLoadOp load_op,
-	foundation::render::RenderPassStoreOp store_op,
-	foundation::render::RenderPassClearColor clear_value
+	scapes::visual::hardware::RenderPassLoadOp load_op,
+	scapes::visual::hardware::RenderPassStoreOp store_op,
+	scapes::visual::hardware::RenderPassClearColor clear_value
 )
 {
 	swapchain_output.load_op = load_op;
@@ -663,11 +663,11 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 	if (color_outputs.size() == 0 && !has_depthstencil_output)
 		return;
 
-	foundation::render::RenderPassAttachment attachments[32];
+	scapes::visual::hardware::RenderPassAttachment attachments[32];
 	uint32_t color_references[32];
 	uint32_t depthstencil_reference = 0;
 
-	foundation::render::RenderPassDescription description;
+	scapes::visual::hardware::RenderPassDescription description;
 
 	description.resolve_attachments = nullptr;
 	description.color_attachments = color_references;
@@ -676,14 +676,14 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 	uint32_t num_attachments = 0;
 	for (; num_attachments < color_outputs.size(); ++num_attachments)
 	{
-		foundation::render::RenderPassAttachment &attachment = attachments[num_attachments];
+		scapes::visual::hardware::RenderPassAttachment &attachment = attachments[num_attachments];
 		const FrameBufferOutput &output = color_outputs[num_attachments];
 		const std::string &texture_name = output.renderbuffer_name;
 
 		attachment.clear_value = output.clear_value;
 		attachment.load_op = output.load_op;
 		attachment.store_op = output.store_op;
-		attachment.samples = foundation::render::Multisample::COUNT_1;
+		attachment.samples = scapes::visual::hardware::Multisample::COUNT_1;
 		attachment.format = render_graph->getRenderBufferFormat(texture_name.c_str());
 
 		color_references[num_attachments] = num_attachments;
@@ -691,13 +691,13 @@ void RenderPassGraphicsBase::createRenderPassOffscreen()
 
 	if (has_depthstencil_output)
 	{
-		foundation::render::RenderPassAttachment &attachment = attachments[num_attachments];
+		scapes::visual::hardware::RenderPassAttachment &attachment = attachments[num_attachments];
 		const std::string &texture_name = depthstencil_output.renderbuffer_name;
 
 		attachment.clear_value = depthstencil_output.clear_value;
 		attachment.load_op = depthstencil_output.load_op;
 		attachment.store_op = depthstencil_output.store_op;
-		attachment.samples = foundation::render::Multisample::COUNT_1;
+		attachment.samples = scapes::visual::hardware::Multisample::COUNT_1;
 		attachment.format = render_graph->getRenderBufferFormat(texture_name.c_str());
 
 		depthstencil_reference = num_attachments;
@@ -714,7 +714,7 @@ void RenderPassGraphicsBase::createRenderPassSwapChain()
 	if (!has_swapchain_output)
 		return;
 
-	foundation::render::SwapChain swap_chain = render_graph->getSwapChain();
+	scapes::visual::hardware::SwapChain swap_chain = render_graph->getSwapChain();
 	assert(swap_chain != SCAPES_NULL_HANDLE);
 
 	render_pass_swapchain = device->createRenderPass(swap_chain, swapchain_output.load_op, swapchain_output.store_op, swapchain_output.clear_value);
@@ -743,7 +743,7 @@ void RenderPassPrepareOld::onInvalidate()
 	first_frame = true;
 }
 
-void RenderPassPrepareOld::onRender(foundation::render::CommandBuffer command_buffer)
+void RenderPassPrepareOld::onRender(scapes::visual::hardware::CommandBuffer command_buffer)
 {
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
@@ -769,30 +769,30 @@ visual::IRenderPass *RenderPassGeometry::create(visual::RenderGraph *render_grap
  */
 void RenderPassGeometry::onInit()
 {
-	device->setCullMode(graphics_pipeline, foundation::render::CullMode::BACK);
+	device->setCullMode(graphics_pipeline, scapes::visual::hardware::CullMode::BACK);
 	device->setDepthTest(graphics_pipeline, true);
 	device->setDepthWrite(graphics_pipeline, true);
 }
 
-void RenderPassGeometry::onRender(foundation::render::CommandBuffer command_buffer)
+void RenderPassGeometry::onRender(scapes::visual::hardware::CommandBuffer command_buffer)
 {
-	auto query = foundation::game::Query<foundation::components::Transform, visual::components::Renderable>(world);
+	auto query = foundation::game::Query<visual::components::Transform, visual::components::Renderable>(world);
 
 	query.begin();
 
 	while (query.next())
 	{
 		uint32_t num_items = query.getNumComponents();
-		foundation::components::Transform *transforms = query.getComponents<foundation::components::Transform>(0);
+		visual::components::Transform *transforms = query.getComponents<visual::components::Transform>(0);
 		visual::components::Renderable *renderables = query.getComponents<visual::components::Renderable>(1);
 
 		for (uint32_t i = 0; i < num_items; ++i)
 		{
-			const foundation::components::Transform &transform = transforms[i];
+			const visual::components::Transform &transform = transforms[i];
 			const visual::components::Renderable &renderable = renderables[i];
 			const foundation::math::mat4 &node_transform = transform.transform;
 
-			foundation::render::BindSet material_bindings = renderable.material->bindings;
+			scapes::visual::hardware::BindSet material_bindings = renderable.material->bindings;
 
 			device->clearVertexStreams(graphics_pipeline);
 			device->setVertexStream(graphics_pipeline, 0, renderable.mesh->vertex_buffer);
@@ -843,7 +843,7 @@ void RenderPassLBuffer::onInit()
 	device->setVertexStream(graphics_pipeline, 0, unit_quad->vertex_buffer);
 }
 
-void RenderPassLBuffer::onRender(foundation::render::CommandBuffer command_buffer)
+void RenderPassLBuffer::onRender(scapes::visual::hardware::CommandBuffer command_buffer)
 {
 	auto query = foundation::game::Query<visual::components::SkyLight>(world);
 
@@ -907,7 +907,7 @@ void RenderPassPost::onInit()
 	device->setVertexStream(graphics_pipeline, 0, unit_quad->vertex_buffer);
 }
 
-void RenderPassPost::onRender(foundation::render::CommandBuffer command_buffer)
+void RenderPassPost::onRender(scapes::visual::hardware::CommandBuffer command_buffer)
 {
 	device->drawIndexedPrimitiveInstanced(
 		command_buffer,
@@ -939,7 +939,7 @@ void RenderPassImGui::onInit()
 	ImGuiIO &io = context->IO;
 	io.Fonts->GetTexDataAsRGBA32(&pixels, reinterpret_cast<int *>(&width), reinterpret_cast<int *>(&height));
 
-	font_texture = device->createTexture2D(width, height, 1, foundation::render::Format::R8G8B8A8_UNORM, pixels);
+	font_texture = device->createTexture2D(width, height, 1, scapes::visual::hardware::Format::R8G8B8A8_UNORM, pixels);
 	font_bind_set = device->createBindSet();
 	device->bindTexture(font_bind_set, 0, font_texture);
 
@@ -965,7 +965,7 @@ void RenderPassImGui::onShutdown()
 	invalidateTextureIDs();
 }
 
-void RenderPassImGui::onRender(foundation::render::CommandBuffer command_buffer)
+void RenderPassImGui::onRender(scapes::visual::hardware::CommandBuffer command_buffer)
 {
 	assert(context);
 	assert(context->Viewports.size() > 0);
@@ -1005,7 +1005,7 @@ void RenderPassImGui::onRender(foundation::render::CommandBuffer command_buffer)
 				uint32_t base_index = index_offset + command.IdxOffset;
 				int32_t base_vertex = vertex_offset + command.VtxOffset;
 
-				foundation::render::BindSet bind_set = reinterpret_cast<foundation::render::BindSet>(command.TextureId);
+				scapes::visual::hardware::BindSet bind_set = reinterpret_cast<scapes::visual::hardware::BindSet>(command.TextureId);
 				device->setBindSet(graphics_pipeline, 0, bind_set);
 
 				float x0 = (command.ClipRect.x - clip_offset.x) * clip_scale.x;
@@ -1038,13 +1038,13 @@ void RenderPassImGui::onRender(foundation::render::CommandBuffer command_buffer)
 
 /*
  */
-ImTextureID RenderPassImGui::fetchTextureID(foundation::render::Texture texture)
+ImTextureID RenderPassImGui::fetchTextureID(scapes::visual::hardware::Texture texture)
 {
 	auto it = registered_textures.find(texture);
 	if (it != registered_textures.end())
 		return it->second;
 
-	foundation::render::BindSet bind_set = device->createBindSet();
+	scapes::visual::hardware::BindSet bind_set = device->createBindSet();
 	device->bindTexture(bind_set, 0, texture);
 
 	registered_textures.insert(std::make_pair(texture, bind_set));
@@ -1078,16 +1078,16 @@ void RenderPassImGui::updateBuffers(const ImDrawData &draw_data)
 	static_assert(index_size == 2 || index_size == 4, "Wrong ImDrawIdx size");
 	static_assert(vertex_size == 20, "Wrong ImDrawVert size");
 
-	foundation::render::IndexFormat index_format = foundation::render::IndexFormat::UINT16;
+	scapes::visual::hardware::IndexFormat index_format = scapes::visual::hardware::IndexFormat::UINT16;
 	if (index_size == 4)
-		index_format = foundation::render::IndexFormat::UINT32;
+		index_format = scapes::visual::hardware::IndexFormat::UINT32;
 
 	static const uint8_t num_attributes = 3;
-	static foundation::render::VertexAttribute attributes[3] =
+	static scapes::visual::hardware::VertexAttribute attributes[3] =
 	{
-		{ foundation::render::Format::R32G32_SFLOAT, offsetof(ImDrawVert, pos), },
-		{ foundation::render::Format::R32G32_SFLOAT, offsetof(ImDrawVert, uv), },
-		{ foundation::render::Format::R8G8B8A8_UNORM, offsetof(ImDrawVert, col), },
+		{ scapes::visual::hardware::Format::R32G32_SFLOAT, offsetof(ImDrawVert, pos), },
+		{ scapes::visual::hardware::Format::R32G32_SFLOAT, offsetof(ImDrawVert, uv), },
+		{ scapes::visual::hardware::Format::R8G8B8A8_UNORM, offsetof(ImDrawVert, col), },
 	};
 
 	// resize index buffer
@@ -1096,7 +1096,7 @@ void RenderPassImGui::updateBuffers(const ImDrawData &draw_data)
 		index_buffer_size = index_size * num_indices;
 
 		device->destroyIndexBuffer(indices);
-		indices = device->createIndexBuffer(foundation::render::BufferType::DYNAMIC, index_format, num_indices, nullptr);
+		indices = device->createIndexBuffer(scapes::visual::hardware::BufferType::DYNAMIC, index_format, num_indices, nullptr);
 	}
 
 	// resize vertex buffer
@@ -1105,7 +1105,7 @@ void RenderPassImGui::updateBuffers(const ImDrawData &draw_data)
 		vertex_buffer_size = vertex_size * num_vertices;
 
 		device->destroyVertexBuffer(vertices);
-		vertices = device->createVertexBuffer(foundation::render::BufferType::DYNAMIC, vertex_size, num_vertices, num_attributes, attributes, nullptr);
+		vertices = device->createVertexBuffer(scapes::visual::hardware::BufferType::DYNAMIC, vertex_size, num_vertices, num_attributes, attributes, nullptr);
 	}
 
 	ImDrawVert *vertex_data = reinterpret_cast<ImDrawVert *>(device->map(vertices));
@@ -1143,8 +1143,8 @@ void RenderPassImGui::setupRenderState(const ImDrawData &draw_data)
 	device->setPushConstants(graphics_pipeline, sizeof(foundation::math::mat4), &projection);
 
 	device->setBlending(graphics_pipeline, true);
-	device->setBlendFactors(graphics_pipeline, foundation::render::BlendFactor::SRC_ALPHA, foundation::render::BlendFactor::ONE_MINUS_SRC_ALPHA);
-	device->setCullMode(graphics_pipeline, foundation::render::CullMode::NONE);
+	device->setBlendFactors(graphics_pipeline, scapes::visual::hardware::BlendFactor::SRC_ALPHA, scapes::visual::hardware::BlendFactor::ONE_MINUS_SRC_ALPHA);
+	device->setCullMode(graphics_pipeline, scapes::visual::hardware::CullMode::NONE);
 	device->setDepthWrite(graphics_pipeline, false);
 	device->setDepthTest(graphics_pipeline, false);
 }
@@ -1182,7 +1182,7 @@ void RenderPassSwapRenderBuffers::shutdown()
 	clear();
 }
 
-void RenderPassSwapRenderBuffers::render(foundation::render::CommandBuffer command_buffer)
+void RenderPassSwapRenderBuffers::render(scapes::visual::hardware::CommandBuffer command_buffer)
 {
 	for (const SwapPair &pair : pairs)
 		render_graph->swapRenderBuffers(pair.src.c_str(), pair.dst.c_str());

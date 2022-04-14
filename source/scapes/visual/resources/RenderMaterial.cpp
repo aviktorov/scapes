@@ -1,27 +1,30 @@
-#include <scapes/visual/Resources.h>
-#include "HashUtils.h"
+#include <scapes/visual/RenderMaterial.h>
+#include <scapes/visual/Texture.h>
+#include <scapes/visual/hardware/Device.h>
+
+#include <HashUtils.h>
 
 using namespace scapes;
 using namespace scapes::visual;
 
 /*
  */
-size_t ResourceTraits<resources::RenderMaterial>::size()
+size_t ResourceTraits<RenderMaterial>::size()
 {
-	return sizeof(resources::RenderMaterial);
+	return sizeof(RenderMaterial);
 }
 
-void ResourceTraits<resources::RenderMaterial>::create(
+void ResourceTraits<RenderMaterial>::create(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,
 	TextureHandle albedo,
 	TextureHandle normal,
 	TextureHandle roughness,
 	TextureHandle metalness,
-	foundation::render::Device *device
+	scapes::visual::hardware::Device *device
 )
 {
-	resources::RenderMaterial *render_material = reinterpret_cast<resources::RenderMaterial *>(memory);
+	RenderMaterial *render_material = reinterpret_cast<RenderMaterial *>(memory);
 
 	*render_material = {};
 	render_material->device = device;
@@ -38,13 +41,13 @@ void ResourceTraits<resources::RenderMaterial>::create(
 	device->bindTexture(render_material->bindings, 3, render_material->metalness->gpu_data);
 }
 
-void ResourceTraits<resources::RenderMaterial>::destroy(
+void ResourceTraits<RenderMaterial>::destroy(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory
 )
 {
-	resources::RenderMaterial *render_material = reinterpret_cast<resources::RenderMaterial *>(memory);
-	foundation::render::Device *device = render_material->device;
+	RenderMaterial *render_material = reinterpret_cast<RenderMaterial *>(memory);
+	scapes::visual::hardware::Device *device = render_material->device;
 
 	assert(device);
 
@@ -53,7 +56,7 @@ void ResourceTraits<resources::RenderMaterial>::destroy(
 	*render_material = {};
 }
 
-foundation::resources::hash_t ResourceTraits<resources::RenderMaterial>::fetchHash(
+foundation::resources::hash_t ResourceTraits<RenderMaterial>::fetchHash(
 	foundation::resources::ResourceManager *resource_manager,
 	foundation::io::FileSystem *file_system,
 	void *memory,
@@ -63,7 +66,7 @@ foundation::resources::hash_t ResourceTraits<resources::RenderMaterial>::fetchHa
 	return 0;
 }
 
-bool ResourceTraits<resources::RenderMaterial>::reload(
+bool ResourceTraits<RenderMaterial>::reload(
 	foundation::resources::ResourceManager *resource_manager,
 	foundation::io::FileSystem *file_system,
 	void *memory,

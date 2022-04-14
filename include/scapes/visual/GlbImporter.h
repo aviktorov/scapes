@@ -1,7 +1,7 @@
 #pragma once
 
 #include <scapes/visual/Fwd.h>
-#include <scapes/visual/Resources.h>
+#include <scapes/visual/RenderMaterial.h>
 
 namespace scapes::visual
 {
@@ -13,7 +13,7 @@ namespace scapes::visual
 		static SCAPES_API GlbImporter *create(
 			foundation::resources::ResourceManager *resource_manager,
 			foundation::game::World *world,
-			foundation::render::Device *device
+			hardware::Device *device
 		);
 		static SCAPES_API void destroy(GlbImporter *importer);
 		

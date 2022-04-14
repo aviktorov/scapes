@@ -3,10 +3,8 @@
 #include <utils/CubemapRenderer.h>
 #include <utils/Texture2DRenderer.h>
 
-#include <scapes/visual/Resources.h>
-#include <scapes/visual/Components.h>
+#include <scapes/visual/components/Components.h>
 
-#include <scapes/foundation/components/Components.h>
 #include <scapes/foundation/game/World.h>
 #include <scapes/foundation/game/Entity.h>
 #include <scapes/foundation/math/Math.h>
@@ -42,9 +40,9 @@ namespace scapes::visual::impl
 
 	/*
 	 */
-	TextureHandle HdriImporter::bakeBRDF(foundation::render::Format format, uint32_t size)
+	TextureHandle HdriImporter::bakeBRDF(hardware::Format format, uint32_t size)
 	{
-		TextureHandle result = resource_manager->create<resources::Texture>(device, format, size, size);
+		TextureHandle result = resource_manager->create<Texture>(device, format, size, size);
 		result->gpu_data = device->createTexture2D(result->width, result->height, result->mip_levels, result->format);
 
 		utils::Texture2DRenderer renderer(device);
@@ -52,20 +50,20 @@ namespace scapes::visual::impl
 		renderer.render(unit_quad.get(), default_vertex.get(), bake_brdf_fragment.get());
 		renderer.shutdown();
 
-		device->setTextureSamplerWrapMode(result->gpu_data, foundation::render::SamplerWrapMode::CLAMP_TO_EDGE);
+		device->setTextureSamplerWrapMode(result->gpu_data, hardware::SamplerWrapMode::CLAMP_TO_EDGE);
 
 		return result;
 	}
 
-	IBLTextureHandle HdriImporter::import(const foundation::io::URI &uri, foundation::render::Format format, uint32_t size, TextureHandle baked_brdf)
+	IBLTextureHandle HdriImporter::import(const foundation::io::URI &uri, hardware::Format format, uint32_t size, TextureHandle baked_brdf)
 	{
-		TextureHandle hdri_texture = resource_manager->fetch<resources::Texture>(uri, device);
+		TextureHandle hdri_texture = resource_manager->fetch<Texture>(uri, device);
 		if (hdri_texture.get() == nullptr)
 			return IBLTextureHandle();
 
 		uint32_t mips = static_cast<int>(std::floor(std::log2(size)) + 1);
 
-		resources::Texture diffuse_irradiance = {};
+		Texture diffuse_irradiance = {};
 		diffuse_irradiance.format = format;
 		diffuse_irradiance.width = size;
 		diffuse_irradiance.height = size;
@@ -73,7 +71,7 @@ namespace scapes::visual::impl
 		diffuse_irradiance.layers = 6;
 		diffuse_irradiance.gpu_data = device->createTextureCube(size, 1, format);
 
-		resources::Texture temp_cubemap = {};
+		Texture temp_cubemap = {};
 		temp_cubemap.format = format;
 		temp_cubemap.width = size;
 		temp_cubemap.height = size;
@@ -81,7 +79,7 @@ namespace scapes::visual::impl
 		temp_cubemap.layers = 6;
 		temp_cubemap.gpu_data = device->createTextureCube(size, 1, format);
 
-		resources::Texture prefiltered_specular = {};
+		Texture prefiltered_specular = {};
 		prefiltered_specular.format = format;
 		prefiltered_specular.width = size;
 		prefiltered_specular.height = size;
@@ -134,7 +132,7 @@ namespace scapes::visual::impl
 
 		device->destroyTexture(temp_cubemap.gpu_data);
 
-		IBLTextureHandle result = resource_manager->create<resources::IBLTexture>(device);
+		IBLTextureHandle result = resource_manager->create<IBLTexture>(device);
 
 		result->diffuse_irradiance_cubemap = diffuse_irradiance.gpu_data;
 		result->prefiltered_specular_cubemap = prefiltered_specular.gpu_data;

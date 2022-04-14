@@ -1,9 +1,7 @@
 #include "GlbImporter.h"
 
-#include <scapes/visual/Resources.h>
-#include <scapes/visual/Components.h>
+#include <scapes/visual/components/Components.h>
 
-#include <scapes/foundation/components/Components.h>
 #include <scapes/foundation/game/World.h>
 #include <scapes/foundation/game/Entity.h>
 #include <scapes/foundation/math/Math.h>
@@ -100,7 +98,7 @@ namespace scapes::visual::impl
 	GlbImporter::GlbImporter(
 		foundation::resources::ResourceManager *resource_manager,
 		foundation::game::World *world,
-		foundation::render::Device *device
+		hardware::Device *device
 	)
 		: resource_manager(resource_manager), world(world), device(device)
 	{
@@ -140,16 +138,16 @@ namespace scapes::visual::impl
 		}
 
 		// import meshes
-		std::map<const cgltf_mesh *, visual::MeshHandle> mapped_meshes;
+		std::map<const cgltf_mesh *, MeshHandle> mapped_meshes;
 
 		for (cgltf_size i = 0; i < data->meshes_count; ++i)
 		{
-			visual::MeshHandle mesh = import_mesh(&data->meshes[i]);
+			MeshHandle mesh = import_mesh(&data->meshes[i]);
 			mapped_meshes.insert({&data->meshes[i], mesh});
 		}
 
 		// import images
-		std::map<const cgltf_image *, visual::TextureHandle> mapped_textures;
+		std::map<const cgltf_image *, TextureHandle> mapped_textures;
 		for (cgltf_size i = 0; i < data->images_count; ++i)
 		{
 			const cgltf_image &image = data->images[i];
@@ -160,13 +158,13 @@ namespace scapes::visual::impl
 			assert(data);
 			assert(size);
 
-			visual::TextureHandle texture = resource_manager->loadFromMemory<visual::resources::Texture>(data, size, device);
+			TextureHandle texture = resource_manager->loadFromMemory<Texture>(data, size, device);
 
 			mapped_textures.insert({&image, texture});
 		}
 
 		// import materials
-		std::map<const cgltf_material *, visual::RenderMaterialHandle> mapped_materials;
+		std::map<const cgltf_material *, RenderMaterialHandle> mapped_materials;
 
 		for (cgltf_size i = 0; i < data->materials_count; ++i)
 		{
@@ -177,10 +175,10 @@ namespace scapes::visual::impl
 
 			// TODO: metalness / roughness maps
 
-			visual::TextureHandle albedo = default_material->albedo;
-			visual::TextureHandle normal = default_material->normal;
-			visual::TextureHandle roughness = default_material->roughness;
-			visual::TextureHandle metalness = default_material->metalness;
+			TextureHandle albedo = default_material->albedo;
+			TextureHandle normal = default_material->normal;
+			TextureHandle roughness = default_material->roughness;
+			TextureHandle metalness = default_material->metalness;
 
 			if (base_color_texture)
 				albedo = mapped_textures[base_color_texture->image];
@@ -188,7 +186,7 @@ namespace scapes::visual::impl
 			if (normal_texture)
 				normal = mapped_textures[normal_texture->image];
 
-			visual::RenderMaterialHandle render_material = resource_manager->create<visual::resources::RenderMaterial>(
+			RenderMaterialHandle render_material = resource_manager->create<RenderMaterial>(
 				albedo,
 				normal,
 				roughness,
@@ -208,16 +206,16 @@ namespace scapes::visual::impl
 				auto it = mapped_meshes.find(node->mesh);
 				assert(it != mapped_meshes.end());
 
-				visual::MeshHandle mesh = it->second;
+				MeshHandle mesh = it->second;
 
 				foundation::game::Entity entity = foundation::game::Entity(world);
 
 				auto mat_it = mapped_materials.find(node->mesh->primitives[0].material);
 
-				visual::RenderMaterialHandle material = (mat_it != mapped_materials.end()) ? mat_it->second : default_material;
+				RenderMaterialHandle material = (mat_it != mapped_materials.end()) ? mat_it->second : default_material;
 
-				entity.addComponent<foundation::components::Transform>(transform);
-				entity.addComponent<visual::components::Renderable>(mesh, material);
+				entity.addComponent<components::Transform>(transform);
+				entity.addComponent<components::Renderable>(mesh, material);
 			}
 
 			for (cgltf_size i = 0; i < node->children_count; ++i)
@@ -240,7 +238,7 @@ namespace scapes::visual::impl
 
 	/*
 	 */
-	visual::MeshHandle GlbImporter::import_mesh(const cgltf_mesh *mesh)
+	MeshHandle GlbImporter::import_mesh(const cgltf_mesh *mesh)
 	{
 		assert(mesh);
 		assert(mesh->primitives_count >= 1);
@@ -273,16 +271,16 @@ namespace scapes::visual::impl
 		assert(cgltf_indices && cgltf_positions && cgltf_normals);
 		assert(cgltf_positions->count == cgltf_normals->count);
 
-		visual::resources::Mesh::Vertex *vertices = nullptr;
+		Mesh::Vertex *vertices = nullptr;
 		uint32_t *indices = nullptr;
 
 		uint32_t num_vertices = static_cast<uint32_t>(cgltf_positions->count);
 		uint32_t num_indices = static_cast<uint32_t>(cgltf_indices->count);
 
-		vertices = new visual::resources::Mesh::Vertex[num_vertices];
+		vertices = new Mesh::Vertex[num_vertices];
 		indices = new uint32_t[num_indices];
 
-		memset(vertices, 0, sizeof(visual::resources::Mesh::Vertex) * num_vertices);
+		memset(vertices, 0, sizeof(Mesh::Vertex) * num_vertices);
 		memset(indices, 0, sizeof(uint32_t) * num_indices);
 
 		for (cgltf_size i = 0; i < cgltf_positions->count; i++)
@@ -336,7 +334,7 @@ namespace scapes::visual::impl
 			assert(success);
 		}
 
-		visual::MeshHandle result = resource_manager->create<resources::Mesh>(device, num_vertices, vertices, num_indices, indices);
+		MeshHandle result = resource_manager->create<Mesh>(device, num_vertices, vertices, num_indices, indices);
 
 		delete[] vertices;
 		delete[] indices;

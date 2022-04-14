@@ -1,4 +1,5 @@
-#include <scapes/visual/Resources.h>
+#include <scapes/visual/Shader.h>
+#include <scapes/visual/shaders/Compiler.h>
 
 #include <scapes/foundation/profiler/Profiler.h>
 
@@ -7,20 +8,20 @@ using namespace scapes::visual;
 
 /*
  */
-size_t ResourceTraits<resources::Shader>::size()
+size_t ResourceTraits<Shader>::size()
 {
-	return sizeof(resources::Shader);
+	return sizeof(Shader);
 }
 
-void ResourceTraits<resources::Shader>::create(
+void ResourceTraits<Shader>::create(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,
-	foundation::render::ShaderType type,
-	foundation::render::Device *device,
-	foundation::shaders::Compiler *compiler
+	scapes::visual::hardware::ShaderType type,
+	scapes::visual::hardware::Device *device,
+	visual::shaders::Compiler *compiler
 )
 {
-	resources::Shader *shader = reinterpret_cast<resources::Shader *>(memory);
+	Shader *shader = reinterpret_cast<Shader *>(memory);
 
 	*shader = {};
 	shader->type = type;
@@ -28,13 +29,13 @@ void ResourceTraits<resources::Shader>::create(
 	shader->compiler = compiler;
 }
 
-void ResourceTraits<resources::Shader>::destroy(
+void ResourceTraits<Shader>::destroy(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory
 )
 {
-	resources::Shader *shader = reinterpret_cast<resources::Shader *>(memory);
-	foundation::render::Device *device = shader->device;
+	Shader *shader = reinterpret_cast<Shader *>(memory);
+	scapes::visual::hardware::Device *device = shader->device;
 
 	assert(device);
 
@@ -43,23 +44,23 @@ void ResourceTraits<resources::Shader>::destroy(
 	*shader = {};
 }
 
-foundation::resources::hash_t ResourceTraits<resources::Shader>::fetchHash(
+foundation::resources::hash_t ResourceTraits<Shader>::fetchHash(
 	foundation::resources::ResourceManager *resource_manager,
 	foundation::io::FileSystem *file_system,
 	void *memory,
 	const foundation::io::URI &uri
 )
 {
-	resources::Shader *shader = reinterpret_cast<resources::Shader *>(memory);
+	Shader *shader = reinterpret_cast<Shader *>(memory);
 	assert(shader);
 
-	foundation::shaders::Compiler *compiler = shader->compiler;
+	visual::shaders::Compiler *compiler = shader->compiler;
 	assert(compiler);
 
-	return compiler->getHash(static_cast<foundation::shaders::ShaderType>(shader->type), uri);
+	return compiler->getHash(static_cast<visual::shaders::ShaderType>(shader->type), uri);
 }
 
-bool ResourceTraits<resources::Shader>::reload(
+bool ResourceTraits<Shader>::reload(
 	foundation::resources::ResourceManager *resource_manager,
 	foundation::io::FileSystem *file_system,
 	void *memory,
@@ -68,10 +69,10 @@ bool ResourceTraits<resources::Shader>::reload(
 {
 	assert(file_system);
 
-	resources::Shader *shader = reinterpret_cast<resources::Shader *>(memory);
+	Shader *shader = reinterpret_cast<Shader *>(memory);
 	assert(shader);
 
-	resources::Shader temp = {};
+	Shader temp = {};
 	temp.type = shader->type;
 	temp.device = shader->device;
 	temp.compiler = shader->compiler;
@@ -100,7 +101,7 @@ bool ResourceTraits<resources::Shader>::reload(
 
 }
 
-bool ResourceTraits<resources::Shader>::loadFromMemory(
+bool ResourceTraits<Shader>::loadFromMemory(
 	foundation::resources::ResourceManager *resource_manager,
 	void *memory,
 	const uint8_t *data,
@@ -109,28 +110,28 @@ bool ResourceTraits<resources::Shader>::loadFromMemory(
 {
 	SCAPES_PROFILER();
 
-	resources::Shader *shader = reinterpret_cast<resources::Shader *>(memory);
+	Shader *shader = reinterpret_cast<Shader *>(memory);
 	assert(shader);
 
-	foundation::render::Device *device = shader->device;
+	scapes::visual::hardware::Device *device = shader->device;
 	assert(device);
 
-	foundation::shaders::Compiler *compiler = shader->compiler;
+	visual::shaders::Compiler *compiler = shader->compiler;
 	assert(compiler);
 
-	foundation::shaders::ShaderIL *il = nullptr;
+	visual::shaders::ShaderIL *il = nullptr;
 	
 	{
 		SCAPES_PROFILER_N("ResourcePipeline<Shader>::loadFromMemory(): compile_to_spirv");
-		il = compiler->createShaderIL(static_cast<foundation::shaders::ShaderType>(shader->type), static_cast<uint32_t>(size), reinterpret_cast<const char *>(data), foundation::io::URI());
+		il = compiler->createShaderIL(static_cast<visual::shaders::ShaderType>(shader->type), static_cast<uint32_t>(size), reinterpret_cast<const char *>(data), foundation::io::URI());
 	}
 
 	if (il != nullptr)
 	{
 		SCAPES_PROFILER_N("ResourcePipeline<Shader>::loadFromMemory(): create_from_spirv");
 		shader->shader = device->createShaderFromIL(
-			static_cast<foundation::render::ShaderType>(il->type),
-			static_cast<foundation::render::ShaderILType>(il->il_type),
+			static_cast<scapes::visual::hardware::ShaderType>(il->type),
+			static_cast<scapes::visual::hardware::ShaderILType>(il->il_type),
 			il->bytecode_size,
 			il->bytecode_data
 		);

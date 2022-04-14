@@ -14,7 +14,7 @@ namespace scapes::visual::impl
 		GlbImporter(
 			foundation::resources::ResourceManager *resource_manager,
 			foundation::game::World *world,
-			foundation::render::Device *device
+			hardware::Device *device
 		);
 		~GlbImporter() final;
 
@@ -26,6 +26,6 @@ namespace scapes::visual::impl
 	private:
 		foundation::resources::ResourceManager *resource_manager {nullptr};
 		foundation::game::World *world {nullptr};
-		foundation::render::Device *device {nullptr};
+		hardware::Device *device {nullptr};
 	};
 }

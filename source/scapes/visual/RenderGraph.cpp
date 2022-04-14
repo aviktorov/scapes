@@ -4,8 +4,8 @@ namespace scapes::visual
 {
 	RenderGraph *RenderGraph::create(
 		foundation::resources::ResourceManager *resource_manager,
-		foundation::render::Device *device,
-		foundation::shaders::Compiler *compiler,
+		scapes::visual::hardware::Device *device,
+		visual::shaders::Compiler *compiler,
 		foundation::game::World *world,
 		MeshHandle unit_quad
 	)

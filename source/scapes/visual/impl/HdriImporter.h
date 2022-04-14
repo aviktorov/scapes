@@ -12,14 +12,14 @@ namespace scapes::visual::impl
 		HdriImporter(const HdriImporter::CreateOptions &options);
 		~HdriImporter() final;
 
-		TextureHandle bakeBRDF(foundation::render::Format format, uint32_t size) final;
-		IBLTextureHandle import(const foundation::io::URI &uri, foundation::render::Format format, uint32_t size, TextureHandle baked_brdf) final;
+		TextureHandle bakeBRDF(hardware::Format format, uint32_t size) final;
+		IBLTextureHandle import(const foundation::io::URI &uri, hardware::Format format, uint32_t size, TextureHandle baked_brdf) final;
 
 	private:
 		foundation::resources::ResourceManager *resource_manager {nullptr};
 		foundation::game::World *world {nullptr};
-		foundation::render::Device *device {nullptr};
-		foundation::shaders::Compiler *compiler {nullptr};
+		hardware::Device *device {nullptr};
+		shaders::Compiler *compiler {nullptr};
 
 		MeshHandle unit_quad;
 		MeshHandle unit_cube;

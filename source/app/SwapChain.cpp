@@ -2,7 +2,7 @@
 
 /*
  */
-SwapChain::SwapChain(scapes::foundation::render::Device *device, void *native_window)
+SwapChain::SwapChain(scapes::visual::hardware::Device *device, void *native_window)
 	: device(device)
 	, native_window(native_window)
 {
@@ -20,7 +20,7 @@ void SwapChain::init()
 	swap_chain = device->createSwapChain(native_window);
 
 	for (int i = 0; i < NUM_IN_FLIGHT_FRAMES; i++)
-		command_buffers[i] = device->createCommandBuffer(scapes::foundation::render::CommandBufferType::PRIMARY);
+		command_buffers[i] = device->createCommandBuffer(scapes::visual::hardware::CommandBufferType::PRIMARY);
 }
 
 void SwapChain::recreate()
@@ -43,9 +43,9 @@ void SwapChain::shutdown()
 
 /*
  */
-scapes::foundation::render::CommandBuffer SwapChain::acquire()
+scapes::visual::hardware::CommandBuffer SwapChain::acquire()
 {
-	scapes::foundation::render::CommandBuffer command_buffer = command_buffers[current_in_flight_frame];
+	scapes::visual::hardware::CommandBuffer command_buffer = command_buffers[current_in_flight_frame];
 	if (!device->wait(1, &command_buffer))
 		return SCAPES_NULL_HANDLE;
 
@@ -56,7 +56,7 @@ scapes::foundation::render::CommandBuffer SwapChain::acquire()
 	return command_buffer;
 }
 
-bool SwapChain::present(scapes::foundation::render::CommandBuffer command_buffer)
+bool SwapChain::present(scapes::visual::hardware::CommandBuffer command_buffer)
 {
 	bool result = device->present(swap_chain, 1, &command_buffer);
 	current_in_flight_frame = (current_in_flight_frame + 1) % NUM_IN_FLIGHT_FRAMES;
