@@ -2,23 +2,15 @@
 
 #include <scapes/Common.h>
 #include <scapes/visual/hardware/Device.h>
-
 #include <scapes/visual/RenderGraph.h>
+
+#include "GpuBindings.h"
 
 #include <vector>
 #include <unordered_map>
 
 namespace scapes::visual::impl
 {
-	class ParameterAllocator
-	{
-	public:
-		void *allocate(size_t size);
-		void deallocate(void *memory);
-	
-	private:
-	};
-
 	class RenderGraph : public visual::RenderGraph
 	{
 	public:
@@ -62,14 +54,12 @@ namespace scapes::visual::impl
 
 		hardware::BindSet getGroupBindings(const char *name) const final;
 
-		bool addGroupParameter(const char *group_name, const char *parameter_name, size_t type_size, size_t num_elements) final;
+		bool addGroupParameter(const char *group_name, const char *parameter_name, size_t element_size, size_t num_elements) final;
 		bool addGroupParameter(const char *group_name, const char *parameter_name, GroupParameterType type, size_t num_elements) final;
 		bool removeGroupParameter(const char *group_name, const char *parameter_name) final;
-		void removeAllGroupParameters() final;
 
 		bool addGroupTexture(const char *group_name, const char *texture_name) final;
 		bool removeGroupTexture(const char *group_name, const char *texture_name) final;
-		void removeAllGroupTextures() final;
 
 		TextureHandle getGroupTexture(const char *group_name, const char *texture_name) const final;
 		bool setGroupTexture(const char *group_name, const char *texture_name, TextureHandle handle) final;
@@ -95,41 +85,6 @@ namespace scapes::visual::impl
 		void removeAllRenderPasses() final;
 
 	private:
-		struct Group;
-		struct GroupParameter;
-		struct GroupTexture;
-
-		struct GroupParameter
-		{
-			std::string name;
-			GroupParameterType type {GroupParameterType::UNDEFINED};
-			size_t type_size {0};
-			size_t num_elements {0};
-			void *memory {nullptr};
-
-			Group *group {nullptr};
-		};
-
-		struct GroupTexture
-		{
-			std::string name;
-			TextureHandle texture;
-
-			Group *group {nullptr};
-		};
-
-		struct Group
-		{
-			std::string name;
-			std::vector<GroupParameter *> parameters;
-			std::vector<GroupTexture *> textures;
-
-			hardware::BindSet bindings {SCAPES_NULL_HANDLE};
-			hardware::UniformBuffer buffer {SCAPES_NULL_HANDLE};
-			uint32_t buffer_size {0};
-			bool dirty {true};
-		};
-
 		struct RenderBuffer
 		{
 			std::string name;
@@ -156,9 +111,7 @@ namespace scapes::visual::impl
 		};
 
 	private:
-		bool addGroupParameterInternal(const char *group_name, const char *parameter_name, GroupParameterType type, size_t type_size, size_t num_elements);
-
-		size_t getGroupParameterTypeSize(const char *group_name, const char *parameter_name) const final;
+		size_t getGroupParameterElementSize(const char *group_name, const char *parameter_name) const final;
 		size_t getGroupParameterNumElements(const char *group_name, const char *parameter_name) const final;
 		const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t index) const final;
 		bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_index, size_t num_src_elements, const void *src_data) final;
@@ -170,20 +123,10 @@ namespace scapes::visual::impl
 		int32_t findRenderPassType(const char *type_name);
 		int32_t findRenderPassType(uint64_t hash);
 
-		void deserializeGroup(foundation::serde::yaml::NodeRef group_node);
-		void deserializeGroupParameter(const char *group_name, foundation::serde::yaml::NodeRef parameter_node);
-		void deserializeGroupTexture(const char *group_name, foundation::serde::yaml::NodeRef texture_node);
 		void deserializeRenderBuffers(foundation::serde::yaml::NodeRef renderbuffers_root);
 		void deserializeRenderPass(foundation::serde::yaml::NodeRef renderpass_node);
 
 	private:
-		void destroyGroup(Group *group);
-		void invalidateGroup(Group *group);
-		bool flushGroup(Group *group);
-
-		void destroyGroupParameter(GroupParameter *parameter);
-		void destroyGroupTexture(GroupTexture *texture);
-
 		void destroyRenderBuffer(RenderBuffer *buffer);
 		void invalidateRenderBuffer(RenderBuffer *buffer);
 		bool flushRenderBuffer(RenderBuffer *buffer);
@@ -205,12 +148,9 @@ namespace scapes::visual::impl
 		RenderPassesRuntime passes_runtime;
 
 		ParameterAllocator parameter_allocator;
+		GpuBindings gpu_bindings;
 
-		std::unordered_map<uint64_t, Group *> group_lookup;
-		std::unordered_map<uint64_t, GroupParameter *> group_parameter_lookup;
-		std::unordered_map<uint64_t, GroupTexture *> group_texture_lookup;
 		std::unordered_map<uint64_t, RenderBuffer *> render_buffer_lookup;
-
 		std::unordered_map<uint64_t, hardware::FrameBuffer> framebuffer_cache;
 
 		hardware::SwapChain swap_chain {SCAPES_NULL_HANDLE};

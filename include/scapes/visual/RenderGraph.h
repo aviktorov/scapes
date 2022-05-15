@@ -2,37 +2,14 @@
 
 #include <scapes/Common.h>
 #include <scapes/foundation/TypeTraits.h>
-#include <scapes/foundation/serde/Yaml.h>
 
+#include <scapes/visual/serde/Yaml.h>
 #include <scapes/visual/Mesh.h>
 #include <scapes/visual/Texture.h>
 #include <scapes/visual/Fwd.h>
 
 namespace scapes::visual
 {
-	/*
-	 */
-	enum class GroupParameterType
-	{
-		UNDEFINED = 0,
-		FLOAT,
-		INT,
-		UINT,
-		VEC2,
-		VEC3,
-		VEC4,
-		IVEC2,
-		IVEC3,
-		IVEC4,
-		UVEC2,
-		UVEC3,
-		UVEC4,
-		MAT3,
-		MAT4,
-
-		MAX,
-	};
-
 	/*
 	 */
 	class IRenderPass
@@ -103,14 +80,12 @@ namespace scapes::visual
 
 		virtual hardware::BindSet getGroupBindings(const char *name) const = 0;
 
-		virtual bool addGroupParameter(const char *group_name, const char *parameter_name, size_t type_size, size_t num_elements) = 0;
+		virtual bool addGroupParameter(const char *group_name, const char *parameter_name, size_t element_size, size_t num_elements) = 0;
 		virtual bool addGroupParameter(const char *group_name, const char *parameter_name, GroupParameterType type, size_t num_elements) = 0;
 		virtual bool removeGroupParameter(const char *group_name, const char *parameter_name) = 0;
-		virtual void removeAllGroupParameters() = 0;
 
 		virtual bool addGroupTexture(const char *group_name, const char *texture_name) = 0;
 		virtual bool removeGroupTexture(const char *group_name, const char *texture_name) = 0;
-		virtual void removeAllGroupTextures() = 0;
 
 		virtual TextureHandle getGroupTexture(const char *group_name, const char *texture_name) const = 0;
 		virtual bool setGroupTexture(const char *group_name, const char *texture_name, TextureHandle handle) = 0;
@@ -163,7 +138,7 @@ namespace scapes::visual
 		template<typename T>
 		SCAPES_INLINE const T *getGroupParameter(const char *group_name, const char *parameter_name, size_t index) const
 		{
-			assert(getGroupParameterTypeSize(group_name, parameter_name) == sizeof(T));
+			assert(getGroupParameterElementSize(group_name, parameter_name) == sizeof(T));
 			assert(getGroupParameterNumElements(group_name, parameter_name) > index);
 
 			const void *data = getGroupParameter(group_name, parameter_name, index);
@@ -175,7 +150,7 @@ namespace scapes::visual
 		template<typename T>
 		SCAPES_INLINE bool setGroupParameter(const char *group_name, const char *parameter_name, size_t num_elements, const T *value)
 		{
-			assert(getGroupParameterTypeSize(group_name, parameter_name) == sizeof(T));
+			assert(getGroupParameterElementSize(group_name, parameter_name) == sizeof(T));
 			assert(getGroupParameterNumElements(group_name, parameter_name) >= num_elements);
 
 			return setGroupParameter(group_name, parameter_name, 0, num_elements, value);
@@ -216,7 +191,7 @@ namespace scapes::visual
 		}
 
 	protected:
-		virtual size_t getGroupParameterTypeSize(const char *group_name, const char *parameter_name) const = 0;
+		virtual size_t getGroupParameterElementSize(const char *group_name, const char *parameter_name) const = 0;
 		virtual size_t getGroupParameterNumElements(const char *group_name, const char *parameter_name) const = 0;
 		virtual const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t index) const = 0;
 		virtual bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_index, size_t num_src_elements, const void *src_data) = 0;
