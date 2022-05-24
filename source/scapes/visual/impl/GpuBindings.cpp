@@ -28,14 +28,14 @@ namespace scapes::visual::impl
 	 */
 	void *ParameterAllocator::allocate(size_t size)
 	{
-		void *memory = malloc(size);
+		void *memory = ::malloc(size);
 		memset(memory, 0, size);
 		return memory;
 	}
 
 	void ParameterAllocator::deallocate(void *memory)
 	{
-		free(memory);
+		::free(memory);
 	}
 
 	/*
@@ -52,6 +52,56 @@ namespace scapes::visual::impl
 	GpuBindings::~GpuBindings()
 	{
 		clear();
+	}
+
+	/*
+	 */
+	void GpuBindings::copyTo(GpuBindings &target)
+	{
+		target.clear();
+
+		for (auto &[hash, group] : group_lookup)
+		{
+			Group *new_group = new Group();
+
+			new_group->name = group->name;
+			
+			target.group_lookup.insert({hash, new_group});
+
+			for (const GroupParameter *parameter : group->parameters)
+			{
+				uint64_t parameter_hash = hash;
+				common::HashUtils::combine(parameter_hash, std::string_view(parameter->name));
+
+				GroupParameter *new_parameter = new GroupParameter();
+				new_parameter->group = new_group;
+				new_parameter->name = parameter->name;
+				new_parameter->type = parameter->type;
+				new_parameter->element_size = parameter->element_size;
+				new_parameter->num_elements = parameter->num_elements;
+				new_parameter->memory = target.parameter_allocator.allocate(new_parameter->element_size * new_parameter->num_elements);
+				memcpy(new_parameter->memory, parameter->memory, parameter->element_size * parameter->num_elements);
+
+				new_group->parameters.push_back(new_parameter);
+				target.group_parameter_lookup.insert({parameter_hash, new_parameter});
+			}
+
+			for (const GroupTexture *texture : group->textures)
+			{
+				uint64_t texture_hash = hash;
+				common::HashUtils::combine(texture_hash, std::string_view(texture->name));
+
+				GroupTexture *new_texture = new GroupTexture();
+				new_texture->group = new_group;
+				new_texture->name = texture->name;
+				new_texture->texture = texture->texture;
+
+				new_group->textures.push_back(new_texture);
+				target.group_texture_lookup.insert({texture_hash, new_texture});
+			}
+
+			target.invalidateGroup(new_group);
+		}
 	}
 
 	/*
@@ -572,6 +622,7 @@ namespace scapes::visual::impl
 			group_parameter_lookup.erase(parameter_hash);
 
 			parameter_allocator.deallocate(parameter->memory);
+
 			delete parameter;
 		}
 

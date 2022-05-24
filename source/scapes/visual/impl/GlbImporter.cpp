@@ -114,7 +114,7 @@ namespace scapes::visual::impl
 
 	/*
 	 */
-	bool GlbImporter::import(const foundation::io::URI &uri, RenderMaterialHandle default_material)
+	bool GlbImporter::import(const foundation::io::URI &uri, MaterialHandle default_material)
 	{
 		cgltf_options parse_options = {};
 		parse_options.file.read = cgltf::read;
@@ -164,7 +164,7 @@ namespace scapes::visual::impl
 		}
 
 		// import materials
-		std::map<const cgltf_material *, RenderMaterialHandle> mapped_materials;
+		std::map<const cgltf_material *, MaterialHandle> mapped_materials;
 
 		for (cgltf_size i = 0; i < data->materials_count; ++i)
 		{
@@ -175,24 +175,24 @@ namespace scapes::visual::impl
 
 			// TODO: metalness / roughness maps
 
-			TextureHandle albedo = default_material->albedo;
-			TextureHandle normal = default_material->normal;
-			TextureHandle roughness = default_material->roughness;
-			TextureHandle metalness = default_material->metalness;
+			TextureHandle base_color = default_material->getGroupTexture("PBR", "BaseColor");
+			TextureHandle normal = default_material->getGroupTexture("PBR", "Normal");
+			TextureHandle roughness = default_material->getGroupTexture("PBR", "Roughness");
+			TextureHandle metalness = default_material->getGroupTexture("PBR", "Metalness");
 
 			if (base_color_texture)
-				albedo = mapped_textures[base_color_texture->image];
+				base_color = mapped_textures[base_color_texture->image];
 
 			if (normal_texture)
 				normal = mapped_textures[normal_texture->image];
 
-			RenderMaterialHandle render_material = resource_manager->create<RenderMaterial>(
-				albedo,
-				normal,
-				roughness,
-				metalness,
-				device
-			);
+			MaterialHandle render_material = default_material->clone();
+
+			render_material->setGroupTexture("PBR", "BaseColor", base_color);
+			render_material->setGroupTexture("PBR", "Normal", normal);
+			render_material->setGroupTexture("PBR", "Roughness", roughness);
+			render_material->setGroupTexture("PBR", "Metalness", metalness);
+			render_material->flush();
 
 			mapped_materials.insert({&material, render_material});
 		}
@@ -212,7 +212,7 @@ namespace scapes::visual::impl
 
 				auto mat_it = mapped_materials.find(node->mesh->primitives[0].material);
 
-				RenderMaterialHandle material = (mat_it != mapped_materials.end()) ? mat_it->second : default_material;
+				MaterialHandle material = (mat_it != mapped_materials.end()) ? mat_it->second : default_material;
 
 				entity.addComponent<components::Transform>(transform);
 				entity.addComponent<components::Renderable>(mesh, material);

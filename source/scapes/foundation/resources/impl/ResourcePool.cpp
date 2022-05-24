@@ -17,7 +17,7 @@ namespace scapes::foundation::resources::impl
 		for (auto &page : pages)
 		{
 			assert(page.free_elements_mask == INITIAL_FREE_MASK);
-			free(page.memory);
+			::free(page.memory);
 		}
 
 		pages.clear();
@@ -46,7 +46,7 @@ namespace scapes::foundation::resources::impl
 		if (page == nullptr)
 		{
 			Page new_page;
-			new_page.memory = malloc(element_size * ELEMENTS_IN_PAGE);
+			new_page.memory = ::malloc(element_size * ELEMENTS_IN_PAGE);
 			memset(new_page.memory, 0, element_size * ELEMENTS_IN_PAGE);
 			new_page.free_elements_mask = INITIAL_FREE_MASK;
 

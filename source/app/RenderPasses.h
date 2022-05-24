@@ -180,6 +180,7 @@ public:
 
 public:
 	SCAPES_INLINE void setMaterialBinding(uint32_t binding) { material_binding = binding; }
+	SCAPES_INLINE void setMaterialGroupName(const char *name) { material_group_name = std::string(name); }
 
 private:
 	void onInit() final;
@@ -189,6 +190,7 @@ private:
 
 private:
 	uint32_t material_binding {0};
+	std::string material_group_name;
 };
 
 template <>

@@ -47,6 +47,9 @@ namespace config
 		"textures/environment/umbrellas.hdr",
 		"textures/environment/shanghai_bund_4k.hdr",
 	};
+
+	// Materials
+	static const char *default_material_path = "materials/default.mat";
 }
 
 /*
@@ -71,18 +74,8 @@ void ApplicationResources::init()
 	unit_quad = generateMeshQuad(2.0f);
 	unit_cube = generateMeshCube(2.0f);
 
-	default_white = generateTexture(255, 255, 255);
-	default_grey = generateTexture(127, 127, 127);
-	default_black = generateTexture(0, 0, 0);
-	default_normal = generateTexture(127, 127, 255);
-
-	default_material = resource_manager->create<scapes::visual::RenderMaterial>(
-		default_grey,
-		default_normal,
-		default_white,
-		default_black,
-		device
-	);
+	default_material = resource_manager->load<scapes::visual::Material>(config::default_material_path, device, compiler);
+	default_material->flush();
 
 	loaded_shaders.reserve(config::shaders.size());
 	for (int i = 0; i < config::shaders.size(); ++i)
@@ -200,29 +193,4 @@ scapes::visual::MeshHandle ApplicationResources::generateMeshCube(float size)
 	};
 
 	return resource_manager->create<scapes::visual::Mesh>(device, num_vertices, vertices, num_indices, indices);
-}
-
-/*
- */
-scapes::visual::TextureHandle ApplicationResources::generateTexture(uint8_t r, uint8_t g, uint8_t b)
-{
-	uint8_t pixels[16] =
-	{
-		r, g, b, 255,
-		r, g, b, 255,
-		r, g, b, 255,
-		r, g, b, 255,
-	};
-
-	scapes::visual::TextureHandle result = resource_manager->create<scapes::visual::Texture>(device);
-
-	result->format = scapes::visual::hardware::Format::R8G8B8A8_UNORM;
-	result->width = 2;
-	result->height = 2;
-	result->depth = 1;
-	result->mip_levels = 1;
-	result->layers = 1;
-	result->gpu_data = device->createTexture2D(result->width, result->height, result->mip_levels, result->format, pixels);
-
-	return result;
 }

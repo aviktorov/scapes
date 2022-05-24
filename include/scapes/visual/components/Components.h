@@ -5,7 +5,7 @@
 
 #include <scapes/visual/IBLTexture.h>
 #include <scapes/visual/Mesh.h>
-#include <scapes/visual/RenderMaterial.h>
+#include <scapes/visual/Material.h>
 #include <scapes/visual/Texture.h>
 
 #include <scapes/visual/Fwd.h>
@@ -43,7 +43,7 @@ namespace scapes::visual::components
 	struct Renderable
 	{
 		MeshHandle mesh;
-		RenderMaterialHandle material;
+		MaterialHandle material;
 	};
 
 	template<>

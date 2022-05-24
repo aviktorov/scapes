@@ -97,6 +97,7 @@ RenderPass:
   type: RenderPassGeometry
   input_groups: [ Application, Camera ]
   input_material_binding: 2
+  input_material_group_name: PBR
   output_colors:
   - { name: GBufferBaseColor, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }
   - { name: GBufferNormal, load_op: CLEAR, clear_color: "0.0, 0.0, 0.0, 0.0" }

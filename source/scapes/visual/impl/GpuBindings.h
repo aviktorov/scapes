@@ -27,6 +27,8 @@ namespace scapes::visual::impl
 		);
 		~GpuBindings();
 
+		void copyTo(GpuBindings &target);
+
 		void clear();
 		void invalidate();
 		bool flush();

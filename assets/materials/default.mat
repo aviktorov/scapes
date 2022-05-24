@@ -1,0 +1,8 @@
+---
+ParameterGroup:
+  name: PBR
+  textures:
+  - { name: BaseColor, path: textures/grey.png }
+  - { name: Normal, path: textures/normal.png }
+  - { name: Roughness, path: textures/black.png }
+  - { name: Metalness, path: textures/black.png }

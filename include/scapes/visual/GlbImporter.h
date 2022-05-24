@@ -1,7 +1,7 @@
 #pragma once
 
 #include <scapes/visual/Fwd.h>
-#include <scapes/visual/RenderMaterial.h>
+#include <scapes/visual/Material.h>
 
 namespace scapes::visual
 {
@@ -20,6 +20,6 @@ namespace scapes::visual
 		virtual ~GlbImporter() { }
 
 	public:
-		virtual bool import(const foundation::io::URI &uri, RenderMaterialHandle default_material) = 0;
+		virtual bool import(const foundation::io::URI &uri, MaterialHandle default_material) = 0;
 	};
 }

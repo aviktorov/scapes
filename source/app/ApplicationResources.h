@@ -4,7 +4,7 @@
 
 #include <scapes/visual/IBLTexture.h>
 #include <scapes/visual/Mesh.h>
-#include <scapes/visual/RenderMaterial.h>
+#include <scapes/visual/Material.h>
 #include <scapes/visual/Shader.h>
 #include <scapes/visual/Texture.h>
 
@@ -36,7 +36,6 @@ public:
 private:
 	scapes::visual::MeshHandle generateMeshQuad(float size);
 	scapes::visual::MeshHandle generateMeshCube(float size);
-	scapes::visual::TextureHandle generateTexture(uint8_t r, uint8_t g, uint8_t b);
 
 private:
 	scapes::foundation::resources::ResourceManager *resource_manager {nullptr};
@@ -48,12 +47,7 @@ private:
 	scapes::visual::MeshHandle unit_cube;
 
 	scapes::visual::TextureHandle baked_brdf;
-	scapes::visual::RenderMaterialHandle default_material;
-
-	scapes::visual::TextureHandle default_white;
-	scapes::visual::TextureHandle default_grey;
-	scapes::visual::TextureHandle default_black;
-	scapes::visual::TextureHandle default_normal;
+	scapes::visual::MaterialHandle default_material;
 
 	std::vector<scapes::visual::ShaderHandle> loaded_shaders;
 	std::vector<scapes::visual::IBLTextureHandle> loaded_ibl_textures;

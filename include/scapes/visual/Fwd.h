@@ -8,16 +8,16 @@ namespace scapes::visual
 	class HdriImporter;
 
 	class RenderGraph;
+	class Material;
 
 	struct IBLTexture;
 	struct Mesh;
-	struct RenderMaterial;
 	struct Shader;
 	struct Texture;
 
 	typedef foundation::resources::ResourceHandle<IBLTexture> IBLTextureHandle;
 	typedef foundation::resources::ResourceHandle<Mesh> MeshHandle;
-	typedef foundation::resources::ResourceHandle<RenderMaterial> RenderMaterialHandle;
+	typedef foundation::resources::ResourceHandle<Material> MaterialHandle;
 	typedef foundation::resources::ResourceHandle<Shader> ShaderHandle;
 	typedef foundation::resources::ResourceHandle<Texture> TextureHandle;
 

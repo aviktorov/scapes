@@ -13,6 +13,17 @@ using namespace scapes;
 
 namespace yaml = scapes::foundation::serde::yaml;
 
+namespace c4
+{
+	/*
+	 */
+	SCAPES_INLINE bool from_chars(const yaml::csubstr buf, std::string *s)
+	{
+		*s = std::string(buf.data(), buf.size());
+		return true;
+	}
+}
+
 /*
  */
 RenderPassGraphicsBase::RenderPassGraphicsBase()
@@ -682,7 +693,7 @@ void RenderPassGeometry::onRender(visual::hardware::CommandBuffer command_buffer
 			const visual::components::Renderable &renderable = renderables[i];
 			const foundation::math::mat4 &node_transform = transform.transform;
 
-			visual::hardware::BindSet material_bindings = renderable.material->bindings;
+			visual::hardware::BindSet material_bindings = renderable.material->getGroupBindings(material_group_name.c_str());
 
 			device->clearVertexStreams(graphics_pipeline);
 			device->setVertexStream(graphics_pipeline, 0, renderable.mesh->vertex_buffer);
@@ -703,6 +714,9 @@ bool RenderPassGeometry::onDeserialize(const yaml::NodeRef node)
 
 		if (child_key.compare("input_material_binding") == 0 && child.has_val())
 			child >> material_binding;
+
+		else if (child_key.compare("input_material_group_name") == 0 && child.has_val())
+			child >> material_group_name;
 	}
 
 	return true;

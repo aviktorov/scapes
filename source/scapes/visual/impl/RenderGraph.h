@@ -147,7 +147,6 @@ namespace scapes::visual::impl
 		RenderPassTypeRuntime pass_types_runtime;
 		RenderPassesRuntime passes_runtime;
 
-		ParameterAllocator parameter_allocator;
 		GpuBindings gpu_bindings;
 
 		std::unordered_map<uint64_t, RenderBuffer *> render_buffer_lookup;
