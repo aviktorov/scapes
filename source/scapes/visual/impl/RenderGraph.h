@@ -38,9 +38,6 @@ namespace scapes::visual::impl
 		void resize(uint32_t width, uint32_t height) final;
 		void render(hardware::CommandBuffer command_buffer) final;
 
-		bool load(const foundation::io::URI &uri) final;
-		bool save(const foundation::io::URI &uri) final;
-
 		bool deserialize(const foundation::serde::yaml::Tree &tree) final;
 		foundation::serde::yaml::Tree serialize() final;
 
@@ -94,13 +91,6 @@ namespace scapes::visual::impl
 			uint32_t downscale {1};
 		};
 
-		struct RenderPassTypeRuntime
-		{
-			std::vector<std::string> names;
-			std::vector<uint64_t> name_hashes;
-			std::vector<PFN_createRenderPass> constructors;
-		};
-
 		struct RenderPassesRuntime
 		{
 			std::vector<std::string> names;
@@ -116,12 +106,9 @@ namespace scapes::visual::impl
 		const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t index) const final;
 		bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_index, size_t num_src_elements, const void *src_data) final;
 
-		bool registerRenderPassType(const char *type_name, PFN_createRenderPass function) final;
 		IRenderPass *createRenderPass(const char *type_name, const char *name) final;
 		int32_t findRenderPass(const char *name);
 		int32_t findRenderPass(uint64_t hash);
-		int32_t findRenderPassType(const char *type_name);
-		int32_t findRenderPassType(uint64_t hash);
 
 		void deserializeRenderBuffers(foundation::serde::yaml::NodeRef renderbuffers_root);
 		void deserializeRenderPass(foundation::serde::yaml::NodeRef renderpass_node);
@@ -144,7 +131,6 @@ namespace scapes::visual::impl
 		uint32_t width {0};
 		uint32_t height {0};
 
-		RenderPassTypeRuntime pass_types_runtime;
 		RenderPassesRuntime passes_runtime;
 
 		GpuBindings gpu_bindings;

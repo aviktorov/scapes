@@ -5,13 +5,13 @@
 #include <scapes/foundation/math/Math.h>
 #include <scapes/foundation/game/World.h>
 #include <scapes/foundation/game/Entity.h>
+#include <scapes/visual/RenderGraph.h>
 
 struct GLFWwindow;
 class ApplicationFileSystem;
 class ApplicationResources;
 class SwapChain;
 class RenderPassImGui;
-class RenderPassPost;
 
 /*
  */
@@ -106,5 +106,5 @@ private:
 	scapes::foundation::game::World *world {nullptr};
 	scapes::foundation::resources::ResourceManager *resource_manager {nullptr};
 
-	scapes::visual::RenderGraph *render_graph {nullptr};
+	scapes::visual::RenderGraphHandle render_graph;
 };

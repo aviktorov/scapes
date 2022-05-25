@@ -38,7 +38,7 @@ static void initRaytracing(
 	foundation::resources::ResourceManager *resource_manager,
 	scapes::visual::hardware::Device *device,
 	visual::shaders::Compiler *compiler,
-	visual::RenderGraph *render_graph
+	visual::RenderGraphHandle render_graph
 )
 {
 	visual::ShaderHandle rgen = resource_manager->fetch<visual::Shader>(
@@ -546,22 +546,20 @@ void Application::shutdownRenderScene()
  */
 void Application::initRenderers()
 {
-	render_graph = visual::RenderGraph::create(
-		resource_manager,
+	scapes::visual::RenderGraph::registerRenderPassType<RenderPassPrepareOld>();
+	scapes::visual::RenderGraph::registerRenderPassType<RenderPassGeometry>();
+	scapes::visual::RenderGraph::registerRenderPassType<RenderPassLBuffer>();
+	scapes::visual::RenderGraph::registerRenderPassType<RenderPassPost>();
+	scapes::visual::RenderGraph::registerRenderPassType<RenderPassImGui>();
+	scapes::visual::RenderGraph::registerRenderPassType<RenderPassSwapRenderBuffers>();
+
+	render_graph = resource_manager->load<visual::RenderGraph>(
+		"shaders/render_graph/schema.yaml",
 		device,
 		compiler,
 		world,
 		application_resources->getUnitQuad()
 	);
-
-	render_graph->registerRenderPassType<RenderPassPrepareOld>();
-	render_graph->registerRenderPassType<RenderPassGeometry>();
-	render_graph->registerRenderPassType<RenderPassLBuffer>();
-	render_graph->registerRenderPassType<RenderPassPost>();
-	render_graph->registerRenderPassType<RenderPassImGui>();
-	render_graph->registerRenderPassType<RenderPassSwapRenderBuffers>();
-
-	render_graph->load("shaders/render_graph/schema.yaml");
 
 	// ImGui pass
 	imgui_pass = render_graph->getRenderPass<RenderPassImGui>("ImGui");
@@ -630,9 +628,6 @@ void Application::initRenderers()
 void Application::shutdownRenderers()
 {
 	imgui_pass = nullptr;
-
-	visual::RenderGraph::destroy(render_graph);
-	render_graph = nullptr;
 }
 
 /*

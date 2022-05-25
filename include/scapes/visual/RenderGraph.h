@@ -28,7 +28,7 @@ namespace scapes::visual
 		virtual bool serialize(foundation::serde::yaml::NodeRef node) = 0;
 	};
 
-	/*
+	/* TODO: maybe use RenderGraphHandle for better safety?
 	 */
 	typedef IRenderPass *(*PFN_createRenderPass)(RenderGraph *render_graph);
 
@@ -37,15 +37,6 @@ namespace scapes::visual
 	class RenderGraph
 	{
 	public:
-		static SCAPES_API RenderGraph *create(
-			foundation::resources::ResourceManager *resource_manager,
-			hardware::Device *device,
-			shaders::Compiler *compiler,
-			foundation::game::World *world,
-			MeshHandle unit_quad
-		);
-		static SCAPES_API void destroy(RenderGraph *render_graph);
-
 		virtual ~RenderGraph() { }
 
 	public:
@@ -63,9 +54,6 @@ namespace scapes::visual
 
 		virtual void resize(uint32_t width, uint32_t height) = 0;
 		virtual void render(hardware::CommandBuffer command_buffer) = 0;
-
-		virtual bool load(const foundation::io::URI &uri) = 0;
-		virtual bool save(const foundation::io::URI &uri) = 0;
 
 		virtual bool deserialize(const foundation::serde::yaml::Tree &tree) = 0;
 		virtual foundation::serde::yaml::Tree serialize() = 0;
@@ -185,7 +173,7 @@ namespace scapes::visual
 		}
 
 		template<typename T>
-		SCAPES_INLINE bool registerRenderPassType()
+		SCAPES_INLINE static bool registerRenderPassType()
 		{
 			return registerRenderPassType(TypeTraits<T>::name, &T::create);
 		}
@@ -196,7 +184,51 @@ namespace scapes::visual
 		virtual const void *getGroupParameter(const char *group_name, const char *parameter_name, size_t index) const = 0;
 		virtual bool setGroupParameter(const char *group_name, const char *parameter_name, size_t dst_index, size_t num_src_elements, const void *src_data) = 0;
 
-		virtual bool registerRenderPassType(const char *type_name, PFN_createRenderPass function) = 0;
 		virtual IRenderPass *createRenderPass(const char *type_name, const char *name) = 0;
+
+	private:
+		static SCAPES_API bool registerRenderPassType(const char *type_name, PFN_createRenderPass function);
+	};
+
+	template <>
+	struct ::TypeTraits<RenderGraph>
+	{
+		static constexpr const char *name = "scapes::visual::RenderGraph";
+	};
+
+	template <>
+	struct ::ResourceTraits<RenderGraph>
+	{
+		static SCAPES_API size_t size();
+		static SCAPES_API void create(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			hardware::Device *device,
+			shaders::Compiler *compiler,
+			foundation::game::World *world,
+			MeshHandle unit_quad
+		);
+		static SCAPES_API void destroy(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory
+		);
+		static SCAPES_API foundation::resources::hash_t fetchHash(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API bool reload(
+			foundation::resources::ResourceManager *resource_manager,
+			foundation::io::FileSystem *file_system,
+			void *memory,
+			const foundation::io::URI &uri
+		);
+		static SCAPES_API bool loadFromMemory(
+			foundation::resources::ResourceManager *resource_manager,
+			void *memory,
+			const uint8_t *data,
+			size_t size
+		);
 	};
 }

@@ -8,6 +8,131 @@
 namespace yaml = scapes::foundation::serde::yaml;
 namespace math = scapes::foundation::math;
 
+/*
+ */
+size_t ResourceTraits<scapes::visual::RenderGraph>::size()
+{
+	return sizeof(scapes::visual::impl::RenderGraph);
+}
+
+void ResourceTraits<scapes::visual::RenderGraph>::create(
+	scapes::foundation::resources::ResourceManager *resource_manager,
+	void *memory,
+	scapes::visual::hardware::Device *device,
+	scapes::visual::shaders::Compiler *compiler,
+	scapes::foundation::game::World *world,
+	scapes::visual::MeshHandle unit_quad
+)
+{
+	new (memory) scapes::visual::impl::RenderGraph(resource_manager, device, compiler, world, unit_quad);
+}
+
+void ResourceTraits<scapes::visual::RenderGraph>::destroy(
+	scapes::foundation::resources::ResourceManager *resource_manager,
+	void *memory
+)
+{
+	scapes::visual::impl::RenderGraph *render_graph = reinterpret_cast<scapes::visual::impl::RenderGraph *>(memory);
+	render_graph->~RenderGraph();
+}
+
+scapes::foundation::resources::hash_t ResourceTraits<scapes::visual::RenderGraph>::fetchHash(
+	scapes::foundation::resources::ResourceManager *resource_manager,
+	scapes::foundation::io::FileSystem *file_system,
+	void *memory,
+	const scapes::foundation::io::URI &uri
+)
+{
+	return 0;
+}
+
+bool ResourceTraits<scapes::visual::RenderGraph>::reload(
+	scapes::foundation::resources::ResourceManager *resource_manager,
+	scapes::foundation::io::FileSystem *file_system,
+	void *memory,
+	const scapes::foundation::io::URI &uri
+)
+{
+	return false;
+}
+
+bool ResourceTraits<scapes::visual::RenderGraph>::loadFromMemory(
+	scapes::foundation::resources::ResourceManager *resource_manager,
+	void *memory,
+	const uint8_t *data,
+	size_t size
+)
+{
+	scapes::visual::impl::RenderGraph *render_graph = reinterpret_cast<scapes::visual::impl::RenderGraph *>(memory);
+
+	yaml::csubstr yaml(reinterpret_cast<const char *>(data), size);
+	yaml::Tree &tree = yaml::parse(yaml);
+
+	return render_graph->deserialize(tree);
+}
+
+namespace scapes::visual::registry
+{
+	struct RenderPassTypeRegistry
+	{
+		std::vector<std::string> names;
+		std::vector<uint64_t> name_hashes;
+		std::vector<PFN_createRenderPass> constructors;
+	};
+
+	static RenderPassTypeRegistry render_pass_type_registry;
+
+	static bool registerRenderPassType(const char *type_name, PFN_createRenderPass function)
+	{
+		uint64_t render_pass_type_hash = 0;
+		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
+
+		for (size_t i = 0; i < render_pass_type_registry.name_hashes.size(); ++i)
+			if (render_pass_type_registry.name_hashes[i] == render_pass_type_hash)
+				return false;
+
+		render_pass_type_registry.constructors.push_back(function);
+		render_pass_type_registry.name_hashes.push_back(render_pass_type_hash);
+		render_pass_type_registry.names.push_back(std::string(type_name));
+
+		return true;
+	}
+
+	static int32_t findRenderPassType(uint64_t hash)
+	{
+		for (size_t i = 0; i < render_pass_type_registry.name_hashes.size(); ++i)
+			if (render_pass_type_registry.name_hashes[i] == hash)
+				return static_cast<int32_t>(i);
+
+		return -1;
+	}
+
+	static int32_t findRenderPassType(const char *type_name)
+	{
+		uint64_t render_pass_type_hash = 0;
+		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
+
+		return findRenderPassType(render_pass_type_hash);
+	}
+
+	static IRenderPass *createRenderPass(int32_t index, RenderGraph *render_graph)
+	{
+		if (index < 0 || index >= static_cast<int32_t>(render_pass_type_registry.constructors.size()))
+			return nullptr;
+
+		return render_pass_type_registry.constructors[index](render_graph);
+	}
+
+}
+
+namespace scapes::visual
+{
+	bool RenderGraph::registerRenderPassType(const char *type_name, PFN_createRenderPass function)
+	{
+		return registry::registerRenderPassType(type_name, function);
+	}
+}
+
 namespace scapes::visual::impl
 {
 	/*
@@ -31,10 +156,6 @@ namespace scapes::visual::impl
 		removeAllGroups();
 		removeAllRenderBuffers();
 		removeAllRenderPasses();
-
-		pass_types_runtime.constructors.clear();
-		pass_types_runtime.name_hashes.clear();
-		pass_types_runtime.names.clear();
 	}
 
 	/*
@@ -61,7 +182,6 @@ namespace scapes::visual::impl
 		if (should_invalidate)
 			for (IRenderPass *pass : passes_runtime.passes)
 				pass->invalidate();
-
 	}
 
 	void RenderGraph::shutdown()
@@ -118,56 +238,6 @@ namespace scapes::visual::impl
 
 		for (IRenderPass *pass : passes_runtime.passes)
 			pass->render(command_buffer);
-	}
-
-	/*
-	 */
-	bool RenderGraph::load(const foundation::io::URI &uri)
-	{
-		foundation::io::FileSystem *file_system = resource_manager->getFileSystem();
-		assert(file_system);
-
-		size_t size = 0;
-		uint8_t *data = reinterpret_cast<uint8_t *>(file_system->map(uri, size));
-
-		if (!data)
-		{
-			foundation::Log::error("RenderGraph::load(): can't open \"%s\" file\n", uri);
-			return false;
-		}
-
-		yaml::csubstr yaml(reinterpret_cast<const char *>(data), size);
-		yaml::Tree &tree = yaml::parse(yaml);
-		bool result = deserialize(tree);
-
-		file_system->unmap(data);
-
-		return result;
-	}
-
-	bool RenderGraph::save(const foundation::io::URI &uri)
-	{
-		foundation::io::FileSystem *file_system = resource_manager->getFileSystem();
-		assert(file_system);
-
-		foundation::io::Stream *file = file_system->open(uri, "wb");
-		if (!file)
-		{
-			foundation::Log::error("RenderGraph::save(): can't open \"%s\" file\n", uri);
-			return false;
-		}
-
-		const yaml::Tree &tree = serialize();
-		yaml::csubstr output = yaml::emit(tree, tree.root_id(), yaml::substr{}, false);
-
-		std::vector<char> data;
-		data.resize(output.len);
-		yaml::emit(tree, tree.root_id(), yaml::substr(data.data(), data.size()));
-
-		size_t bytes_written = file->write(data.data(), sizeof(char), output.len);
-		file_system->close(file);
-
-		return bytes_written == output.len;
 	}
 
 	/*
@@ -586,22 +656,6 @@ namespace scapes::visual::impl
 
 	/*
 	 */
-	bool RenderGraph::registerRenderPassType(const char *type_name, PFN_createRenderPass function)
-	{
-		uint64_t render_pass_type_hash = 0;
-		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
-
-		for (size_t i = 0; i < pass_types_runtime.name_hashes.size(); ++i)
-			if (pass_types_runtime.name_hashes[i] == render_pass_type_hash)
-				return false;
-
-		pass_types_runtime.constructors.push_back(function);
-		pass_types_runtime.name_hashes.push_back(render_pass_type_hash);
-		pass_types_runtime.names.push_back(std::string(type_name));
-
-		return true;
-	}
-
 	IRenderPass *RenderGraph::createRenderPass(const char *type_name, const char *name)
 	{
 		uint64_t render_pass_hash = 0;
@@ -614,12 +668,12 @@ namespace scapes::visual::impl
 		uint64_t render_pass_type_hash = 0;
 		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
 
-		int32_t type_index = findRenderPassType(render_pass_type_hash);
+		int32_t type_index = registry::findRenderPassType(render_pass_type_hash);
 
 		if (type_index == -1)
 			return nullptr;
 
-		IRenderPass *pass = pass_types_runtime.constructors[type_index](this);
+		IRenderPass *pass = registry::createRenderPass(type_index, this);
 
 		passes_runtime.passes.push_back(pass);
 		passes_runtime.name_hashes.push_back(render_pass_hash);
@@ -642,23 +696,6 @@ namespace scapes::visual::impl
 	{
 		for (size_t i = 0; i < passes_runtime.name_hashes.size(); ++i)
 			if (passes_runtime.name_hashes[i] == hash)
-				return static_cast<int32_t>(i);
-
-		return -1;
-	}
-
-	int32_t RenderGraph::findRenderPassType(const char *type_name)
-	{
-		uint64_t render_pass_type_hash = 0;
-		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
-
-		return findRenderPassType(render_pass_type_hash);
-	}
-
-	int32_t RenderGraph::findRenderPassType(uint64_t hash)
-	{
-		for (size_t i = 0; i < pass_types_runtime.name_hashes.size(); ++i)
-			if (pass_types_runtime.name_hashes[i] == hash)
 				return static_cast<int32_t>(i);
 
 		return -1;
@@ -785,11 +822,11 @@ namespace scapes::visual::impl
 		uint64_t render_pass_type_hash = 0;
 		common::HashUtils::combine(render_pass_type_hash, std::string_view(type_name));
 
-		int32_t render_pass_type_index = findRenderPassType(render_pass_type_hash);
+		int32_t render_pass_type_index = registry::findRenderPassType(render_pass_type_hash);
 		if (render_pass_type_index == -1)
 			return;
 
-		IRenderPass *render_pass = pass_types_runtime.constructors[render_pass_type_index](this);
+		IRenderPass *render_pass = registry::createRenderPass(render_pass_type_index, this);
 		if (!render_pass->deserialize(renderpass_node))
 		{
 			foundation::Log::error("Can't deserialize render pass with type \"%s\"\n", type_name.c_str());

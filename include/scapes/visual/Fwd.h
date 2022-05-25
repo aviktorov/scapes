@@ -20,6 +20,7 @@ namespace scapes::visual
 	typedef foundation::resources::ResourceHandle<Material> MaterialHandle;
 	typedef foundation::resources::ResourceHandle<Shader> ShaderHandle;
 	typedef foundation::resources::ResourceHandle<Texture> TextureHandle;
+	typedef foundation::resources::ResourceHandle<RenderGraph> RenderGraphHandle;
 
 	namespace components
 	{
